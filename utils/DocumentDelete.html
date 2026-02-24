@@ -323,7 +323,7 @@
                         try {
                             // API 호출
                             const res = await axios.post(`${baseUrl}/v2.0/api/list_document`, {
-                                type: "04", class_type: statusVal, skip: String(skip), limit: "100",
+                                type: "04", class_type: statusVal, skip: String(skip), limit: "200",
                                 sort: dateTarget, sort_type: "desc", [dateTarget]: `${startTs}|${endTs}`
                             }, { headers: { 'Authorization': `Bearer ${token}` }});
 
@@ -334,7 +334,7 @@
                                 docs.forEach(doc => targetDocumentIds.push(doc.id));
                                 if (targetDocumentIds.length % 500 === 0) log(`${targetDocumentIds.length}건 수집 중...`);
                                 skip += docs.length;
-                                if (docs.length < 100) isEnd = true;
+                                if (docs.length < 200) isEnd = true;
                             }
                             success = true; 
                         } catch(error) {

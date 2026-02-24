@@ -262,10 +262,11 @@
     const copyBtn = document.getElementById('copyBtn');
     let currentFormattedText = "";
 
-    function showError(msg) { errorMessage.textContent = msg; }
-    function clearError() { errorMessage.textContent = ''; }
+    function showError(msg) { errorMessage.textContent = msg; } // 에러 메시지 표시
+    function clearError() { errorMessage.textContent = ''; } // 에러 메시지 초기화
 
     function clearAll() {
+        // 에디터와 결과창 초기화
         editor.setValue(''); // 에디터 초기화
         currentFormattedText = '';
         outputCode.textContent = '결과가 여기에 표시됩니다...';
@@ -277,6 +278,7 @@
     }
 
     function switchTab(tab) {
+        // 탭 버튼 활성화 상태 업데이트 및 뷰 전환
         document.getElementById('btnCode').classList.remove('active');
         document.getElementById('btnTree').classList.remove('active');
         if (tab === 'code') {
@@ -291,6 +293,7 @@
     }
 
     function copyOutput() {
+        // 현재 포맷된 텍스트를 클립보드에 복사
         if (!currentFormattedText) return;
         navigator.clipboard.writeText(currentFormattedText).then(() => {
             copyBtn.textContent = "Copied!";
@@ -303,6 +306,7 @@
     }
 
     function formatJSON() {
+        // JSON 포맷팅 및 트리 뷰 생성
         clearError();
         const rawValue = editor.getValue().trim(); // 에디터에서 값 가져오기
         if (!rawValue) return showError("입력창에 JSON 코드를 입력해 주세요.");
@@ -325,15 +329,18 @@
     }
 
     function isUrl(string) {
+        // 간단한 URL 검증 (https:// 또는 http://로 시작하는 경우)
         try { return Boolean(new URL(string)); }
         catch(e) { return false; }
     }
 
     function buildJSONTree(data, keyName = "", isRoot = false) {
+        // 최상위 노드인 경우 keyName을 표시하지 않음
         const wrapper = document.createElement('div');
         const keySpan = keyName ? `<span class="tree-key">${keyName}</span> : ` : "";
 
         if (data !== null && typeof data === 'object') {
+            // 객체 또는 배열인 경우 details/summary 구조로 트리 생성
             const isArray = Array.isArray(data);
             const count = isArray ? data.length : Object.keys(data).length;
             const details = document.createElement('details');
@@ -367,6 +374,7 @@
     }
 
     function formatXML() {
+        // XML 포맷팅 및 트리 뷰 생성
         clearError();
         let xml = editor.getValue().trim(); // 에디터에서 값 가져오기
         if (!xml) return showError("입력창에 XML 코드를 입력해 주세요.");
@@ -383,6 +391,7 @@
             xml = xml.replace(reg, '$1\r\n$2$3');
             
             xml.split('\r\n').forEach(function(node) {
+                // 들여쓰기 규칙:
                 let indent = 0;
                 if (node.match( /.+<\/\w[^>]*>$/ )) indent = 0; 
                 else if (node.match( /^<\/\w/ )) { if (pad !== 0) pad -= 1; } 
@@ -412,7 +421,9 @@
     }
 
     function buildXMLTree(node) {
+        // 텍스트 노드인 경우
         if (node.nodeType === Node.TEXT_NODE) {
+           
             const text = node.textContent.trim();
             if (!text) return null;
             const wrapper = document.createElement('div');
@@ -426,6 +437,7 @@
             const textContent = Array.from(node.childNodes).filter(n => n.nodeType === Node.TEXT_NODE).map(n => n.textContent.trim()).join('');
 
             if (hasElementChildren) {
+                // 자식 요소가 있는 경우 details/summary 구조로 트리 생성
                 const details = document.createElement('details');
                 details.open = true;
                 const summary = document.createElement('summary');
@@ -436,8 +448,9 @@
                 const ul = document.createElement('ul');
                 ul.className = 'tree-list';
                 node.childNodes.forEach(child => {
-                    const childNode = buildXMLTree(child);
+                    const childNode = buildXMLTree(child); // 재귀적으로 자식 노드 처리
                     if (childNode) {
+                        // 자식 노드가 유효한 경우에만 리스트에 추가
                         const li = document.createElement('li');
                         li.appendChild(childNode);
                         ul.appendChild(li);
@@ -446,6 +459,7 @@
                 details.appendChild(ul);
                 wrapper.appendChild(details);
             } else {
+                // 자식 요소가 없고 텍스트만 있는 경우 한 줄로 표시
                 wrapper.innerHTML = `<div style="padding: 2px 0 2px 15px;"><span class="tree-key">&lt;${node.nodeName}&gt;</span> <span class="tree-value-string">${textContent}</span> <span class="tree-key">&lt;/${node.nodeName}&gt;</span></div>`;
             }
             return wrapper;
