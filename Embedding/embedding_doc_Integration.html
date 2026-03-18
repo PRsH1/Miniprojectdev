@@ -139,6 +139,9 @@
       .option-section { margin-bottom: 20px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
       .entry-item { position: relative; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background: #fafafa; margin-bottom: 10px; }
       .remove-entry { position: absolute; top: 5px; right: 5px; background: #dc3545; color: #fff; border: none; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .attach-file-item { display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:#e8f4f8; border:1px solid #b8dde8; border-radius:3px; margin-bottom:4px; font-size:0.82rem; }
+      .attach-file-name { color:#0056b3; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%; }
+      .attach-file-meta { color:#666; white-space:nowrap; }
 
       #loadingIndicator { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); padding: 1em 2em; background: rgba(0, 0, 0, 0.7); color: #fff; border-radius: 8px; z-index: 1000; }
       .env-header { background: #e3f2fd; padding: 15px; border-radius: 8px; border: 1px solid #90caf9; margin-bottom: 15px; }
@@ -448,11 +451,26 @@
 
         $(".field-entry").each(function () {
           const id = $(this).find(".field-id").val();
-          const value = $(this).find(".field-value").val();
           const enabled = $(this).find(".field-enabled").is(":checked");
           const required = $(this).find(".field-required").is(":checked");
-          if (id && id.trim())
-            prefill.fields.push({ id, value, enabled, required });
+          const isAttach = $(this).find(".field-is-attach").is(":checked");
+          if (!id || !id.trim()) return;
+
+          let value;
+          if (isAttach) {
+            const attachFiles = $(this).data("attachFiles") || [];
+            if (attachFiles.length === 0) {
+              value = "";
+            } else if (attachFiles.length === 1) {
+              value = attachFiles[0].src;
+            } else {
+              value = JSON.stringify(attachFiles);
+            }
+          } else {
+            value = $(this).find(".field-value").val();
+          }
+
+          prefill.fields.push({ id, value, enabled, required });
         });
 
         $(".recipient-entry").each(function () {
@@ -592,6 +610,15 @@
       function validateInputs() {
         const cid = ($("#companyId").val() || "").trim();
         if (!cid) { alert("회사 ID가 필요합니다."); return false; }
+
+        let attachLoading = false;
+        $(".field-entry").each(function () {
+          if ($(this).find(".field-is-attach").is(":checked") && $(this).data("attachFiles") === null) {
+            attachLoading = true;
+          }
+        });
+        if (attachLoading) { alert("첨부 파일을 읽는 중입니다. 잠시 후 다시 시도해주세요."); return false; }
+
         return true;
       }
 
@@ -603,7 +630,22 @@
         <div class="entry-item field-entry">
           <button type="button" class="remove-entry" title="삭제">&times;</button>
           <div class="form-group"><label>필드명 (id):</label><input type="text" class="field-id" placeholder="예: 고객명" /></div>
-          <div class="form-group"><label>값 (value):</label><input type="text" class="field-value" placeholder="예: 홍길동" /></div>
+          <div class="form-group">
+            <label>첨부 컴포넌트:</label>
+            <div class="switch-wrapper" style="justify-content:flex-start">
+              <label class="switch"><input type="checkbox" class="field-is-attach" /><span class="slider"></span></label>
+              <span style="margin-left:8px; font-size:0.85rem; color:#555;">파일 첨부 컴포넌트로 사용</span>
+            </div>
+          </div>
+          <div class="field-text-wrap form-group"><label>값 (value):</label><input type="text" class="field-value" placeholder="예: 홍길동" /></div>
+          <div class="field-attach-wrap" style="display:none;">
+            <div class="form-group">
+              <label>첨부 파일 (복수 선택 가능):</label>
+              <input type="file" class="field-file-input" multiple style="display:none;" />
+              <button type="button" class="field-file-btn btn" style="margin-top:0; padding:8px 12px; font-size:14px; background:#17a2b8;">파일 선택</button>
+            </div>
+            <div class="field-file-list" style="margin-top:5px;"></div>
+          </div>
           <div class="form-group">
             <label>활성화 여부:</label>
             <div class="switch-wrapper" style="justify-content:flex-start"><label class="switch"><input type="checkbox" class="field-enabled" checked /><span class="slider"></span></label></div>
@@ -615,6 +657,69 @@
         </div>
       `);
         entry.find(".remove-entry").click(() => entry.remove());
+
+        entry.find(".field-is-attach").on("change", function () {
+          if (this.checked) {
+            entry.find(".field-text-wrap").hide();
+            entry.find(".field-attach-wrap").show();
+          } else {
+            entry.find(".field-text-wrap").show();
+            entry.find(".field-attach-wrap").hide();
+            entry.data("attachFiles", []);
+            entry.find(".field-file-list").empty();
+            entry.find(".field-file-input").val("");
+          }
+        });
+
+        entry.find(".field-file-btn").click(() => entry.find(".field-file-input").trigger("click"));
+
+        entry.find(".field-file-input").on("change", function () {
+          const files = Array.from(this.files);
+          const fileList = entry.find(".field-file-list");
+
+          if (files.length === 0) {
+            entry.data("attachFiles", []);
+            fileList.empty();
+            return;
+          }
+
+          entry.data("attachFiles", null); // 로딩 중 표시
+          fileList.html('<div style="color:#888; padding:4px 0; font-size:0.82rem;">읽는 중...</div>');
+
+          const promises = files.map((file) => {
+            return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = (e) => resolve({
+                src: e.target.result,
+                filetype: file.name.split(".").pop().toLowerCase(),
+                filename: file.name,
+                time: Date.now() + "",
+              });
+              reader.onerror = () => reject(new Error("파일 읽기 실패: " + file.name));
+              reader.readAsDataURL(file);
+            });
+          });
+
+          Promise.all(promises)
+            .then((results) => {
+              entry.data("attachFiles", results);
+              fileList.empty();
+              results.forEach((f, i) => {
+                const sizeKB = (files[i].size / 1024).toFixed(1);
+                fileList.append(
+                  `<div class="attach-file-item">
+                    <span class="attach-file-name">${f.filename}</span>
+                    <span class="attach-file-meta">${f.filetype.toUpperCase()} &middot; ${sizeKB} KB</span>
+                  </div>`
+                );
+              });
+            })
+            .catch((err) => {
+              entry.data("attachFiles", []);
+              fileList.html(`<div style="color:#dc3545; font-size:0.82rem;">${err.message}</div>`);
+            });
+        });
+
         $("#fieldsList").append(entry);
       }
 
