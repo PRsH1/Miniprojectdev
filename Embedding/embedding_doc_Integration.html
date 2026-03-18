@@ -461,8 +461,6 @@
             const attachFiles = $(this).data("attachFiles") || [];
             if (attachFiles.length === 0) {
               value = "";
-            } else if (attachFiles.length === 1) {
-              value = attachFiles[0].src;
             } else {
               value = JSON.stringify(attachFiles);
             }
