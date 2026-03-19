@@ -24,6 +24,7 @@ ProjectImprove/
 │   ├── memberPage.js           # 멤버 관리 페이지 (인증 보호)
 │   ├── ApiAutoTest.js          # API 자동화 테스트 페이지 (인증 보호)
 │   ├── templatecopy.js         # 템플릿 복제 도구 (인증 보호)
+│   ├── idptestauth.js          # IdP 테스트 페이지 (인증 보호)
 │   ├── auth.js                 # SAML 응답 생성
 │   ├── login.js                # 쿠키 세션 인증
 │   ├── sso-login.js            # SAML SSO 로그인 폼
@@ -48,11 +49,22 @@ ProjectImprove/
 │   ├── DocumentDownload.html   # 문서 다운로드
 │   ├── DocumentInfo.html       # 문서 정보 조회
 │   ├── DocumentSendImprove.html# 새 문서 작성
-│   └── listdocuments.html      # 문서 목록 조회
+│   ├── KogasDocumentSend.html  # KOGAS 전용 문서 작성
+│   ├── listdocuments.html      # 문서 목록 조회
+│   ├── css/
+│   │   └── MemberStyle.css     # 멤버 관련 스타일
+│   └── js/
+│       ├── MemberMain.js       # 멤버 관련 메인 로직
+│       └── api/                # API 모듈 (Member.js, auth.js, group.js, nav.js, toggle.js)
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구
 │   ├── embedding_doc_Integration.html      # 문서 임베딩 (환경 통합)
-│   └── embedding_template_intergration.html# 템플릿 임베딩 (환경 통합)
+│   ├── embedding_doc_update.html           # 문서 임베딩 (업데이트)
+│   ├── embedding_doc_update_CSAP.html      # 문서 임베딩 (CSAP 업데이트)
+│   ├── embedding_template_intergration.html# 템플릿 임베딩 (환경 통합)
+│   ├── template_create_update.html         # 템플릿 생성/업데이트
+│   ├── template_create_update_CSAP.html    # 템플릿 생성/업데이트 (CSAP)
+│   └── MultiFileViewer.html                # 멀티 파일 뷰어
 │
 ├── utils/                      # 공개 유틸리티 도구
 │   ├── webhook.html            # Webhook 수신 모니터링
@@ -64,7 +76,17 @@ ProjectImprove/
 │   ├── JsonToPretty.html       # JSON/XML 포맷 정리
 │   ├── DocumentDelete.html     # 문서 일괄 삭제
 │   ├── MassDocumentDowmload.html # 문서 일괄 다운로드
-│   └── templateDeletetool.html # 템플릿 삭제 도구
+│   ├── templateDeletetool.html # 템플릿 삭제 도구
+│   └── saml-guide.html         # SAML 연동 가이드
+│
+├── Webhook/                    # Webhook 관련 리소스
+│   └── webhook/demo/           # Webhook 데모 (Gradle 프로젝트)
+│
+├── file/
+│   └── eformsign SSO 연동 가이드 (SAML 2.0)_v1.0.pdf  # SSO 연동 가이드 문서
+│
+├── img/
+│   └── sso_flow.png            # SSO 플로우 다이어그램
 │
 └── assets/js/
     └── ApiAutoTestStart.js     # API 자동화 테스트 로직 (OPA2_XXX 목록 포함)
