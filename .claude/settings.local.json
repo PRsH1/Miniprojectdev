@@ -10,7 +10,12 @@
       "mcp__github__push_files",
       "Bash(mkdir -p /c/Users/Administrator/Workspace/mcpserver)",
       "Bash(mv /c/Users/Administrator/Workspace/ProjectImprove/setup-mcp.sh /c/Users/Administrator/Workspace/mcpserver/)",
-      "Bash(mv /c/Users/Administrator/Workspace/ProjectImprove/generate-mcp-setup.js /c/Users/Administrator/Workspace/mcpserver/)"
+      "Bash(mv /c/Users/Administrator/Workspace/ProjectImprove/generate-mcp-setup.js /c/Users/Administrator/Workspace/mcpserver/)",
+      "mcp__notion__notion-search",
+      "mcp__notion__notion-create-pages",
+      "mcp__claude_ai_Gmail__gmail_get_profile",
+      "Bash(find /c/Users/Administrator/Workspace/ProjectImprove -maxdepth 1 -type f -name *.html -o -name *.md)",
+      "Bash(xargs -I {} basename {})"
     ]
   }
 }
