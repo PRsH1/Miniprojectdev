@@ -67,12 +67,28 @@
         /* ========== SIDEBAR ========== */
         .sidebar {
             width: var(--sidebar-w);
+            min-width: 160px;
+            max-width: 520px;
             background: var(--sidebar-bg);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
-            border-right: 1px solid #0d1820;
             overflow: hidden;
+        }
+        .sidebar-resizer {
+            width: 4px;
+            background: #0d1820;
+            cursor: col-resize;
+            flex-shrink: 0;
+            transition: background 0.15s;
+            position: relative;
+        }
+        .sidebar-resizer:hover,
+        .sidebar-resizer.dragging { background: var(--blue); }
+        .sidebar-resizer::after {
+            content: '';
+            position: absolute;
+            inset: 0 -4px;
         }
         .sidebar-search {
             padding: 12px;
@@ -209,8 +225,14 @@
         .btn-send:hover { background: #e55a26; }
 
         /* ========== TABS ========== */
-        .tabs-container { background: var(--white); flex-shrink: 0; border-bottom: 1px solid var(--border); }
-        .tabs-nav { display: flex; padding: 0 20px; gap: 0; border-bottom: 1px solid var(--border); }
+        .tabs-container { background: var(--white); flex-shrink: 0; border-bottom: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; }
+        .h-resizer {
+            height: 5px; background: var(--border); cursor: row-resize;
+            flex-shrink: 0; transition: background 0.15s; position: relative;
+        }
+        .h-resizer:hover, .h-resizer.dragging { background: var(--blue); }
+        .h-resizer::after { content: ''; position: absolute; inset: -4px 0; }
+        .tabs-nav { display: flex; padding: 0 20px; gap: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
         .tab-btn {
             padding: 10px 16px; font-size: 0.85rem; color: #718096; cursor: pointer;
             border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; border-top: none;
@@ -223,9 +245,12 @@
             font-size: 0.7rem; padding: 1px 6px; border-radius: 10px; margin-left: 5px;
         }
         .tab-btn.active .tab-badge { background: rgba(45,123,224,0.15); color: var(--blue); }
-        .tab-content { padding: 16px 20px; }
+        .tab-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
         .tab-pane { display: none; }
-        .tab-pane.active { display: block; }
+        .tab-pane.active { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; min-height: 0; }
+        .tab-pane.active::-webkit-scrollbar { width: 6px; }
+        .tab-pane.active::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+        .tab-pane.active::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
 
         /* ========== PARAMS / HEADERS TABLE ========== */
         .kv-table { width: 100%; border-collapse: collapse; }
@@ -258,12 +283,12 @@
 
         /* ========== BODY EDITOR ========== */
         .body-editor {
-            width: 100%; height: 160px; font-family: 'SFMono-Regular', Consolas, monospace;
+            flex: 1; width: 100%; min-height: 60px; font-family: 'SFMono-Regular', Consolas, monospace;
             font-size: 0.84rem; border: 1px solid var(--border); border-radius: 6px;
-            padding: 10px; resize: vertical; color: #1a202c; line-height: 1.5;
+            padding: 10px; resize: none; color: #1a202c; line-height: 1.5; box-sizing: border-box;
         }
         .body-editor:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,123,224,0.1); }
-        .body-toolbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+        .body-toolbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-shrink: 0; }
         .body-toolbar span { font-size: 0.8rem; color: #718096; flex: 1; }
 
         /* ========== RESPONSE PANEL ========== */
@@ -365,12 +390,13 @@
 <div class="app-body">
 
     <!-- SIDEBAR -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-search">
             <input type="text" id="sidebarSearch" placeholder="&#xf002; API 검색...">
         </div>
         <div class="sidebar-list" id="sidebarList"></div>
     </aside>
+    <div class="sidebar-resizer" id="sidebarResizer"></div>
 
     <!-- MAIN -->
     <main class="main">
@@ -439,7 +465,7 @@
             </div>
 
             <!-- REQUEST TABS -->
-            <div class="tabs-container">
+            <div class="tabs-container" id="tabsContainer" style="height:260px">
                 <div class="tabs-nav">
                     <button class="tab-btn active" data-tab="params">
                         Params <span class="tab-badge" id="paramsBadge">0</span>
@@ -498,6 +524,9 @@
                     </div>
                 </div>
             </div>
+
+            <!-- HORIZONTAL RESIZER -->
+            <div class="h-resizer" id="hResizer"></div>
 
             <!-- RESPONSE SECTION -->
             <div class="response-section">
@@ -626,6 +655,56 @@ const API_LIST = [
         }
     },
 
+    {
+        id: 'auth_refresh_token',
+        group: '인증',
+        groupIcon: 'fa-key',
+        opaCode: 'OPA2_002',
+        name: 'Access Token 갱신',
+        method: 'POST',
+        path: '/v2.0/api_auth/refresh_token',
+        description: 'Refresh Token을 사용하여 만료된 Access Token을 갱신합니다.',
+        requiresAuth: true,
+        pathParams: [],
+        queryParams: [
+            { key: 'refresh_token', description: 'Access Token 갱신을 위한 Refresh Token', required: true, default: '' },
+        ],
+        defaultBody: null,
+        exampleResponse: {
+            success: {
+                "oauth_token": {
+                    "expires_in": "number",
+                    "token_type": "string",
+                    "refresh_token": "string",
+                    "access_token": "string"
+                }
+            },
+            errors: [
+                {
+                    title: '유효하지 않거나 만료된 토큰 (4010001)',
+                    body: {
+                        "code": "4010001",
+                        "ErrorMessage": "Invalid or expired token."
+                    }
+                },
+                {
+                    title: 'Access Token 클레임 오류 401 Unauthorized (4010001)',
+                    body: {
+                        "code": "4010001",
+                        "ErrorMessage": "The access_token claim is invalid."
+                    }
+                },
+                {
+                    title: 'Refresh Token 오류 400 Bad Request (4010002)',
+                    body: {
+                        "code": "4010002",
+                        "ErrorMessage": "The refresh_token is invalid."
+                    }
+                }
+            ]
+        }
+    },
+
     // ──────────────────────────────────────────────────────────────────────
     // 문서
     // ──────────────────────────────────────────────────────────────────────
@@ -650,7 +729,91 @@ const API_LIST = [
             { key: 'include_external_token', description: '사용자 Token 포함', required: false, default: '' },
             { key: 'include_detail_template_info', description: '상세 템플릿 정보 포함', required: false, default: '' },
         ],
-        defaultBody: null
+        defaultBody: null,
+        exampleResponse: {
+            success: {
+                "id": "string",
+                "document_number": "string",
+                "template": {
+                    "id": "string",
+                    "name": "string"
+                },
+                "document_name": "string",
+                "creator": {
+                    "recipient_type": "string",
+                    "id": "string"
+                },
+                "created_date": "number",
+                "last_editor": {
+                    "recipient_type": "string",
+                    "id": "string"
+                },
+                "updated_date": "number",
+                "current_status": {
+                    "status_type": "string",
+                    "status_doc_type": "string",
+                    "status_doc_detail": "string",
+                    "step_type": "string",
+                    "step_index": "string",
+                    "step_name": "string",
+                    "step_recipients": [
+                        { "recipient_type": "string", "email": "string" }
+                    ],
+                    "step_group": "number",
+                    "expired_date": "number",
+                    "_expired": "boolean"
+                },
+                "fields": [],
+                "next_status": [
+                    {
+                        "step_type": "string",
+                        "step_name": "string",
+                        "step_recipients": [],
+                        "execute_date": "number",
+                        "status_type": "string",
+                        "step_group": "number"
+                    }
+                ],
+                "previous_status": [
+                    {
+                        "step_type": "string",
+                        "step_name": "string",
+                        "action_type": "string",
+                        "executor": { "id": "string" },
+                        "executed_date": "number",
+                        "step_group": "number"
+                    }
+                ],
+                "histories": [],
+                "recipients": [
+                    {
+                        "name": "string",
+                        "id": "string",
+                        "token_id": "string",
+                        "sms_template_index": "number"
+                    }
+                ],
+                "detail_template_info": []
+            },
+            errors: [
+                {
+                    title: '유효하지 않은 API Key (4030001)',
+                    body: { "code": "4030001", "ErrorMessage": "invalid api key" }
+                },
+                {
+                    title: '삭제된 문서 (4000006)',
+                    body: { "code": "4000006", "ErrorMessage": "The document has been deleted." }
+                },
+                {
+                    title: '유효하지 않거나 만료된 토큰 (4010001)',
+                    body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }
+                },
+                {
+                    title: '문서 접근 권한 없음 (4000034)',
+                    body: { "code": "4000034", "ErrorMessage": "You have no access authority to the requested document." }
+                }
+            ]
+        }
     },
     {
         id: 'doc_download',
@@ -686,11 +849,102 @@ const API_LIST = [
         ],
         defaultBody: {
             document: {
-                fields: [],
-                recipients: [],
-                parameters: [],
-                notification: []
+                document_name: "",
+                select_group_name: "",
+                fields: [
+                    { id: "", value: "" }
+                ],
+                recipients: [
+                    {
+                        step_type: "",
+                        use_mail: null,
+                        use_sms: null,
+                        member: {
+                            name: "",
+                            id: "",
+                            sms: { country_code: "", phone_number: "" }
+                        },
+                        business_num: "",
+                        auth: {
+                            password: "",
+                            password_hint: "",
+                            valid: { day: null, hour: null }
+                        }
+                    }
+                ],
+                notification: [
+                    {
+                        email: "",
+                        sms: { country_code: "", phone_number: "" },
+                        name: "",
+                        auth: {
+                            valid: { day: null, hour: null },
+                            password: "",
+                            password_hint: "",
+                            mobile_verification: null
+                        }
+                    }
+                ],
+                comment: ""
             }
+        },
+        exampleResponse: {
+            success: {
+                document: {
+                    document_name: "string",
+                    select_group_name: "string",
+                    fields: [
+                        { id: "string", value: "string" }
+                    ],
+                    recipients: [
+                        {
+                            step_type: "string",
+                            use_mail: "boolean",
+                            use_sms: "boolean",
+                            member: {
+                                name: "string",
+                                id: "string",
+                                sms: { country_code: "string", phone_number: "string" }
+                            },
+                            business_num: "string",
+                            auth: {
+                                password: "string",
+                                password_hint: "string",
+                                valid: { day: "number", hour: "number" }
+                            }
+                        },
+                        {
+                            step_type: "string",
+                            use_mail: "boolean",
+                            use_sms: "boolean",
+                            group: { id: "string" }
+                        }
+                    ],
+                    notification: [
+                        {
+                            email: "string",
+                            sms: { country_code: "string", phone_number: "string" },
+                            name: "string",
+                            auth: {
+                                valid: { day: "number", hour: "number" },
+                                password: "string",
+                                password_hint: "string",
+                                mobile_verification: "boolean"
+                            }
+                        }
+                    ],
+                    comment: "string"
+                }
+            },
+            errors: [
+                {
+                    title: '워크플로우 설정 불일치 (4000012)',
+                    body: {
+                        "code": "4000012",
+                        "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings."
+                    }
+                }
+            ]
         }
     },
     {
@@ -1148,6 +1402,36 @@ let state = {
     currentEndpoint: null,
 };
 
+// 엔드포인트별 응답 캐시 { [endpointId]: { statusText, statusClass, time, size, bodyHtml } }
+const responseCache = {};
+
+function saveResponseState(epId) {
+    if (!epId || !$('#responseBody').is(':visible')) return;
+    responseCache[epId] = {
+        statusText:  $('#statusBadge').text(),
+        statusClass: $('#statusBadge').attr('class'),
+        time:        $('#responseTime').text(),
+        size:        $('#responseSize').text(),
+        bodyHtml:    $('#responseBody').html(),
+    };
+}
+
+function restoreResponseState(epId) {
+    const cached = responseCache[epId];
+    if (cached) {
+        $('#statusBadge').text(cached.statusText).attr('class', cached.statusClass).show();
+        $('#responseTime').text(cached.time);
+        $('#responseSize').text(cached.size);
+        $('#responseMeta').show();
+        $('#responseBody').html(cached.bodyHtml).show();
+        $('#responsePlaceholder').hide();
+        $('#btnCopyResponse').show();
+        $('#btnClearResponse').show();
+    } else {
+        clearResponse();
+    }
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────────────────────────────────
@@ -1238,6 +1522,12 @@ function buildSidebar(filter = '') {
 function selectEndpoint(id) {
     const ep = API_LIST.find(e => e.id === id);
     if (!ep) return;
+
+    // 이전 엔드포인트 응답 저장
+    if (state.currentEndpoint) {
+        saveResponseState(state.currentEndpoint.id);
+    }
+
     state.currentEndpoint = ep;
 
     // Sidebar highlight
@@ -1252,10 +1542,10 @@ function selectEndpoint(id) {
     $('#methodSelect').val(ep.method);
     updateMethodStyle();
     $('#requestDesc').text(ep.description || '');
-    updateUrlPreview();
 
-    // Build params table
+    // Build params table first, then update URL (order matters)
     buildParamsTable(ep);
+    updateUrlPreview();
 
     // Default body
     if (ep.defaultBody && ['POST','PUT','PATCH'].includes(ep.method)) {
@@ -1270,7 +1560,10 @@ function selectEndpoint(id) {
 
     updateParamsBadge();
     updateHeadersBadge();
-    clearResponse();
+
+    // 현재 엔드포인트 응답 복원 (없으면 초기화)
+    $('#exampleResponsePanel').hide();
+    restoreResponseState(ep.id);
     updateExampleResponseBtn(ep);
 }
 
@@ -1617,6 +1910,9 @@ function clearResponse() {
     $('#responseBody').hide().html('');
     $('#exampleResponsePanel').hide();
     $('#responsePlaceholder').show().find('p').text('요청을 보내면 응답이 여기에 표시됩니다');
+    if (state.currentEndpoint) {
+        delete responseCache[state.currentEndpoint.id];
+    }
 }
 
 function toggleExampleResponse() {
@@ -1741,6 +2037,73 @@ $(document).ready(function() {
         buildSidebar($(this).val());
     });
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// HORIZONTAL RESIZER (Request ↕ Response)
+// ──────────────────────────────────────────────────────────────────────────
+(function() {
+    const hResizer = document.getElementById('hResizer');
+    const tabsContainer = document.getElementById('tabsContainer');
+
+    hResizer.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        const startY = e.clientY;
+        const startH = tabsContainer.offsetHeight;
+        hResizer.classList.add('dragging');
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+
+        function onMouseMove(e) {
+            const newH = Math.max(80, Math.min(600, startH + e.clientY - startY));
+            tabsContainer.style.height = newH + 'px';
+        }
+
+        function onMouseUp() {
+            hResizer.classList.remove('dragging');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+})();
+
+// ──────────────────────────────────────────────────────────────────────────
+// SIDEBAR RESIZE
+// ──────────────────────────────────────────────────────────────────────────
+(function() {
+    const resizer = document.getElementById('sidebarResizer');
+    const sidebar = document.getElementById('sidebar');
+    let startX, startW;
+
+    resizer.addEventListener('mousedown', function(e) {
+        startX = e.clientX;
+        startW = sidebar.offsetWidth;
+        resizer.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
+        function onMouseMove(e) {
+            const delta = e.clientX - startX;
+            const newW = Math.min(520, Math.max(160, startW + delta));
+            sidebar.style.width = newW + 'px';
+        }
+
+        function onMouseUp() {
+            resizer.classList.remove('dragging');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    });
+})();
 
 function updateBaseUrlBadge() {
     const url = getBaseUrl();
