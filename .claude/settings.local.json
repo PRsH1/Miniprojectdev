@@ -16,6 +16,7 @@
       "mcp__claude_ai_Gmail__gmail_get_profile",
       "Bash(find /c/Users/Administrator/Workspace/ProjectImprove -maxdepth 1 -type f -name *.html -o -name *.md)",
       "Bash(xargs -I {} basename {})"
+      
     ]
   }
 }
