@@ -75,6 +75,13 @@ const API_LIST = [
                         "code": "4030004",
                         "ErrorMessage": "The signature is invalid."
                     }
+                },
+                {
+                    title: '유효하지 않은 API Key (4030001)',
+                    body: {
+                        "code": "4030001",
+                        "ErrorMessage": "invalid api key"
+                    }
                 }
             ]
         }
@@ -256,7 +263,23 @@ const API_LIST = [
         queryParams: [
             { key: 'file_type', description: '파일 유형 (document,audit_trail)', required: false, default: 'document,audit_trail' },
         ],
-        defaultBody: null
+        defaultBody: null,
+        exampleResponse: {
+            errors: [
+                {
+                    title: '존재하지 않는 문서 (4000004)',
+                    body: { "code": "4000004", "ErrorMessage": "The document does not exist." }
+                },
+                {
+                    title: '감사추적 미생성 — 문서 미완료 (2020001)',
+                    body: { "code": "2020001", "ErrorMessage": "The audit trail will be generated when the document is completed." }
+                },
+                {
+                    title: '유효하지 않거나 만료된 토큰 (4010001)',
+                    body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }
+                }
+            ]
+        }
     },
     {
         id: 'doc_create_internal',
@@ -1277,29 +1300,68 @@ async function sendRequest() {
 
         const res = await fetch(url, opts);
         const elapsed = Date.now() - startTime;
-        const text = await res.text();
+        const contentType = res.headers.get('Content-Type') || '';
 
-        let parsed;
-        try { parsed = JSON.parse(text); } catch { parsed = null; }
-
-        // Status badge
+        // Status badge (공통)
         const statusClass = res.status >= 500 ? 'status-5xx'
             : res.status >= 400 ? 'status-4xx'
             : res.status >= 300 ? 'status-3xx' : 'status-2xx';
         $('#statusBadge').text(`${res.status} ${res.statusText}`).attr('class', `status-badge ${statusClass}`).show();
         $('#responseMeta').show();
         $('#responseTime').text(`${elapsed}ms`);
-        $('#responseSize').text(formatBytes(text.length));
-        $('#btnCopyResponse').show();
         $('#btnClearResponse').show();
         $('#responsePlaceholder').hide();
 
-        // Render response
-        const $pre = $('#responseBody').show();
-        if (parsed !== null) {
-            $pre.html(formatJsonSyntax(JSON.stringify(parsed, null, 2)));
+        // 파일 다운로드 처리 (PDF / ZIP)
+        if (res.ok && (contentType.includes('application/pdf') || contentType.includes('application/zip'))) {
+            const blob = await res.blob();
+            const isZip = contentType.includes('application/zip');
+            const ext = isZip ? '.zip' : '.pdf';
+
+            // Content-Disposition에서 파일명 추출, 없으면 document_id 기반으로 생성
+            let filename = 'download' + ext;
+            const disposition = res.headers.get('Content-Disposition') || '';
+            const nameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+            if (nameMatch) {
+                filename = nameMatch[1].replace(/['"]/g, '').trim() || filename;
+            } else {
+                // path param에서 document_id 추출해 파일명 생성
+                const docId = $('#paramsBody tr[data-type="path"]').first().find('.param-val').val();
+                if (docId) filename = docId + ext;
+            }
+
+            // 다운로드 트리거
+            const objectUrl = URL.createObjectURL(blob);
+            const $a = $('<a>').attr({ href: objectUrl, download: filename }).appendTo('body');
+            $a[0].click();
+            $a.remove();
+            URL.revokeObjectURL(objectUrl);
+
+            $('#responseSize').text(formatBytes(blob.size));
+            $('#responseBody').show().text(
+                `파일 다운로드 완료\n` +
+                `파일명: ${filename}\n` +
+                `형식: ${isZip ? 'ZIP (문서 + 감사추적 파일)' : 'PDF'}\n` +
+                `크기: ${formatBytes(blob.size)}\n` +
+                `Content-Type: ${contentType}`
+            );
+            showToast(`${filename} 다운로드 완료`);
+
         } else {
-            $pre.text(text || '(응답 없음)');
+            // 일반 텍스트 / JSON 응답 처리
+            const text = await res.text();
+            let parsed;
+            try { parsed = JSON.parse(text); } catch { parsed = null; }
+
+            $('#responseSize').text(formatBytes(text.length));
+            $('#btnCopyResponse').show();
+
+            const $pre = $('#responseBody').show();
+            if (parsed !== null) {
+                $pre.html(formatJsonSyntax(JSON.stringify(parsed, null, 2)));
+            } else {
+                $pre.text(text || '(응답 없음)');
+            }
         }
 
     } catch (e) {
