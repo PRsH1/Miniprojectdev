@@ -45,7 +45,7 @@ ProjectImprove/
 │   └── idp-test.html           # IdP 테스트 UI
 │
 ├── API(JS,HTML)/               # eformsign Open API 연동 도구 (브라우저 전용)
-│   ├── OpenAPITester.html      # ★ Postman 스타일 API 테스터 (Beta)
+│   ├── OpenAPITester.html      # ★ Postman 스타일 API 테스터 (Beta) — HTML/CSS만 포함
 │   ├── DocumentDownload.html   # 문서 다운로드
 │   ├── DocumentInfo.html       # 문서 정보 조회
 │   ├── DocumentSendImprove.html# 새 문서 작성
@@ -89,7 +89,8 @@ ProjectImprove/
 │   └── sso_flow.png            # SSO 플로우 다이어그램
 │
 └── assets/js/
-    └── ApiAutoTestStart.js     # API 자동화 테스트 로직 (OPA2_XXX 목록 포함)
+    ├── ApiAutoTestStart.js     # API 자동화 테스트 로직 (OPA2_XXX 목록 포함)
+    └── OpenAPITester.js        # ★ OpenAPITester 전용 JS (API_LIST 데이터 + 앱 로직)
 ```
 
 ---
@@ -152,7 +153,7 @@ const DOMAINS = {
 
 ## OpenAPITester (★ 현재 작업 중인 주요 파일)
 
-**경로:** `API(JS,HTML)/OpenAPITester.html`
+**경로:** `API(JS,HTML)/OpenAPITester.html` (HTML/CSS) + `assets/js/OpenAPITester.js` (JS 로직)
 **상태:** Beta (index.html에 Beta 배지로 표시)
 
 ### 구현된 기능

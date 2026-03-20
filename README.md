@@ -55,10 +55,13 @@ ProjectImprove/
 ├── auth/
 │   └── login.html                # 로그인 UI
 ├── API(JS,HTML)/                 # eformsign API 연동 프론트엔드 템플릿
-│   └── OpenAPITester.html        # ★ Postman 스타일 Open API 테스터 (Beta)
+│   └── OpenAPITester.html        # ★ Postman 스타일 Open API 테스터 (Beta) — HTML/CSS만 포함
 ├── Embedding/                    # 문서/템플릿 임베딩 도구
 ├── utils/                        # 공개 유틸리티 도구
 ├── certs/                        # SSL/TLS 인증서
+├── assets/js/
+│   ├── ApiAutoTestStart.js       # API 자동화 테스트 로직
+│   └── OpenAPITester.js          # ★ OpenAPITester 전용 JS (API_LIST 데이터 + 앱 로직)
 ├── index.html                    # 메인 허브 페이지
 ├── package.json
 └── vercel.json                   # Vercel 라우팅 설정
@@ -157,7 +160,7 @@ vercel --prod
 
 ## Open API Tester (Beta)
 
-`API(JS,HTML)/OpenAPITester.html`
+`API(JS,HTML)/OpenAPITester.html` + `assets/js/OpenAPITester.js`
 
 Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서 직접 테스트할 수 있는 도구입니다.
 
