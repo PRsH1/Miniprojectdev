@@ -179,14 +179,15 @@ const DOMAINS = {
     method: 'GET|POST|PUT|PATCH|DELETE',
     path: '/v2.0/api/path/{path_param}',
     description: '설명',
-    requiresAuth: true,         // true → Authorization 헤더 자동 삽입
+    requiresAuth: true,         // true → Authorization 헤더에 Access Token 자동 삽입
+                                // false → Authorization 헤더 자동 삽입 안 함 (OPA2_007 등 외부자용 API)
     pathParams:  [{ key, description, required, default }],
     queryParams: [{ key, description, required, default }],
-    defaultHeaders: [           // 선택적, API별 고정 헤더
+    defaultHeaders: [           // 선택적, API별 고정 헤더 (requiresAuth: false인 경우 Authorization 직접 지정)
         { key, value, description }
     ],
     defaultBody: { ... } | null,
-    exampleResponse: {          // 선택적
+    exampleResponse: {          // 전체 API에 추가됨
         success: { ... },       // 값 대신 "string"/"number"/"boolean" 타입 표현
         errors: [
             { title: '에러명 (코드)', body: { code, ErrorMessage } }
@@ -195,15 +196,27 @@ const DOMAINS = {
 }
 ```
 
-### 예시 응답이 추가된 API
+### 특수 인증 처리 API
+- **OPA2_007 새 문서 작성 (외부)**: `requiresAuth: false`
+  - Access Token 대신 Company API Key를 Base64 인코딩하여 Bearer 토큰으로 사용
+  - `defaultHeaders`에 `Authorization: Bearer {base64_encoded_api_key}` 플레이스홀더 제공
+  - 사용자가 직접 Company API Key를 입력해야 함
+
+### 예시 응답 현황 (전체 API)
+공통 실패 응답 (OPA2_001, OPA2_007 제외한 전체 API에 포함):
+- `4010001` 유효하지 않거나 만료된 토큰
+- `4010006` Refresh Token 만료
+
 | API | 성공 | 실패 |
 |-----|------|------|
 | OPA2_001 Access Token 발급 | ✅ | ✅ 3건 |
-| OPA2_002 Access Token 갱신 | ✅ | ✅ 3건 |
-| OPA2_003 문서 정보 조회 | ✅ | ✅ 4건 |
-| OPA2_004 문서 파일 다운로드 | — | ✅ 3건 |
-| OPA2_005 새 문서 작성 (내부) | ✅ | ✅ 1건 |
-| OPA2_006 문서 첨부 파일 다운로드 | — | ✅ 4건 |
+| OPA2_002 Access Token 갱신 | ✅ | ✅ 5건 |
+| OPA2_003 문서 정보 조회 | ✅ | ✅ 5건 |
+| OPA2_004 문서 파일 다운로드 | — | ✅ 4건 |
+| OPA2_005 새 문서 작성 (내부) | ✅ | ✅ 6건 |
+| OPA2_006 문서 첨부 파일 다운로드 | — | ✅ 5건 |
+| OPA2_007 새 문서 작성 (외부) | ✅ | ✅ 5건 |
+| OPA2_008~OPA2_037 (나머지 전체) | — | ✅ 2건 (공통) |
 
 ---
 
