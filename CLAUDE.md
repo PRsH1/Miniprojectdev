@@ -162,6 +162,11 @@ const DOMAINS = {
 - Request Builder: Params / Headers / Body 탭, 높이 드래그 조절
 - Response 뷰어: 상태 코드 배지, JSON 문법 강조, 복사 버튼, 엔드포인트별 결과 캐싱
 - 예시 응답 버튼: 성공/실패 구조 표시 (실제 값 대신 타입 표현)
+- **Send and Download**: 응답을 파일로 강제 다운로드 (PDF/ZIP/JSON 등 Content-Type 기반 확장자 결정)
+  - PDF/ZIP 응답은 Send 버튼으로도 자동 다운로드
+  - 파일명: `Content-Disposition` 헤더 → `document_id` path param → `download.*` 순으로 결정
+- **Code Snippet 모달**: 현재 Request 설정(URL/Method/Headers/Body) 기반 코드 자동 생성
+  - 지원 언어: cURL / JavaScript (fetch) / JavaScript (jQuery) / Python / Java (HttpClient)
 
 ### API 데이터 구조 (`API_LIST`)
 ```javascript

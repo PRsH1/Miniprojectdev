@@ -217,12 +217,87 @@
             color: #1a202c; background: #fff;
         }
         .url-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,123,224,0.1); }
+        /* ========== CODE BUTTON ========== */
+        .btn-code {
+            background: #fff; color: #4a5568; border: 1px solid var(--border);
+            padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+        }
+        .btn-code:hover { border-color: var(--blue); color: var(--blue); background: #f0f7ff; }
+
+        /* ========== CODE MODAL ========== */
+        .code-modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+            z-index: 500; align-items: center; justify-content: center;
+        }
+        .code-modal-overlay.open { display: flex; }
+        .code-modal {
+            background: #fff; border-radius: 10px; width: 680px; max-width: 95vw;
+            max-height: 80vh; display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .code-modal-header {
+            display: flex; align-items: center; padding: 14px 20px;
+            border-bottom: 1px solid var(--border); flex-shrink: 0;
+        }
+        .code-modal-header span { font-weight: 700; font-size: 0.95rem; color: #1a202c; flex: 1; }
+        .code-modal-header .modal-close {
+            background: none; border: none; cursor: pointer; color: #a0aec0;
+            font-size: 1.1rem; padding: 2px 6px; border-radius: 4px;
+        }
+        .code-modal-header .modal-close:hover { color: #1a202c; background: #f7fafc; }
+        .code-modal-lang-tabs {
+            display: flex; gap: 0; padding: 0 20px; border-bottom: 1px solid var(--border);
+            flex-shrink: 0; overflow-x: auto;
+        }
+        .lang-tab {
+            padding: 10px 16px; font-size: 0.84rem; color: #718096; cursor: pointer;
+            border: none; background: none; border-bottom: 2px solid transparent;
+            margin-bottom: -1px; white-space: nowrap; transition: all 0.15s;
+        }
+        .lang-tab:hover { color: #1a202c; }
+        .lang-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+        .code-modal-body {
+            flex: 1; overflow-y: auto; background: #1e2a38; border-radius: 0;
+            position: relative;
+        }
+        .code-snippet-pre {
+            margin: 0; padding: 20px; font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.82rem; line-height: 1.65; white-space: pre; color: #c9d4df;
+            overflow-x: auto;
+        }
+        .code-modal-footer {
+            display: flex; align-items: center; justify-content: flex-end;
+            padding: 10px 20px; border-top: 1px solid var(--border); flex-shrink: 0; gap: 8px;
+        }
+
+        .btn-send-wrap { position: relative; display: flex; flex-shrink: 0; }
         .btn-send {
             background: #ff6b35; color: #fff; border: none;
-            padding: 8px 22px; border-radius: 6px; font-size: 0.9rem; font-weight: 700;
+            padding: 8px 18px; border-radius: 6px 0 0 6px; font-size: 0.9rem; font-weight: 700;
             cursor: pointer; transition: background 0.15s; white-space: nowrap;
         }
         .btn-send:hover { background: #e55a26; }
+        .btn-send-arrow {
+            background: #e55a26; color: #fff; border: none; border-left: 1px solid rgba(255,255,255,0.25);
+            padding: 8px 10px; border-radius: 0 6px 6px 0; font-size: 0.8rem;
+            cursor: pointer; transition: background 0.15s;
+        }
+        .btn-send-arrow:hover { background: #cc4d1f; }
+        .send-dropdown-menu {
+            display: none; position: absolute; top: calc(100% + 4px); right: 0;
+            background: #fff; border: 1px solid var(--border); border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 100; min-width: 180px;
+        }
+        .send-dropdown-menu.open { display: block; }
+        .send-dropdown-menu button {
+            display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 14px;
+            background: none; border: none; font-size: 0.85rem; color: #1a202c;
+            cursor: pointer; text-align: left;
+        }
+        .send-dropdown-menu button:hover { background: #f7fafc; }
+        .send-dropdown-menu button:first-child { border-radius: 6px 6px 0 0; }
+        .send-dropdown-menu button:last-child { border-radius: 0 0 6px 6px; }
 
         /* ========== TABS ========== */
         .tabs-container { background: var(--white); flex-shrink: 0; border-bottom: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; }
@@ -458,9 +533,22 @@
                         <option value="DELETE">DELETE</option>
                     </select>
                     <input type="text" class="url-input" id="urlInput" placeholder="URL" readonly>
-                    <button class="btn-send" id="btnSend" onclick="sendRequest()">
-                        <i class="fa-solid fa-paper-plane fa-sm"></i> Send
+                    <button class="btn-code" id="btnCode" onclick="showCodeModal()">
+                        <i class="fa-solid fa-code fa-xs"></i> Code
                     </button>
+                    <div class="btn-send-wrap">
+                        <button class="btn-send" id="btnSend" onclick="sendRequest()">
+                            <i class="fa-solid fa-paper-plane fa-sm"></i> Send
+                        </button>
+                        <button class="btn-send-arrow" id="btnSendArrow">
+                            <i class="fa-solid fa-chevron-down fa-xs"></i>
+                        </button>
+                        <div class="send-dropdown-menu" id="sendDropdownMenu">
+                            <button onclick="sendRequest(true)">
+                                <i class="fa-solid fa-download fa-xs"></i> Send and Download
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -571,6 +659,31 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- CODE SNIPPET MODAL -->
+<div class="code-modal-overlay" id="codeModal">
+    <div class="code-modal">
+        <div class="code-modal-header">
+            <span><i class="fa-solid fa-code" style="color:var(--blue);margin-right:8px"></i>Code Snippet</span>
+            <button class="modal-close" onclick="closeCodeModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="code-modal-lang-tabs" id="langTabs">
+            <button class="lang-tab active" data-lang="curl">cURL</button>
+            <button class="lang-tab" data-lang="fetch">JavaScript (fetch)</button>
+            <button class="lang-tab" data-lang="jquery">JavaScript (jQuery)</button>
+            <button class="lang-tab" data-lang="python">Python</button>
+            <button class="lang-tab" data-lang="java">Java</button>
+        </div>
+        <div class="code-modal-body">
+            <pre class="code-snippet-pre" id="codeSnippetPre"></pre>
+        </div>
+        <div class="code-modal-footer">
+            <button class="btn-secondary" onclick="copyCodeSnippet()" style="padding:6px 14px;font-size:0.84rem">
+                <i class="fa-regular fa-copy fa-xs"></i> 복사
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- API 데이터 및 앱 로직은 ./js/OpenAPITester.js 에서 관리합니다 -->
 <script src="/assets/js/OpenAPITester.js"></script>

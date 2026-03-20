@@ -1264,10 +1264,11 @@ function updateAuthUI() {
 // ──────────────────────────────────────────────────────────────────────────
 // SEND REQUEST
 // ──────────────────────────────────────────────────────────────────────────
-async function sendRequest() {
+async function sendRequest(forceDownload = false) {
     const url = $('#urlInput').val().trim();
     const method = $('#methodSelect').val();
     if (!url) { showToast('URL이 비어있습니다'); return; }
+    $('#sendDropdownMenu').removeClass('open');
 
     // Build headers
     const headers = {};
@@ -1312,20 +1313,26 @@ async function sendRequest() {
         $('#btnClearResponse').show();
         $('#responsePlaceholder').hide();
 
-        // 파일 다운로드 처리 (PDF / ZIP)
-        if (res.ok && (contentType.includes('application/pdf') || contentType.includes('application/zip'))) {
+        // 파일 다운로드 처리: PDF/ZIP 응답이거나 Send and Download 선택 시
+        const isFileResponse = res.ok && (contentType.includes('application/pdf') || contentType.includes('application/zip'));
+        if (isFileResponse || (forceDownload && res.ok)) {
             const blob = await res.blob();
-            const isZip = contentType.includes('application/zip');
-            const ext = isZip ? '.zip' : '.pdf';
 
-            // Content-Disposition에서 파일명 추출, 없으면 document_id 기반으로 생성
+            // 파일 확장자 결정
+            let ext = '.bin';
+            if (contentType.includes('application/pdf')) ext = '.pdf';
+            else if (contentType.includes('application/zip')) ext = '.zip';
+            else if (contentType.includes('application/json')) ext = '.json';
+            else if (contentType.includes('text/')) ext = '.txt';
+            const isZip = ext === '.zip';
+
+            // 파일명 결정: Content-Disposition → document_id → 기본값
             let filename = 'download' + ext;
             const disposition = res.headers.get('Content-Disposition') || '';
             const nameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
             if (nameMatch) {
                 filename = nameMatch[1].replace(/['"]/g, '').trim() || filename;
             } else {
-                // path param에서 document_id 추출해 파일명 생성
                 const docId = $('#paramsBody tr[data-type="path"]').first().find('.param-val').val();
                 if (docId) filename = docId + ext;
             }
@@ -1341,7 +1348,7 @@ async function sendRequest() {
             $('#responseBody').show().text(
                 `파일 다운로드 완료\n` +
                 `파일명: ${filename}\n` +
-                `형식: ${isZip ? 'ZIP (문서 + 감사추적 파일)' : 'PDF'}\n` +
+                `형식: ${isZip ? 'ZIP (문서 + 감사추적 파일)' : contentType || ext}\n` +
                 `크기: ${formatBytes(blob.size)}\n` +
                 `Content-Type: ${contentType}`
             );
@@ -1520,6 +1527,15 @@ $(document).ready(function() {
     $('#sidebarSearch').on('input', function() {
         buildSidebar($(this).val());
     });
+
+    // Send 드롭다운 토글
+    $('#btnSendArrow').on('click', function(e) {
+        e.stopPropagation();
+        $('#sendDropdownMenu').toggleClass('open');
+    });
+    $(document).on('click', function() {
+        $('#sendDropdownMenu').removeClass('open');
+    });
 });
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1593,3 +1609,159 @@ function updateBaseUrlBadge() {
     const url = getBaseUrl();
     $('#baseUrlBadge').text(url || '(도메인 미지정)');
 }
+
+// ──────────────────────────────────────────────────────────────────────────
+// CODE SNIPPET
+// ──────────────────────────────────────────────────────────────────────────
+let currentLang = 'curl';
+
+function showCodeModal() {
+    if (!state.currentEndpoint) { showToast('API를 먼저 선택해주세요'); return; }
+    currentLang = 'curl';
+    $('#langTabs .lang-tab').removeClass('active');
+    $('#langTabs .lang-tab[data-lang="curl"]').addClass('active');
+    renderSnippet();
+    $('#codeModal').addClass('open');
+}
+
+function closeCodeModal() {
+    $('#codeModal').removeClass('open');
+}
+
+function copyCodeSnippet() {
+    const text = $('#codeSnippetPre').text();
+    navigator.clipboard.writeText(text).then(() => showToast('코드가 복사되었습니다'));
+}
+
+function renderSnippet() {
+    const url    = $('#urlInput').val().trim();
+    const method = $('#methodSelect').val();
+
+    // 활성화된 헤더 수집
+    const headers = {};
+    $('#headersBody tr').each(function() {
+        if ($(this).find('.header-enabled').is(':checked')) {
+            const k = $(this).find('.header-key').val().trim();
+            const v = $(this).find('.header-val').val().trim();
+            if (k) headers[k] = v;
+        }
+    });
+
+    // Body (POST/PUT/PATCH)
+    const bodyRaw = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+        ? $('#bodyEditor').val().trim() : '';
+
+    let snippet = '';
+    switch (currentLang) {
+        case 'curl':    snippet = snippetCurl(url, method, headers, bodyRaw);    break;
+        case 'fetch':   snippet = snippetFetch(url, method, headers, bodyRaw);   break;
+        case 'jquery':  snippet = snippetJQuery(url, method, headers, bodyRaw);  break;
+        case 'python':  snippet = snippetPython(url, method, headers, bodyRaw);  break;
+        case 'java':    snippet = snippetJava(url, method, headers, bodyRaw);    break;
+    }
+    $('#codeSnippetPre').text(snippet);
+}
+
+function snippetCurl(url, method, headers, body) {
+    const lines = [`curl --location --request ${method} '${url}'`];
+    Object.entries(headers).forEach(([k, v]) => {
+        lines.push(`  --header '${k}: ${v}'`);
+    });
+    if (body) {
+        lines.push(`  --data-raw '${body}'`);
+    }
+    return lines.join(' \\\n');
+}
+
+function snippetFetch(url, method, headers, body) {
+    const headersJson = JSON.stringify(headers, null, 2).replace(/^/gm, '  ');
+    let code = `const response = await fetch('${url}', {\n`;
+    code += `  method: '${method}',\n`;
+    code += `  headers: ${headersJson}`;
+    if (body) {
+        code += `,\n  body: \`${body}\``;
+    }
+    code += `\n});\n\n`;
+    code += `const data = await response.json();\nconsole.log(data);`;
+    return code;
+}
+
+function snippetJQuery(url, method, headers, body) {
+    // Content-Type은 jQuery contentType 옵션으로 분리
+    const ct = headers['Content-Type'] || 'application/json';
+    const otherHeaders = Object.fromEntries(
+        Object.entries(headers).filter(([k]) => k !== 'Content-Type')
+    );
+    const headersJson = JSON.stringify(otherHeaders, null, 4).replace(/^/gm, '    ');
+
+    let code = `$.ajax({\n`;
+    code += `    url: '${url}',\n`;
+    code += `    method: '${method}',\n`;
+    code += `    contentType: '${ct}',\n`;
+    if (Object.keys(otherHeaders).length) {
+        code += `    headers: ${headersJson},\n`;
+    }
+    if (body) {
+        code += `    data: JSON.stringify(${body}),\n`;
+    }
+    code += `    success: function(data) {\n        console.log(data);\n    },\n`;
+    code += `    error: function(err) {\n        console.error(err);\n    }\n`;
+    code += `});`;
+    return code;
+}
+
+function snippetPython(url, method, headers, body) {
+    const headersRepr = JSON.stringify(headers, null, 4).replace(/^/gm, '    ').trimStart();
+    let code = `import requests\n\n`;
+    code += `url = "${url}"\n\n`;
+    code += `headers = ${headersRepr}\n\n`;
+    if (body) {
+        code += `payload = ${body}\n\n`;
+        code += `response = requests.${method.toLowerCase()}(url, headers=headers, data=payload)\n`;
+    } else {
+        code += `response = requests.${method.toLowerCase()}(url, headers=headers)\n`;
+    }
+    code += `print(response.json())`;
+    return code;
+}
+
+function snippetJava(url, method, headers, body) {
+    let code = `import java.net.URI;\n`;
+    code += `import java.net.http.HttpClient;\n`;
+    code += `import java.net.http.HttpRequest;\n`;
+    code += `import java.net.http.HttpResponse;\n\n`;
+    code += `HttpClient client = HttpClient.newHttpClient();\n\n`;
+
+    // 헤더 빌더 체인
+    const headerLines = Object.entries(headers)
+        .map(([k, v]) => `        .header("${k}", "${v}")`).join('\n');
+
+    code += `HttpRequest request = HttpRequest.newBuilder()\n`;
+    code += `        .uri(URI.create("${url}"))\n`;
+    if (headerLines) code += `${headerLines}\n`;
+
+    if (body) {
+        code += `        .method("${method}", HttpRequest.BodyPublishers.ofString("""\n`;
+        code += `                ${body.replace(/\n/g, '\n                ')}\n`;
+        code += `                """))\n`;
+    } else {
+        code += `        .method("${method}", HttpRequest.BodyPublishers.noBody())\n`;
+    }
+    code += `        .build();\n\n`;
+    code += `HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());\n`;
+    code += `System.out.println(response.body());`;
+    return code;
+}
+
+// 언어탭 클릭
+$(document).on('click', '.lang-tab', function() {
+    currentLang = $(this).data('lang');
+    $('.lang-tab').removeClass('active');
+    $(this).addClass('active');
+    renderSnippet();
+});
+
+// 모달 바깥 클릭 시 닫기
+$(document).on('click', '#codeModal', function(e) {
+    if ($(e.target).is('#codeModal')) closeCodeModal();
+});
