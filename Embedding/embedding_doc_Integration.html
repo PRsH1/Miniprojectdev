@@ -288,6 +288,10 @@
         $("#toggleActionSwitch").on("change", toggleActions).trigger("change");
         $("#addFieldBtn").click(addFieldEntry);
         $("#addRecipientBtn").click(addRecipientEntry);
+        $("#ozrTemplateConfirm").on("change", function() {
+          $("#formParametersArea").toggle(this.checked);
+        });
+        $("#addFormParamBtn").click(addFormParamEntry);
         $("#getTokenButton").click(getAccessToken);
         $("#startButton").click(startDocument);
         
@@ -507,6 +511,38 @@
           layout: layoutOpts,
           prefill: prefill,
         };
+
+        // OZR 템플릿 확인 체크 시 form_parameters 추가
+        if ($("#ozrTemplateConfirm").is(":checked")) {
+          const formParams = [];
+          $(".form-param-entry").each(function() {
+            const id = $(this).find(".param-id").val().trim();
+            const value = $(this).find(".param-value").val();
+            if (id) formParams.push({ id, value });
+          });
+          if (formParams.length > 0) {
+            docOpt.form_parameters = formParams;
+          }
+        }
+      }
+
+      function addFormParamEntry() {
+        const entry = $(`
+        <div class="entry-item form-param-entry">
+          <button type="button" class="remove-entry" title="삭제">&times;</button>
+          <div class="form-group">
+            <label>데이터 셋 ID (id):</label>
+            <input type="text" class="param-id" placeholder="예: commonParam" />
+          </div>
+          <div class="form-group">
+            <label>JSON 데이터 (value):</label>
+            <textarea class="param-value" rows="3" placeholder='예: {"data":{"항목":[{"A":"1","B":"2"}]}}'
+              style="font-family:monospace; font-size:0.82rem; resize:vertical;"></textarea>
+          </div>
+        </div>
+        `);
+        entry.find(".remove-entry").click(() => entry.remove());
+        $("#formParamsList").append(entry);
       }
 
       function startDocument() {
@@ -1016,6 +1052,30 @@
           <div class="form-group">
             <label>코멘트:</label
             ><textarea id="prefillComment" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="option-section">
+          <h3>폼 파라미터 (Form Parameters)</h3>
+          <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:4px; padding:10px; margin-bottom:10px;">
+            <div class="switch-wrapper" style="justify-content:flex-start;">
+              <label class="switch">
+                <input type="checkbox" id="ozrTemplateConfirm" />
+                <span class="slider"></span>
+              </label>
+              <span style="margin-left:8px; font-size:0.85rem; color:#856404; font-weight:bold;">
+                OZR 템플릿 사용 확인
+              </span>
+            </div>
+            <div style="margin-top:6px; font-size:0.78rem; color:#856404;">
+              ⚠ 폼 파라미터는 <b>OZR 템플릿</b>에서만 지원됩니다. OZR 템플릿이 아닌 경우 뷰어가 열리지 않을 수 있습니다.
+            </div>
+          </div>
+          <div id="formParametersArea" style="display:none;">
+            <button type="button" id="addFormParamBtn" class="btn" style="margin-top:0; padding:8px;">
+              + 파라미터 추가
+            </button>
+            <div id="formParamsList" style="margin-top:10px;"></div>
           </div>
         </div>
 

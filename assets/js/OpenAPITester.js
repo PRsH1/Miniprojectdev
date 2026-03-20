@@ -409,7 +409,27 @@ const API_LIST = [
             { key: 'document_id', description: '첨부파일을 포함한 문서 ID', required: true, default: '' }
         ],
         queryParams: [],
-        defaultBody: null
+        defaultBody: null,
+        exampleResponse: {
+            errors: [
+                {
+                    title: '존재하지 않는 문서 (4000004)',
+                    body: { "code": "4000004", "ErrorMessage": "The document does not exist." }
+                },
+                {
+                    title: '템플릿 없음 (4000046)',
+                    body: { "code": "4000046", "ErrorMessage": "There is no template." }
+                },
+                {
+                    title: '첨부 파일 없음 (4000065)',
+                    body: { "code": "4000065", "ErrorMessage": "Failed to get the resource." }
+                },
+                {
+                    title: '유효하지 않거나 만료된 토큰 (4010001)',
+                    body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }
+                }
+            ]
+        }
     },
     {
         id: 'doc_create_external',
@@ -1329,9 +1349,13 @@ async function sendRequest(forceDownload = false) {
             // 파일명 결정: Content-Disposition → document_id → 기본값
             let filename = 'download' + ext;
             const disposition = res.headers.get('Content-Disposition') || '';
-            const nameMatch = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-            if (nameMatch) {
-                filename = nameMatch[1].replace(/['"]/g, '').trim() || filename;
+            // RFC 5987: filename*=UTF-8''encoded-name 우선 처리
+            const rfc5987Match = disposition.match(/filename\*\s*=\s*UTF-8''([^;\s]+)/i);
+            const plainMatch   = disposition.match(/filename\s*=\s*(?:"([^"]+)"|([^;\s]+))/i);
+            if (rfc5987Match) {
+                filename = decodeURIComponent(rfc5987Match[1]) || filename;
+            } else if (plainMatch) {
+                filename = (plainMatch[1] || plainMatch[2] || '').trim() || filename;
             } else {
                 const docId = $('#paramsBody tr[data-type="path"]').first().find('.param-val').val();
                 if (docId) filename = docId + ext;
@@ -1348,7 +1372,7 @@ async function sendRequest(forceDownload = false) {
             $('#responseBody').show().text(
                 `파일 다운로드 완료\n` +
                 `파일명: ${filename}\n` +
-                `형식: ${isZip ? 'ZIP (문서 + 감사추적 파일)' : contentType || ext}\n` +
+                `형식: ${isZip ? (state.currentEndpoint && state.currentEndpoint.id === 'doc_download_attach' ? 'ZIP (첨부 파일)' : 'ZIP (문서 + 감사추적 파일)') : contentType || ext}\n` +
                 `크기: ${formatBytes(blob.size)}\n` +
                 `Content-Type: ${contentType}`
             );
