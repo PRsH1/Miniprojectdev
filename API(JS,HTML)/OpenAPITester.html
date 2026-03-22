@@ -441,6 +441,109 @@
             opacity: 0; transition: opacity 0.3s; pointer-events: none;
         }
         .toast.show { opacity: 1; }
+
+        /* ========== GUIDE MODAL ========== */
+        .guide-overlay {
+            display: none; position: fixed; inset: 0; z-index: 2000;
+            background: rgba(10, 18, 28, 0.72); backdrop-filter: blur(3px);
+            align-items: center; justify-content: center;
+        }
+        .guide-overlay.open { display: flex; }
+
+        .guide-modal {
+            background: #fff; border-radius: 16px; width: 90%; max-width: 860px;
+            max-height: 90vh; overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.28);
+            display: flex; flex-direction: column;
+        }
+        .guide-header {
+            background: var(--sidebar-bg); padding: 20px 28px;
+            display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+        }
+        .guide-header-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: rgba(79,168,255,0.15); border: 1px solid rgba(79,168,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            color: #4fa8ff; font-size: 1rem;
+        }
+        .guide-header-text h2 {
+            color: #fff; font-size: 1rem; font-weight: 700; margin-bottom: 2px;
+        }
+        .guide-header-text p { color: var(--sidebar-muted); font-size: 0.82rem; }
+        .guide-close {
+            margin-left: auto; width: 32px; height: 32px; border-radius: 8px;
+            background: transparent; border: none; color: var(--sidebar-muted);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; transition: all 0.15s;
+        }
+        .guide-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .guide-body { padding: 28px; overflow-y: auto; }
+
+        .guide-steps {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+            margin-bottom: 24px;
+        }
+        .guide-step {
+            border: 1.5px solid var(--border); border-radius: 12px;
+            padding: 18px; background: #fff;
+            transition: box-shadow 0.2s, border-color 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .guide-step:hover { border-color: #93c5fd; box-shadow: 0 4px 16px rgba(45,123,224,0.1); }
+        .guide-step::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; border-radius: 12px 12px 0 0;
+        }
+        .guide-step:nth-child(1)::before { background: linear-gradient(90deg, #4fa8ff, #2d7be0); }
+        .guide-step:nth-child(2)::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .guide-step:nth-child(3)::before { background: linear-gradient(90deg, #10b981, #059669); }
+        .guide-step:nth-child(4)::before { background: linear-gradient(90deg, #8b5cf6, #7c3aed); }
+        .guide-step:nth-child(5)::before { background: linear-gradient(90deg, #ec4899, #db2777); }
+
+        .guide-step-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px; border-radius: 50%;
+            font-size: 0.75rem; font-weight: 800;
+            margin-bottom: 12px;
+        }
+        .guide-step:nth-child(1) .guide-step-num { background: #dbeafe; color: #1d4ed8; }
+        .guide-step:nth-child(2) .guide-step-num { background: #fef3c7; color: #92400e; }
+        .guide-step:nth-child(3) .guide-step-num { background: #d1fae5; color: #065f46; }
+        .guide-step:nth-child(4) .guide-step-num { background: #ede9fe; color: #5b21b6; }
+        .guide-step:nth-child(5) .guide-step-num { background: #fce7f3; color: #9d174d; }
+
+        .guide-step-icon {
+            font-size: 1.5rem; margin-bottom: 10px; display: block;
+        }
+        .guide-step:nth-child(1) .guide-step-icon { color: #2d7be0; }
+        .guide-step:nth-child(2) .guide-step-icon { color: #d97706; }
+        .guide-step:nth-child(3) .guide-step-icon { color: #059669; }
+        .guide-step:nth-child(4) .guide-step-icon { color: #7c3aed; }
+        .guide-step:nth-child(5) .guide-step-icon { color: #db2777; }
+
+        .guide-step h3 { font-size: 0.9rem; font-weight: 700; color: #1a202c; margin-bottom: 8px; }
+        .guide-step p  { font-size: 0.8rem; color: #64748b; line-height: 1.6; }
+        .guide-step ul { padding-left: 16px; margin-top: 6px; }
+        .guide-step ul li { font-size: 0.8rem; color: #64748b; line-height: 1.8; }
+
+        .guide-tip {
+            background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 10px;
+            padding: 14px 18px; display: flex; gap: 12px; align-items: flex-start;
+        }
+        .guide-tip i { color: #2d7be0; margin-top: 1px; flex-shrink: 0; }
+        .guide-tip p { font-size: 0.82rem; color: #1e3a5f; line-height: 1.7; }
+        .guide-tip strong { font-weight: 700; }
+
+        /* 가이드 버튼 */
+        .btn-guide {
+            background: rgba(255,255,255,0.08); color: var(--sidebar-muted);
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 6px 12px; border-radius: 6px; font-size: 0.82rem;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            transition: all 0.15s; white-space: nowrap;
+        }
+        .btn-guide:hover { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.25); }
     </style>
 </head>
 <body>
@@ -459,6 +562,9 @@
             <input type="text" id="customDomainInput" placeholder="https://api.example.com">
         </div>
         <div class="base-url-badge" id="baseUrlBadge"></div>
+        <button class="btn-guide" onclick="openGuide()">
+            <i class="fa-solid fa-circle-question fa-sm"></i> 사용 가이드
+        </button>
     </div>
 </header>
 
@@ -659,6 +765,103 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- GUIDE MODAL -->
+<div class="guide-overlay" id="guideModal" onclick="closeGuideOutside(event)">
+    <div class="guide-modal">
+        <div class="guide-header">
+            <div class="guide-header-icon">
+                <i class="fa-solid fa-book-open"></i>
+            </div>
+            <div class="guide-header-text">
+                <h2>eformsign API Tester — 사용 가이드</h2>
+                <p>5단계로 빠르게 API를 테스트해 보세요</p>
+            </div>
+            <button class="guide-close" onclick="closeGuide()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="guide-body">
+            <div class="guide-steps">
+
+                <!-- STEP 1 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">1</div>
+                    <i class="fa-solid fa-globe guide-step-icon"></i>
+                    <h3>환경 선택</h3>
+                    <p>화면 우측 상단에서 호출할 서버 환경을 선택합니다.</p>
+                    <ul>
+                        <li><strong>운영 (SaaS)</strong> — 일반 eformsign 환경</li>
+                        <li><strong>공공 (CSAP)</strong> — 공공기관 전용 환경</li>
+                        <li><strong>직접 입력</strong> — 커스텀 도메인 지정</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 2 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">2</div>
+                    <i class="fa-solid fa-key guide-step-icon"></i>
+                    <h3>인증 설정 및 토큰 발급</h3>
+                    <p>상단 인증 패널을 열어 정보를 입력하고 Access Token을 발급받습니다.</p>
+                    <ul>
+                        <li><strong>Signature 방식</strong> — API Key + User ID + 비밀 키(Hex) 입력</li>
+                        <li><strong>Bearer 방식</strong> — 기발급된 Access Token 직접 입력</li>
+                        <li>발급 후 토큰은 자동으로 Authorization 헤더에 삽입됩니다</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 3 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">3</div>
+                    <i class="fa-solid fa-list guide-step-icon"></i>
+                    <h3>API 선택</h3>
+                    <p>왼쪽 사이드바에서 호출할 API를 선택합니다.</p>
+                    <ul>
+                        <li>그룹별로 묶여 있으며 클릭하여 펼칠 수 있습니다</li>
+                        <li>상단 검색창에서 API 이름 또는 OPA 코드로 검색 가능합니다</li>
+                        <li>사이드바 너비는 경계선을 드래그해 조절할 수 있습니다</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 4 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">4</div>
+                    <i class="fa-solid fa-pen-to-square guide-step-icon"></i>
+                    <h3>요청 구성</h3>
+                    <p>Params / Headers / Body 탭에서 요청 내용을 설정합니다.</p>
+                    <ul>
+                        <li><strong>Params</strong> — Path 파라미터 및 Query String 입력</li>
+                        <li><strong>Headers</strong> — 요청 헤더 추가 및 수정</li>
+                        <li><strong>Body</strong> — JSON 요청 본문 입력 (정렬/초기화 지원)</li>
+                        <li><strong>예시 응답</strong> 버튼으로 성공/실패 응답 구조 미리 확인 가능</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 5 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">5</div>
+                    <i class="fa-solid fa-paper-plane guide-step-icon"></i>
+                    <h3>요청 전송 및 응답 확인</h3>
+                    <p>Send 버튼을 눌러 API를 호출하고 응답을 확인합니다.</p>
+                    <ul>
+                        <li>상태 코드 · 응답 시간 · 응답 크기가 표시됩니다</li>
+                        <li>응답이 PDF/ZIP 파일이면 자동으로 다운로드됩니다</li>
+                        <li><strong>Send and Download</strong> — 응답을 파일로 저장</li>
+                        <li><strong>Code</strong> 버튼으로 현재 요청의 코드 스니펫을 확인할 수 있습니다</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="guide-tip">
+                <i class="fa-solid fa-lightbulb fa-sm"></i>
+                <p>
+                    <strong>Tip.</strong>
+                    <strong>OPA2_007 (새 문서 작성 - 외부)</strong>는 Access Token 대신 <strong>Company API Key를 Base64 인코딩</strong>하여 Bearer 토큰으로 사용합니다.
+                    인증 패널에서 토큰을 발급하지 않고, Headers 탭의 Authorization 값을 직접 수정하세요.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- CODE SNIPPET MODAL -->
 <div class="code-modal-overlay" id="codeModal">

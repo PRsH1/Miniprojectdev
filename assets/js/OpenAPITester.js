@@ -587,19 +587,134 @@ const API_LIST = [
         queryParams: [
             { key: 'include_fields', description: '필드 정보 포함', required: false, default: '' },
             { key: 'include_histories', description: '문서 이력 포함', required: false, default: '' },
+            { key: 'include_previous_status', description: '이전 단계 정보 포함', required: false, default: '' },
+            { key: 'include_next_status', description: '다음 단계 정보 포함', required: false, default: '' },
+            { key: 'include_external_token', description: '사용자 Token 포함', required: false, default: '' },
+            { key: 'include_detail_template_info', description: '상세 템플릿 정보 포함', required: false, default: '' },
         ],
         defaultBody: {
             type: '04',
             title_and_content: '',
             title: '',
             content: '',
-            limit: '100',
-            skip: '0'
+            limit: '20',
+            skip: '0',
+            start_create_date: '',
+            end_create_date: '',
+            start_update_date: '',
+            end_update_date: ''
         },
         exampleResponse: {
+            success: {
+                "documents": [
+                    {
+                        "id": "string",
+                        "document_number": "string",
+                        "template": {
+                            "id": "string",
+                            "name": "string"
+                        },
+                        "document_name": "string",
+                        "creator": {
+                            "recipient_type": "string",
+                            "id": "string",
+                            "name": "string"
+                        },
+                        "created_date": "number",
+                        "last_editor": {
+                            "recipient_type": "string",
+                            "id": "string",
+                            "name": "string"
+                        },
+                        "updated_date": "number",
+                        "current_status": {
+                            "status_type": "string",
+                            "status_doc_type": "string",
+                            "status_doc_detail": "string",
+                            "step_type": "string",
+                            "step_index": "string",
+                            "step_name": "string",
+                            "step_recipients": [
+                                {
+                                    "recipient_type": "string",
+                                    "name": "string",
+                                    "email": "string"
+                                }
+                            ],
+                            "step_group": "number",
+                            "expired_date": "number",
+                            "_expired": "boolean"
+                        },
+                        "fields": [
+                            {
+                                "id": "string",
+                                "value": "string",
+                                "type": "string"
+                            }
+                        ],
+                        "next_status": [
+                            {
+                                "step_type": "string",
+                                "step_name": "string",
+                                "step_recipients": [],
+                                "execute_date": "number",
+                                "status_type": "string",
+                                "step_group": "number"
+                            }
+                        ],
+                        "previous_status": [
+                            {
+                                "step_type": "string",
+                                "step_name": "string",
+                                "action_type": "string",
+                                "executor": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "executed_date": "number",
+                                "step_group": "number"
+                            }
+                        ],
+                        "histories": [
+                            {
+                                "step_type": "string",
+                                "step_name": "string",
+                                "action_type": "string",
+                                "executor": {
+                                    "recipient_type": "string",
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "executed_date": "number",
+                                "comment": "string",
+                                "sms_histories": []
+                            }
+                        ],
+                        "recipients": [
+                            {
+                                "name": "string",
+                                "id": "string",
+                                "token_id": "string",
+                                "sms_template_index": "number"
+                            }
+                        ],
+                        "detail_template_info": []
+                    }
+                ],
+                "total_rows": "number",
+                "limit": "number",
+                "skip": "number"
+            },
+            successEmpty: {
+                "documents": [],
+                "total_rows": 0,
+                "limit": "number",
+                "skip": "number"
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '접근 권한 없음 (4030009) — 권한 없는 계정이 type:04 (문서 관리) 메뉴 조회 시 발생', body: { "code": "4030009", "ErrorMessage": "You do not have access." } }
             ]
         }
     },
@@ -614,12 +729,25 @@ const API_LIST = [
         description: '문서를 삭제합니다. Body에 삭제할 문서 ID 배열을 포함합니다.',
         requiresAuth: true,
         pathParams: [],
-        queryParams: [],
-        defaultBody: { document_ids: [] },
+        queryParams: [
+            { key: 'is_permanent', description: '즉시 완전 삭제 여부 (default: false)', required: false, default: '' }
+        ],
+        defaultBody: { document_ids: [""] },
         exampleResponse: {
+            success: {
+                "result": {
+                    "success_result": ["string"],
+                    "fail_result": []
+                },
+                "code": "-1",
+                "message": "Completed.",
+                "status": "200"
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '선택된 문서 없음 (4000004)', body: { "code": "4000004", "ErrorMessage": "No document selected." } },
+                { title: '문서 삭제 실패 — 존재하지 않는 문서 ID (HTTP 200, fail_result 포함)', body: { "result": { "success_result": [], "fail_result": [ { "document_id": "string", "code": "4000004", "message": "The document does not exist." } ] }, "code": "-1", "message": "Completed.", "status": "200" } }
             ]
         }
     },
@@ -813,9 +941,57 @@ const API_LIST = [
         description: '회사에 소속된 멤버 목록을 조회합니다.',
         requiresAuth: true,
         pathParams: [],
-        queryParams: [],
+        queryParams: [
+            { key: 'member_all', description: '전체 멤버 조회 여부 (default: false)', required: false, default: '' },
+            { key: 'include_field', description: '구성원 커스텀 필드 포맷 정보 포함 여부 (default: false)', required: false, default: '' },
+            { key: 'include_delete', description: '탈퇴 멤버 조회 여부 (default: false)', required: false, default: '' },
+            { key: 'eb_name_search', description: '이름 또는 계정 ID로 구성원 검색', required: false, default: '' },
+        ],
         defaultBody: null,
         exampleResponse: {
+            success: {
+                "members": [
+                    {
+                        "id": "string",
+                        "account_id": "string",
+                        "name": "string",
+                        "department": "string",
+                        "position": "string",
+                        "create_date": "number",
+                        "enabled": "boolean",
+                        "isRefused": "boolean",
+                        "isExpired": "boolean",
+                        "isInvited": "boolean",
+                        "isWithdrawal": "boolean",
+                        "contact": {
+                            "number": "string",
+                            "tel": "string",
+                            "email": "string",
+                            "country_id": "string"
+                        },
+                        "role": ["string"],
+                        "group": ["string"],
+                        "fields": [],
+                        "deleted": "boolean"
+                    }
+                ],
+                "format": {
+                    "_id": "string",
+                    "_rev": "string",
+                    "type": "string",
+                    "format_type": "string",
+                    "format_datas": [
+                        {
+                            "field_key": "string",
+                            "field_type": "string",
+                            "field_value": "string",
+                            "field_file": "string",
+                            "default_value": "string",
+                            "deleted": "boolean"
+                        }
+                    ]
+                }
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
@@ -841,13 +1017,37 @@ const API_LIST = [
                 id: '',
                 password: '',
                 first_name: '',
-                external_sso_info: { uuid: '', account_id: '' }
+                contact: {
+                    tel: '',
+                    number: '',
+                    country_number: '+82'
+                },
+                department: '',
+                position: '',
+                agreement: {
+                    marketing: null
+                },
+                role: [],
+                external_sso_info: {
+                    uuid: '',
+                    idp_name: '',
+                    account_id: ''
+                }
             }
         },
         exampleResponse: {
+            success: {
+                "company_id": "string",
+                "member": {
+                    "name": "string",
+                    "id": "string"
+                }
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '이미 사용 중인 ID (4000135)', body: { "code": "4000135", "ErrorMessage": "This ID is already taken." } },
+                { title: '비밀번호 규칙 미충족 (4000255) — 대문자+소문자+숫자+특수문자 모두 포함 10자리 이상 필요', body: { "code": "4000255", "ErrorMessage": "Password validation failed." } }
             ]
         }
     },
@@ -877,6 +1077,13 @@ const API_LIST = [
             }
         },
         exampleResponse: {
+            success: {
+                "company_id": "string",
+                "member": {
+                    "name": "string",
+                    "id": "string"
+                }
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
@@ -899,9 +1106,15 @@ const API_LIST = [
         queryParams: [],
         defaultBody: null,
         exampleResponse: {
+            success: {
+                "code": "-1",
+                "message": "Completed.",
+                "status": "200"
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '존재하지 않는 멤버 (4000149)', body: { "code": "4000149", "ErrorMessage": "No such member exists." } }
             ]
         }
     },
@@ -1257,7 +1470,7 @@ function selectEndpoint(id) {
     updateUrlPreview();
 
     // Default body
-    if (ep.defaultBody && ['POST','PUT','PATCH'].includes(ep.method)) {
+    if (ep.defaultBody && ['POST','PUT','PATCH','DELETE'].includes(ep.method)) {
         $('#bodyEditor').val(JSON.stringify(ep.defaultBody, null, 2));
         $('[data-tab="body"]').click();
     } else {
@@ -1701,6 +1914,14 @@ function updateExampleResponseBtn(ep) {
                 <pre class="response-pre">${formatJsonSyntax(JSON.stringify(ex.success, null, 2))}</pre>`;
         }
 
+        if (ex.successEmpty) {
+            html += `
+                <div style="padding:6px 20px;background:#f0fdf4;border-bottom:1px solid #bbf7d0;font-size:0.78rem;font-weight:700;color:#15803d;display:flex;align-items:center;gap:5px;">
+                    <i class="fa-solid fa-circle-check fa-xs"></i> 성공 응답 — 조회 결과 없음 (200)
+                </div>
+                <pre class="response-pre">${formatJsonSyntax(JSON.stringify(ex.successEmpty, null, 2))}</pre>`;
+        }
+
         if (ex.errors && ex.errors.length) {
             ex.errors.forEach(err => {
                 html += `
@@ -1894,6 +2115,21 @@ function showCodeModal() {
 
 function closeCodeModal() {
     $('#codeModal').removeClass('open');
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// GUIDE MODAL
+// ──────────────────────────────────────────────────────────────────────────
+function openGuide() {
+    $('#guideModal').addClass('open');
+}
+
+function closeGuide() {
+    $('#guideModal').removeClass('open');
+}
+
+function closeGuideOutside(e) {
+    if ($(e.target).is('#guideModal')) closeGuide();
 }
 
 function copyCodeSnippet() {
