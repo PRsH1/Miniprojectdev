@@ -172,6 +172,11 @@ const DOMAINS = {
   - 파일명: `Content-Disposition` 헤더 → `document_id` path param → `download.*` 순으로 결정
 - **Code Snippet 모달**: 현재 Request 설정(URL/Method/Headers/Body) 기반 코드 자동 생성
   - 지원 언어: cURL / JavaScript (fetch) / JavaScript (jQuery) / Python / Java (HttpClient)
+- **API 명세 모달**: URL 바의 Code 버튼 옆 "API 명세" 버튼 → 각 API의 상세 명세 표시
+  - **Request 탭**: 요청 헤더, Path 파라미터, Query 파라미터, Request Body 필드 (타입·필수 여부·설명)
+  - **Response 탭**: 응답 필드 목록, 에러 코드 목록
+  - 데이터 소스: `assets/js/OpenAPITester.js` 하단의 `const API_SPECS` 객체 (opaCode 키로 조회)
+  - 현재 명세 등록 범위: OPA2_001~OPA2_031 (29개)
 - **사용 가이드 모달**: 헤더 우측 "사용 가이드" 버튼 → 5단계 스텝 카드 형식 안내
   - DELETE 메서드도 defaultBody가 있으면 Body 탭 자동 표시
 - **DELETE with Body**: `sendRequest`에서 body 포함 메서드에 `DELETE` 포함 — Body가 있는 DELETE API(OPA2_009, OPA2_020 등)에서 payload가 정상 전송됨
@@ -204,6 +209,33 @@ const DOMAINS = {
     }
 }
 ```
+
+### API 명세 데이터 구조 (`API_SPECS`)
+`API_LIST`와 별도로 `assets/js/OpenAPITester.js` 하단에 위치. opaCode를 키로 하는 객체.
+```javascript
+const API_SPECS = {
+    'OPA2_XXX': {
+        requestHeaders: [
+            { key: '헤더명', required: true|false, description: '설명', example: '예시값' }
+        ],
+        queryParams: [
+            { key: '파라미터명', type: 'string|number|boolean', required: true|false, description: '설명' }
+        ],
+        requestBody: [
+            { key: '필드명', type: 'string|number|boolean|array|object', required: true|false, description: '설명' }
+            // 중첩 필드는 점 표기법: 'document.recipients[].auth.password'
+        ],
+        responseFields: [
+            { key: '필드명', type: '...', description: '설명' }
+        ],
+        errorCodes: [
+            { code: '에러코드', message: '에러 메시지', description: '설명' }
+        ],
+    },
+};
+```
+- 신규 API 명세 추가 시 `API_SPECS`에 opaCode 키로 항목 추가
+- `API_LIST`에 해당 opaCode가 없으면 명세 버튼 클릭 시 빈 화면 표시
 
 ### 특수 인증 처리 API
 - **OPA2_007 새 문서 작성 (외부)**: `requiresAuth: false`

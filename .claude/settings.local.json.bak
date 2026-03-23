@@ -15,15 +15,8 @@
       "mcp__notion__notion-create-pages",
       "mcp__claude_ai_Gmail__gmail_get_profile",
       "Bash(find /c/Users/Administrator/Workspace/ProjectImprove -maxdepth 1 -type f -name *.html -o -name *.md)",
-<<<<<<< Updated upstream
       "Bash(xargs -I {} basename {})"
       
-=======
-      "Bash(xargs -I {} basename {})",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)"
->>>>>>> Stashed changes
     ]
   }
 }

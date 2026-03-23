@@ -178,6 +178,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | 예시 응답 | 성공/실패/조회결과없음 응답 구조 미리보기 (타입 표현) |
 | Send and Download | 응답을 파일로 강제 저장 (Content-Type 기반 확장자 자동 결정) |
 | Code Snippet | cURL / JS(fetch) / JS(jQuery) / Python / Java 코드 자동 생성 |
+| **API 명세** | 각 API의 Request/Response 필드 명세 조회 모달 (헤더·파라미터·Body·응답 필드·에러 코드) |
 | 사용 가이드 | 5단계 스텝 카드 형식 사용법 안내 모달 |
 
 ### 등록된 API (OPA2_XXX) 및 예시 응답 현황

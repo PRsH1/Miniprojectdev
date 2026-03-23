@@ -2789,3 +2789,1026 @@ $(document).on('click', '.lang-tab', function() {
 $(document).on('click', '#codeModal', function(e) {
     if ($(e.target).is('#codeModal')) closeCodeModal();
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// API 명세 데이터
+// ──────────────────────────────────────────────────────────────────────────
+const API_SPECS = {
+    'OPA2_001': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'eformsign_signature', required: true, description: 'execution_time 값의 ECDSA 서명값', example: '304502206b59b0af...' },
+            { key: 'Authorization', required: true, description: 'API Key 값을 Base64 인코딩하여 Bearer 토큰으로 사용', example: 'Bearer MDBhMWFk...' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'execution_time', type: 'number', required: true, description: 'API 호출 시간 (현재 시간, Unix timestamp ms)' },
+            { key: 'member_id', type: 'string', required: true, description: '회사 멤버의 ID (이메일)' },
+        ],
+        responseFields: [
+            { key: 'api_key', type: 'object', description: 'API Key 정보' },
+            { key: 'api_key.name', type: 'string', description: 'API Key 이름' },
+            { key: 'api_key.alias', type: 'string', description: 'API Key 별칭' },
+            { key: 'api_key.company.id', type: 'string', description: '회사 ID' },
+            { key: 'api_key.company.name', type: 'string', description: '회사명' },
+            { key: 'api_key.company.api_url', type: 'string', description: '해당 회사 서비스 API URL' },
+            { key: 'oauth_token', type: 'object', description: '토큰 정보' },
+            { key: 'oauth_token.token_type', type: 'string', description: '토큰 타입 (JWT)' },
+            { key: 'oauth_token.access_token', type: 'string', description: 'Access Token' },
+            { key: 'oauth_token.refresh_token', type: 'string', description: 'Refresh Token' },
+            { key: 'oauth_token.expires_in', type: 'number', description: 'Access Token 유효시간 (초)' },
+        ],
+        errorCodes: [
+            { code: '4000002', message: 'The validation time has expired.', description: '검증 시간 만료 (30초 초과)' },
+            { code: '4030004', message: 'The signature is invalid.', description: '서명값이 유효하지 않음' },
+            { code: '4030001', message: 'invalid api key', description: 'API Key가 유효하지 않음' },
+        ],
+    },
+    'OPA2_002': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'refresh_token', type: 'string', required: true, description: '갱신에 사용할 Refresh Token' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: 'oauth_token', type: 'object', description: '토큰 정보' },
+            { key: 'oauth_token.token_type', type: 'string', description: '토큰 타입' },
+            { key: 'oauth_token.access_token', type: 'string', description: '새로 발급된 Access Token' },
+            { key: 'oauth_token.refresh_token', type: 'string', description: '새로 발급된 Refresh Token' },
+            { key: 'oauth_token.expires_in', type: 'number', description: 'Access Token 유효시간 (초)' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '토큰이 유효하지 않거나 만료됨' },
+            { code: '4010002', message: 'The refresh_token is invalid.', description: 'Refresh Token이 유효하지 않음' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000002', message: 'The validation time has expired.', description: '검증 시간 만료' },
+            { code: '4030001', message: 'invalid api key', description: 'API Key가 유효하지 않음' },
+        ],
+    },
+    'OPA2_003': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'include_fields', type: 'boolean', required: false, description: '응답에 필드(컴포넌트) 데이터 포함 여부' },
+            { key: 'include_histories', type: 'boolean', required: false, description: '응답에 문서 이력 포함 여부' },
+            { key: 'include_previous_status', type: 'boolean', required: false, description: '응답에 이전 단계 정보 포함 여부' },
+            { key: 'include_next_status', type: 'boolean', required: false, description: '응답에 다음 단계 정보 포함 여부' },
+            { key: 'include_external_token', type: 'boolean', required: false, description: '응답에 참여자 Token 정보 포함 여부' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: 'id', type: 'string', description: '문서 ID' },
+            { key: 'document_number', type: 'string', description: '문서 번호' },
+            { key: 'template', type: 'object', description: '템플릿 정보' },
+            { key: 'template.id', type: 'string', description: '템플릿 ID' },
+            { key: 'template.name', type: 'string', description: '템플릿명' },
+            { key: 'document_name', type: 'string', description: '문서 제목' },
+            { key: 'creator', type: 'object', description: '문서 생성자 정보' },
+            { key: 'created_date', type: 'number', description: '생성일 (Epoch Time ms)' },
+            { key: 'current_status', type: 'object', description: '현재 상태 정보' },
+            { key: 'current_status.status_type', type: 'string', description: '현재 상태 타입' },
+            { key: 'fields', type: 'array', description: '필드(컴포넌트) 객체 목록 (include_fields=true 시)' },
+            { key: 'recipients', type: 'array', description: '참여자 정보 목록' },
+            { key: 'histories', type: 'array', description: '문서 이력 목록 (include_histories=true 시)' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000001', message: 'Document not found.', description: '문서를 찾을 수 없음' },
+            { code: '4030005', message: 'No permission.', description: '접근 권한 없음' },
+            { code: '4030001', message: 'invalid api key', description: 'API Key가 유효하지 않음' },
+        ],
+    },
+    'OPA2_004': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'file_type', type: 'string', required: true, description: '다운로드 파일 타입 — document: 문서 PDF, audit_trail: 감사추적증명 PDF' },
+            { key: 'file_name', type: 'string', required: false, description: '다운로드 파일 이름 (확장자 제외)' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: '(binary)', type: 'binary', description: 'PDF 파일 스트림 (Content-Type: application/pdf)' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000001', message: 'Document not found.', description: '문서를 찾을 수 없음' },
+            { code: '4030005', message: 'No permission.', description: '접근 권한 없음' },
+        ],
+    },
+    'OPA2_005': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'template_id', type: 'string', required: true, description: '작성할 템플릿의 ID' },
+        ],
+        requestBody: [
+            { key: 'document', type: 'object', required: true, description: '문서 정보' },
+            { key: 'document.document_name', type: 'string', required: false, description: '문서 제목' },
+            { key: 'document.comment', type: 'string', required: false, description: '문서 전송 시 메시지' },
+            { key: 'document.select_group_name', type: 'string', required: false, description: '템플릿에 설정된 그룹 중 선택할 그룹명' },
+            { key: 'document.fields', type: 'array', required: false, description: '문서 컴포넌트에 작성할 데이터 리스트' },
+            { key: 'document.fields[].id', type: 'string', required: false, description: '컴포넌트 form ID' },
+            { key: 'document.fields[].value', type: 'string', required: false, description: '컴포넌트에 입력할 값' },
+            { key: 'document.recipients', type: 'array', required: false, description: '다음 단계 수신자 리스트' },
+            { key: 'document.recipients[].step_type', type: 'string', required: false, description: '워크플로우 단계 타입 (05:참여자, 06:검토자, 07:열람자)' },
+            { key: 'document.recipients[].use_mail', type: 'boolean', required: false, description: '이메일 발송 여부' },
+            { key: 'document.recipients[].use_sms', type: 'boolean', required: false, description: 'SMS 발송 여부' },
+            { key: 'document.recipients[].business_num', type: 'string', required: false, description: '수신자 사업자번호 (외부자 인증용)' },
+            { key: 'document.recipients[].member', type: 'object', required: false, description: '수신자 멤버 정보' },
+            { key: 'document.recipients[].member.name', type: 'string', required: false, description: '수신자 이름' },
+            { key: 'document.recipients[].member.id', type: 'string', required: false, description: '수신자 이메일' },
+            { key: 'document.recipients[].member.sms', type: 'object', required: false, description: '수신자 SMS 정보' },
+            { key: 'document.recipients[].member.sms.country_code', type: 'string', required: false, description: '국가 코드 (예: +82)' },
+            { key: 'document.recipients[].member.sms.phone_number', type: 'string', required: false, description: '휴대폰 번호' },
+            { key: 'document.recipients[].auth', type: 'object', required: false, description: '수신자 인증 정보' },
+            { key: 'document.recipients[].auth.password', type: 'string', required: false, description: '열람 비밀번호' },
+            { key: 'document.recipients[].auth.password_hint', type: 'string', required: false, description: '비밀번호 힌트' },
+            { key: 'document.recipients[].auth.valid', type: 'object', required: false, description: '링크 유효기간' },
+            { key: 'document.recipients[].auth.valid.day', type: 'number', required: false, description: '유효기간 (일)' },
+            { key: 'document.recipients[].auth.valid.hour', type: 'number', required: false, description: '유효기간 (시간)' },
+            { key: 'document.notification', type: 'array', required: false, description: '완료 후 문서 전송 대상 리스트 (이메일/SMS)' },
+            { key: 'document.notification[].email', type: 'string', required: false, description: '수신자 이메일' },
+            { key: 'document.notification[].sms', type: 'object', required: false, description: '수신자 SMS 정보' },
+            { key: 'document.notification[].sms.country_code', type: 'string', required: false, description: '국가 코드' },
+            { key: 'document.notification[].sms.phone_number', type: 'string', required: false, description: '휴대폰 번호' },
+            { key: 'document.notification[].name', type: 'string', required: false, description: '수신자 이름' },
+            { key: 'document.notification[].auth', type: 'object', required: false, description: '인증 정보' },
+            { key: 'document.notification[].auth.valid.day', type: 'number', required: false, description: '유효기간 (일)' },
+            { key: 'document.notification[].auth.valid.hour', type: 'number', required: false, description: '유효기간 (시간)' },
+            { key: 'document.notification[].auth.password', type: 'string', required: false, description: '열람 비밀번호' },
+            { key: 'document.notification[].auth.password_hint', type: 'string', required: false, description: '비밀번호 힌트' },
+            { key: 'document.notification[].auth.mobile_verification', type: 'boolean', required: false, description: '모바일 인증 여부' },
+        ],
+        responseFields: [
+            { key: 'template_id', type: 'string', description: '템플릿 ID' },
+            { key: 'document', type: 'object', description: '생성된 문서 정보' },
+            { key: 'document.id', type: 'string', description: '문서 ID' },
+            { key: 'document.document_name', type: 'string', description: '문서 제목' },
+            { key: 'document.document_status', type: 'string', description: '문서 상태' },
+            { key: 'recipients', type: 'array', description: '수신자 리스트' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000046', message: 'There is no template.', description: '템플릿이 존재하지 않음' },
+            { code: '4000012', message: 'The next_steps set by the user is inconsistent with the template\'s workflow settings.', description: '워크플로우 설정 불일치' },
+            { code: '4030005', message: 'No permission.', description: '접근 권한 없음' },
+            { code: '4030001', message: 'invalid api key', description: 'API Key가 유효하지 않음' },
+        ],
+    },
+    'OPA2_006': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'doc_without_attachments', type: 'boolean', required: false, description: '첨부 파일이 제외된 문서 PDF도 함께 포함할지 여부' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: '(binary)', type: 'binary', description: 'ZIP 파일 스트림 (문서 PDF + 첨부 파일 포함)' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000001', message: 'Document not found.', description: '문서를 찾을 수 없음' },
+            { code: '4030005', message: 'No permission.', description: '접근 권한 없음' },
+            { code: '4000058', message: 'No attachment file exists.', description: '첨부 파일 없음' },
+        ],
+    },
+    'OPA2_007': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'API Key를 Base64 인코딩하여 Bearer 토큰으로 사용 (Access Token 아님)', example: 'Bearer <base64(api_key)>' },
+        ],
+        queryParams: [
+            { key: 'company_id', type: 'string', required: true, description: '작성할 템플릿이 속한 회사 ID' },
+            { key: 'template_id', type: 'string', required: true, description: '작성할 템플릿의 ID' },
+        ],
+        requestBody: [
+            { key: 'document', type: 'object', required: true, description: '문서 정보' },
+            { key: 'document.document_name', type: 'string', required: false, description: '문서 제목' },
+            { key: 'document.comment', type: 'string', required: false, description: '문서 전송 시 메시지' },
+            { key: 'document.select_group_name', type: 'string', required: false, description: '템플릿에 설정된 그룹 중 선택할 그룹명' },
+            { key: 'document.fields', type: 'array', required: false, description: '컴포넌트에 작성할 데이터 리스트' },
+            { key: 'document.fields[].id', type: 'string', required: false, description: '컴포넌트 form ID' },
+            { key: 'document.fields[].value', type: 'string', required: false, description: '컴포넌트에 입력할 값' },
+            { key: 'document.recipients', type: 'array', required: false, description: '다음 단계 수신자 리스트' },
+            { key: 'document.recipients[].step_type', type: 'string', required: false, description: '워크플로우 단계 타입 (05:참여자, 06:검토자, 07:열람자)' },
+            { key: 'document.recipients[].use_mail', type: 'boolean', required: false, description: '이메일 발송 여부' },
+            { key: 'document.recipients[].use_sms', type: 'boolean', required: false, description: 'SMS 발송 여부' },
+            { key: 'document.recipients[].business_num', type: 'string', required: false, description: '수신자 사업자번호 (외부자 인증용)' },
+            { key: 'document.recipients[].member', type: 'object', required: false, description: '수신자 멤버 정보' },
+            { key: 'document.recipients[].member.name', type: 'string', required: false, description: '수신자 이름' },
+            { key: 'document.recipients[].member.id', type: 'string', required: false, description: '수신자 이메일' },
+            { key: 'document.recipients[].member.sms', type: 'object', required: false, description: '수신자 SMS 정보' },
+            { key: 'document.recipients[].member.sms.country_code', type: 'string', required: false, description: '국가 코드 (예: +82)' },
+            { key: 'document.recipients[].member.sms.phone_number', type: 'string', required: false, description: '휴대폰 번호' },
+            { key: 'document.recipients[].auth', type: 'object', required: false, description: '수신자 인증 정보' },
+            { key: 'document.recipients[].auth.password', type: 'string', required: false, description: '열람 비밀번호' },
+            { key: 'document.recipients[].auth.password_hint', type: 'string', required: false, description: '비밀번호 힌트' },
+            { key: 'document.recipients[].auth.valid', type: 'object', required: false, description: '링크 유효기간' },
+            { key: 'document.recipients[].auth.valid.day', type: 'number', required: false, description: '유효기간 (일)' },
+            { key: 'document.recipients[].auth.valid.hour', type: 'number', required: false, description: '유효기간 (시간)' },
+            { key: 'document.notification', type: 'array', required: false, description: '완료 후 문서 전송 대상 리스트 (이메일/SMS)' },
+            { key: 'document.notification[].email', type: 'string', required: false, description: '수신자 이메일' },
+            { key: 'document.notification[].sms', type: 'object', required: false, description: '수신자 SMS 정보' },
+            { key: 'document.notification[].sms.country_code', type: 'string', required: false, description: '국가 코드' },
+            { key: 'document.notification[].sms.phone_number', type: 'string', required: false, description: '휴대폰 번호' },
+            { key: 'document.notification[].name', type: 'string', required: false, description: '수신자 이름' },
+            { key: 'document.notification[].auth', type: 'object', required: false, description: '인증 정보' },
+            { key: 'document.notification[].auth.valid.day', type: 'number', required: false, description: '유효기간 (일)' },
+            { key: 'document.notification[].auth.valid.hour', type: 'number', required: false, description: '유효기간 (시간)' },
+            { key: 'document.notification[].auth.password', type: 'string', required: false, description: '열람 비밀번호' },
+            { key: 'document.notification[].auth.password_hint', type: 'string', required: false, description: '비밀번호 힌트' },
+            { key: 'document.notification[].auth.mobile_verification', type: 'boolean', required: false, description: '모바일 인증 여부' },
+            { key: 'document.send_external_pdf', type: 'object', required: false, description: '외부 작성자 완료 문서 전송 정보 (OPA2_007 전용)' },
+        ],
+        responseFields: [
+            { key: 'template_id', type: 'string', description: '템플릿 ID' },
+            { key: 'document', type: 'object', description: '생성된 문서 정보' },
+            { key: 'document.id', type: 'string', description: '문서 ID' },
+            { key: 'document.document_name', type: 'string', description: '문서 제목' },
+            { key: 'document.document_status', type: 'string', description: '문서 상태' },
+            { key: 'recipients', type: 'array', description: '수신자 리스트' },
+        ],
+        errorCodes: [
+            { code: '4030001', message: 'invalid api key', description: 'API Key가 유효하지 않음' },
+            { code: '4000046', message: 'There is no template.', description: '템플릿이 존재하지 않음' },
+            { code: '4000012', message: 'The next_steps set by the user is inconsistent with the template\'s workflow settings.', description: '워크플로우 설정 불일치' },
+            { code: '4030005', message: 'No permission.', description: '접근 권한 없음' },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+        ],
+    },
+    'OPA2_008': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'include_fields', type: 'boolean', required: false, description: '응답에 필드 데이터 포함 여부' },
+            { key: 'include_histories', type: 'boolean', required: false, description: '응답에 문서 이력 포함 여부' },
+        ],
+        requestBody: [
+            { key: 'type', type: 'string', required: true, description: '문서함 타입 — 01: 진행 중, 02: 처리할, 03: 완료, 04: 문서 목록 (전체)' },
+            { key: 'limit', type: 'string', required: true, description: '한 번에 표시할 문서 수' },
+            { key: 'skip', type: 'string', required: true, description: '건너뛸 문서 수 (페이징)' },
+            { key: 'title_and_content', type: 'string', required: false, description: '문서 제목 및 내용 검색 쿼리' },
+            { key: 'title', type: 'string', required: false, description: '문서 제목 검색 쿼리' },
+            { key: 'content', type: 'string', required: false, description: '문서 내용 검색 쿼리' },
+            { key: 'start_create_date', type: 'number', required: false, description: '문서 작성일 시작 범위 (Epoch Time ms)' },
+            { key: 'end_create_date', type: 'number', required: false, description: '문서 작성일 종료 범위 (Epoch Time ms)' },
+        ],
+        responseFields: [
+            { key: 'documents', type: 'array', description: '문서 객체 목록' },
+            { key: 'documents[].id', type: 'string', description: '문서 ID' },
+            { key: 'documents[].template.id', type: 'string', description: '템플릿 ID' },
+            { key: 'documents[].template.name', type: 'string', description: '템플릿명' },
+            { key: 'documents[].document_name', type: 'string', description: '문서 제목' },
+            { key: 'documents[].created_date', type: 'number', description: '생성일 (Epoch Time ms)' },
+            { key: 'documents[].current_status', type: 'object', description: '현재 상태 정보' },
+            { key: 'total_rows', type: 'number', description: '전체 문서 수' },
+            { key: 'limit', type: 'number', description: '한 번에 표시되는 문서 수' },
+            { key: 'skip', type: 'number', description: '건너뛴 문서 수' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4030001', message: 'invalid api key', description: 'API Key가 유효하지 않음' },
+        ],
+    },
+    'OPA2_009': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'is_permanent', type: 'boolean', required: false, description: '즉시 완전 삭제 여부 (true: 복구 불가 영구 삭제)' },
+        ],
+        requestBody: [
+            { key: 'document_ids', type: 'array', required: true, description: '삭제할 문서 ID 배열 (string 형태)' },
+        ],
+        responseFields: [
+            { key: 'result.success_result', type: 'array', description: '삭제 성공한 결과 목록' },
+            { key: 'result.fail_result', type: 'array', description: '삭제 실패한 결과 목록' },
+            { key: 'code', type: 'string', description: '응답 코드 (-1: 정상)' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드 (200: 정상)' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000004', message: 'No document selected.', description: '선택된 문서 없음' },
+            { code: '4030005', message: 'No permission.', description: '접근 권한 없음' },
+            { code: '4000001', message: 'Document not found.', description: '문서를 찾을 수 없음' },
+        ],
+    },
+    'OPA2_010': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'limit', type: 'string', required: true, description: '한 번에 표시할 멤버 수' },
+            { key: 'skip', type: 'string', required: true, description: '건너뛸 멤버 수 (페이징)' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: 'members', type: 'array', description: '멤버 정보 목록' },
+            { key: 'members[].member_id', type: 'string', description: '멤버 ID' },
+            { key: 'members[].name', type: 'string', description: '멤버 이름' },
+            { key: 'members[].email', type: 'string', description: '멤버 이메일' },
+            { key: 'members[].status', type: 'string', description: '멤버 상태' },
+            { key: 'total_rows', type: 'number', description: '전체 멤버 수' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
+    'OPA2_011': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'member', type: 'object', required: true, description: '추가할 멤버 정보' },
+            { key: 'member.name', type: 'string', required: true, description: '멤버 이름' },
+            { key: 'member.email', type: 'string', required: true, description: '멤버 이메일 (로그인 ID)' },
+            { key: 'member.phone_number', type: 'string', required: false, description: '멤버 휴대폰 번호' },
+            { key: 'member.department', type: 'string', required: false, description: '부서' },
+            { key: 'member.position', type: 'string', required: false, description: '직급' },
+        ],
+        responseFields: [
+            { key: 'member_id', type: 'string', description: '생성된 멤버 ID' },
+            { key: 'name', type: 'string', description: '멤버 이름' },
+            { key: 'email', type: 'string', description: '멤버 이메일' },
+            { key: 'status', type: 'string', description: '멤버 상태' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000100', message: 'The user already exists.', description: '이미 존재하는 사용자' },
+            { code: '4000004', message: 'Invalid input.', description: '입력값이 유효하지 않음' },
+        ],
+    },
+    'OPA2_012': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'member', type: 'object', required: true, description: '수정할 멤버 정보' },
+            { key: 'member.name', type: 'string', required: false, description: '멤버 이름' },
+            { key: 'member.phone_number', type: 'string', required: false, description: '멤버 휴대폰 번호' },
+            { key: 'member.department', type: 'string', required: false, description: '부서' },
+            { key: 'member.position', type: 'string', required: false, description: '직급' },
+        ],
+        responseFields: [
+            { key: 'member_id', type: 'string', description: '멤버 ID' },
+            { key: 'name', type: 'string', description: '수정된 멤버 이름' },
+            { key: 'email', type: 'string', description: '멤버 이메일' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
+    'OPA2_013': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'account_id', type: 'string', required: true, description: '탈퇴시킬 멤버의 account_id' },
+        ],
+        responseFields: [
+            { key: 'code', type: 'string', description: '응답 코드 (-1: 정상)' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000004', message: 'No member found.', description: '멤버를 찾을 수 없음' },
+        ],
+    },
+    'OPA2_014': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'input', type: 'object', required: true, description: '재요청 정보' },
+            { key: 'input.next_steps', type: 'array', required: true, description: '다음 단계 정보 목록' },
+            { key: 'input.next_steps[].step_type', type: 'string', required: true, description: '단계 종류 (05: 참여자, 06: 검토자, 07: 열람자)' },
+            { key: 'input.next_steps[].step_seq', type: 'number', required: false, description: '단계 순번' },
+            { key: 'input.next_steps[].comment', type: 'string', required: false, description: '재요청 메시지' },
+            { key: 'input.next_steps[].recipients', type: 'array', required: false, description: '수신자 정보' },
+            { key: 'input.next_steps[].recipients[].member', type: 'object', required: false, description: '수신자 멤버 정보' },
+            { key: 'input.next_steps[].recipients[].member.name', type: 'string', required: false, description: '수신자 이름' },
+            { key: 'input.next_steps[].recipients[].member.id', type: 'string', required: false, description: '수신자 이메일' },
+            { key: 'input.next_steps[].recipients[].member.sms', type: 'object', required: false, description: '수신자 SMS 정보' },
+            { key: 'input.next_steps[].recipients[].member.sms.country_code', type: 'string', required: false, description: '국가 코드 (예: +82)' },
+            { key: 'input.next_steps[].recipients[].member.sms.phone_number', type: 'string', required: false, description: '휴대폰 번호' },
+            { key: 'input.next_steps[].recipients[].use_mail', type: 'boolean', required: false, description: '이메일 발송 여부' },
+            { key: 'input.next_steps[].recipients[].use_sms', type: 'boolean', required: false, description: 'SMS 발송 여부' },
+            { key: 'input.next_steps[].recipients[].auth', type: 'object', required: false, description: '수신자 인증 정보' },
+            { key: 'input.next_steps[].recipients[].auth.password', type: 'string', required: false, description: '열람 비밀번호' },
+            { key: 'input.next_steps[].recipients[].auth.password_hint', type: 'string', required: false, description: '비밀번호 힌트' },
+            { key: 'input.next_steps[].recipients[].auth.valid', type: 'object', required: false, description: '링크 유효기간' },
+            { key: 'input.next_steps[].recipients[].auth.valid.day', type: 'number', required: false, description: '유효기간 (일)' },
+            { key: 'input.next_steps[].recipients[].auth.valid.hour', type: 'number', required: false, description: '유효기간 (시간)' },
+        ],
+        responseFields: [
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드' },
+            { key: 'code', type: 'string', description: '응답 코드 (-1: 정상)' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'recipients', type: 'array', description: '수신자 정보 목록' },
+            { key: 'recipients[].name', type: 'string', description: '수신자 이름' },
+            { key: 'recipients[].id', type: 'string', description: '수신자 이메일' },
+            { key: 'recipients[].token_id', type: 'string', description: '수신자 토큰 ID' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000001', message: 'Document not found.', description: '문서를 찾을 수 없음' },
+            { code: '4000012', message: 'The next_steps set by the user is inconsistent with the template\'s workflow settings.', description: '워크플로우 설정 불일치' },
+        ],
+    },
+    'OPA2_015': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'limit', type: 'string', required: true, description: '한 번에 표시할 템플릿 수' },
+            { key: 'skip', type: 'string', required: true, description: '건너뛸 템플릿 수 (페이징)' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: 'forms', type: 'array', description: '템플릿 정보 목록' },
+            { key: 'forms[].id', type: 'string', description: '템플릿 ID' },
+            { key: 'forms[].name', type: 'string', description: '템플릿 이름' },
+            { key: 'forms[].description', type: 'string', description: '템플릿 설명' },
+            { key: 'total_rows', type: 'number', description: '전체 템플릿 수' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
+    'OPA2_016': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'template_id', type: 'string', required: true, description: '일괄 작성할 템플릿의 ID' },
+        ],
+        requestBody: [
+            { key: 'documents', type: 'array', required: true, description: '작성할 문서 목록' },
+            { key: 'documents[].document_name', type: 'string', required: false, description: '문서 제목' },
+            { key: 'documents[].select_group_name', type: 'string', required: false, description: '템플릿에 설정된 그룹 중 선택할 그룹명' },
+            { key: 'documents[].fields', type: 'array', required: false, description: '컴포넌트에 작성할 데이터 리스트' },
+            { key: 'documents[].fields[].id', type: 'string', required: false, description: '컴포넌트 form ID' },
+            { key: 'documents[].fields[].value', type: 'string', required: false, description: '컴포넌트에 입력할 값' },
+            { key: 'documents[].parameters', type: 'array', required: false, description: '추가 파라미터 리스트' },
+            { key: 'documents[].parameters[].id', type: 'string', required: false, description: '파라미터 ID' },
+            { key: 'documents[].parameters[].value', type: 'string', required: false, description: '파라미터 값' },
+            { key: 'documents[].recipients', type: 'array', required: false, description: '다음 단계 수신자 리스트' },
+            { key: 'documents[].recipients[].step_type', type: 'string', required: false, description: '워크플로우 단계 타입 (05:참여자, 06:검토자, 07:열람자)' },
+            { key: 'documents[].recipients[].use_mail', type: 'boolean', required: false, description: '이메일 발송 여부' },
+            { key: 'documents[].recipients[].use_sms', type: 'boolean', required: false, description: 'SMS 발송 여부' },
+            { key: 'documents[].recipients[].member', type: 'object', required: false, description: '수신자 멤버 정보' },
+            { key: 'documents[].recipients[].member.name', type: 'string', required: false, description: '수신자 이름' },
+            { key: 'documents[].recipients[].member.id', type: 'string', required: false, description: '수신자 이메일' },
+            { key: 'documents[].recipients[].member.sms.country_code', type: 'string', required: false, description: '국가 코드' },
+            { key: 'documents[].recipients[].member.sms.phone_number', type: 'string', required: false, description: '휴대폰 번호' },
+            { key: 'documents[].recipients[].group', type: 'object', required: false, description: '수신자 그룹 정보' },
+            { key: 'documents[].recipients[].group.id', type: 'string', required: false, description: '그룹 ID' },
+            { key: 'documents[].recipients[].auth', type: 'object', required: false, description: '수신자 인증 정보' },
+            { key: 'documents[].recipients[].auth.password', type: 'string', required: false, description: '열람 비밀번호' },
+            { key: 'documents[].recipients[].auth.password_hint', type: 'string', required: false, description: '비밀번호 힌트' },
+            { key: 'documents[].recipients[].auth.valid.day', type: 'number', required: false, description: '유효기간 (일)' },
+            { key: 'documents[].recipients[].auth.valid.hour', type: 'number', required: false, description: '유효기간 (시간)' },
+            { key: 'comment', type: 'string', required: false, description: '코멘트' },
+        ],
+        responseFields: [
+            { key: 'result.success_result', type: 'array', description: '요청 성공 문서 번호 목록' },
+            { key: 'result.request_id', type: 'string', description: '일괄 작성 요청 ID' },
+            { key: 'result.fail_result', type: 'array', description: '요청 실패 문서 번호 목록' },
+            { key: 'code', type: 'string', description: '결과 코드 (-1: 정상)' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드 (200: 정상)' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000046', message: 'There is no template.', description: '템플릿이 존재하지 않음' },
+            { code: '4000012', message: 'The next_steps set by the user is inconsistent with the template\'s workflow settings.', description: '워크플로우 설정 불일치' },
+        ],
+    },
+    'OPA2_017': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'limit', type: 'string', required: true, description: '한 번에 표시할 그룹 수' },
+            { key: 'skip', type: 'string', required: true, description: '건너뛸 그룹 수 (페이징)' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: 'groups', type: 'array', description: '그룹 정보 목록' },
+            { key: 'groups[].group_id', type: 'string', description: '그룹 ID' },
+            { key: 'groups[].name', type: 'string', description: '그룹 이름' },
+            { key: 'groups[].description', type: 'string', description: '그룹 설명' },
+            { key: 'groups[].members', type: 'array', description: '그룹 멤버 목록' },
+            { key: 'total_rows', type: 'number', description: '전체 그룹 수' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
+    'OPA2_018': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'group', type: 'object', required: true, description: '추가할 그룹 정보' },
+            { key: 'group.name', type: 'string', required: true, description: '그룹 이름' },
+            { key: 'group.description', type: 'string', required: false, description: '그룹 설명' },
+            { key: 'group.members', type: 'array', required: false, description: '그룹에 추가할 멤버 ID 목록' },
+        ],
+        responseFields: [
+            { key: 'group_id', type: 'string', description: '생성된 그룹 ID' },
+            { key: 'name', type: 'string', description: '그룹 이름' },
+            { key: 'description', type: 'string', description: '그룹 설명' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
+    'OPA2_019': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'group', type: 'object', required: true, description: '수정할 그룹 정보' },
+            { key: 'group.name', type: 'string', required: false, description: '그룹 이름' },
+            { key: 'group.description', type: 'string', required: false, description: '그룹 설명' },
+            { key: 'group.members', type: 'array', required: false, description: '그룹 멤버 ID 목록 (전체 대체)' },
+        ],
+        responseFields: [
+            { key: 'group_id', type: 'string', description: '그룹 ID' },
+            { key: 'name', type: 'string', description: '수정된 그룹 이름' },
+            { key: 'description', type: 'string', description: '수정된 그룹 설명' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000004', message: 'No group found.', description: '그룹을 찾을 수 없음' },
+        ],
+    },
+    'OPA2_020': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'group_ids', type: 'array', required: true, description: '삭제할 그룹 ID 배열' },
+        ],
+        responseFields: [
+            { key: 'code', type: 'string', description: '응답 코드 (-1: 정상)' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000004', message: 'No group found.', description: '그룹을 찾을 수 없음' },
+            { code: '4030005', message: 'No permission.', description: '접근 권한 없음' },
+        ],
+    },
+    'OPA2_021': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'documents', type: 'array', required: true, description: '작성할 문서 목록 (각각 다른 템플릿 가능)' },
+            { key: 'documents[].template_id', type: 'string', required: true, description: '해당 문서의 템플릿 ID' },
+            { key: 'documents[].document_name', type: 'string', required: false, description: '문서 제목' },
+            { key: 'documents[].select_group_name', type: 'string', required: false, description: '템플릿에 설정된 그룹 중 선택할 그룹명' },
+            { key: 'documents[].fields', type: 'array', required: false, description: '컴포넌트에 작성할 데이터 리스트' },
+            { key: 'documents[].fields[].id', type: 'string', required: false, description: '컴포넌트 form ID' },
+            { key: 'documents[].fields[].value', type: 'string', required: false, description: '컴포넌트에 입력할 값' },
+            { key: 'documents[].parameters', type: 'array', required: false, description: '추가 파라미터 리스트' },
+            { key: 'documents[].parameters[].id', type: 'string', required: false, description: '파라미터 ID' },
+            { key: 'documents[].parameters[].value', type: 'string', required: false, description: '파라미터 값' },
+            { key: 'documents[].recipients', type: 'array', required: false, description: '다음 단계 수신자 리스트' },
+            { key: 'documents[].recipients[].step_type', type: 'string', required: false, description: '워크플로우 단계 타입 (05:참여자, 06:검토자, 07:열람자)' },
+            { key: 'documents[].recipients[].use_mail', type: 'boolean', required: false, description: '이메일 발송 여부' },
+            { key: 'documents[].recipients[].use_sms', type: 'boolean', required: false, description: 'SMS 발송 여부' },
+            { key: 'documents[].recipients[].member', type: 'object', required: false, description: '수신자 멤버 정보' },
+            { key: 'documents[].recipients[].member.name', type: 'string', required: false, description: '수신자 이름' },
+            { key: 'documents[].recipients[].member.id', type: 'string', required: false, description: '수신자 이메일' },
+            { key: 'documents[].recipients[].member.sms.country_code', type: 'string', required: false, description: '국가 코드' },
+            { key: 'documents[].recipients[].member.sms.phone_number', type: 'string', required: false, description: '휴대폰 번호' },
+            { key: 'documents[].recipients[].auth', type: 'object', required: false, description: '수신자 인증 정보' },
+            { key: 'documents[].recipients[].auth.password', type: 'string', required: false, description: '열람 비밀번호' },
+            { key: 'documents[].recipients[].auth.password_hint', type: 'string', required: false, description: '비밀번호 힌트' },
+            { key: 'documents[].recipients[].auth.valid.day', type: 'number', required: false, description: '유효기간 (일)' },
+            { key: 'documents[].recipients[].auth.valid.hour', type: 'number', required: false, description: '유효기간 (시간)' },
+            { key: 'comment', type: 'string', required: false, description: '코멘트' },
+        ],
+        responseFields: [
+            { key: 'result.success_result', type: 'array', description: '요청 성공 문서 목록' },
+            { key: 'result.request_id', type: 'string', description: '일괄 작성 요청 ID' },
+            { key: 'result.fail_result', type: 'array', description: '요청 실패 문서 목록' },
+            { key: 'code', type: 'string', description: '결과 코드 (-1: 정상)' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드 (200: 정상)' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000046', message: 'There is no template.', description: '템플릿이 존재하지 않음' },
+            { code: '4000012', message: 'The next_steps set by the user is inconsistent with the template\'s workflow settings.', description: '워크플로우 설정 불일치' },
+        ],
+    },
+    'OPA2_024': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'form_ids', type: 'array', required: true, description: '삭제할 템플릿 ID 배열' },
+        ],
+        responseFields: [
+            { key: 'result.success_result', type: 'array', description: '삭제 성공한 템플릿 ID 목록' },
+            { key: 'result.fail_result', type: 'array', description: '삭제 실패한 템플릿 정보' },
+            { key: 'code', type: 'string', description: '응답 코드 (-1: 정상)' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000046', message: 'There is no template.', description: '템플릿이 존재하지 않음' },
+            { code: '4030005', message: 'No permission.', description: '접근 권한 없음' },
+        ],
+    },
+    'OPA2_025': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [],
+        responseFields: [
+            { key: 'company_stamp.id', type: 'string', description: '도장 ID' },
+            { key: 'company_stamp.name', type: 'string', description: '도장 이름' },
+            { key: 'company_stamp.description', type: 'string', description: '도장 설명' },
+            { key: 'company_stamp.stamp.path', type: 'string', description: '도장 이미지 경로' },
+            { key: 'company_stamp.auth.groups', type: 'array', description: '사용 가능한 그룹 ID 목록' },
+            { key: 'company_stamp.auth.members', type: 'array', description: '사용 가능한 멤버 ID 목록' },
+            { key: 'company_stamp.auth.allow_all_members', type: 'boolean', description: '전체 멤버 사용 허용 여부' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000175', message: 'No stamp found.', description: '도장을 찾을 수 없음' },
+        ],
+    },
+    'OPA2_026': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'company_stamp', type: 'object', required: true, description: '추가할 도장 정보' },
+            { key: 'company_stamp.name', type: 'string', required: true, description: '도장 이름' },
+            { key: 'company_stamp.description', type: 'string', required: false, description: '도장 설명' },
+            { key: 'company_stamp.stamp.path', type: 'string', required: true, description: '도장 이미지 경로 (Base64 또는 URL)' },
+            { key: 'company_stamp.auth.groups', type: 'array', required: false, description: '사용 가능한 그룹 ID 목록' },
+            { key: 'company_stamp.auth.members', type: 'array', required: false, description: '사용 가능한 멤버 ID 목록' },
+            { key: 'company_stamp.auth.allow_all_members', type: 'boolean', required: false, description: '전체 멤버 사용 허용 여부' },
+        ],
+        responseFields: [
+            { key: 'company_stamp.id', type: 'string', description: '생성된 도장 ID' },
+            { key: 'company_stamp.name', type: 'string', description: '도장 이름' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000174', message: 'This name has already been used for another stamp.', description: '중복된 도장 이름' },
+            { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음' },
+        ],
+    },
+    'OPA2_027': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'company_stamp', type: 'object', required: true, description: '수정할 도장 정보' },
+            { key: 'company_stamp.name', type: 'string', required: false, description: '도장 이름' },
+            { key: 'company_stamp.description', type: 'string', required: false, description: '도장 설명' },
+            { key: 'company_stamp.stamp.path', type: 'string', required: false, description: '도장 이미지 경로' },
+            { key: 'company_stamp.auth.groups', type: 'array', required: false, description: '사용 가능한 그룹 ID 목록' },
+            { key: 'company_stamp.auth.members', type: 'array', required: false, description: '사용 가능한 멤버 ID 목록' },
+            { key: 'company_stamp.auth.allow_all_members', type: 'boolean', required: false, description: '전체 멤버 사용 허용 여부' },
+        ],
+        responseFields: [
+            { key: 'company_stamp.id', type: 'string', description: '도장 ID' },
+            { key: 'company_stamp.name', type: 'string', description: '수정된 도장 이름' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음' },
+            { code: '4000175', message: 'No stamp found.', description: '도장을 찾을 수 없음' },
+            { code: '400', message: 'Required request body is missing', description: '요청 Body 없음' },
+        ],
+    },
+    'OPA2_028': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [],
+        responseFields: [
+            { key: 'code', type: 'string', description: '응답 코드 (-1: 정상)' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드 (200: 정상)' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000175', message: 'No stamp found.', description: '도장을 찾을 수 없음' },
+            { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음' },
+        ],
+    },
+    'OPA2_029': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'limit', type: 'string', required: true, description: '한 번에 표시할 도장 수' },
+            { key: 'skip', type: 'string', required: true, description: '건너뛸 도장 수 (페이징)' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: 'company_stamps', type: 'array', description: '도장 정보 목록' },
+            { key: 'company_stamps[].id', type: 'string', description: '도장 ID' },
+            { key: 'company_stamps[].name', type: 'string', description: '도장 이름' },
+            { key: 'company_stamps[].description', type: 'string', description: '도장 설명' },
+            { key: 'total_rows', type: 'number', description: '전체 도장 수' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
+    'OPA2_030': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'members', type: 'array', required: true, description: '추가할 멤버 정보 목록' },
+            { key: 'members[].name', type: 'string', required: true, description: '멤버 이름' },
+            { key: 'members[].email', type: 'string', required: true, description: '멤버 이메일' },
+            { key: 'members[].phone_number', type: 'string', required: false, description: '멤버 휴대폰 번호' },
+            { key: 'members[].department', type: 'string', required: false, description: '부서' },
+            { key: 'members[].position', type: 'string', required: false, description: '직급' },
+        ],
+        responseFields: [
+            { key: 'result.success_result', type: 'array', description: '추가 성공한 멤버 목록' },
+            { key: 'result.fail_result', type: 'array', description: '추가 실패한 멤버 정보' },
+            { key: 'code', type: 'string', description: '응답 코드' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000004', message: 'Invalid input.', description: '입력값이 유효하지 않음' },
+        ],
+    },
+    'OPA2_031': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'comment', type: 'string', required: false, description: '다음 단계 요청 시 입력할 메시지' },
+            { key: 'remove_company_stamp_mark', type: 'boolean', required: false, description: '회사 도장 워터마크 제거 여부' },
+        ],
+        responseFields: [
+            { key: 'document_title', type: 'string', description: '문서 제목' },
+            { key: 'document_status', type: 'string', description: '문서 상태' },
+            { key: 'document_id', type: 'string', description: '문서 ID' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000001', message: 'Document not found.', description: '문서를 찾을 수 없음' },
+            { code: '4030005', message: 'No permission.', description: '접근 권한 없음' },
+        ],
+    },
+};
+
+// ──────────────────────────────────────────────────────────────────────────
+// API 명세 모달
+// ──────────────────────────────────────────────────────────────────────────
+let currentSpecTab = 'request';
+
+function showSpecModal() {
+    const ep = state.currentEndpoint;
+    if (!ep) return;
+    const spec = API_SPECS[ep.opaCode];
+
+    // 헤더 정보 채우기
+    $('#specModalTitle').text(`${ep.name}`);
+    $('#specModalOpa').text(ep.opaCode || '');
+    $('#specModalOpa').toggle(!!ep.opaCode);
+
+    const methodColors = { GET: '#27ae60', POST: '#2980b9', PUT: '#e67e22', PATCH: '#8e44ad', DELETE: '#e74c3c' };
+    const methodHtml = `<span style="font-family:monospace;font-weight:800;color:${methodColors[ep.method] || '#333'}">${ep.method}</span>`;
+    $('#specModalPath').html(methodHtml + ' ' + ep.path);
+
+    // 탭 초기화
+    currentSpecTab = 'request';
+    $('.spec-tab-btn').removeClass('active');
+    $('[data-spec-tab="request"]').addClass('active');
+
+    renderSpecContent(ep, spec);
+    $('#specModal').addClass('open');
+}
+
+function renderSpecContent(ep, spec) {
+    const $body = $('#specModalBody').empty();
+
+    if (currentSpecTab === 'request') {
+        // ── 헤더 ──
+        const headers = (spec && spec.requestHeaders && spec.requestHeaders.length)
+            ? spec.requestHeaders
+            : (ep.defaultHeaders || []).map(h => ({ key: h.key, required: false, description: h.description, example: h.value }));
+        $body.append(makeSpecSection('fa-heading', '요청 헤더 (Request Headers)', makeSpecTable(
+            ['헤더', '필수', '설명', '예시'],
+            headers.map(h => [
+                `<span class="spec-field-key">${h.key}</span>`,
+                reqBadge(h.required),
+                `<span class="spec-desc">${h.description || ''}</span>`,
+                h.example ? `<code style="font-size:0.78rem;color:#666">${h.example}</code>` : '',
+            ])
+        )));
+
+        // ── Path 파라미터 ──
+        const pathParams = ep.pathParams || [];
+        if (pathParams.length) {
+            $body.append(makeSpecSection('fa-route', 'Path 파라미터', makeSpecTable(
+                ['파라미터', '필수', '설명'],
+                pathParams.map(p => [
+                    `<span class="spec-field-key">{${p.key}}</span>`,
+                    reqBadge(p.required),
+                    `<span class="spec-desc">${p.description || ''}</span>`,
+                ])
+            )));
+        }
+
+        // ── Query 파라미터 ──
+        const qp = (spec && spec.queryParams) || ep.queryParams || [];
+        if (qp.length) {
+            $body.append(makeSpecSection('fa-question-circle', 'Query 파라미터', makeSpecTable(
+                ['파라미터', '타입', '필수', '설명'],
+                qp.map(p => [
+                    `<span class="spec-field-key">${p.key}</span>`,
+                    typeBadge(p.type),
+                    reqBadge(p.required),
+                    `<span class="spec-desc">${p.description || ''}</span>`,
+                ])
+            )));
+        }
+
+        // ── Request Body ──
+        const body = (spec && spec.requestBody) || [];
+        if (body.length) {
+            $body.append(makeSpecSection('fa-file-code', 'Request Body', makeSpecTable(
+                ['필드', '타입', '필수', '설명'],
+                body.map(f => [
+                    `<span class="spec-field-key">${f.key}</span>`,
+                    typeBadge(f.type),
+                    reqBadge(f.required),
+                    `<span class="spec-desc">${f.description || ''}</span>`,
+                ])
+            )));
+        } else if (!pathParams.length && !qp.length) {
+            $body.append(`<p class="spec-empty">이 API는 추가 Request 파라미터가 없습니다.</p>`);
+        }
+
+    } else {
+        // ── Response Fields ──
+        const rf = (spec && spec.responseFields) || [];
+        if (rf.length) {
+            $body.append(makeSpecSection('fa-arrow-right-from-bracket', '응답 필드 (Success)', makeSpecTable(
+                ['필드', '타입', '설명'],
+                rf.map(f => [
+                    `<span class="spec-field-key">${f.key}</span>`,
+                    typeBadge(f.type),
+                    `<span class="spec-desc">${f.description || ''}</span>`,
+                ])
+            )));
+        }
+
+        // ── Error Codes ──
+        const errs = (spec && spec.errorCodes) || [];
+        if (errs.length) {
+            $body.append(makeSpecSection('fa-triangle-exclamation', '에러 코드', makeSpecTable(
+                ['코드', '메시지', '설명'],
+                errs.map(e => [
+                    `<span class="spec-error-code">${e.code}</span>`,
+                    `<span class="spec-error-msg">${e.message}</span>`,
+                    `<span class="spec-desc">${e.description || ''}</span>`,
+                ])
+            )));
+        }
+
+        if (!rf.length && !errs.length) {
+            $body.append(`<p class="spec-empty">명세 정보가 없습니다.</p>`);
+        }
+    }
+}
+
+function makeSpecSection(icon, title, content) {
+    return $(`<div class="spec-section">
+        <div class="spec-section-title"><i class="fa-solid ${icon} fa-xs"></i> ${title}</div>
+    </div>`).append(content);
+}
+
+function makeSpecTable(headers, rows) {
+    if (!rows.length) return $(`<p class="spec-empty">항목이 없습니다.</p>`);
+    const $table = $(`<table class="spec-table"><thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody></tbody></table>`);
+    const $tbody = $table.find('tbody');
+    rows.forEach(cols => {
+        $tbody.append(`<tr>${cols.map(c => `<td>${c}</td>`).join('')}</tr>`);
+    });
+    return $table;
+}
+
+function typeBadge(type) {
+    const t = (type || 'string').toLowerCase();
+    return `<span class="spec-type-badge spec-type-${t}">${t}</span>`;
+}
+
+function reqBadge(required) {
+    return required
+        ? `<span class="spec-required-badge spec-required-y">필수</span>`
+        : `<span class="spec-required-badge spec-required-n">선택</span>`;
+}
+
+function closeSpecModal() {
+    $('#specModal').removeClass('open');
+}
+
+function closeSpecOutside(e) {
+    if ($(e.target).is('#specModal')) closeSpecModal();
+}
+
+// 탭 전환
+$(document).on('click', '.spec-tab-btn', function() {
+    currentSpecTab = $(this).data('spec-tab');
+    $('.spec-tab-btn').removeClass('active');
+    $(this).addClass('active');
+    const ep = state.currentEndpoint;
+    if (ep) renderSpecContent(ep, API_SPECS[ep.opaCode]);
+});
