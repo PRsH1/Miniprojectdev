@@ -896,13 +896,81 @@ const API_LIST = [
         queryParams: [],
         defaultBody: {
             documents: [
-                { template_id: '', fields: [], recipients: [], parameters: [], notification: [] }
-            ]
+                {
+                    template_id: '',
+                    select_group_name: '',
+                    document_name: '',
+                    fields: [{ id: '', value: '' }],
+                    parameters: [{ id: '', value: '' }],
+                    recipients: [
+                        {
+                            step_type: '',
+                            use_mail: null,
+                            use_sms: null,
+                            member: {
+                                name: '',
+                                id: '',
+                                sms: { country_code: '', phone_number: '' }
+                            },
+                            auth: {
+                                password: '',
+                                password_hint: '',
+                                valid: { day: null, hour: null }
+                            }
+                        }
+                    ]
+                }
+            ],
+            comment: ''
         },
         exampleResponse: {
+            success: {
+                "result": {
+                    "success_result": ["number"],
+                    "request_id": "string",
+                    "fail_result": []
+                },
+                "code": "-1",
+                "message": "Completed.",
+                "status": "200"
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '필수 입력값 누락 (4000001)', body: { "code": "4000001", "ErrorMessage": "Required input value not found." } },
+                { title: 'template_id 누락 (400)', body: { "code": "400", "ErrorMessage": "Required String parameter 'template_id' is not present" } }
+            ]
+        }
+    },
+    {
+        id: 'doc_draft_send',
+        group: '문서',
+        groupIcon: 'fa-file-lines',
+        opaCode: 'OPA2_031',
+        name: '초안 문서 다음 단계 전송',
+        method: 'POST',
+        path: '/v2.0/api/documents/{document_id}/send',
+        description: '임시 저장(초안) 상태의 문서를 다음 단계로 전송합니다. 비정형 문서(내 파일로 문서 작성)만 가능합니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'document_id', description: '전송할 문서 ID', required: true, default: '' }
+        ],
+        queryParams: [],
+        defaultBody: {
+            comment: '',
+            remove_company_stamp_mark: null
+        },
+        exampleResponse: {
+            success: {
+                "document_title": "string",
+                "document_status": "string",
+                "document_id": "string"
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '존재하지 않는 문서 (4000004)', body: { "code": "4000004", "ErrorMessage": "The document does not exist." } },
+                { title: '초안 상태가 아닌 문서 (4000180)', body: { "code": "4000180", "ErrorMessage": "The document status is not draft." } }
             ]
         }
     },
@@ -1041,6 +1109,35 @@ const API_LIST = [
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+            ]
+        }
+    },
+    {
+        id: 'template_delete',
+        group: '템플릿',
+        groupIcon: 'fa-file-invoice',
+        opaCode: 'OPA2_024',
+        name: '템플릿 삭제',
+        method: 'DELETE',
+        path: '/v2.0/api/forms/{form_id}',
+        description: '템플릿을 삭제합니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'form_id', description: '삭제할 템플릿 ID', required: true, default: '' }
+        ],
+        queryParams: [],
+        defaultBody: null,
+        exampleResponse: {
+            success: {
+                "code": "-1",
+                "message": "Completed.",
+                "status": "200"
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '템플릿 없음 (4000046)', body: { "code": "4000046", "ErrorMessage": "There is no template." } },
+                { title: '접근 권한 없음 (4030009)', body: { "code": "4030009", "ErrorMessage": "You do not have access." } }
             ]
         }
     },
@@ -1247,14 +1344,41 @@ const API_LIST = [
         description: '여러 멤버를 한 번에 추가합니다.',
         requiresAuth: true,
         pathParams: [],
-        queryParams: [],
+        queryParams: [
+            { key: 'mailOption', description: '멤버 생성 시 이메일 알림 전송 여부 (기본값: true)', required: false, default: '' }
+        ],
         defaultBody: [
-            { id: '', password: '', name: '', contact: { tel: '', number: '', country_number: '+82' }, department: '', position: '', role: [] }
+            {
+                id: '',
+                password: '',
+                name: '',
+                contact: { tel: '', number: '', country_number: '' },
+                department: '',
+                position: '',
+                agreement: { marketing: null },
+                role: [''],
+                external_sso_info: { uuid: '', idp_name: '', account_id: '' }
+            }
         ],
         exampleResponse: {
+            success: {
+                "company_id": "string",
+                "members": [
+                    { "name": "string", "id": "string", "success": "boolean" }
+                ]
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                {
+                    title: '멤버 추가 실패 — 중복 계정 또는 비밀번호 규칙 미충족 (HTTP 200, success: false)',
+                    body: {
+                        "company_id": "string",
+                        "members": [
+                            { "name": "string", "id": "string", "success": false }
+                        ]
+                    }
+                }
             ]
         }
     },
@@ -1448,6 +1572,46 @@ const API_LIST = [
         queryParams: [],
         defaultBody: null,
         exampleResponse: {
+            success: {
+                "total_rows": "number",
+                "company_stamps": [
+                    {
+                        "id": "string",
+                        "name": "string",
+                        "description": "string",
+                        "create_date": "number",
+                        "create_id": "string",
+                        "update_date": "number",
+                        "update_id": "string",
+                        "deleted": "boolean",
+                        "stamp": {
+                            "type": "string",
+                            "file": "string",
+                            "path": "string",
+                            "ozdpi": "string"
+                        },
+                        "auth": {
+                            "allow_all_members": "boolean",
+                            "groups": [
+                                {
+                                    "_id": "string",
+                                    "name": "string",
+                                    "create_date": "number",
+                                    "description": "string"
+                                }
+                            ],
+                            "members": [
+                                {
+                                    "_id": "string",
+                                    "account_id": "string",
+                                    "first_name": "string",
+                                    "create_date": "number"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
@@ -1470,9 +1634,145 @@ const API_LIST = [
         queryParams: [],
         defaultBody: null,
         exampleResponse: {
+            success: {
+                "id": "string",
+                "name": "string",
+                "description": "string",
+                "create_date": "number",
+                "create_id": "string",
+                "update_date": "number",
+                "update_id": "string",
+                "deleted": "boolean",
+                "stamp": {
+                    "type": "string",
+                    "file": "string",
+                    "path": "string",
+                    "ozdpi": "string"
+                },
+                "auth": {
+                    "allow_all_members": "boolean",
+                    "groups": ["string"],
+                    "members": ["string"]
+                }
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '도장 없음 (4000175)', body: { "code": "4000175", "ErrorMessage": "No stamp found." } }
+            ]
+        }
+    },
+    {
+        id: 'stamp_add',
+        group: '회사',
+        groupIcon: 'fa-building',
+        opaCode: 'OPA2_026',
+        name: '회사 도장 추가',
+        method: 'POST',
+        path: '/v2.0/api/company_stamp',
+        description: '회사에 도장을 추가합니다.',
+        requiresAuth: true,
+        pathParams: [],
+        queryParams: [],
+        defaultBody: {
+            company_stamp: {
+                name: '',
+                description: '',
+                stamp: {
+                    path: ''
+                },
+                auth: {
+                    groups: [''],
+                    members: [''],
+                    allow_all_members: null
+                }
+            }
+        },
+        exampleResponse: {
+            success: {
+                "company_stamp": {
+                    "id": "string",
+                    "name": "string"
+                }
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '중복된 도장 이름 (4000174)', body: { "code": "4000174", "ErrorMessage": "This name has already been used for another stamp." } },
+                { title: '접근 권한 없음 (4030009)', body: { "code": "4030009", "ErrorMessage": "You do not have access." } }
+            ]
+        }
+    },
+    {
+        id: 'stamp_update',
+        group: '회사',
+        groupIcon: 'fa-building',
+        opaCode: 'OPA2_027',
+        name: '회사 도장 수정',
+        method: 'PATCH',
+        path: '/v2.0/api/company_stamp/{stamp_id}',
+        description: '회사 도장 정보를 수정합니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'stamp_id', description: '수정할 도장 ID', required: true, default: '' }
+        ],
+        queryParams: [],
+        defaultBody: {
+            company_stamp: {
+                name: '',
+                description: '',
+                stamp: {
+                    path: ''
+                },
+                auth: {
+                    groups: [''],
+                    members: [''],
+                    allow_all_members: null
+                }
+            }
+        },
+        exampleResponse: {
+            success: {
+                "company_stamp": {
+                    "id": "string",
+                    "name": "string"
+                }
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '접근 권한 없음 (4030009)', body: { "code": "4030009", "ErrorMessage": "You do not have access." } },
+                { title: '도장 없음 (4000175)', body: { "code": "4000175", "ErrorMessage": "No stamp found." } },
+                { title: '요청 Body 없음 (400)', body: { "code": "400", "ErrorMessage": "Required request body is missing" } }
+            ]
+        }
+    },
+    {
+        id: 'stamp_delete',
+        group: '회사',
+        groupIcon: 'fa-building',
+        opaCode: 'OPA2_028',
+        name: '회사 도장 삭제',
+        method: 'DELETE',
+        path: '/v2.0/api/company_stamp/{stamp_id}',
+        description: '회사 도장을 삭제합니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'stamp_id', description: '삭제할 도장 ID', required: true, default: '' }
+        ],
+        queryParams: [],
+        defaultBody: null,
+        exampleResponse: {
+            success: {
+                "code": "-1",
+                "message": "Completed.",
+                "status": "200"
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '도장 없음 (4000175)', body: { "code": "4000175", "ErrorMessage": "No stamp found." } },
+                { title: '접근 권한 없음 (4030009)', body: { "code": "4030009", "ErrorMessage": "You do not have access." } }
             ]
         }
     },
