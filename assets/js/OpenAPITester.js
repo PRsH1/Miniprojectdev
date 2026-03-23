@@ -593,12 +593,12 @@ const API_LIST = [
             { key: 'include_detail_template_info', description: '상세 템플릿 정보 포함', required: false, default: '' },
         ],
         defaultBody: {
-            type: '04',
+            type: '',
             title_and_content: '',
             title: '',
             content: '',
-            limit: '20',
-            skip: '0',
+            limit: '',
+            skip: '',
             start_create_date: '',
             end_create_date: '',
             start_update_date: '',
@@ -769,13 +769,18 @@ const API_LIST = [
             input: {
                 next_steps: [
                     {
-                        step_type: '05',
-                        step_seq: '2',
+                        step_type: '',
+                        step_seq: '',
                         recipients: [
                             {
-                                member: { name: '', id: '', sms: { country_code: '+82', phone_number: '' } },
-                                use_mail: true,
-                                use_sms: true
+                                member: { name: '', id: '', sms: { country_code: '', phone_number: '' } },
+                                use_mail: null,
+                                use_sms: null,
+                                auth: {
+                                    password: '',
+                                    password_hint: '',
+                                    valid: { day: null, hour: null }
+                                }
                             }
                         ],
                         comment: ''
@@ -784,9 +789,28 @@ const API_LIST = [
             }
         },
         exampleResponse: {
+            success: {
+                "status": "200",
+                "code": "-1",
+                "message": "Completed.",
+                "recipients": [
+                    {
+                        "step_seq": "string",
+                        "name": "string",
+                        "id": "string",
+                        "sms": {
+                            "country_code": "string",
+                            "phone_number": "string"
+                        },
+                        "token_id": "string",
+                        "sms_template_index": "number"
+                    }
+                ]
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '워크플로우 설정 불일치 (4000012)', body: { "code": "4000012", "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings." } }
             ]
         }
     },

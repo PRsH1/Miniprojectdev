@@ -193,6 +193,7 @@ const DOMAINS = {
     defaultBody: { ... } | null,
     exampleResponse: {          // 전체 API에 추가됨
         success: { ... },       // 값 대신 "string"/"number"/"boolean" 타입 표현
+        successEmpty: { ... },  // 선택적 — 조회 결과 없는 성공 응답 (OPA2_008 등)
         errors: [
             { title: '에러명 (코드)', body: { code, ErrorMessage } }
         ]
@@ -226,7 +227,8 @@ const DOMAINS = {
 | OPA2_011 멤버 추가 | ✅ | ✅ 4건 |
 | OPA2_012 멤버 수정 | ✅ | ✅ 2건 |
 | OPA2_013 멤버 삭제 | ✅ | ✅ 3건 |
-| OPA2_014~OPA2_037 (나머지 전체) | — | ✅ 2건 (공통) |
+| OPA2_014 수신자 문서 재요청 | ✅ | ✅ 3건 |
+| OPA2_015~OPA2_037 (나머지 전체) | — | ✅ 2건 (공통) |
 
 ---
 
@@ -253,5 +255,10 @@ PUSHER_CLUSTER=
 - HTML 파일은 자체 완결형 (CSS/JS 인라인, 외부 의존성은 CDN)
 - jQuery + vanilla JS 혼용
 - 한국어 UI, 한국어 주석
-- Body 기본값: 문자열 `""`, boolean/number `null` (구조만 표현)
+- Body 기본값: 구조만 표현하고 실제 값을 박지 않음
+  - 문자열 → `''`
+  - boolean → `null`
+  - number → `null`
+  - 배열 내 객체는 빈 요소 1개로 구조 표현 (예: `[{ key: '', value: null }]`)
+  - `'04'`, `'05'`, `'+82'`, `true` 같은 고정 예시값 사용 금지 — 사용자가 직접 입력해야 하는 값임
 - 예시 응답: 실제 값 대신 타입명 (`"string"`, `"number"`, `"boolean"`) 사용
