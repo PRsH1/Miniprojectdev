@@ -746,6 +746,7 @@ const API_LIST = [
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '요청 Body 없음 (400)', body: { "code": "400", "ErrorMessage": "Required request body is missing" } },
                 { title: '선택된 문서 없음 (4000004)', body: { "code": "4000004", "ErrorMessage": "No document selected." } },
                 { title: '문서 삭제 실패 — 존재하지 않는 문서 ID (HTTP 200, fail_result 포함)', body: { "result": { "success_result": [], "fail_result": [ { "document_id": "string", "code": "4000004", "message": "The document does not exist." } ] }, "code": "-1", "message": "Completed.", "status": "200" } }
             ]
@@ -1424,6 +1425,7 @@ const API_LIST = [
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '요청 Body 없음 (400)', body: { "code": "400", "ErrorMessage": "Required request body is missing" } },
                 { title: '존재하지 않는 그룹 (4000011)', body: { "code": "4000011", "ErrorMessage": "The group does not exist." } }
             ]
         }
@@ -1977,7 +1979,7 @@ async function sendRequest(forceDownload = false) {
 
     // Build body
     let body = undefined;
-    if (['POST', 'PUT', 'PATCH'].includes(method)) {
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
         const raw = $('#bodyEditor').val().trim();
         if (raw) {
             try { body = raw; JSON.parse(raw); } // validate

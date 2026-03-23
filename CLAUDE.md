@@ -174,6 +174,7 @@ const DOMAINS = {
   - 지원 언어: cURL / JavaScript (fetch) / JavaScript (jQuery) / Python / Java (HttpClient)
 - **사용 가이드 모달**: 헤더 우측 "사용 가이드" 버튼 → 5단계 스텝 카드 형식 안내
   - DELETE 메서드도 defaultBody가 있으면 Body 탭 자동 표시
+- **DELETE with Body**: `sendRequest`에서 body 포함 메서드에 `DELETE` 포함 — Body가 있는 DELETE API(OPA2_009, OPA2_020 등)에서 payload가 정상 전송됨
 
 ### API 데이터 구조 (`API_LIST`)
 ```javascript
@@ -225,7 +226,7 @@ const DOMAINS = {
 | OPA2_006 문서 첨부 파일 다운로드 | — | ✅ 5건 |
 | OPA2_007 새 문서 작성 (외부) | ✅ | ✅ 5건 |
 | OPA2_008 문서 목록 조회 | ✅ + 결과없음 | ✅ 3건 |
-| OPA2_009 문서 삭제 | ✅ | ✅ 4건 |
+| OPA2_009 문서 삭제 | ✅ | ✅ 5건 |
 | OPA2_010 멤버 목록 조회 | ✅ | ✅ 2건 |
 | OPA2_011 멤버 추가 | ✅ | ✅ 4건 |
 | OPA2_012 멤버 수정 | ✅ | ✅ 2건 |
@@ -236,7 +237,7 @@ const DOMAINS = {
 | OPA2_017 그룹 목록 조회 | ✅ | ✅ 2건 |
 | OPA2_018 그룹 추가 | ✅ | ✅ 2건 |
 | OPA2_019 그룹 수정 | ✅ | ✅ 3건 |
-| OPA2_020 그룹 삭제 | ✅ | ✅ 3건 |
+| OPA2_020 그룹 삭제 | ✅ | ✅ 4건 |
 | OPA2_021~OPA2_037 (나머지 전체) | — | ✅ 2건 (공통) |
 
 ---
