@@ -810,7 +810,8 @@ const API_LIST = [
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '워크플로우 설정 불일치 (4000012)', body: { "code": "4000012", "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings." } }
+                { title: '워크플로우 설정 불일치 (4000012)', body: { "code": "4000012", "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings." } },
+                { title: '필수 입력값 누락 (4000001)', body: { "code": "4000001", "ErrorMessage": "Required input value not found. " } }
             ]
         }
     },
@@ -830,13 +831,53 @@ const API_LIST = [
         ],
         defaultBody: {
             documents: [
-                { fields: [], recipients: [], parameters: [], notification: [], select_group_name: '' }
-            ]
+                {
+                    document_name: '',
+                    select_group_name: '',
+                    fields: [
+                        { id: '', value: '' }
+                    ],
+                    parameters: [
+                        { id: '', value: '' }
+                    ],
+                    recipients: [
+                        {
+                            step_type: '',
+                            use_mail: null,
+                            use_sms: null,
+                            member: {
+                                name: '',
+                                id: '',
+                                sms: { country_code: '', phone_number: '' }
+                            },
+                            group: { id: '' },
+                            auth: {
+                                password: '',
+                                password_hint: '',
+                                valid: { day: null, hour: null }
+                            }
+                        }
+                    ]
+                }
+            ],
+            comment: ''
         },
         exampleResponse: {
+            success: {
+                "result": {
+                    "success_result": ["number"],
+                    "request_id": "string",
+                    "fail_result": []
+                },
+                "code": "-1",
+                "message": "Completed.",
+                "status": "200"
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '템플릿 없음 (4000046)', body: { "code": "4000046", "ErrorMessage": "There is no template." } },
+                { title: '필수 입력값 누락 (4000001)', body: { "code": "4000001", "ErrorMessage": "Required input value not found." } }
             ]
         }
     },
@@ -944,6 +985,58 @@ const API_LIST = [
         queryParams: [],
         defaultBody: null,
         exampleResponse: {
+            success: {
+                "total_rows": "number",
+                "templates": [
+                    {
+                        "form_id": "string",
+                        "name": "string",
+                        "version": "string",
+                        "abbreviation": "string",
+                        "start_write_date": "number",
+                        "end_write_date": "number",
+                        "unlimited": "boolean",
+                        "create_id": "string",
+                        "create_name": "string",
+                        "create_date": "number",
+                        "update_id": "string",
+                        "update_name": "string",
+                        "update_date": "number",
+                        "owner_id": "string",
+                        "owner_name": "string",
+                        "category": "string",
+                        "keyword": "string",
+                        "desc": "string",
+                        "favorite": "boolean",
+                        "use_document_numbering": "boolean",
+                        "document_numbering_rule_id": "string",
+                        "use_ai": "boolean",
+                        "is_release": "boolean",
+                        "is_update": "boolean",
+                        "is_sample": "boolean",
+                        "market": null,
+                        "file": {
+                            "form_image_id": "string",
+                            "form_files": [
+                                {
+                                    "type": "string",
+                                    "ozr_id": "string",
+                                    "ext": "string",
+                                    "alias": "string",
+                                    "file_id": "string"
+                                }
+                            ]
+                        },
+                        "enabled": "boolean",
+                        "form_modify_auth": "boolean",
+                        "formDeployInfo": null,
+                        "last_release_id": "string",
+                        "last_release_name": null,
+                        "formPermission": null,
+                        "availableDeleteDraft": "boolean"
+                    }
+                ]
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
@@ -1179,9 +1272,63 @@ const API_LIST = [
         description: '회사의 그룹 목록을 조회합니다.',
         requiresAuth: true,
         pathParams: [],
-        queryParams: [],
+        queryParams: [
+            { key: 'include_member', description: '멤버 정보 포함 여부 (default: false)', required: false, default: '' },
+            { key: 'include_field', description: '그룹 사용자 정의 필드 포맷 정보 포함 여부 (default: false)', required: false, default: '' },
+            { key: 'eb_name_search', description: '그룹 이름 검색 (포함 문자)', required: false, default: '' }
+        ],
         defaultBody: null,
         exampleResponse: {
+            success: {
+                "format": {
+                    "_id": "string",
+                    "_rev": "string",
+                    "type": "string",
+                    "format_type": "string",
+                    "format_datas": [
+                        {
+                            "field_key": "string",
+                            "field_type": "string",
+                            "field_value": "string",
+                            "field_file": "string",
+                            "default_value": "string",
+                            "deleted": "boolean"
+                        }
+                    ]
+                },
+                "groups": [
+                    {
+                        "id": "string",
+                        "name": "string",
+                        "description": "string",
+                        "create_date": "number",
+                        "members": [
+                            {
+                                "id": "string",
+                                "account_id": "string",
+                                "name": "string",
+                                "create_date": "number",
+                                "status": "string",
+                                "contact": {
+                                    "country_id": "string",
+                                    "number": "string",
+                                    "tel": "string"
+                                },
+                                "department": "string",
+                                "position": "string"
+                            }
+                        ],
+                        "fields": [
+                            {
+                                "u_id": "string",
+                                "field_key": "string",
+                                "field_value": "string",
+                                "field_file": "string"
+                            }
+                        ]
+                    }
+                ]
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
@@ -1200,8 +1347,20 @@ const API_LIST = [
         requiresAuth: true,
         pathParams: [],
         queryParams: [],
-        defaultBody: { group: { name: '', description: '', members: [] } },
+        defaultBody: {
+            group: {
+                name: '',
+                description: '',
+                members: ['']
+            }
+        },
         exampleResponse: {
+            success: {
+                "group": {
+                    "id": "string",
+                    "name": "string"
+                }
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
@@ -1222,11 +1381,24 @@ const API_LIST = [
             { key: 'group_id', description: '수정할 그룹 ID', required: true, default: '' }
         ],
         queryParams: [],
-        defaultBody: { group: { name: '', description: '', members: [] } },
+        defaultBody: {
+            group: {
+                name: '',
+                description: '',
+                members: ['']
+            }
+        },
         exampleResponse: {
+            success: {
+                "group": {
+                    "id": "string",
+                    "name": "string"
+                }
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '존재하지 않는 그룹 (4000123)', body: { "code": "4000123", "ErrorMessage": "The group does not exist." } }
             ]
         }
     },
@@ -1242,11 +1414,17 @@ const API_LIST = [
         requiresAuth: true,
         pathParams: [],
         queryParams: [],
-        defaultBody: { group_ids: [] },
+        defaultBody: { group_ids: [''] },
         exampleResponse: {
+            success: {
+                "code": "-1",
+                "message": "Completed.",
+                "status": "200"
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '존재하지 않는 그룹 (4000011)', body: { "code": "4000011", "ErrorMessage": "The group does not exist." } }
             ]
         }
     },
@@ -1496,9 +1674,17 @@ function selectEndpoint(id) {
     // Default body
     if (ep.defaultBody && ['POST','PUT','PATCH','DELETE'].includes(ep.method)) {
         $('#bodyEditor').val(JSON.stringify(ep.defaultBody, null, 2));
-        $('[data-tab="body"]').click();
     } else {
         $('#bodyEditor').val('');
+    }
+
+    // 탭 자동 전환: Path 파라미터 있으면 Path → Body 있으면 Body → 기본 Query
+    if (ep.pathParams && ep.pathParams.length > 0) {
+        $('[data-tab="path"]').click();
+    } else if (ep.defaultBody && ['POST','PUT','PATCH','DELETE'].includes(ep.method)) {
+        $('[data-tab="body"]').click();
+    } else {
+        $('[data-tab="query"]').click();
     }
 
     // Headers (auto-set Authorization if requiresAuth)
@@ -1522,16 +1708,16 @@ function updateUrlPreview() {
     const base = getBaseUrl();
     let path = ep.path;
 
-    // Fill path params from input values
-    $('#paramsBody tr[data-type="path"]').each(function() {
+    // Fill path params from pathBody
+    $('#pathBody tr').each(function() {
         const key = $(this).find('.param-key').val();
         const val = $(this).find('.param-val').val();
         if (val) path = path.replace(`{${key}}`, val);
     });
 
-    // Build query string from checked query params
+    // Build query string from queryBody
     const qp = [];
-    $('#paramsBody tr[data-type="query"]').each(function() {
+    $('#queryBody tr').each(function() {
         const enabled = $(this).find('.param-enabled').is(':checked');
         const key = $(this).find('.param-key').val();
         const val = $(this).find('.param-val').val();
@@ -1547,33 +1733,42 @@ function updateUrlPreview() {
 // PARAMS TABLE
 // ──────────────────────────────────────────────────────────────────────────
 function buildParamsTable(ep) {
-    const $tbody = $('#paramsBody').empty();
-
     // Path params
-    (ep.pathParams || []).forEach(p => {
-        $tbody.append(makeParamRow('path', p.key, p.default || '', p.description, p.required, false));
+    const $pathTbody = $('#pathBody').empty();
+    const pathParams = ep.pathParams || [];
+    pathParams.forEach(p => {
+        $pathTbody.append(makePathRow(p.key, p.default || '', p.description, p.required));
     });
+    $('#pathEmptyMsg').toggle(pathParams.length === 0);
 
     // Query params
+    const $queryTbody = $('#queryBody').empty();
     (ep.queryParams || []).forEach(p => {
-        $tbody.append(makeParamRow('query', p.key, p.default || '', p.description, p.required, true));
+        $queryTbody.append(makeQueryRow(p.key, p.default || '', p.description, p.required, true));
     });
 }
 
-function makeParamRow(type, key = '', value = '', desc = '', required = false, enabled = true, userAdded = false) {
-    const typeBadge = type === 'path'
-        ? '<span class="type-badge type-path">Path</span>'
-        : '<span class="type-badge type-query">Query</span>';
-    const readonlyKey = !userAdded ? 'readonly' : '';
-    const disabledCheck = type === 'path' ? 'disabled checked' : (enabled ? 'checked' : '');
-    const keyField = type === 'path'
-        ? `<input class="kv-input param-key" value="${key}" ${readonlyKey}>`
-        : `<input class="kv-input param-key" value="${key}" placeholder="키">`;
+function makePathRow(key = '', value = '', desc = '', required = false) {
+    const $tr = $(`<tr>
+        <td class="col-key">
+            <input class="kv-input param-key" value="${key}" readonly>
+            ${desc ? `<div class="param-desc">${desc}${required ? '<span class="required-star">*</span>' : ''}</div>` : ''}
+        </td>
+        <td class="col-value"><input class="kv-input param-val" value="${value}" placeholder="값 입력"></td>
+    </tr>`);
+    $tr.find('.param-val').on('input', () => { updateUrlPreview(); updateParamsBadge(); });
+    return $tr;
+}
+
+function makeQueryRow(key = '', value = '', desc = '', required = false, enabled = true, userAdded = false) {
+    const checkedAttr = enabled ? 'checked' : '';
+    const keyField = userAdded
+        ? `<input class="kv-input param-key" value="${key}" placeholder="키">`
+        : `<input class="kv-input param-key" value="${key}" readonly>`;
     const deleteBtn = userAdded ? `<button class="btn-icon" onclick="removeRow(this)" title="삭제"><i class="fa-solid fa-xmark"></i></button>` : '';
 
-    const $tr = $(`<tr data-type="${type}" data-user-added="${userAdded}">
-        <td class="col-check"><input type="checkbox" class="param-enabled" ${disabledCheck}></td>
-        <td class="col-type">${typeBadge}</td>
+    const $tr = $(`<tr data-user-added="${userAdded}">
+        <td class="col-check"><input type="checkbox" class="param-enabled" ${checkedAttr}></td>
         <td class="col-key">
             ${keyField}
             ${desc ? `<div class="param-desc">${desc}${required ? '<span class="required-star">*</span>' : ''}</div>` : ''}
@@ -1588,8 +1783,7 @@ function makeParamRow(type, key = '', value = '', desc = '', required = false, e
 }
 
 function addQueryRow() {
-    const $tbody = $('#paramsBody');
-    $tbody.append(makeParamRow('query', '', '', '', false, true, true));
+    $('#queryBody').append(makeQueryRow('', '', '', false, true, true));
     updateParamsBadge();
 }
 
@@ -1600,14 +1794,14 @@ function removeRow(btn) {
 }
 
 function updateParamsBadge() {
-    let count = 0;
-    $('#paramsBody tr[data-type="path"]').each(function() {
-        if ($(this).find('.param-val').val()) count++;
+    // Path 배지: 값 입력 여부와 무관하게 존재하는 파라미터 수
+    $('#pathBadge').text($('#pathBody tr').length);
+
+    let queryCount = 0;
+    $('#queryBody tr').each(function() {
+        if ($(this).find('.param-enabled').is(':checked') && $(this).find('.param-key').val()) queryCount++;
     });
-    $('#paramsBody tr[data-type="query"]').each(function() {
-        if ($(this).find('.param-enabled').is(':checked') && $(this).find('.param-key').val()) count++;
-    });
-    $('#paramsBadge').text(count);
+    $('#queryBadge').text(queryCount);
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1838,7 +2032,7 @@ async function sendRequest(forceDownload = false) {
             } else if (plainMatch) {
                 filename = (plainMatch[1] || plainMatch[2] || '').trim() || filename;
             } else {
-                const docId = $('#paramsBody tr[data-type="path"]').first().find('.param-val').val();
+                const docId = $('#pathBody tr').first().find('.param-val').val();
                 if (docId) filename = docId + ext;
             }
 

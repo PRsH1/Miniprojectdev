@@ -159,7 +159,10 @@ const DOMAINS = {
 ### 구현된 기능
 - 좌측 사이드바: API 그룹별 목록, OPA2_XXX 번호 배지, 검색, 너비 드래그 조절
 - 상단 인증 패널: Signature/Bearer 방식 선택, Access Token 발급
-- Request Builder: Params / Headers / Body 탭, 높이 드래그 조절
+- Request Builder: **Path / Query / Headers / Body** 4개 탭, 높이 드래그 조절
+  - **Path 탭**: URL 경로 파라미터 입력 (키 readonly, 배지 = 파라미터 존재 개수)
+  - **Query 탭**: Query String 입력, 체크박스로 활성화, 행 추가 가능
+  - API 선택 시 자동 탭 전환: Path 파라미터 있음 → Path / Body 있음 → Body / 그 외 → Query
 - Response 뷰어: 상태 코드 배지, JSON 문법 강조, 복사 버튼, 엔드포인트별 결과 캐싱
 - 예시 응답 버튼: 성공/실패 구조 표시 (실제 값 대신 타입 표현)
   - `success`: 일반 성공 응답
@@ -227,8 +230,14 @@ const DOMAINS = {
 | OPA2_011 멤버 추가 | ✅ | ✅ 4건 |
 | OPA2_012 멤버 수정 | ✅ | ✅ 2건 |
 | OPA2_013 멤버 삭제 | ✅ | ✅ 3건 |
-| OPA2_014 수신자 문서 재요청 | ✅ | ✅ 3건 |
-| OPA2_015~OPA2_037 (나머지 전체) | — | ✅ 2건 (공통) |
+| OPA2_014 수신자 문서 재요청 | ✅ | ✅ 4건 |
+| OPA2_015 작성 가능한 템플릿 목록 조회 | ✅ | ✅ 2건 |
+| OPA2_016 문서 일괄 작성 | ✅ | ✅ 4건 |
+| OPA2_017 그룹 목록 조회 | ✅ | ✅ 2건 |
+| OPA2_018 그룹 추가 | ✅ | ✅ 2건 |
+| OPA2_019 그룹 수정 | ✅ | ✅ 3건 |
+| OPA2_020 그룹 삭제 | ✅ | ✅ 3건 |
+| OPA2_021~OPA2_037 (나머지 전체) | — | ✅ 2건 (공통) |
 
 ---
 
