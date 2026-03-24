@@ -922,4 +922,20 @@ const API_SPECS = {
             { code: '4000180', message: 'The document is not in a draft state.', description: '문서가 초안 상태가 아님' },
         ],
     },
+    'OPA2_042': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'input', type: 'object', required: true, description: '취소 요청 정보' },
+            { key: 'input.document_ids', type: 'array', required: true, description: '취소할 문서 ID 목록' },
+        ],
+        responseFields: [],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
 };
