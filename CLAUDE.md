@@ -90,7 +90,13 @@ ProjectImprove/
 │
 └── assets/js/
     ├── ApiAutoTestStart.js     # API 자동화 테스트 로직 (OPA2_XXX 목록 포함)
-    └── OpenAPITester.js        # ★ OpenAPITester 전용 JS (API_LIST 데이터 + 앱 로직)
+    ├── OpenAPITester.js        # ★ 원본 보존용 (롤백 시 참고) — 직접 편집 금지
+    └── openapi/                # ★ OpenAPITester 분할 모듈 (로드 순서 중요)
+        ├── api-list.js         #   API_LIST 데이터 — 신규 API 추가/수정 시 편집
+        ├── api-specs.js        #   API_SPECS 데이터 — 명세 추가 시 편집
+        ├── state.js            #   DOMAINS, state, responseCache, 공통 헬퍼
+        ├── ui.js               #   사이드바, 요청 빌더, 인증, 전송, 응답, 코드 스니펫
+        └── init.js             #   탭 이벤트, document.ready, 리사이즈, API 명세 모달
 ```
 
 ---
@@ -153,8 +159,27 @@ const DOMAINS = {
 
 ## OpenAPITester (★ 현재 작업 중인 주요 파일)
 
-**경로:** `API(JS,HTML)/OpenAPITester.html` (HTML/CSS) + `assets/js/OpenAPITester.js` (JS 로직)
+**경로:**
+- `API(JS,HTML)/OpenAPITester.html` — HTML/CSS (UI 구조)
+- `assets/js/openapi/api-list.js` — API_LIST 데이터
+- `assets/js/openapi/api-specs.js` — API_SPECS 데이터
+- `assets/js/openapi/state.js` — 상태·상수·헬퍼
+- `assets/js/openapi/ui.js` — UI 로직 전반
+- `assets/js/openapi/init.js` — 초기화·명세 모달
+
 **상태:** Beta (index.html에 Beta 배지로 표시)
+
+### 파일 역할 및 편집 가이드
+| 파일 | 편집 빈도 | 편집 목적 |
+|------|-----------|-----------|
+| `api-list.js` | 높음 | API 추가/수정/삭제 |
+| `api-specs.js` | 높음 | API 명세 추가/수정 |
+| `ui.js` | 중간 | UI 동작·요청·응답 로직 변경 |
+| `init.js` | 낮음 | 초기화·모달·리사이즈 변경 |
+| `state.js` | 낮음 | 상수·헬퍼 함수 변경 |
+
+> **로드 순서**: `api-list.js` → `api-specs.js` → `state.js` → `ui.js` → `init.js`
+> 전역 변수로 공유되므로 `<script>` 태그 순서를 변경하면 안 됨.
 
 ### 구현된 기능
 - 좌측 사이드바: API 그룹별 목록, OPA2_XXX 번호 배지, 검색, 너비 드래그 조절
@@ -173,10 +198,11 @@ const DOMAINS = {
 - **Code Snippet 모달**: 현재 Request 설정(URL/Method/Headers/Body) 기반 코드 자동 생성
   - 지원 언어: cURL / JavaScript (fetch) / JavaScript (jQuery) / Python / Java (HttpClient)
 - **API 명세 모달**: URL 바의 Code 버튼 옆 "API 명세" 버튼 → 각 API의 상세 명세 표시
-  - **Request 탭**: 요청 헤더, Path 파라미터, Query 파라미터, Request Body 필드 (타입·필수 여부·설명)
-  - **Response 탭**: 응답 필드 목록, 에러 코드 목록
-  - 데이터 소스: `assets/js/OpenAPITester.js` 하단의 `const API_SPECS` 객체 (opaCode 키로 조회)
+  - **Request 탭**: 요청 헤더, Path 파라미터, Query 파라미터, Request Body 필드 (타입·필수 여부·설명·**비고**)
+  - **Response 탭**: 응답 필드 목록 (타입·설명·**비고**), 에러 코드 목록
+  - 데이터 소스: `assets/js/openapi/api-specs.js` 의 `const API_SPECS` 객체 (opaCode 키로 조회)
   - 현재 명세 등록 범위: OPA2_001~OPA2_031 (29개)
+  - **비고(note) 컬럼**: 각 테이블에서 `note` 필드가 하나라도 있으면 비고 컬럼이 자동으로 표시됨 (없으면 숨김)
 - **사용 가이드 모달**: 헤더 우측 "사용 가이드" 버튼 → 5단계 스텝 카드 형식 안내
   - DELETE 메서드도 defaultBody가 있으면 Body 탭 자동 표시
 - **DELETE with Body**: `sendRequest`에서 body 포함 메서드에 `DELETE` 포함 — Body가 있는 DELETE API(OPA2_009, OPA2_020 등)에서 payload가 정상 전송됨
@@ -211,22 +237,24 @@ const DOMAINS = {
 ```
 
 ### API 명세 데이터 구조 (`API_SPECS`)
-`API_LIST`와 별도로 `assets/js/OpenAPITester.js` 하단에 위치. opaCode를 키로 하는 객체.
+`API_LIST`와 별도로 `assets/js/openapi/api-specs.js` 에 위치. opaCode를 키로 하는 객체.
 ```javascript
 const API_SPECS = {
     'OPA2_XXX': {
         requestHeaders: [
-            { key: '헤더명', required: true|false, description: '설명', example: '예시값' }
+            { key: '헤더명', required: true|false, description: '설명', example: '예시값', note: '비고 (선택)' }
         ],
         queryParams: [
-            { key: '파라미터명', type: 'string|number|boolean', required: true|false, description: '설명' }
+            { key: '파라미터명', type: 'string|number|boolean', required: true|false, description: '설명', note: '비고 (선택)' }
         ],
         requestBody: [
-            { key: '필드명', type: 'string|number|boolean|array|object', required: true|false, description: '설명' }
+            { key: '필드명', type: 'string|number|boolean|array|object', required: true|false, description: '설명', note: '비고 (선택)' }
             // 중첩 필드는 점 표기법: 'document.recipients[].auth.password'
+            // OPA2_030처럼 배열 직접 전송 시 최상위 키를 '[].필드명' 형태로 표기
+            // note 필드가 하나라도 있으면 해당 테이블에 비고 컬럼이 자동으로 표시됨
         ],
         responseFields: [
-            { key: '필드명', type: '...', description: '설명' }
+            { key: '필드명', type: '...', description: '설명', note: '비고 (선택)' }
         ],
         errorCodes: [
             { code: '에러코드', message: '에러 메시지', description: '설명' }
@@ -234,8 +262,11 @@ const API_SPECS = {
     },
 };
 ```
-- 신규 API 명세 추가 시 `API_SPECS`에 opaCode 키로 항목 추가
+- 신규 API 명세 추가 시 `assets/js/openapi/api-specs.js` 의 `API_SPECS`에 opaCode 키로 항목 추가
 - `API_LIST`에 해당 opaCode가 없으면 명세 버튼 클릭 시 빈 화면 표시
+- **api-specs.js 정합성 원칙**: `API_SPECS`의 queryParams/requestBody/responseFields는 `API_LIST`의 실제 데이터(queryParams, defaultBody, exampleResponse)와 일치해야 함
+  - 신규 명세 추가 시 반드시 `API_LIST` 실제 구조를 기준으로 작성할 것
+  - 2026-03-24 기준 OPA2_001~031 전수 검토 및 정정 완료 (v1.9 가이드 + api-list.js 기준)
 
 ### 특수 인증 처리 API
 - **OPA2_007 새 문서 작성 (외부)**: `requiresAuth: false`
@@ -246,6 +277,7 @@ const API_SPECS = {
 ### API_LIST 배치 규칙
 - 신규 API는 **OPA2 번호 순서**에 맞는 위치에 삽입 (사이드바 표시 순서와 직결)
 - 같은 그룹 내에서 번호가 오름차순이 되도록 유지
+- 편집 파일: `assets/js/openapi/api-list.js`
 
 ### 예시 응답 현황 (전체 API)
 공통 실패 응답 (OPA2_001, OPA2_007 제외한 전체 API에 포함):

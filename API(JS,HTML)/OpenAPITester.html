@@ -654,6 +654,7 @@
         .spec-required-y { background: #fef2f2; color: #e74c3c; border: 1px solid #fadbd8; }
         .spec-required-n { background: #f1f5f9; color: #a0aec0; border: 1px solid #e2e8f0; }
         .spec-desc { color: #4a5568; line-height: 1.5; }
+        .spec-note { color: #718096; font-size: 0.8rem; line-height: 1.4; font-style: italic; }
 
         .spec-error-code {
             font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.8rem;
@@ -1049,8 +1050,12 @@
     </div>
 </div>
 
-<!-- API 데이터 및 앱 로직은 ./js/OpenAPITester.js 에서 관리합니다 -->
-<script src="/assets/js/OpenAPITester.js"></script>
+<!-- OpenAPITester 분할 모듈 (로드 순서 중요) -->
+<script src="/assets/js/openapi/api-list.js"></script>
+<script src="/assets/js/openapi/api-specs.js"></script>
+<script src="/assets/js/openapi/state.js"></script>
+<script src="/assets/js/openapi/ui.js"></script>
+<script src="/assets/js/openapi/init.js"></script>
 
 </body>
 </html>

@@ -61,7 +61,13 @@ ProjectImprove/
 ├── certs/                        # SSL/TLS 인증서
 ├── assets/js/
 │   ├── ApiAutoTestStart.js       # API 자동화 테스트 로직
-│   └── OpenAPITester.js          # ★ OpenAPITester 전용 JS (API_LIST 데이터 + 앱 로직)
+│   ├── OpenAPITester.js          # 원본 보존용 (롤백 시 참고) — 직접 편집 금지
+│   └── openapi/                  # ★ OpenAPITester 분할 모듈 (로드 순서 중요)
+│       ├── api-list.js           #   API_LIST 데이터 — 신규 API 추가/수정 시 편집
+│       ├── api-specs.js          #   API_SPECS 명세 데이터 — 명세 추가 시 편집
+│       ├── state.js              #   DOMAINS, state, 공통 헬퍼
+│       ├── ui.js                 #   UI 로직 전반
+│       └── init.js               #   탭 이벤트, 초기화, 명세 모달
 ├── index.html                    # 메인 허브 페이지
 ├── package.json
 └── vercel.json                   # Vercel 라우팅 설정
@@ -160,9 +166,12 @@ vercel --prod
 
 ## Open API Tester (Beta)
 
-`API(JS,HTML)/OpenAPITester.html` + `assets/js/OpenAPITester.js`
+`API(JS,HTML)/OpenAPITester.html` + `assets/js/openapi/` (분할 모듈)
 
 Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서 직접 테스트할 수 있는 도구입니다.
+
+> **모듈 구조**: 기존 단일 파일(`OpenAPITester.js`)을 5개 파일로 분할하여 유지보수성 개선.
+> 로드 순서: `api-list.js` → `api-specs.js` → `state.js` → `ui.js` → `init.js`
 
 ### 주요 기능
 
@@ -178,7 +187,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | 예시 응답 | 성공/실패/조회결과없음 응답 구조 미리보기 (타입 표현) |
 | Send and Download | 응답을 파일로 강제 저장 (Content-Type 기반 확장자 자동 결정) |
 | Code Snippet | cURL / JS(fetch) / JS(jQuery) / Python / Java 코드 자동 생성 |
-| **API 명세** | 각 API의 Request/Response 필드 명세 조회 모달 (헤더·파라미터·Body·응답 필드·에러 코드) |
+| **API 명세** | 각 API의 Request/Response 필드 명세 조회 모달 — 헤더·Path/Query 파라미터·Body·응답 필드·에러 코드, **비고 컬럼** 지원 (`note` 필드가 있는 경우 자동 표시) |
 | 사용 가이드 | 5단계 스텝 카드 형식 사용법 안내 모달 |
 
 ### 등록된 API (OPA2_XXX) 및 예시 응답 현황
@@ -192,6 +201,9 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | 그룹 | OPA2_017~020 | OPA2_017~020 성공+실패 완비 |
 | 회사 도장 | OPA2_025~029 | OPA2_025~029 성공+실패 완비 |
 | 회사 기타 | OPA2_037 | 실패(공통) |
+
+> **명세 정합성**: API 명세(`api-specs.js`)는 2026-03-24 기준 OPA2_001~031 전수 검토 및 정정 완료
+> (eformsign Open API 가이드 v1.9 + `api-list.js` 실제 데이터 기준 교차 검증)
 
 ---
 
