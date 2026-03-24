@@ -922,6 +922,143 @@ const API_SPECS = {
             { code: '4000180', message: 'The document is not in a draft state.', description: '문서가 초안 상태가 아님' },
         ],
     },
+    'OPA2_037': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'input', type: 'object', required: true, description: '요청 데이터 래퍼' },
+            { key: 'input.send_pdfs', type: 'array', required: true, description: '다중 pdf 전송 정보 목록. 문서 Object를 item으로 가진 Array' },
+            { key: 'input.send_pdfs[].document_id', type: 'string', required: true, description: '문서 ID' },
+            { key: 'input.send_pdfs[].pdf_send_infos[]', type: 'array', required: true, description: '해당 문서 ID의 pdf 전송 정보 목록' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].name', type: 'string', required: false, description: '수신자 이름' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].method', type: 'string', required: true, description: '수신 방법', note: 'sms / email' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].method_info', type: 'string', required: true, description: '수신자 아이디 / 전화번호', note: 'method가 sms이면 전화번호, email이면 이메일 아이디' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].code', type: 'string', required: false, description: '수신자 국제 번호', note: 'method가 sms일 경우 해당 (예: +82)' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].is_use_alim_talk', type: 'boolean', required: false, description: '알림톡 사용 여부', note: 'method가 sms이면서 true인 경우 카카오톡으로 전송' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option', type: 'object', required: false, description: 'PDF 전송 옵션' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.auth_pwd', type: 'string', required: false, description: '인증 비밀번호' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.auth_hint', type: 'string', required: false, description: '인증 비밀번호 힌트' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.use_mobile_auth', type: 'boolean', required: false, description: '휴대폰 본인 인증 확인 여부' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.use_email_sms_auth', type: 'boolean', required: false, description: '이메일, SMS 인증 사용 여부' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.attach_audit_pdf', type: 'boolean', required: false, description: '감사추적증명서 첨부 여부' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.use_attach_link', type: 'boolean', required: false, description: '첨부 타입 Link 사용 여부', note: 'false인 경우 메일에 파일 첨부 방식으로 전달' },
+        ],
+        responseFields: [
+            { key: 'result', type: 'object', description: '결과 (빈 객체)' },
+            { key: 'code', type: 'string', description: '응답 코드 (-1: 성공)' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 상태 코드' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000024', message: 'Setting is Missing', description: '설정 누락' },
+            { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서' },
+            { code: '4000081', message: 'Invalid document type.', description: '유효하지 않은 문서 유형' },
+        ],
+    },
+    'OPA2_040': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'document_ids', type: 'array', required: true, description: '다운로드 받을 문서 ID 목록' },
+            { key: 'file_type', type: 'array', required: true, description: '다운로드 받을 파일 타입', note: '"document": 문서 PDF / "audit_trail": 감사추적증명서 PDF' },
+            { key: 'zip_password', type: 'string', required: false, description: 'ZIP 파일 압축 해제 비밀번호', note: '입력하지 않으면 압축 해제 시 비밀번호 없음' },
+            { key: 'file_name', type: 'string', required: false, description: 'ZIP 파일 이름', note: '입력하지 않으면 기본 이름으로 다운로드' },
+            { key: 'use_simple_file_name', type: 'boolean', required: false, description: '문서 이름으로 PDF 파일 이름 설정', note: '입력하지 않으면 기본 이름으로 PDF 다운로드' },
+        ],
+        responseFields: [],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4030001', message: 'invalid api key', description: 'API 키 오류' },
+        ],
+    },
+    'OPA2_041': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'output_type', type: 'string', required: false, description: '반환 타입', note: '1: PNG 파일 반환 / 미입력 또는 다른 값: base64로 반환' },
+        ],
+        requestBody: [],
+        responseFields: [],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000087', message: 'No file exists.', description: '파일이 존재하지 않음' },
+        ],
+    },
+    'OPA2_043': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'input', type: 'object', required: false, description: '요청 데이터 래퍼' },
+            { key: 'input.executor_id', type: 'string', required: false, description: '통합결재 승인 계정 ID' },
+            { key: 'input.executor_name', type: 'string', required: false, description: '통합결재 승인 계정 이름' },
+            { key: 'input.comment', type: 'string', required: false, description: '통합결재 승인 코멘트' },
+        ],
+        responseFields: [
+            { key: 'document_title', type: 'string', description: '문서 제목' },
+            { key: 'document_id', type: 'string', description: '문서 ID' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000029', message: 'This document has already proceeded.', description: '이미 승인이 진행된 문서' },
+        ],
+    },
+    'OPA2_045': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'step_seq', type: 'array', required: false, description: '완료 토큰 연장이 필요한 step_seq 목록', note: '빈 배열 또는 미입력 시 모든 step_seq에 대해 연장 / 연장 기한: API 요청일로부터 15일' },
+        ],
+        responseFields: [
+            { key: 'complete_tokens', type: 'array', description: '완료 토큰 정보 목록' },
+            { key: 'complete_tokens[].complete_token_id', type: 'string', description: '완료 토큰 ID' },
+            { key: 'complete_tokens[].step_seq', type: 'number', description: '해당 완료 토큰을 갖는 step_seq' },
+            { key: 'complete_tokens[].expired_date', type: 'number', description: '해당 완료 토큰의 만료일 (Unix Epoch ms)' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000036', message: 'this document is not completed.', description: '완료 상태가 아닌 문서' },
+            { code: '4000036', message: 'Failed to retrieve the document information before the deletion request.', description: '문서 정보 조회 실패' },
+        ],
+    },
+    'OPA2_044': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'executor_id', type: 'string', required: false, description: '통합결재 반려 계정 ID' },
+            { key: 'executor_name', type: 'string', required: false, description: '통합결재 반려 계정 이름' },
+            { key: 'comment', type: 'string', required: false, description: '통합결재 반려 코멘트' },
+        ],
+        responseFields: [
+            { key: 'document_title', type: 'string', description: '문서 제목' },
+            { key: 'document_id', type: 'string', description: '문서 ID' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000029', message: 'This document has already proceeded.', description: '이미 처리된 문서' },
+        ],
+    },
     'OPA2_042': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
@@ -930,12 +1067,22 @@ const API_SPECS = {
         queryParams: [],
         requestBody: [
             { key: 'input', type: 'object', required: true, description: '취소 요청 정보' },
-            { key: 'input.document_ids', type: 'array', required: true, description: '취소할 문서 ID 목록' },
+            { key: 'input.document_ids', type: 'array', required: true, description: '취소할 문서 ID를 String 형태로 담고 있는 Array' },
+            { key: 'input.comment', type: 'string', required: false, description: '취소 문서에 남길 코멘트' },
         ],
-        responseFields: [],
+        responseFields: [
+            { key: 'result', type: 'object', description: '처리 결과' },
+            { key: 'result.success_result', type: 'array', description: '취소 완료된 document_id를 담은 Array' },
+            { key: 'result.fail_result', type: 'array', description: '취소 실패 정보를 담은 Array' },
+            { key: 'result.fail_result[].document_id', type: 'string', description: '취소에 실패한 document_id' },
+            { key: 'result.fail_result[].code', type: 'string', description: '에러 코드' },
+            { key: 'result.fail_result[].message', type: 'string', description: '에러 메시지' },
+        ],
         errorCodes: [
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
             { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000166', message: 'This document has already been voided.', description: '이미 취소된 문서 (HTTP 200, fail_result에 포함)' },
+            { code: '4000169', message: 'You have no permission to void the document.', description: '취소 권한 없음 (HTTP 200, fail_result에 포함)' },
         ],
     },
 };

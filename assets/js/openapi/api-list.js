@@ -982,13 +982,90 @@ const API_LIST = [
         name: '문서 취소',
         method: 'POST',
         path: '/v2.0/api/documents/cancel',
-        description: '진행 중인 문서를 취소합니다.',
+        description: '진행 중인 문서를 취소합니다. 취소 권한: 대표 관리자, 문서 취소 권한이 부여된 문서 관리자, 문서 작성자.',
         requiresAuth: true,
         pathParams: [],
         queryParams: [],
-        defaultBody: { input: { document_ids: [] } },
+        defaultBody: {
+            input: {
+                document_ids: [''],
+                comment: ''
+            }
+        },
         exampleResponse: {
+            success: {
+                "result": {
+                    "success_result": ["string"],
+                    "fail_result": []
+                }
+            },
             errors: [
+                { title: '이미 취소된 문서 포함 시 (4000166, HTTP 200)', body: { "result": { "success_result": [], "fail_result": [ { "document_id": "string", "code": "4000166", "message": "This document has already been voided." } ] } } },
+                { title: '취소 권한 없는 문서 포함 시 (4000169, HTTP 200)', body: { "result": { "success_result": ["string"], "fail_result": [ { "document_id": "string", "code": "4000169", "message": "You have no permission to void the document." } ] } } },
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+            ]
+        }
+    },
+    {
+        id: 'doc_integrated_approval',
+        group: '문서',
+        groupIcon: 'fa-file-lines',
+        opaCode: 'OPA2_043',
+        name: '통합 결재 승인',
+        method: 'POST',
+        path: '/v2.0/api/documents/{document_id}/send_external_approval',
+        description: '통합 결재 중인 문서를 승인하여 다음 단계로 진행합니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'document_id', description: '문서 ID', required: true, default: '' }
+        ],
+        queryParams: [],
+        defaultBody: {
+            input: {
+                executor_id: '',
+                executor_name: '',
+                comment: ''
+            }
+        },
+        exampleResponse: {
+            success: {
+                "document_title": "string",
+                "document_id": "string"
+            },
+            errors: [
+                { title: '이미 승인된 문서 (4000029)', body: { "code": "4000029", "ErrorMessage": "This document has already proceeded." } },
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+            ]
+        }
+    },
+    {
+        id: 'doc_integrated_decline',
+        group: '문서',
+        groupIcon: 'fa-file-lines',
+        opaCode: 'OPA2_044',
+        name: '통합 결재 반려',
+        method: 'POST',
+        path: '/v2.0/api/documents/{document_id}/decline_external_approval',
+        description: '통합 결재 중인 문서를 반려하여 이전 상태로 되돌립니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'document_id', description: '문서 ID', required: true, default: '' }
+        ],
+        queryParams: [],
+        defaultBody: {
+            executor_id: '',
+            executor_name: '',
+            comment: ''
+        },
+        exampleResponse: {
+            success: {
+                "document_title": "string",
+                "document_id": "string"
+            },
+            errors: [
+                { title: '이미 처리된 문서 (4000029)', body: { "code": "4000029", "ErrorMessage": "This document has already proceeded." } },
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
             ]
@@ -1006,11 +1083,19 @@ const API_LIST = [
         requiresAuth: true,
         pathParams: [],
         queryParams: [],
-        defaultBody: { document_ids: [], file_type: ['document', 'audit_trail'] },
+        defaultBody: {
+            document_ids: [''],
+            file_type: [''],
+            zip_password: '',
+            file_name: '',
+            use_simple_file_name: null
+        },
         exampleResponse: {
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: 'API 키 오류 (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } },
+                { title: '존재하지 않는 문서 포함 시 (HTTP 200)', body: { "{document_id}": "The document does not exist." } }
             ]
         }
     },
@@ -1022,7 +1107,7 @@ const API_LIST = [
         name: '완료 토큰 기한 연장',
         method: 'POST',
         path: '/v2.0/api/documents/{document_id}/refresh_complete_token',
-        description: '완료된 문서의 외부 공유 토큰 유효기간을 연장합니다.',
+        description: '완료된 문서의 step_seq에 따라 완료 토큰 기한을 연장합니다. 연장 기한은 API 요청일로부터 15일입니다.',
         requiresAuth: true,
         pathParams: [
             { key: 'document_id', description: '완료된 문서 ID', required: true, default: '' }
@@ -1030,7 +1115,18 @@ const API_LIST = [
         queryParams: [],
         defaultBody: { step_seq: [] },
         exampleResponse: {
+            success: {
+                "complete_tokens": [
+                    {
+                        "complete_token_id": "string",
+                        "step_seq": "number",
+                        "expired_date": "number"
+                    }
+                ]
+            },
             errors: [
+                { title: '완료 상태가 아닌 문서 (4000036)', body: { "code": "4000036", "ErrorMessage": "this document is not completed." } },
+                { title: '문서 정보 조회 실패 (4000036)', body: { "code": "4000036", "ErrorMessage": "Failed to retrieve the document information before the deletion request." } },
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
             ]
@@ -1138,6 +1234,32 @@ const API_LIST = [
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
                 { title: '템플릿 없음 (4000046)', body: { "code": "4000046", "ErrorMessage": "There is no template." } },
                 { title: '접근 권한 없음 (4030009)', body: { "code": "4030009", "ErrorMessage": "You do not have access." } }
+            ]
+        }
+    },
+
+    {
+        id: 'template_image_download',
+        group: '템플릿',
+        groupIcon: 'fa-file-invoice',
+        opaCode: 'OPA2_041',
+        name: '템플릿 이미지 다운로드',
+        method: 'GET',
+        path: '/v2.0/api/template_image/{template_image_id}',
+        description: '템플릿 이미지를 다운로드합니다. template_image_id는 템플릿 정보 조회 API의 form_image_id 필드 값입니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'template_image_id', description: '템플릿 이미지 ID (템플릿 정보 조회의 form_image_id)', required: true, default: '' }
+        ],
+        queryParams: [
+            { key: 'output_type', description: '반환 타입. 1이면 PNG 파일, 미입력 또는 다른 값이면 base64로 반환', required: false, default: '' }
+        ],
+        defaultBody: null,
+        exampleResponse: {
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '파일 없음 (4000087)', body: { "code": "4000087", "ErrorMessage": "No file exists." } }
             ]
         }
     },
@@ -1796,16 +1918,39 @@ const API_LIST = [
                     {
                         document_id: '',
                         pdf_send_infos: [
-                            { name: '', method: 'email', method_info: '', sms_option: {} }
+                            {
+                                name: '',
+                                method: '',
+                                method_info: '',
+                                code: '',
+                                is_use_alim_talk: null,
+                                send_pdf_option: {
+                                    auth_pwd: '',
+                                    auth_hint: '',
+                                    use_mobile_auth: null,
+                                    use_email_sms_auth: null,
+                                    attach_audit_pdf: null,
+                                    use_attach_link: null
+                                }
+                            }
                         ]
                     }
                 ]
             }
         },
         exampleResponse: {
+            success: {
+                "result": {},
+                "code": "string",
+                "message": "string",
+                "status": "string"
+            },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '설정 누락 (4000024)', body: { "code": "4000024", "ErrorMessage": "Setting is Missing" } },
+                { title: '존재하지 않는 문서 (4000004)', body: { "code": "4000004", "ErrorMessage": "The document does not exist." } },
+                { title: '유효하지 않은 문서 유형 (4000081)', body: { "code": "4000081", "ErrorMessage": "Invalid document type." } }
             ]
         }
     },

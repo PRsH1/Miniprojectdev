@@ -201,7 +201,7 @@ const DOMAINS = {
   - **Request 탭**: 요청 헤더, Path 파라미터, Query 파라미터, Request Body 필드 (타입·필수 여부·설명·**비고**)
   - **Response 탭**: 응답 필드 목록 (타입·설명·**비고**), 에러 코드 목록
   - 데이터 소스: `assets/js/openapi/api-specs.js` 의 `const API_SPECS` 객체 (opaCode 키로 조회)
-  - 현재 명세 등록 범위: OPA2_001~OPA2_031 (29개)
+  - 현재 명세 등록 범위: OPA2_001~OPA2_031 (29개) + OPA2_037, OPA2_040~OPA2_045 (7개) = 총 36개
   - **비고(note) 컬럼**: 각 테이블에서 `note` 필드가 하나라도 있으면 비고 컬럼이 자동으로 표시됨 (없으면 숨김)
 - **사용 가이드 모달**: 헤더 우측 "사용 가이드" 버튼 → 5단계 스텝 카드 형식 안내
   - DELETE 메서드도 defaultBody가 있으면 Body 탭 자동 표시
@@ -267,6 +267,7 @@ const API_SPECS = {
 - **api-specs.js 정합성 원칙**: `API_SPECS`의 queryParams/requestBody/responseFields는 `API_LIST`의 실제 데이터(queryParams, defaultBody, exampleResponse)와 일치해야 함
   - 신규 명세 추가 시 반드시 `API_LIST` 실제 구조를 기준으로 작성할 것
   - 2026-03-24 기준 OPA2_001~031 전수 검토 및 정정 완료 (v1.9 가이드 + api-list.js 기준)
+  - 2026-03-24 기준 OPA2_037, OPA2_040~OPA2_045 신규 명세 추가 완료 (별도 PDF 스펙 기준)
 
 ### 특수 인증 처리 API
 - **OPA2_007 새 문서 작성 (외부)**: `requiresAuth: false`
@@ -315,7 +316,13 @@ const API_SPECS = {
 | OPA2_029 회사 도장 목록 조회 | ✅ | ✅ 2건 |
 | OPA2_030 멤버 일괄 추가 | ✅ | ✅ 3건 |
 | OPA2_031 초안 문서 다음 단계 전송 | ✅ | ✅ 4건 |
-| OPA2_037, 040, 042, 045 (나머지) | — | ✅ 2건 (공통) |
+| OPA2_037 일괄 완료 문서 PDF 전송 | ✅ | ✅ 5건 |
+| OPA2_040 문서 파일 일괄 다운로드 | — | ✅ 4건 |
+| OPA2_041 템플릿 이미지 다운로드 | — | ✅ 3건 |
+| OPA2_042 문서 취소 | ✅ | ✅ 4건 |
+| OPA2_043 통합 결재 승인 | ✅ | ✅ 3건 |
+| OPA2_044 통합 결재 반려 | ✅ | ✅ 3건 |
+| OPA2_045 완료 토큰 기한 연장 | ✅ | ✅ 4건 |
 
 ---
 
