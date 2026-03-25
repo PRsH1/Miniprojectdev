@@ -1,52 +1,90 @@
 // ──────────────────────────────────────────────────────────────────────────
 // SIDEBAR
 // ──────────────────────────────────────────────────────────────────────────
+let currentViewMode = 'group';
+
 function buildSidebar(filter = '') {
     const $list = $('#sidebarList').empty();
-    const groups = {};
-    API_LIST.forEach(ep => {
-        if (!groups[ep.group]) groups[ep.group] = { icon: ep.groupIcon, items: [] };
-        groups[ep.group].items.push(ep);
-    });
+    const q = filter.toLowerCase();
+    const filtered = q
+        ? API_LIST.filter(ep => ep.name.toLowerCase().includes(q) || ep.path.toLowerCase().includes(q) || (ep.opaCode || '').toLowerCase().includes(q))
+        : API_LIST;
 
-    Object.entries(groups).forEach(([groupName, { icon, items }]) => {
-        const filtered = filter
-            ? items.filter(ep => ep.name.toLowerCase().includes(filter.toLowerCase()) || ep.path.toLowerCase().includes(filter.toLowerCase()))
-            : items;
-        if (!filtered.length) return;
-
-        const groupId = 'group-' + groupName.replace(/\s+/g, '-');
-        const $group = $('<div class="api-group">');
-        const $header = $(`
-            <div class="api-group-header" data-group="${groupId}">
-                <i class="fa-solid ${icon} fa-xs"></i>
-                ${groupName}
-                <i class="fa-solid fa-chevron-down chevron fa-xs"></i>
-            </div>`);
-        const $endpoints = $(`<div class="api-group-endpoints" id="${groupId}">`);
-
+    if (currentViewMode === 'group') {
+        const groups = {};
         filtered.forEach(ep => {
-            const opaBadge = ep.opaCode
-                ? `<span class="opa-code">${ep.opaCode}</span>`
-                : '';
+            if (!groups[ep.group]) groups[ep.group] = { icon: ep.groupIcon, items: [] };
+            groups[ep.group].items.push(ep);
+        });
+        Object.entries(groups).forEach(([groupName, { icon, items }]) => {
+            _appendGroup($list, groupName, icon, items);
+        });
+
+    } else if (currentViewMode === 'code') {
+        const sorted = [...filtered].sort((a, b) => {
+            const na = a.opaCode ? parseInt(a.opaCode.replace('OPA2_', ''), 10) : 99999;
+            const nb = b.opaCode ? parseInt(b.opaCode.replace('OPA2_', ''), 10) : 99999;
+            return na - nb;
+        });
+        sorted.forEach(ep => {
+            const opaBadge = ep.opaCode ? `<span class="opa-code">${ep.opaCode}</span>` : '';
             const $item = $(`
-                <div class="endpoint-item" data-id="${ep.id}">
+                <div class="endpoint-item endpoint-item--flat" data-id="${ep.id}">
                     ${methodBadge(ep.method)}
                     ${opaBadge}
                     <span class="ep-name">${ep.name}</span>
                 </div>`);
             $item.on('click', () => selectEndpoint(ep.id));
-            $endpoints.append($item);
+            $list.append($item);
         });
 
-        $header.on('click', function() {
-            $(this).toggleClass('collapsed');
-            $endpoints.toggleClass('hidden');
+    } else if (currentViewMode === 'method') {
+        const methodOrder = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+        const methodIcon  = { GET: 'fa-magnifying-glass', POST: 'fa-paper-plane', PUT: 'fa-pen', PATCH: 'fa-pen-nib', DELETE: 'fa-trash' };
+        const groups = {};
+        filtered.forEach(ep => {
+            if (!groups[ep.method]) groups[ep.method] = [];
+            groups[ep.method].push(ep);
         });
+        [...methodOrder, ...Object.keys(groups).filter(m => !methodOrder.includes(m))].forEach(method => {
+            if (!groups[method]?.length) return;
+            _appendGroup($list, method, methodIcon[method] || 'fa-circle', groups[method]);
+        });
+    }
 
-        $group.append($header, $endpoints);
-        $list.append($group);
+    // 선택된 항목 하이라이트 복원
+    if (state.currentEndpoint) {
+        $(`.endpoint-item[data-id="${state.currentEndpoint.id}"]`).addClass('active');
+    }
+}
+
+function _appendGroup($list, groupName, icon, items) {
+    const groupId = 'group-' + groupName.replace(/\s+/g, '-');
+    const $group = $('<div class="api-group">');
+    const $header = $(`
+        <div class="api-group-header" data-group="${groupId}">
+            <i class="fa-solid ${icon} fa-xs"></i>
+            ${groupName}
+            <i class="fa-solid fa-chevron-down chevron fa-xs"></i>
+        </div>`);
+    const $endpoints = $(`<div class="api-group-endpoints" id="${groupId}">`);
+    items.forEach(ep => {
+        const opaBadge = ep.opaCode ? `<span class="opa-code">${ep.opaCode}</span>` : '';
+        const $item = $(`
+            <div class="endpoint-item" data-id="${ep.id}">
+                ${methodBadge(ep.method)}
+                ${opaBadge}
+                <span class="ep-name">${ep.name}</span>
+            </div>`);
+        $item.on('click', () => selectEndpoint(ep.id));
+        $endpoints.append($item);
     });
+    $header.on('click', function() {
+        $(this).toggleClass('collapsed');
+        $endpoints.toggleClass('hidden');
+    });
+    $group.append($header, $endpoints);
+    $list.append($group);
 }
 
 function selectEndpoint(id) {
@@ -111,7 +149,7 @@ function selectEndpoint(id) {
 function updateUrlPreview() {
     const ep = state.currentEndpoint;
     if (!ep) return;
-    const base = getBaseUrl();
+    const base = (ep.saasBaseUrl && $('#envSelect').val() === 'op_saas') ? ep.saasBaseUrl : getBaseUrl();
     let path = ep.path;
 
     // Fill path params from pathBody
@@ -127,7 +165,9 @@ function updateUrlPreview() {
         const enabled = $(this).find('.param-enabled').is(':checked');
         const key = $(this).find('.param-key').val();
         const val = $(this).find('.param-val').val();
-        if (enabled && key && val) qp.push(`${encodeURIComponent(key)}=${encodeURIComponent(val)}`);
+        // URL 표시용: 공백·제어문자 등 필수 인코딩만 적용, ,/@/: 등은 그대로 표시
+        const encodeForDisplay = v => encodeURIComponent(v).replace(/%2C/gi, ',').replace(/%40/gi, '@').replace(/%3A/gi, ':').replace(/%2F/gi, '/');
+        if (enabled && key && val) qp.push(`${encodeForDisplay(key)}=${encodeForDisplay(val)}`);
     });
 
     let url = base + path;

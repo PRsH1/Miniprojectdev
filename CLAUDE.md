@@ -183,6 +183,8 @@ const DOMAINS = {
 
 ### 구현된 기능
 - 좌측 사이드바: API 그룹별 목록, OPA2_XXX 번호 배지, 검색, 너비 드래그 조절
+  - **정렬 방식 토글**: 그룹별 / 코드순(OPA2 번호 오름차순 플랫 리스트) / Method별(GET→POST→PUT→PATCH→DELETE) 3가지 보기 지원
+  - 현재 선택 모드는 `ui.js`의 `currentViewMode` 변수로 관리 (`'group'` | `'code'` | `'method'`)
 - 상단 인증 패널: Signature/Bearer 방식 선택, Access Token 발급
 - Request Builder: **Path / Query / Headers / Body** 4개 탭, 높이 드래그 조절
   - **Path 탭**: URL 경로 파라미터 입력 (키 readonly, 배지 = 파라미터 존재 개수)
@@ -201,11 +203,13 @@ const DOMAINS = {
   - **Request 탭**: 요청 헤더, Path 파라미터, Query 파라미터, Request Body 필드 (타입·필수 여부·설명·**비고**)
   - **Response 탭**: 응답 필드 목록 (타입·설명·**비고**), 에러 코드 목록
   - 데이터 소스: `assets/js/openapi/api-specs.js` 의 `const API_SPECS` 객체 (opaCode 키로 조회)
-  - 현재 명세 등록 범위: OPA2_001~OPA2_031 (29개) + OPA2_037, OPA2_040~OPA2_045 (7개) = 총 36개
+  - 현재 명세 등록 범위: OPA2_001~OPA2_031 (29개) + OPA2_037, OPA2_040~OPA2_049 (11개) = 총 40개
   - **비고(note) 컬럼**: 각 테이블에서 `note` 필드가 하나라도 있으면 비고 컬럼이 자동으로 표시됨 (없으면 숨김)
 - **사용 가이드 모달**: 헤더 우측 "사용 가이드" 버튼 → 5단계 스텝 카드 형식 안내
   - DELETE 메서드도 defaultBody가 있으면 Body 탭 자동 표시
 - **DELETE with Body**: `sendRequest`에서 body 포함 메서드에 `DELETE` 포함 — Body가 있는 DELETE API(OPA2_009, OPA2_020 등)에서 payload가 정상 전송됨
+- **URL 표시 인코딩**: Query String 빌드 시 `,` `@` `:` `/` 는 인코딩하지 않고 그대로 표시 (`encodeForDisplay` 함수, `ui.js` `updateUrlPreview` 내부)
+- **OPA2_001 SaaS 전용 URL**: `saasBaseUrl: 'https://api.eformsign.com'` 필드로 op_saas 환경에서만 해당 URL 사용, gov·커스텀은 기존 도메인 그대로
 
 ### API 데이터 구조 (`API_LIST`)
 ```javascript
@@ -216,6 +220,7 @@ const DOMAINS = {
     opaCode: 'OPA2_XXX',       // null이면 배지 없음
     name: 'API 이름',
     method: 'GET|POST|PUT|PATCH|DELETE',
+    saasBaseUrl: 'https://...',  // 선택적. op_saas 환경에서만 이 도메인 사용 (OPA2_001 등 예외 URL)
     path: '/v2.0/api/path/{path_param}',
     description: '설명',
     requiresAuth: true,         // true → Authorization 헤더에 Access Token 자동 삽입
@@ -268,12 +273,14 @@ const API_SPECS = {
   - 신규 명세 추가 시 반드시 `API_LIST` 실제 구조를 기준으로 작성할 것
   - 2026-03-24 기준 OPA2_001~031 전수 검토 및 정정 완료 (v1.9 가이드 + api-list.js 기준)
   - 2026-03-24 기준 OPA2_037, OPA2_040~OPA2_045 신규 명세 추가 완료 (별도 PDF 스펙 기준)
+  - 2026-03-25 기준 OPA2_046~OPA2_049 신규 명세 추가 완료 (v1.9 가이드 + 별도 PDF 스펙 기준)
 
 ### 특수 인증 처리 API
-- **OPA2_007 새 문서 작성 (외부)**: `requiresAuth: false`
+- **OPA2_007 새 문서 작성 (외부)** / **OPA2_048 외부자 반려**: `requiresAuth: false`
   - Access Token 대신 Company API Key를 Base64 인코딩하여 Bearer 토큰으로 사용
   - `defaultHeaders`에 `Authorization: Bearer {base64_encoded_api_key}` 플레이스홀더 제공
   - 사용자가 직접 Company API Key를 입력해야 함
+  - 사용 가이드 모달 Tip에도 해당 API 목록 명시
 
 ### API_LIST 배치 규칙
 - 신규 API는 **OPA2 번호 순서**에 맞는 위치에 삽입 (사이드바 표시 순서와 직결)
@@ -281,7 +288,7 @@ const API_SPECS = {
 - 편집 파일: `assets/js/openapi/api-list.js`
 
 ### 예시 응답 현황 (전체 API)
-공통 실패 응답 (OPA2_001, OPA2_007 제외한 전체 API에 포함):
+공통 실패 응답 (OPA2_001, OPA2_007, OPA2_048 제외한 전체 API에 포함):
 - `4010001` 유효하지 않거나 만료된 토큰
 - `4010006` Refresh Token 만료
 
@@ -323,6 +330,10 @@ const API_SPECS = {
 | OPA2_043 통합 결재 승인 | ✅ | ✅ 3건 |
 | OPA2_044 통합 결재 반려 | ✅ | ✅ 3건 |
 | OPA2_045 완료 토큰 기한 연장 | ✅ | ✅ 4건 |
+| OPA2_046 이용현황 조회 | ✅ | ✅ 2건 |
+| OPA2_047 내부자 반려 | ✅ | ✅ 3건 |
+| OPA2_048 외부자 반려 | ✅ | ✅ 3건 (API Key 방식) |
+| OPA2_049 문서 관리 조건 목록 조회 | ✅ | ✅ 2건 |
 
 ---
 

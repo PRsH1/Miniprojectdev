@@ -1085,4 +1085,146 @@ const API_SPECS = {
             { code: '4000169', message: 'You have no permission to void the document.', description: '취소 권한 없음 (HTTP 200, fail_result에 포함)' },
         ],
     },
+
+    'OPA2_049': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer {access_token}' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'skip', type: 'string', required: false, description: '건너뛸 문서 관리자 수', note: 'limit=20 기준: skip=0(1page), 20(2page), 40(3page)' },
+            { key: 'limit', type: 'string', required: false, description: '한 번에 표시할 문서 관리자 수', note: '페이징 용' },
+            { key: 'search_keyword', type: 'string', required: false, description: '검색 키워드 (문서 관리자 ID, 이름 등)' },
+        ],
+        responseFields: [
+            { key: 'result', type: 'object', description: '결과 객체' },
+            { key: 'result.total_rows', type: 'number', description: '총 문서 관리자 수' },
+            { key: 'result.document_manager_settings', type: 'array', description: '문서 관리자 목록' },
+            { key: 'result.document_manager_settings[].manager_type', type: 'string', description: '문서 관리자 타입', note: 'member(멤버), group(그룹)' },
+            { key: 'result.document_manager_settings[].manager_id', type: 'string', description: '문서 관리자 ID' },
+            { key: 'result.document_manager_settings[].manager_account_id', type: 'string', description: '문서 관리자 account ID', note: '그룹일 경우 빈 값' },
+            { key: 'result.document_manager_settings[].manager_name', type: 'string', description: '문서 관리자 이름' },
+            { key: 'result.document_manager_settings[].document_roles', type: 'array', description: '관리 문서 조건 목록' },
+            { key: 'result.document_manager_settings[].document_roles[].deletable', type: 'boolean', description: '제거 관리 권한 여부' },
+            { key: 'result.document_manager_settings[].document_roles[].revokable', type: 'boolean', description: '취소 관리 권한 여부' },
+            { key: 'result.document_manager_settings[].document_roles[].document_creators', type: 'array', description: '작성자 목록', note: '여러 작성자 설정 가능' },
+            { key: 'result.document_manager_settings[].document_roles[].document_creators[].creator_type', type: 'string', description: '작성자 타입', note: 'everyone(전체 멤버), member(멤버), group(그룹)' },
+            { key: 'result.document_manager_settings[].document_roles[].document_creators[].creator_id', type: 'string', description: '작성자 ID', note: '전체 멤버일 경우 빈 값' },
+            { key: 'result.document_manager_settings[].document_roles[].document_creators[].creator_name', type: 'string', description: '작성자 이름' },
+            { key: 'result.document_manager_settings[].document_roles[].document_creators[].creator_account_id', type: 'string', description: '작성자 account ID' },
+            { key: 'result.document_manager_settings[].document_roles[].document_creators[].creator_department', type: 'string', description: '작성자 부서' },
+            { key: 'result.document_manager_settings[].document_roles[].document_types', type: 'array', description: '문서 종류 목록', note: '여러 문서 설정 가능' },
+            { key: 'result.document_manager_settings[].document_roles[].document_types[].form_type', type: 'string', description: '문서 타입', note: 'all_document(전체 문서), all_form(전체 템플릿), unstructured_form(내 파일), form(템플릿)' },
+            { key: 'result.document_manager_settings[].document_roles[].document_types[].form_id', type: 'string', description: '템플릿 ID', note: '문서 타입이 템플릿이 아닌 경우 빈 값' },
+            { key: 'result.document_manager_settings[].document_roles[].document_types[].form_name', type: 'string', description: '템플릿 이름', note: '문서 타입이 템플릿이 아닌 경우 빈 값' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_creators', type: 'array', description: '작성자 상세 조건 목록' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_creators[].field_name', type: 'string', description: '필드 이름', note: 'id, email, name, department, position, mobile, phone, 멤버필드_c' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_creators[].search_type', type: 'string', description: '검색 타입', note: 'keyword(키워드 포함), match(키워드 일치)' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_creators[].value', type: 'string', description: '키워드 값' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_form_datas', type: 'array', description: '문서 입력 항목 상세 조건 목록' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_form_datas[].field_name', type: 'string', description: '입력 필드 이름' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_form_datas[].search_type', type: 'string', description: '검색 타입', note: 'keyword(키워드 포함), match(키워드 일치), range(범위), term(기간)' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_form_datas[].value', type: 'string', description: '키워드 값' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_form_datas[].start_value', type: 'string', description: '시작 값', note: '검색 타입이 range/term인 경우 사용. term은 unix timestamp' },
+            { key: 'result.document_manager_settings[].document_roles[].detail_form_datas[].end_value', type: 'string', description: '종료 값', note: '검색 타입이 range/term인 경우 사용. term은 unix timestamp' },
+            { key: 'code', type: 'string', description: '응답 코드', note: '-1: 정상' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드', note: '200: 정상' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
+
+    'OPA2_048': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Company API Key를 Base64 인코딩하여 Bearer 토큰으로 사용', example: 'Bearer {base64_encoded_api_key}', note: 'Access Token이 아닌 회사 API Key 사용' },
+        ],
+        pathParams: [
+            { key: 'document_id', type: 'string', required: true, description: '반려할 문서 ID' },
+        ],
+        queryParams: [
+            { key: 'company_id', type: 'string', required: true, description: '회사 ID' },
+            { key: 'outside_token', type: 'string', required: true, description: '외부자 토큰' },
+        ],
+        requestBody: [
+            { key: 'comment', type: 'string', required: false, description: '결재 반려 코멘트' },
+        ],
+        responseFields: [
+            { key: 'document_title', type: 'string', description: '문서 제목' },
+            { key: 'code', type: 'string', description: '응답 코드', note: '-1: 정상' },
+            { key: 'document_status', type: 'string', description: '문서 상태' },
+            { key: 'document_id', type: 'string', description: '문서 ID' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드', note: '200: 정상' },
+        ],
+        errorCodes: [
+            { code: '4030039', message: 'The apiKey encoded has an error.', description: 'API Key 인코딩 오류' },
+            { code: '4000029', message: 'This document has already proceeded.', description: '이미 처리된 문서' },
+            { code: '4030001', message: 'invalid api key', description: '유효하지 않은 API Key' },
+        ],
+    },
+
+    'OPA2_047': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer {access_token}' },
+        ],
+        pathParams: [
+            { key: 'document_id', type: 'string', required: true, description: '반려할 문서 ID' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'previous_steps', type: 'array', required: false, description: '반려할 단계 정보', note: '현재 단계 기준 [-1] 형태로 지정. 병렬 단계의 경우 [-1,-2]. 미 입력 시 이전 단계 내부 수신자로 반려' },
+            { key: 'comment', type: 'string', required: false, description: '결재 반려 코멘트' },
+        ],
+        responseFields: [
+            { key: 'document_title', type: 'string', description: '문서 제목' },
+            { key: 'code', type: 'string', description: '응답 코드', note: '-1: 정상' },
+            { key: 'document_status', type: 'string', description: '문서 상태' },
+            { key: 'document_id', type: 'string', description: '문서 ID' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드', note: '200: 정상' },
+        ],
+        errorCodes: [
+            { code: '4000012', message: 'The next_steps set by the user is inconsistent with the template\'s workflow settings.', description: '워크플로우 설정 불일치' },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
+
+    'OPA2_046': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer {access_token}' },
+        ],
+        pathParams: [
+            { key: 'company_id', type: 'string', required: true, description: '회사 ID' },
+        ],
+        queryParams: [
+            { key: 'term', type: 'string', required: false, description: 'yearly: 연간 조회 / monthly: 월간 조회', note: '기본값: monthly' },
+            { key: 'date', type: 'string', required: false, description: '조회 기한', note: '월간: 6자리 (예: 202305) / 연간: 4자리 (예: 2023)' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: 'total', type: 'number', description: '총 문서 작성 수' },
+            { key: 'use_template', type: 'array', description: '작성 템플릿 목록' },
+            { key: 'use_template[].id', type: 'string', description: '템플릿 ID' },
+            { key: 'use_template[].value', type: 'number', description: '문서 작성 횟수' },
+            { key: 'auth', type: 'object', description: '인증 정보' },
+            { key: 'auth.sms', type: 'number', description: 'SMS 인증 횟수' },
+            { key: 'auth.mobile_auth', type: 'number', description: '휴대폰 인증 횟수' },
+            { key: 'auth.alimtalk', type: 'number', description: '알림톡 인증 횟수' },
+            { key: 'auth.tsa', type: 'number', description: '타임스탬프 인증 횟수' },
+            { key: 'auth.sms_pincode', type: 'number', description: 'SMS 핀코드 인증 횟수' },
+            { key: 'auth.corporation_cert', type: 'number', description: '법인 공동인증서 인증 횟수' },
+            { key: 'term', type: 'array', description: '기한별 문서 작성 횟수', note: '해당 달(연도) 포함 이전 2개월(2년) 포함' },
+            { key: 'term[].month', type: 'string', description: '월 (월간 조회 시)', note: 'YYYY-MM 형식' },
+            { key: 'term[].year', type: 'string', description: '연도 (연간 조회 시)', note: 'YYYY 형식' },
+            { key: 'term[].count', type: 'number', description: '해당 기간 문서 작성 횟수' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+        ],
+    },
 };

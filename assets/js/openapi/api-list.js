@@ -32,6 +32,7 @@ const API_LIST = [
         opaCode: 'OPA2_001',
         name: 'Access Token 발급',
         method: 'POST',
+        saasBaseUrl: 'https://api.eformsign.com',
         path: '/v2.0/api_auth/access_token',
         description: 'API Key와 비밀 키를 사용하여 Access Token을 발급합니다.',
         requiresAuth: false,
@@ -975,6 +976,62 @@ const API_LIST = [
         }
     },
     {
+        id: 'company_send_pdf',
+        group: '문서',
+        groupIcon: 'fa-file-lines',
+        opaCode: 'OPA2_037',
+        name: '일괄 완료 문서 PDF 전송',
+        method: 'POST',
+        path: '/v2.0/api/companies/{company_id}/send_multiple_completed_document',
+        description: '완료된 문서의 PDF를 여러 수신자에게 일괄 전송합니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'company_id', description: '회사 ID', required: true, default: '' }
+        ],
+        queryParams: [],
+        defaultBody: {
+            input: {
+                send_pdfs: [
+                    {
+                        document_id: '',
+                        pdf_send_infos: [
+                            {
+                                name: '',
+                                method: '',
+                                method_info: '',
+                                code: '',
+                                is_use_alim_talk: null,
+                                send_pdf_option: {
+                                    auth_pwd: '',
+                                    auth_hint: '',
+                                    use_mobile_auth: null,
+                                    use_email_sms_auth: null,
+                                    attach_audit_pdf: null,
+                                    use_attach_link: null
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        exampleResponse: {
+            success: {
+                "result": {},
+                "code": "string",
+                "message": "string",
+                "status": "string"
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '설정 누락 (4000024)', body: { "code": "4000024", "ErrorMessage": "Setting is Missing" } },
+                { title: '존재하지 않는 문서 (4000004)', body: { "code": "4000004", "ErrorMessage": "The document does not exist." } },
+                { title: '유효하지 않은 문서 유형 (4000081)', body: { "code": "4000081", "ErrorMessage": "Invalid document type." } }
+            ]
+        }
+    },
+    {
         id: 'doc_cancel',
         group: '문서',
         groupIcon: 'fa-file-lines',
@@ -1129,6 +1186,80 @@ const API_LIST = [
                 { title: '문서 정보 조회 실패 (4000036)', body: { "code": "4000036", "ErrorMessage": "Failed to retrieve the document information before the deletion request." } },
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+            ]
+        }
+    },
+
+    {
+        id: 'doc_internal_decline',
+        group: '문서',
+        groupIcon: 'fa-file-lines',
+        opaCode: 'OPA2_047',
+        name: '내부자 반려',
+        method: 'POST',
+        path: '/v2.0/api/documents/{document_id}/decline',
+        description: '문서를 반려하여 이전 상태로 되돌립니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'document_id', description: '반려할 문서 ID', required: true, default: '' }
+        ],
+        queryParams: [],
+        defaultBody: {
+            previous_steps: [],
+            comment: ''
+        },
+        exampleResponse: {
+            success: {
+                "document_title": "string",
+                "code": "string",
+                "document_status": "string",
+                "document_id": "string",
+                "message": "string",
+                "status": "string"
+            },
+            errors: [
+                { title: '워크플로우 설정 불일치 (4000012)', body: { "code": "4000012", "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings." } },
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+            ]
+        }
+    },
+    {
+        id: 'doc_external_decline',
+        group: '문서',
+        groupIcon: 'fa-file-lines',
+        opaCode: 'OPA2_048',
+        name: '외부자 반려',
+        method: 'POST',
+        path: '/v2.0/api/documents/{document_id}/external_decline',
+        description: '외부자가 문서를 반려하여 이전 상태로 되돌립니다. Authorization 헤더에 Company API Key(Base64 인코딩)를 Bearer 토큰으로 사용합니다.',
+        requiresAuth: false,
+        pathParams: [
+            { key: 'document_id', description: '반려할 문서 ID', required: true, default: '' }
+        ],
+        queryParams: [
+            { key: 'company_id', description: '회사 ID', required: true, default: '' },
+            { key: 'outside_token', description: '외부자 토큰', required: true, default: '' }
+        ],
+        defaultHeaders: [
+            { key: 'Authorization', value: 'Bearer {base64_encoded_api_key}', description: 'Company API Key를 Base64 인코딩한 값 (인증 패널의 Access Token이 아닌 회사 API Key 사용)' }
+        ],
+        defaultBody: {
+            comment: ''
+        },
+        exampleResponse: {
+            success: {
+                "document_title": "string",
+                "code": "string",
+                "document_status": "string",
+                "document_id": "string",
+                "message": "string",
+                "status": "string"
+            },
+            errors: [
+                { title: 'API Key 인코딩 오류 (4030039)', body: { "code": "4030039", "ErrorMessage": "The apiKey encoded has an error." } },
+                { title: '이미 처리된 문서 (4000029)', body: { "code": "4000029", "ErrorMessage": "This document has already proceeded." } },
+                { title: '유효하지 않은 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } }
             ]
         }
     },
@@ -1899,58 +2030,128 @@ const API_LIST = [
         }
     },
     {
-        id: 'company_send_pdf',
+        id: 'company_use_status',
         group: '회사',
         groupIcon: 'fa-building',
-        opaCode: 'OPA2_037',
-        name: '일괄 완료 문서 PDF 전송',
-        method: 'POST',
-        path: '/v2.0/api/companies/{company_id}/send_multiple_completed_document',
-        description: '완료된 문서의 PDF를 여러 수신자에게 일괄 전송합니다.',
+        opaCode: 'OPA2_046',
+        name: '이용현황 조회',
+        method: 'GET',
+        path: '/v2.0/api/companies/{company_id}/use_status',
+        description: '년, 월별 이용현황을 조회합니다.',
         requiresAuth: true,
         pathParams: [
             { key: 'company_id', description: '회사 ID', required: true, default: '' }
         ],
-        queryParams: [],
-        defaultBody: {
-            input: {
-                send_pdfs: [
+        queryParams: [
+            { key: 'term', description: 'yearly: 연간 조회 / monthly: 월간 조회 (기본값: monthly)', required: false, default: 'monthly' },
+            { key: 'date', description: '조회 기한 (월간: 6자리 ex)202305 / 연간: 4자리 ex)2023)', required: false, default: '' }
+        ],
+        defaultBody: null,
+        exampleResponse: {
+            success: {
+                "total": "number",
+                "use_template": [
                     {
-                        document_id: '',
-                        pdf_send_infos: [
-                            {
-                                name: '',
-                                method: '',
-                                method_info: '',
-                                code: '',
-                                is_use_alim_talk: null,
-                                send_pdf_option: {
-                                    auth_pwd: '',
-                                    auth_hint: '',
-                                    use_mobile_auth: null,
-                                    use_email_sms_auth: null,
-                                    attach_audit_pdf: null,
-                                    use_attach_link: null
-                                }
-                            }
-                        ]
+                        "id": "string",
+                        "value": "number"
+                    }
+                ],
+                "auth": {
+                    "tsa": "number",
+                    "sms": "number",
+                    "mobile_auth": "number",
+                    "alimtalk": "number",
+                    "sms_pincode": "number",
+                    "corporation_cert": "number"
+                },
+                "term": [
+                    {
+                        "month": "string",
+                        "count": "number"
                     }
                 ]
-            }
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+            ]
+        }
+    },
+    {
+        id: 'doc_manager_settings',
+        group: '회사',
+        groupIcon: 'fa-building',
+        opaCode: 'OPA2_049',
+        name: '문서 관리 조건 목록 조회',
+        method: 'POST',
+        path: '/v2.0/api/document_manager_settings',
+        description: '문서 관리자의 관리 문서 조건 목록을 조회합니다.',
+        requiresAuth: true,
+        pathParams: [],
+        queryParams: [],
+        defaultBody: {
+            skip: '',
+            limit: '',
+            search_keyword: ''
         },
         exampleResponse: {
             success: {
-                "result": {},
+                "result": {
+                    "total_rows": "number",
+                    "document_manager_settings": [
+                        {
+                            "manager_type": "string",
+                            "manager_id": "string",
+                            "manager_account_id": "string",
+                            "manager_name": "string",
+                            "document_roles": [
+                                {
+                                    "deletable": "boolean",
+                                    "revokable": "boolean",
+                                    "document_creators": [
+                                        {
+                                            "creator_type": "string",
+                                            "creator_id": "string",
+                                            "creator_name": "string",
+                                            "creator_account_id": "string",
+                                            "creator_department": "string"
+                                        }
+                                    ],
+                                    "document_types": [
+                                        {
+                                            "form_type": "string",
+                                            "form_id": "string",
+                                            "form_name": "string"
+                                        }
+                                    ],
+                                    "detail_creators": [
+                                        {
+                                            "field_name": "string",
+                                            "search_type": "string",
+                                            "value": "string"
+                                        }
+                                    ],
+                                    "detail_form_datas": [
+                                        {
+                                            "field_name": "string",
+                                            "search_type": "string",
+                                            "value": "string",
+                                            "start_value": "string",
+                                            "end_value": "string"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
                 "code": "string",
                 "message": "string",
                 "status": "string"
             },
             errors: [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '설정 누락 (4000024)', body: { "code": "4000024", "ErrorMessage": "Setting is Missing" } },
-                { title: '존재하지 않는 문서 (4000004)', body: { "code": "4000004", "ErrorMessage": "The document does not exist." } },
-                { title: '유효하지 않은 문서 유형 (4000081)', body: { "code": "4000081", "ErrorMessage": "Invalid document type." } }
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
             ]
         }
     },

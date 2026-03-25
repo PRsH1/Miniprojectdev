@@ -100,6 +100,26 @@
         }
         .sidebar-search input:focus { outline: none; border-color: var(--blue); }
         .sidebar-search input::placeholder { color: var(--sidebar-muted); }
+        .sidebar-view-label {
+            padding: 8px 12px 0;
+            font-size: 0.72rem; font-weight: 700;
+            color: var(--sidebar-muted);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .sidebar-view-toggle {
+            display: flex; gap: 4px; padding: 8px 10px;
+            border-bottom: 1px solid #0d1820;
+        }
+        .view-btn {
+            flex: 1; padding: 5px 4px;
+            background: #2a3a4f; border: 1px solid #3a4f6a; border-radius: 5px;
+            color: var(--sidebar-muted); cursor: pointer; font-size: 0.75rem;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+            transition: all 0.15s; white-space: nowrap;
+        }
+        .view-btn:hover { color: #fff; border-color: var(--blue); }
+        .view-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+        .endpoint-item--flat { padding-left: 14px; }
         .sidebar-list { overflow-y: auto; flex: 1; padding: 6px 0; }
         .sidebar-list::-webkit-scrollbar { width: 4px; }
         .sidebar-list::-webkit-scrollbar-thumb { background: #3a4f6a; border-radius: 4px; }
@@ -694,6 +714,18 @@
         <div class="sidebar-search">
             <input type="text" id="sidebarSearch" placeholder="&#xf002; API 검색...">
         </div>
+        <div class="sidebar-view-label">정렬 방식</div>
+        <div class="sidebar-view-toggle" id="sidebarViewToggle">
+            <button class="view-btn active" data-view="group" title="그룹별 보기">
+                <i class="fa-solid fa-layer-group fa-xs"></i> 그룹
+            </button>
+            <button class="view-btn" data-view="code" title="OPA2 코드순 보기">
+                <i class="fa-solid fa-list-ol fa-xs"></i> 코드순
+            </button>
+            <button class="view-btn" data-view="method" title="HTTP Method별 보기">
+                <i class="fa-solid fa-code fa-xs"></i> Method
+            </button>
+        </div>
         <div class="sidebar-list" id="sidebarList"></div>
     </aside>
     <div class="sidebar-resizer" id="sidebarResizer"></div>
@@ -1017,7 +1049,7 @@
                 <i class="fa-solid fa-lightbulb fa-sm"></i>
                 <p>
                     <strong>Tip.</strong>
-                    <strong>OPA2_007 (새 문서 작성 - 외부)</strong>는 Access Token 대신 <strong>Company API Key를 Base64 인코딩</strong>하여 Bearer 토큰으로 사용합니다.
+                    <strong>OPA2_007 (새 문서 작성 - 외부)</strong>, <strong>OPA2_048 (외부자 반려)</strong>는 Access Token 대신 <strong>Company API Key를 Base64 인코딩</strong>하여 Bearer 토큰으로 사용합니다.
                     인증 패널에서 토큰을 발급하지 않고, Headers 탭의 Authorization 값을 직접 수정하세요.
                 </p>
             </div>

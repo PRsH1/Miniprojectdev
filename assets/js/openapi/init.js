@@ -75,6 +75,14 @@ $(document).ready(function() {
         buildSidebar($(this).val());
     });
 
+    // Sidebar view mode
+    $('#sidebarViewToggle').on('click', '.view-btn', function() {
+        currentViewMode = $(this).data('view');
+        $('#sidebarViewToggle .view-btn').removeClass('active');
+        $(this).addClass('active');
+        buildSidebar($('#sidebarSearch').val());
+    });
+
     // Send 드롭다운 토글
     $('#btnSendArrow').on('click', function(e) {
         e.stopPropagation();
