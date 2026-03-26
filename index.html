@@ -4,174 +4,606 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mini Project Hub</title>
-    
+
     <script>
       window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
     </script>
     <script defer src="/_vercel/insights/script.js"></script>
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f7f7f7;
-            color: #333;
+        * {
+            box-sizing: border-box;
             margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            box-sizing: border-box; 
-        }
-        .container {
-            background-color: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            padding: 30px 40px;
-            width: 100%;
-            max-width: 700px; 
-        }
-        h1 {
-            text-align: center;
-            color: #111;
-            margin-bottom: 10px;
-        }
-        p {
-            text-align: center;
-            color: #666;
-            margin-top: 0;
-            margin-bottom: 30px;
-        }
-        h2 {
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
-            margin-top: 30px;
-            color: #333;
-        }
-        ul {
-            list-style-type: none;
             padding: 0;
         }
-        li {
-            margin: 15px 0;
-        }
-        a {
-            display: flex; 
-            align-items: center; 
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1.05em; 
-            text-decoration: none;
-            color: #333; 
-            transition: all 0.2s ease-in-out; 
-        }
-        a:hover {
-            background-color: #f8faff; 
-            border-color: #0070f3;
-            color: #0070f3; 
-            transform: translateX(4px); 
-        }
-        a i {
-            width: 30px; 
-            text-align: center; 
-            margin-right: 15px; 
-            font-size: 1.1em;
-            color: #555; 
-            transition: color 0.2s ease-in-out; 
-        }
-        a:hover i {
-            color: #0070f3;
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            min-height: 100vh;
         }
 
-        /* Beta Badge 스타일 추가 */
-        .beta-badge {
-            background: linear-gradient(135deg, #6e8efb, #a777e3); /* 부드러운 보라/파랑 그라데이션 */
+        /* 헤더 */
+        .header {
+            background: linear-gradient(135deg, #1a73e8 0%, #4a90d9 50%, #6ab0f3 100%);
             color: white;
-            font-size: 0.7em;
+            padding: 48px 24px 36px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
             font-weight: 700;
-            padding: 3px 8px;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 1.05em;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        /* 검색 바 */
+        .search-wrapper {
+            max-width: 960px;
+            margin: -22px auto 0;
+            padding: 0 24px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: white;
             border-radius: 12px;
-            margin-left: 8px;
-            vertical-align: middle;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 0 20px;
+            height: 48px;
+        }
+
+        .search-bar i {
+            color: #999;
+            font-size: 1em;
+            margin-right: 12px;
+        }
+
+        .search-bar input {
+            border: none;
+            outline: none;
+            font-size: 0.95em;
+            width: 100%;
+            background: transparent;
+            color: #333;
+        }
+
+        .search-bar input::placeholder {
+            color: #aaa;
+        }
+
+        .search-clear {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 1em;
+            padding: 4px;
+            display: none;
+        }
+
+        .search-clear:hover {
+            color: #555;
+        }
+
+        /* 컨테이너 */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 28px 24px 48px;
+        }
+
+        /* 섹션 */
+        .section {
+            margin-bottom: 32px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            padding-bottom: 0;
+        }
+
+        .section-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95em;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .section-header h2 {
+            font-size: 1.15em;
+            font-weight: 700;
+            color: #222;
+        }
+
+        .section-count {
+            font-size: 0.75em;
+            color: #999;
+            font-weight: 400;
+            margin-left: 4px;
+        }
+
+        /* 카드 그리드 */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+        }
+
+        /* 카드 */
+        .card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
+            background: white;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #333;
+            border: 1px solid #e8eaed;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: #1a73e8;
+            box-shadow: 0 4px 16px rgba(26, 115, 232, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1em;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover .card-icon {
+            transform: scale(1.1);
+        }
+
+        .card-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .card-title {
+            font-size: 0.92em;
+            font-weight: 600;
+            color: #222;
+            line-height: 1.3;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .card-desc {
+            font-size: 0.78em;
+            color: #888;
+            margin-top: 3px;
+            line-height: 1.3;
+        }
+
+        .card-arrow {
+            color: #ccc;
+            font-size: 0.8em;
+            flex-shrink: 0;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover .card-arrow {
+            color: #1a73e8;
+            transform: translateX(3px);
+        }
+
+        /* 배지 */
+        .badge {
+            font-size: 0.65em;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-            border: 1px solid rgba(255,255,255,0.2);
+            letter-spacing: 0.3px;
+            white-space: nowrap;
         }
 
-        .new-feature {
-            font-weight: bold;
-            color: #d9534f; /* 붉은색 강조 */
-            margin-left: 8px;
+        .badge-beta {
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            color: white;
+            box-shadow: 0 2px 4px rgba(110, 142, 251, 0.3);
         }
 
+        .badge-new {
+            background: linear-gradient(135deg, #f5576c, #ff6b6b);
+            color: white;
+            box-shadow: 0 2px 4px rgba(245, 87, 108, 0.3);
+        }
+
+        /* 섹션별 색상 테마 */
+        .theme-api .section-icon { background: linear-gradient(135deg, #1a73e8, #4a90d9); }
+        .theme-api .card-icon { background: #e8f0fe; color: #1a73e8; }
+
+        .theme-embed .section-icon { background: linear-gradient(135deg, #0d9488, #14b8a6); }
+        .theme-embed .card-icon { background: #e6f7f5; color: #0d9488; }
+
+        .theme-webhook .section-icon { background: linear-gradient(135deg, #e67e22, #f0a04b); }
+        .theme-webhook .card-icon { background: #fef3e2; color: #e67e22; }
+
+        .theme-saml .section-icon { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+        .theme-saml .card-icon { background: #f0ebff; color: #7c3aed; }
+
+        .theme-tools .section-icon { background: linear-gradient(135deg, #475569, #64748b); }
+        .theme-tools .card-icon { background: #f1f5f9; color: #475569; }
+
+        /* 카드 호버 시 섹션별 테마 색상 */
+        .theme-api .card:hover { border-color: #1a73e8; box-shadow: 0 4px 16px rgba(26, 115, 232, 0.12); }
+        .theme-embed .card:hover { border-color: #0d9488; box-shadow: 0 4px 16px rgba(13, 148, 136, 0.12); }
+        .theme-webhook .card:hover { border-color: #e67e22; box-shadow: 0 4px 16px rgba(230, 126, 34, 0.12); }
+        .theme-saml .card:hover { border-color: #7c3aed; box-shadow: 0 4px 16px rgba(124, 58, 237, 0.12); }
+        .theme-tools .card:hover { border-color: #475569; box-shadow: 0 4px 16px rgba(71, 85, 105, 0.12); }
+
+        .theme-embed .card:hover .card-arrow { color: #0d9488; }
+        .theme-webhook .card:hover .card-arrow { color: #e67e22; }
+        .theme-saml .card:hover .card-arrow { color: #7c3aed; }
+        .theme-tools .card:hover .card-arrow { color: #475569; }
+
+        /* 검색 결과 없음 */
+        .no-results {
+            text-align: center;
+            padding: 48px 24px;
+            color: #999;
+            display: none;
+        }
+
+        .no-results i {
+            font-size: 2.5em;
+            margin-bottom: 12px;
+            color: #ddd;
+        }
+
+        .no-results p {
+            font-size: 0.95em;
+        }
+
+        /* 반응형 */
+        @media (max-width: 640px) {
+            .header {
+                padding: 36px 20px 32px;
+            }
+
+            .header h1 {
+                font-size: 1.6em;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 24px 16px 40px;
+            }
+
+            .search-wrapper {
+                padding: 0 16px;
+            }
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
+    <div class="header">
         <h1>프로젝트 허브</h1>
-        <p>아래 링크를 통해 각 기능 페이지로 이동할 수 있습니다.</p>
-
-        <section id="api-section">
-            <h2>API</h2>
-            <ul>
-                <li><a href="/API(JS,HTML)/OpenAPITester.html"><i class="fa-solid fa-flask"></i> Open API Tester (Postman 스타일) <span class="beta-badge">Beta</span></a></li>
-                <li><a href="/API(JS,HTML)/DocumentSendImprove.html"><i class="fa-solid fa-file-signature"></i> 새 문서 작성 API</a></li>
-                <li><a href="/API(JS,HTML)/DocumentInfo.html"><i class="fa-solid fa-magnifying-glass-chart"></i> 문서 정보 조회 API</a></li>
-                <li><a href="/API(JS,HTML)/listdocuments.html"><i class="fa-solid fa-list-ul"></i> 문서 목록 조회 API</a></li>
-                <li><a href="/API(JS,HTML)/DocumentDownload.html"><i class="fa-solid fa-file-arrow-down"></i> 문서 다운로드 API</a></li>
-                <li><a href="/api/memberPage"><i class="fa-solid fa-users"></i> 멤버 관련 API 모음</a></li>
-            </ul>
-        </section>
-
-        <section id="embedding-section">
-            <h2>Embedding</h2>
-            <ul>
-                <!--기존 embedding 링크 deprecated-->
-                <!-- <li><a href="/Embedding/embedding_doc_update.html"><i class="fa-solid fa-puzzle-piece"></i> 문서 임베딩</a></li>
-                <li><a href="/Embedding/embedding_doc_update_CSAP.html"><i class="fa-solid fa-file-shield"></i> CSAP 문서 임베딩</a></li> -->
-                <li><a href="/Embedding/embedding_doc_Integration.html"><i class="fa-solid fa-puzzle-piece"></i> 문서 임베딩(환경 통합) <span class="new-feature">New!</span></a></li>
-                <!-- <li><a href="/Embedding/template_create_update.html"><i class="fa-solid fa-file-invoice"></i> 템플릿 임베딩</a></li>
-                <li><a href="/Embedding/template_create_update_CSAP.html"><i class="fa-solid fa-shield"></i> CSAP 템플릿 임베딩</a></li> -->
-                <li><a href="/Embedding/embedding_template_intergration.html"><i class="fa-solid fa-file-invoice"></i> 템플릿 임베딩(환경 통합) <span class="new-feature">New!</span></a></li>
-            </ul>
-        </section>
-        
-        <section id="webhook-section">
-            <h2>Webhook</h2>
-            <ul>
-                <li><a href="/utils/webhook.html"><i class="fa-solid fa-satellite-dish"></i> 웹훅(Webhook) 수신 페이지로 이동</a></li>
-            </ul>
-        </section>
-
-        <section id="saml-sso-section">
-            <h2>SAML SSO 연동 테스트</h2>
-            <ul>
-                <li><a href="/idptestauth"><i class="fa-solid fa-shield"></i> SAML SSO 연동 테스트 페이지로 이동<span class="new-feature">New!</span></a></li>
-            </ul>
-        </section>
-
-        <section id="tools-section">
-            <h2>유틸리티 툴</h2>
-            <ul>
-                <li><a href="/utils/smtp.html"><i class="fa-solid fa-paper-plane"></i> SMTP 발송 테스트 페이지로 이동</a></li>
-                <li><a href="/utils/CorsTest.html"><i class="fa-solid fa-shield-halved"></i> CORS 차단 테스트 페이지로 이동</a></li>
-                <li><a href="/utils/RsaTestSample.html"><i class="fa-solid fa-key"></i> RSA 로그인 테스트 페이지로 이동</a></li>
-                <li><a href="/utils/timestamp.html"><i class="fa-solid fa-clock"></i> unix 시간 변환 페이지로 이동</a></li>
-                <li><a href="/utils/base64.html"><i class="fa-solid fa-right-left"></i> Base64 인코딩/디코딩 페이지로 이동</a></li>
-                <li><a href="/ApiAutoTest"><i class="fa-solid fa-robot"></i> API 자동 테스트 페이지로 이동</a></li>
-                <li><a href="/templatecopy"><i class="fa-solid fa-clone"></i> 템플릿 복제 지원 페이지로 이동</a></li>
-                <li><a href="/utils/DocumentDelete.html"><i class="fa-solid fa-trash"></i> 문서 일괄 삭제 도구 페이지로 이동</a></li>
-                <li><a href="/utils/MassDocumentDowmload.html"><i class="fa-solid fa-download"></i> 문서 일괄 다운로드 도구 페이지로 이동</a></li>
-                <li><a href="/utils/templateDeletetool.html"><i class="fa-solid fa-folder-minus"></i> 템플릿 삭제 도구 페이지로 이동</a></li>
-                <li><a href="/utils/JsonToPretty.html"><i class="fa-solid fa-code"></i> JSON/XML 포맷 정리 도구 페이지로 이동<span class="new-feature">New!</span></a></li>
-            </ul>
-        </section>
+        <p>각 도구를 선택하여 기능 페이지로 이동할 수 있습니다</p>
     </div>
+
+    <div class="search-wrapper">
+        <div class="search-bar">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" placeholder="도구 검색..." autocomplete="off">
+            <button class="search-clear" id="searchClear" title="검색 초기화"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+
+    <div class="container">
+
+        <!-- API -->
+        <section class="section theme-api" data-section>
+            <div class="section-header">
+                <div class="section-icon"><i class="fa-solid fa-plug"></i></div>
+                <h2>API <span class="section-count"></span></h2>
+            </div>
+            <div class="card-grid">
+                <a href="/API(JS,HTML)/OpenAPITester.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-flask"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">Open API Tester <span class="badge badge-beta">Beta</span></div>
+                        <div class="card-desc">Postman 스타일 API 테스트 도구</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/API(JS,HTML)/DocumentSendImprove.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-file-signature"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">새 문서 작성</div>
+                        <div class="card-desc">템플릿 기반 문서 작성 API</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/API(JS,HTML)/DocumentInfo.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">문서 정보 조회</div>
+                        <div class="card-desc">문서 메타데이터 조회 API</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/API(JS,HTML)/listdocuments.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-list-ul"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">문서 목록 조회</div>
+                        <div class="card-desc">조건별 문서 목록 조회 API</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/API(JS,HTML)/DocumentDownload.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-file-arrow-down"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">문서 다운로드</div>
+                        <div class="card-desc">문서 파일 다운로드 API</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/api/memberPage" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-users"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">멤버 관련 API 모음</div>
+                        <div class="card-desc">멤버 조회/추가/수정/삭제</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+            </div>
+        </section>
+
+        <!-- Embedding -->
+        <section class="section theme-embed" data-section>
+            <div class="section-header">
+                <div class="section-icon"><i class="fa-solid fa-puzzle-piece"></i></div>
+                <h2>Embedding <span class="section-count"></span></h2>
+            </div>
+            <div class="card-grid">
+                <a href="/Embedding/embedding_doc_Integration.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-puzzle-piece"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">문서 임베딩 <span class="badge badge-new">New</span></div>
+                        <div class="card-desc">환경 통합 문서 임베딩</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/Embedding/embedding_template_intergration.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-file-invoice"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">템플릿 임베딩 <span class="badge badge-new">New</span></div>
+                        <div class="card-desc">환경 통합 템플릿 임베딩</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+            </div>
+        </section>
+
+        <!-- Webhook -->
+        <section class="section theme-webhook" data-section>
+            <div class="section-header">
+                <div class="section-icon"><i class="fa-solid fa-satellite-dish"></i></div>
+                <h2>Webhook <span class="section-count"></span></h2>
+            </div>
+            <div class="card-grid">
+                <a href="/utils/webhook.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-satellite-dish"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">Webhook 수신 모니터링</div>
+                        <div class="card-desc">실시간 웹훅 수신 확인</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+            </div>
+        </section>
+
+        <!-- SAML SSO -->
+        <section class="section theme-saml" data-section>
+            <div class="section-header">
+                <div class="section-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <h2>SAML SSO <span class="section-count"></span></h2>
+            </div>
+            <div class="card-grid">
+                <a href="/idptestauth" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-shield"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">SAML SSO 연동 테스트 <span class="badge badge-new">New</span></div>
+                        <div class="card-desc">IdP/SP SAML 인증 테스트</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+            </div>
+        </section>
+
+        <!-- 유틸리티 -->
+        <section class="section theme-tools" data-section>
+            <div class="section-header">
+                <div class="section-icon"><i class="fa-solid fa-toolbox"></i></div>
+                <h2>유틸리티 <span class="section-count"></span></h2>
+            </div>
+            <div class="card-grid">
+                <a href="/utils/smtp.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-paper-plane"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">SMTP 발송 테스트</div>
+                        <div class="card-desc">이메일 발송 테스트</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/utils/CorsTest.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">CORS 차단 테스트</div>
+                        <div class="card-desc">Cross-Origin 요청 테스트</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/utils/RsaTestSample.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-key"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">RSA 로그인 테스트</div>
+                        <div class="card-desc">RSA/ECDSA 서명 테스트</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/utils/timestamp.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-clock"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">Unix 시간 변환</div>
+                        <div class="card-desc">타임스탬프 변환 도구</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/utils/base64.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-right-left"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">Base64 인코딩/디코딩</div>
+                        <div class="card-desc">Base64 변환 도구</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/ApiAutoTest" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-robot"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">API 자동 테스트</div>
+                        <div class="card-desc">자동화 API 테스트 실행</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/templatecopy" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-clone"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">템플릿 복제</div>
+                        <div class="card-desc">템플릿 복제 지원 도구</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/utils/DocumentDelete.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-trash"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">문서 일괄 삭제</div>
+                        <div class="card-desc">다수 문서 일괄 삭제 도구</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/utils/MassDocumentDowmload.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-download"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">문서 일괄 다운로드</div>
+                        <div class="card-desc">다수 문서 일괄 다운로드 도구</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/utils/templateDeletetool.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-folder-minus"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">템플릿 삭제</div>
+                        <div class="card-desc">템플릿 삭제 도구</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/utils/JsonToPretty.html" class="card" data-card>
+                    <div class="card-icon"><i class="fa-solid fa-code"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">JSON/XML 포맷 정리 <span class="badge badge-new">New</span></div>
+                        <div class="card-desc">JSON/XML 포맷팅 도구</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+            </div>
+        </section>
+
+        <div class="no-results" id="noResults">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <p>검색 결과가 없습니다</p>
+        </div>
+
+    </div>
+
+    <script>
+        // 섹션별 카드 수 표시
+        document.querySelectorAll('[data-section]').forEach(function(section) {
+            var count = section.querySelectorAll('[data-card]').length;
+            var span = section.querySelector('.section-count');
+            if (span) span.textContent = '(' + count + ')';
+        });
+
+        // 검색 기능
+        var searchInput = document.getElementById('searchInput');
+        var searchClear = document.getElementById('searchClear');
+        var noResults = document.getElementById('noResults');
+
+        searchInput.addEventListener('input', function() {
+            var query = this.value.toLowerCase().trim();
+            searchClear.style.display = query ? 'block' : 'none';
+
+            var sections = document.querySelectorAll('[data-section]');
+            var totalVisible = 0;
+
+            sections.forEach(function(section) {
+                var cards = section.querySelectorAll('[data-card]');
+                var visibleInSection = 0;
+
+                cards.forEach(function(card) {
+                    var title = card.querySelector('.card-title').textContent.toLowerCase();
+                    var desc = card.querySelector('.card-desc').textContent.toLowerCase();
+                    var match = !query || title.indexOf(query) !== -1 || desc.indexOf(query) !== -1;
+                    card.style.display = match ? '' : 'none';
+                    if (match) visibleInSection++;
+                });
+
+                section.style.display = visibleInSection > 0 ? '' : 'none';
+                totalVisible += visibleInSection;
+            });
+
+            noResults.style.display = totalVisible === 0 ? 'block' : 'none';
+        });
+
+        searchClear.addEventListener('click', function() {
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+            searchInput.focus();
+        });
+    </script>
 
 </body>
 </html>
