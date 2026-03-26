@@ -793,9 +793,13 @@
               <div class="form-group"><label>문서 링크 (URL):</label><input type="text" class="rec-document-link" placeholder="알림용 Link URL" /></div>
           </div>
           <div class="form-group" style="margin-top:8px;">
-            <label>비활성화 컴포넌트 (disabled_contents):</label>
-            <input type="text" class="rec-disabled-contents" placeholder="필드 ID를 콤마로 구분 (예: 고객명,서명1)" />
-            <div style="font-size:0.78rem; color:#888; margin-top:3px;">이 수신자에게 비활성화할 컴포넌트 ID 목록</div>
+            <label>비활성화 할 항목 목록 (disabled_contents):</label>
+            <input type="text" class="rec-disabled-contents" placeholder="항목을 콤마로 구분하여 입력" />
+            <div style="font-size:0.78rem; color:#888; margin-top:3px;">
+              "all" 입력 시 전체 항목 비활성화<br/>
+              "id", "name", "sms", "use_mail", "use_sms", "auth", "comment" 중 선택하여 입력 시 해당 항목 비활성화<br/>
+              미 입력 시 전체 항목 활성화
+            </div>
           </div>
         </div>
       `);
