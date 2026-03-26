@@ -328,6 +328,7 @@
       function toggleDocId() {
         const v = $("#modeTypeSelect").val();
         $("#docIdGroup")[v === "02" || v === "03" ? "show" : "hide"]();
+        $("#internalTokenGroup")[v === "02" ? "show" : "hide"]();
       }
 
       function toggleUserSection() {
@@ -412,10 +413,14 @@
         if (userType === "01") {
           userObj = {
             type: "01",
-            id: $("#userId").val(), 
+            id: $("#userId").val(),
             refresh_token: $("#refreshToken").val(),
             access_token: $("#accessToken").val(),
           };
+          const internalTokenVal = $("#internalToken").val().trim();
+          if (modeType === "02" && internalTokenVal) {
+            userObj.internal_token = internalTokenVal;
+          }
         } else {
           const externalName = $("#externalName").val().trim();
           const externalToken = $("#externalToken").val().trim();
@@ -451,6 +456,7 @@
           recipients: [],
           comment: $("#prefillComment").val(),
           is_hidden_stamp: $("#prefillHiddenStamp").is(":checked"),
+          quick_processing: $("#prefillQuickProcessing").is(":checked"),
         };
 
         $(".field-entry").each(function () {
@@ -484,14 +490,21 @@
           const use_mail = $(this).find(".rec-use-mail").is(":checked");
           const use_sms = $(this).find(".rec-use-sms").is(":checked");
           const password = $(this).find(".rec-auth-password").val();
+          const passwordHint = $(this).find(".rec-auth-hint").val();
           const validDay = parseInt($(this).find(".rec-valid-day").val()) || 0;
+          const validHour = parseInt($(this).find(".rec-valid-hour").val()) || 0;
           const document_link = $(this).find(".rec-document-link").val();
+          const rawDisabled = $(this).find(".rec-disabled-contents").val().trim();
+          const disabled_contents = rawDisabled
+            ? rawDisabled.split(",").map(s => s.trim()).filter(Boolean)
+            : [];
 
           if (id && id.trim()) {
             prefill.recipients.push({
               step_idx, step_type, name, id, sms, use_mail, use_sms,
-              auth: { password: password, valid: { day: validDay } },
+              auth: { password: password, password_hint: passwordHint, valid: { day: validDay, hour: validHour } },
               document_link: document_link,
+              disabled_contents: disabled_contents,
             });
           }
         });
@@ -779,6 +792,11 @@
               <div class="form-group"><label>전송 기한 (시):</label><input type="number" class="rec-valid-hour" value="0" min="0" /></div>
               <div class="form-group"><label>문서 링크 (URL):</label><input type="text" class="rec-document-link" placeholder="알림용 Link URL" /></div>
           </div>
+          <div class="form-group" style="margin-top:8px;">
+            <label>비활성화 컴포넌트 (disabled_contents):</label>
+            <input type="text" class="rec-disabled-contents" placeholder="필드 ID를 콤마로 구분 (예: 고객명,서명1)" />
+            <div style="font-size:0.78rem; color:#888; margin-top:3px;">이 수신자에게 비활성화할 컴포넌트 ID 목록</div>
+          </div>
         </div>
       `);
         entry.find(".remove-entry").click(() => entry.remove());
@@ -931,6 +949,14 @@
             <input id="refreshToken" />
           </div>
         </div>
+        <div class="form-group" id="internalTokenGroup" style="display:none;">
+          <label>Internal Token:</label>
+          <input id="internalToken" placeholder="internal_token 입력" />
+          <div style="font-size:0.78rem; color:#888; margin-top:3px;">
+            비필수. 문서 접근 암호, 문서 열람 전/전송 전 본인확인 설정 체크 시 필요합니다.<br/>
+            internal token은 문서 정보 조회 api를 사용하셔서 token_id 필드를 참조하시면 됩니다.
+          </div>
+        </div>
       </div>
 
       <div class="section-divider"></div>
@@ -1052,6 +1078,16 @@
           <div class="form-group">
             <label>코멘트:</label
             ><textarea id="prefillComment" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label>빠른 처리 (quick_processing):</label>
+            <div class="switch-wrapper" style="justify-content:flex-start">
+              <label class="switch">
+                <input type="checkbox" id="prefillQuickProcessing" />
+                <span class="slider"></span>
+              </label>
+              <span style="margin-left:8px; font-size:0.85rem; color:#555;">수신자 알림 없이 즉시 처리</span>
+            </div>
           </div>
         </div>
 
