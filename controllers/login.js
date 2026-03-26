@@ -1,27 +1,5 @@
 const { serialize } = require('cookie');
-
-const PAGE_CONFIG = {
-  member: {
-    passwordEnv: 'MEMBER_PAGE_PASSWORD',
-    cookieName: 'vercel-auth-member',
-    defaultNext: '/private/Member.html',
-  },
-  templatecopy: {
-    passwordEnv: 'TEMPLATECOPY_PAGE_PASSWORD',
-    cookieName: 'vercel-auth-templatecopy',
-    defaultNext: '/templatecopy',
-  },
-  apiautotest: {
-    passwordEnv: 'APIAUTOTEST_PAGE_PASSWORD',
-    cookieName: 'vercel-auth-apiautotest',
-    defaultNext: '/ApiAutoTest',
-  },
-  idptestauth: {
-    passwordEnv: 'IDP_TEST_PAGE_PASSWORD',
-    cookieName: 'vercel-auth-idp-test',
-    defaultNext: '/idptestauth',
-  },
-};
+const { PROTECTED_PAGES } = require('./_shared/protected-pages-config');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -34,8 +12,24 @@ module.exports = async function handler(req, res) {
   const scope = body.scope || 'member'; 
   const password = body.password || '';
 
-  const cfg = PAGE_CONFIG[scope] || PAGE_CONFIG.member;
+  const cfg = PROTECTED_PAGES[scope] || PROTECTED_PAGES.member;
   const expectedPassword = process.env[cfg.passwordEnv];
+  const normalizedInput = password.trim();
+  const normalizedExpected = typeof expectedPassword === 'string' ? expectedPassword.trim() : '';
+
+  console.log('[login debug]', {
+    requestedScope: scope,
+    resolvedScope: PROTECTED_PAGES[scope] ? scope : 'member',
+    passwordEnv: cfg.passwordEnv,
+    hasExpectedPassword: Boolean(expectedPassword),
+    inputLength: password.length,
+    expectedLength: typeof expectedPassword === 'string' ? expectedPassword.length : 0,
+    trimmedInputLength: normalizedInput.length,
+    trimmedExpectedLength: normalizedExpected.length,
+    exactMatch: Boolean(expectedPassword) && password === expectedPassword,
+    trimmedMatch: Boolean(expectedPassword) && normalizedInput === normalizedExpected,
+    next: next || cfg.defaultNext,
+  });
 
   if (expectedPassword && password === expectedPassword) {
     const cookie = serialize(cfg.cookieName, process.env.AUTH_COOKIE_VALUE, {
@@ -54,6 +48,20 @@ module.exports = async function handler(req, res) {
   params.set('error', '1');
   if (next) params.set('next', next);
   params.set('scope', scope);
+
+  if (expectedPassword && password !== expectedPassword && normalizedInput === normalizedExpected) {
+    console.warn('[login debug] Password mismatch caused by surrounding whitespace', {
+      scope,
+      passwordEnv: cfg.passwordEnv,
+    });
+  }
+
+  if (!expectedPassword) {
+    console.warn('[login debug] Missing expected password environment variable', {
+      scope,
+      passwordEnv: cfg.passwordEnv,
+    });
+  }
 
   return res.redirect(302, `/auth/login.html?${params.toString()}`);
 };

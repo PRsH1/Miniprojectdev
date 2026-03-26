@@ -223,3 +223,25 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | Document Bulk Delete | 문서 일괄 삭제 |
 | Document Bulk Download | 문서 일괄 다운로드 |
 | Template Delete Tool | 템플릿 일괄 삭제 |
+## 2026-03-26 Update
+
+### Protected Page Refactor
+
+- 보호 페이지 설정을 `controllers/_shared/protected-pages-config.js`로 공통화했습니다.
+- 보호 페이지 공통 핸들러를 `controllers/_shared/protectedPage.js`로 분리했습니다.
+- `member`, `apiautotest`, `templatecopy`, `idptestauth` 페이지가 `login.js`와 같은 설정을 공유하도록 정리했습니다.
+
+### Local `vercel dev` Note
+
+- `vercel dev`는 `Development` 환경 변수를 사용합니다.
+- 보호 페이지 로그인 테스트 시 아래 값이 `Development` 대상에도 등록되어 있어야 합니다.
+  - `AUTH_COOKIE_VALUE`
+  - `MEMBER_PAGE_PASSWORD`
+  - `APIAUTOTEST_PAGE_PASSWORD`
+  - `TEMPLATECOPY_PAGE_PASSWORD`
+  - `IDP_TEST_PAGE_PASSWORD`
+
+```bash
+vercel env pull .env.local
+vercel dev
+```

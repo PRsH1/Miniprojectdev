@@ -367,3 +367,23 @@ PUSHER_CLUSTER=
   - 배열 내 객체는 빈 요소 1개로 구조 표현 (예: `[{ key: '', value: null }]`)
   - `'04'`, `'05'`, `'+82'`, `true` 같은 고정 예시값 사용 금지 — 사용자가 직접 입력해야 하는 값임
 - 예시 응답: 실제 값 대신 타입명 (`"string"`, `"number"`, `"boolean"`) 사용
+## 2026-03-26 Update
+
+### Protected Page Refactor
+
+- 보호 페이지 설정을 `controllers/_shared/protected-pages-config.js`로 공통화
+- 보호 페이지 공통 핸들러를 `controllers/_shared/protectedPage.js`로 분리
+- `member`, `apiautotest`, `templatecopy`, `idptestauth` scope가 `login.js`와 동일한 설정을 공유하도록 정리
+
+### Local Development Note
+
+- `vercel dev`는 Vercel의 `Development` 환경 변수를 사용
+- 보호 페이지 로그인 테스트 시 아래 환경 변수가 `Development` 대상에도 등록되어 있어야 함
+  - `AUTH_COOKIE_VALUE`
+  - `MEMBER_PAGE_PASSWORD`
+  - `APIAUTOTEST_PAGE_PASSWORD`
+  - `TEMPLATECOPY_PAGE_PASSWORD`
+  - `IDP_TEST_PAGE_PASSWORD`
+- 로컬 반영 순서
+  1. `vercel env pull .env.local`
+  2. `vercel dev` 재시작
