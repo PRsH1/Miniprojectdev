@@ -17,6 +17,9 @@ ProjectImprove/
 │   └── index.js                # 메인 API 라우터 (lazy-loading 패턴)
 │
 ├── controllers/                # 각 엔드포인트 비즈니스 로직
+│   ├── _shared/
+│   │   ├── protected-pages-config.js  # 보호 페이지 설정 공통화
+│   │   └── protectedPage.js           # 보호 페이지 공통 핸들러
 │   ├── getToken.js             # ECDSA 서명으로 Access Token 발급
 │   ├── downloadDocument.js     # 문서 파일 프록시 다운로드
 │   ├── getDocumentInfo.js      # 문서 메타데이터 조회
@@ -39,64 +42,26 @@ ProjectImprove/
 │   └── login.html              # 인증 보호 페이지용 로그인 UI
 │
 ├── private/                    # 비밀번호 보호 콘텐츠 (컨트롤러에서 서빙)
-│   ├── ApiAutoTest.html        # API 자동화 테스트 UI
-│   ├── Member.html             # 멤버 관리 UI
-│   ├── templatecopy.html       # 템플릿 복제 UI
-│   └── idp-test.html           # IdP 테스트 UI
+│   └── ApiAutoTest.html / Member.html / templatecopy.html / idp-test.html
 │
 ├── API(JS,HTML)/               # eformsign Open API 연동 도구 (브라우저 전용)
-│   ├── OpenAPITester.html      # ★ Postman 스타일 API 테스터 (Beta) — HTML/CSS만 포함
-│   ├── DocumentDownload.html   # 문서 다운로드
-│   ├── DocumentInfo.html       # 문서 정보 조회
-│   ├── DocumentSendImprove.html# 새 문서 작성
-│   ├── KogasDocumentSend.html  # KOGAS 전용 문서 작성
-│   ├── listdocuments.html      # 문서 목록 조회
-│   ├── css/
-│   │   └── MemberStyle.css     # 멤버 관련 스타일
-│   └── js/
-│       ├── MemberMain.js       # 멤버 관련 메인 로직
-│       └── api/                # API 모듈 (Member.js, auth.js, group.js, nav.js, toggle.js)
+│   └── OpenAPITester.html      # ★ Postman 스타일 API 테스터 (Beta) — HTML/CSS만 포함
 │
-├── Embedding/                  # 문서/템플릿 임베딩 도구
-│   ├── embedding_doc_Integration.html      # 문서 임베딩 (환경 통합)
-│   ├── embedding_doc_update.html           # 문서 임베딩 (업데이트)
-│   ├── embedding_doc_update_CSAP.html      # 문서 임베딩 (CSAP 업데이트)
-│   ├── embedding_template_intergration.html# 템플릿 임베딩 (환경 통합)
-│   ├── template_create_update.html         # 템플릿 생성/업데이트
-│   ├── template_create_update_CSAP.html    # 템플릿 생성/업데이트 (CSAP)
-│   └── MultiFileViewer.html                # 멀티 파일 뷰어
+├── Embedding/                  # 문서/템플릿 임베딩 도구 (HTML 파일 모음)
+├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
 │
-├── utils/                      # 공개 유틸리티 도구
-│   ├── webhook.html            # Webhook 수신 모니터링
-│   ├── smtp.html               # SMTP 발송 테스트
-│   ├── CorsTest.html           # CORS 차단 테스트
-│   ├── RsaTestSample.html      # RSA/ECDSA 서명 테스트
-│   ├── base64.html             # Base64 인코딩/디코딩
-│   ├── timestamp.html          # Unix 타임스탬프 변환
-│   ├── JsonToPretty.html       # JSON/XML 포맷 정리
-│   ├── DocumentDelete.html     # 문서 일괄 삭제
-│   ├── MassDocumentDowmload.html # 문서 일괄 다운로드
-│   ├── templateDeletetool.html # 템플릿 삭제 도구
-│   └── saml-guide.html         # SAML 연동 가이드
+├── assets/js/
+│   ├── ApiAutoTestStart.js     # API 자동화 테스트 로직 (OPA2_XXX 목록 포함)
+│   ├── OpenAPITester.js        # ★ 원본 보존용 (롤백 시 참고) — 직접 편집 금지
+│   └── openapi/                # ★ OpenAPITester 분할 모듈 (로드 순서 중요)
+│       ├── api-list.js         #   API_LIST 데이터 — 신규 API 추가/수정 시 편집
+│       ├── api-specs.js        #   API_SPECS 데이터 — 명세 추가 시 편집
+│       ├── state.js            #   DOMAINS, state, responseCache, 공통 헬퍼
+│       ├── ui.js               #   사이드바, 요청 빌더, 인증, 전송, 응답, 코드 스니펫
+│       └── init.js             #   탭 이벤트, document.ready, 리사이즈, API 명세 모달
 │
-├── Webhook/                    # Webhook 관련 리소스
-│   └── webhook/demo/           # Webhook 데모 (Gradle 프로젝트)
-│
-├── file/
-│   └── eformsign SSO 연동 가이드 (SAML 2.0)_v1.0.pdf  # SSO 연동 가이드 문서
-│
-├── img/
-│   └── sso_flow.png            # SSO 플로우 다이어그램
-│
-└── assets/js/
-    ├── ApiAutoTestStart.js     # API 자동화 테스트 로직 (OPA2_XXX 목록 포함)
-    ├── OpenAPITester.js        # ★ 원본 보존용 (롤백 시 참고) — 직접 편집 금지
-    └── openapi/                # ★ OpenAPITester 분할 모듈 (로드 순서 중요)
-        ├── api-list.js         #   API_LIST 데이터 — 신규 API 추가/수정 시 편집
-        ├── api-specs.js        #   API_SPECS 데이터 — 명세 추가 시 편집
-        ├── state.js            #   DOMAINS, state, responseCache, 공통 헬퍼
-        ├── ui.js               #   사이드바, 요청 빌더, 인증, 전송, 응답, 코드 스니펫
-        └── init.js             #   탭 이벤트, document.ready, 리사이즈, API 명세 모달
+└── docs/
+    └── openapi-response-status.md  # 예시 응답 현황 (API별 성공/실패 등록 여부)
 ```
 
 ---
@@ -145,6 +110,7 @@ const DOMAINS = {
 - 쿠키 값으로 세션 확인 → 유효 시 `/private/` HTML 서빙
 - 무효 시 `/auth/login.html?next=<page>&scope=<scope>` 리다이렉트
 - 세션 유효시간: 15분
+- 보호 페이지 설정은 `controllers/_shared/protected-pages-config.js`에서 일괄 관리
 
 ### 4. 새 API 엔드포인트 추가
 1. `/controllers/` 에 컨트롤러 파일 생성
@@ -181,35 +147,12 @@ const DOMAINS = {
 > **로드 순서**: `api-list.js` → `api-specs.js` → `state.js` → `ui.js` → `init.js`
 > 전역 변수로 공유되므로 `<script>` 태그 순서를 변경하면 안 됨.
 
-### 구현된 기능
-- 좌측 사이드바: API 그룹별 목록, OPA2_XXX 번호 배지, 검색, 너비 드래그 조절
-  - **정렬 방식 토글**: 그룹별 / 코드순(OPA2 번호 오름차순 플랫 리스트) / Method별(GET→POST→PUT→PATCH→DELETE) 3가지 보기 지원
-  - 현재 선택 모드는 `ui.js`의 `currentViewMode` 변수로 관리 (`'group'` | `'code'` | `'method'`)
-- 상단 인증 패널: Signature/Bearer 방식 선택, Access Token 발급
-- Request Builder: **Path / Query / Headers / Body** 4개 탭, 높이 드래그 조절
-  - **Path 탭**: URL 경로 파라미터 입력 (키 readonly, 배지 = 파라미터 존재 개수)
-  - **Query 탭**: Query String 입력, 체크박스로 활성화, 행 추가 가능
-  - API 선택 시 자동 탭 전환: Path 파라미터 있음 → Path / Body 있음 → Body / 그 외 → Query
-- Response 뷰어: 상태 코드 배지, JSON 문법 강조, 복사 버튼, 엔드포인트별 결과 캐싱
-- 예시 응답 버튼: 성공/실패 구조 표시 (실제 값 대신 타입 표현)
-  - `success`: 일반 성공 응답
-  - `successEmpty`: 조회 결과 없음 성공 응답 (OPA2_008 등)
-- **Send and Download**: 응답을 파일로 강제 다운로드 (PDF/ZIP/JSON 등 Content-Type 기반 확장자 결정)
-  - PDF/ZIP 응답은 Send 버튼으로도 자동 다운로드
-  - 파일명: `Content-Disposition` 헤더 → `document_id` path param → `download.*` 순으로 결정
-- **Code Snippet 모달**: 현재 Request 설정(URL/Method/Headers/Body) 기반 코드 자동 생성
-  - 지원 언어: cURL / JavaScript (fetch) / JavaScript (jQuery) / Python / Java (HttpClient)
-- **API 명세 모달**: URL 바의 Code 버튼 옆 "API 명세" 버튼 → 각 API의 상세 명세 표시
-  - **Request 탭**: 요청 헤더, Path 파라미터, Query 파라미터, Request Body 필드 (타입·필수 여부·설명·**비고**)
-  - **Response 탭**: 응답 필드 목록 (타입·설명·**비고**), 에러 코드 목록
-  - 데이터 소스: `assets/js/openapi/api-specs.js` 의 `const API_SPECS` 객체 (opaCode 키로 조회)
-  - 현재 명세 등록 범위: OPA2_001~OPA2_031 (29개) + OPA2_037, OPA2_040~OPA2_049 (11개) = 총 40개
-  - **비고(note) 컬럼**: 각 테이블에서 `note` 필드가 하나라도 있으면 비고 컬럼이 자동으로 표시됨 (없으면 숨김)
-- **사용 가이드 모달**: 헤더 우측 "사용 가이드" 버튼 → 5단계 스텝 카드 형식 안내
-  - DELETE 메서드도 defaultBody가 있으면 Body 탭 자동 표시
-- **DELETE with Body**: `sendRequest`에서 body 포함 메서드에 `DELETE` 포함 — Body가 있는 DELETE API(OPA2_009, OPA2_020 등)에서 payload가 정상 전송됨
-- **URL 표시 인코딩**: Query String 빌드 시 `,` `@` `:` `/` 는 인코딩하지 않고 그대로 표시 (`encodeForDisplay` 함수, `ui.js` `updateUrlPreview` 내부)
-- **OPA2_001 SaaS 전용 URL**: `saasBaseUrl: 'https://api.eformsign.com'` 필드로 op_saas 환경에서만 해당 URL 사용, gov·커스텀은 기존 도메인 그대로
+### 비(非)자명한 동작 — 수정 시 주의
+- **사이드바 정렬 모드**: `ui.js`의 `currentViewMode` 변수로 관리 (`'group'` | `'code'` | `'method'`)
+- **API 선택 시 자동 탭 전환**: Path 파라미터 있음 → Path 탭 / Body 있음 → Body 탭 / 그 외 → Query 탭
+- **DELETE with Body**: `sendRequest`에서 DELETE도 body 포함 메서드로 처리 — Body가 있는 DELETE API(OPA2_009, OPA2_020 등) 정상 전송
+- **URL 표시 인코딩**: `,` `@` `:` `/` 는 인코딩하지 않고 그대로 표시 (`encodeForDisplay` 함수, `ui.js` `updateUrlPreview`)
+- **OPA2_001 SaaS 전용 URL**: `saasBaseUrl` 필드로 op_saas 환경에서만 `https://api.eformsign.com` 사용
 
 ### API 데이터 구조 (`API_LIST`)
 ```javascript
@@ -220,18 +163,18 @@ const DOMAINS = {
     opaCode: 'OPA2_XXX',       // null이면 배지 없음
     name: 'API 이름',
     method: 'GET|POST|PUT|PATCH|DELETE',
-    saasBaseUrl: 'https://...',  // 선택적. op_saas 환경에서만 이 도메인 사용 (OPA2_001 등 예외 URL)
+    saasBaseUrl: 'https://...',  // 선택적. op_saas 환경에서만 이 도메인 사용
     path: '/v2.0/api/path/{path_param}',
     description: '설명',
     requiresAuth: true,         // true → Authorization 헤더에 Access Token 자동 삽입
-                                // false → Authorization 헤더 자동 삽입 안 함 (OPA2_007 등 외부자용 API)
+                                // false → Authorization 헤더 자동 삽입 안 함 (외부자용 API)
     pathParams:  [{ key, description, required, default }],
     queryParams: [{ key, description, required, default }],
-    defaultHeaders: [           // 선택적, API별 고정 헤더 (requiresAuth: false인 경우 Authorization 직접 지정)
+    defaultHeaders: [           // 선택적, API별 고정 헤더
         { key, value, description }
     ],
     defaultBody: { ... } | null,
-    exampleResponse: {          // 전체 API에 추가됨
+    exampleResponse: {
         success: { ... },       // 값 대신 "string"/"number"/"boolean" 타입 표현
         successEmpty: { ... },  // 선택적 — 조회 결과 없는 성공 응답 (OPA2_008 등)
         errors: [
@@ -242,7 +185,7 @@ const DOMAINS = {
 ```
 
 ### API 명세 데이터 구조 (`API_SPECS`)
-`API_LIST`와 별도로 `assets/js/openapi/api-specs.js` 에 위치. opaCode를 키로 하는 객체.
+`API_LIST`와 별도로 `assets/js/openapi/api-specs.js`에 위치. opaCode를 키로 하는 객체.
 ```javascript
 const API_SPECS = {
     'OPA2_XXX': {
@@ -255,8 +198,7 @@ const API_SPECS = {
         requestBody: [
             { key: '필드명', type: 'string|number|boolean|array|object', required: true|false, description: '설명', note: '비고 (선택)' }
             // 중첩 필드는 점 표기법: 'document.recipients[].auth.password'
-            // OPA2_030처럼 배열 직접 전송 시 최상위 키를 '[].필드명' 형태로 표기
-            // note 필드가 하나라도 있으면 해당 테이블에 비고 컬럼이 자동으로 표시됨
+            // 배열 직접 전송 시 최상위 키를 '[].필드명' 형태로 표기 (OPA2_030 참고)
         ],
         responseFields: [
             { key: '필드명', type: '...', description: '설명', note: '비고 (선택)' }
@@ -267,73 +209,20 @@ const API_SPECS = {
     },
 };
 ```
-- 신규 API 명세 추가 시 `assets/js/openapi/api-specs.js` 의 `API_SPECS`에 opaCode 키로 항목 추가
-- `API_LIST`에 해당 opaCode가 없으면 명세 버튼 클릭 시 빈 화면 표시
-- **api-specs.js 정합성 원칙**: `API_SPECS`의 queryParams/requestBody/responseFields는 `API_LIST`의 실제 데이터(queryParams, defaultBody, exampleResponse)와 일치해야 함
-  - 신규 명세 추가 시 반드시 `API_LIST` 실제 구조를 기준으로 작성할 것
-  - 2026-03-24 기준 OPA2_001~031 전수 검토 및 정정 완료 (v1.9 가이드 + api-list.js 기준)
-  - 2026-03-24 기준 OPA2_037, OPA2_040~OPA2_045 신규 명세 추가 완료 (별도 PDF 스펙 기준)
-  - 2026-03-25 기준 OPA2_046~OPA2_049 신규 명세 추가 완료 (v1.9 가이드 + 별도 PDF 스펙 기준)
+- **정합성 원칙**: `API_SPECS`의 queryParams/requestBody/responseFields는 `API_LIST`의 실제 데이터와 일치해야 함. 신규 명세 추가 시 반드시 `api-list.js` 실제 구조를 기준으로 작성.
+- `note` 필드가 하나라도 있으면 해당 테이블에 비고 컬럼 자동 표시
+- `API_LIST`에 없는 opaCode는 명세 버튼 클릭 시 빈 화면 표시
 
 ### 특수 인증 처리 API
 - **OPA2_007 새 문서 작성 (외부)** / **OPA2_048 외부자 반려**: `requiresAuth: false`
   - Access Token 대신 Company API Key를 Base64 인코딩하여 Bearer 토큰으로 사용
   - `defaultHeaders`에 `Authorization: Bearer {base64_encoded_api_key}` 플레이스홀더 제공
   - 사용자가 직접 Company API Key를 입력해야 함
-  - 사용 가이드 모달 Tip에도 해당 API 목록 명시
 
 ### API_LIST 배치 규칙
 - 신규 API는 **OPA2 번호 순서**에 맞는 위치에 삽입 (사이드바 표시 순서와 직결)
 - 같은 그룹 내에서 번호가 오름차순이 되도록 유지
 - 편집 파일: `assets/js/openapi/api-list.js`
-
-### 예시 응답 현황 (전체 API)
-공통 실패 응답 (OPA2_001, OPA2_007, OPA2_048 제외한 전체 API에 포함):
-- `4010001` 유효하지 않거나 만료된 토큰
-- `4010006` Refresh Token 만료
-
-| API | 성공 | 실패 |
-|-----|------|------|
-| OPA2_001 Access Token 발급 | ✅ | ✅ 3건 |
-| OPA2_002 Access Token 갱신 | ✅ | ✅ 5건 |
-| OPA2_003 문서 정보 조회 | ✅ | ✅ 5건 |
-| OPA2_004 문서 파일 다운로드 | — | ✅ 4건 |
-| OPA2_005 새 문서 작성 (내부) | ✅ | ✅ 6건 |
-| OPA2_006 문서 첨부 파일 다운로드 | — | ✅ 5건 |
-| OPA2_007 새 문서 작성 (외부) | ✅ | ✅ 5건 |
-| OPA2_008 문서 목록 조회 | ✅ + 결과없음 | ✅ 3건 |
-| OPA2_009 문서 삭제 | ✅ | ✅ 5건 |
-| OPA2_014 수신자 문서 재요청 | ✅ | ✅ 4건 |
-| OPA2_015 작성 가능한 템플릿 목록 조회 | ✅ | ✅ 2건 |
-| OPA2_016 문서 일괄 작성 | ✅ | ✅ 4건 |
-| OPA2_021 문서 일괄 작성 (멀티) | ✅ | ✅ 4건 |
-| OPA2_024 템플릿 삭제 | ✅ | ✅ 4건 |
-| OPA2_010 멤버 목록 조회 | ✅ | ✅ 2건 |
-| OPA2_011 멤버 추가 | ✅ | ✅ 4건 |
-| OPA2_012 멤버 수정 | ✅ | ✅ 2건 |
-| OPA2_013 멤버 삭제 | ✅ | ✅ 3건 |
-| OPA2_017 그룹 목록 조회 | ✅ | ✅ 2건 |
-| OPA2_018 그룹 추가 | ✅ | ✅ 2건 |
-| OPA2_019 그룹 수정 | ✅ | ✅ 3건 |
-| OPA2_020 그룹 삭제 | ✅ | ✅ 4건 |
-| OPA2_025 회사 도장 정보 조회 | ✅ | ✅ 3건 |
-| OPA2_026 회사 도장 추가 | ✅ | ✅ 4건 |
-| OPA2_027 회사 도장 수정 | ✅ | ✅ 5건 |
-| OPA2_028 회사 도장 삭제 | ✅ | ✅ 4건 |
-| OPA2_029 회사 도장 목록 조회 | ✅ | ✅ 2건 |
-| OPA2_030 멤버 일괄 추가 | ✅ | ✅ 3건 |
-| OPA2_031 초안 문서 다음 단계 전송 | ✅ | ✅ 4건 |
-| OPA2_037 일괄 완료 문서 PDF 전송 | ✅ | ✅ 5건 |
-| OPA2_040 문서 파일 일괄 다운로드 | — | ✅ 4건 |
-| OPA2_041 템플릿 이미지 다운로드 | — | ✅ 3건 |
-| OPA2_042 문서 취소 | ✅ | ✅ 4건 |
-| OPA2_043 통합 결재 승인 | ✅ | ✅ 3건 |
-| OPA2_044 통합 결재 반려 | ✅ | ✅ 3건 |
-| OPA2_045 완료 토큰 기한 연장 | ✅ | ✅ 4건 |
-| OPA2_046 이용현황 조회 | ✅ | ✅ 2건 |
-| OPA2_047 내부자 반려 | ✅ | ✅ 3건 |
-| OPA2_048 외부자 반려 | ✅ | ✅ 3건 (API Key 방식) |
-| OPA2_049 문서 관리 조건 목록 조회 | ✅ | ✅ 2건 |
 
 ---
 
@@ -361,29 +250,17 @@ PUSHER_CLUSTER=
 - jQuery + vanilla JS 혼용
 - 한국어 UI, 한국어 주석
 - Body 기본값: 구조만 표현하고 실제 값을 박지 않음
-  - 문자열 → `''`
-  - boolean → `null`
-  - number → `null`
+  - 문자열 → `''` / boolean → `null` / number → `null`
   - 배열 내 객체는 빈 요소 1개로 구조 표현 (예: `[{ key: '', value: null }]`)
-  - `'04'`, `'05'`, `'+82'`, `true` 같은 고정 예시값 사용 금지 — 사용자가 직접 입력해야 하는 값임
+  - `'04'`, `'+82'`, `true` 같은 고정 예시값 사용 금지 — 사용자가 직접 입력해야 하는 값
 - 예시 응답: 실제 값 대신 타입명 (`"string"`, `"number"`, `"boolean"`) 사용
-## 2026-03-26 Update
 
-### Protected Page Refactor
+---
 
-- 보호 페이지 설정을 `controllers/_shared/protected-pages-config.js`로 공통화
-- 보호 페이지 공통 핸들러를 `controllers/_shared/protectedPage.js`로 분리
-- `member`, `apiautotest`, `templatecopy`, `idptestauth` scope가 `login.js`와 동일한 설정을 공유하도록 정리
+## 로컬 개발
 
-### Local Development Note
+`vercel dev`는 Vercel `Development` 환경 변수를 사용한다. 보호 페이지 테스트 시 아래 변수가 Development 대상에 등록되어 있어야 한다: `AUTH_COOKIE_VALUE`, `MEMBER_PAGE_PASSWORD`, `APIAUTOTEST_PAGE_PASSWORD`, `TEMPLATECOPY_PAGE_PASSWORD`, `IDP_TEST_PAGE_PASSWORD`
 
-- `vercel dev`는 Vercel의 `Development` 환경 변수를 사용
-- 보호 페이지 로그인 테스트 시 아래 환경 변수가 `Development` 대상에도 등록되어 있어야 함
-  - `AUTH_COOKIE_VALUE`
-  - `MEMBER_PAGE_PASSWORD`
-  - `APIAUTOTEST_PAGE_PASSWORD`
-  - `TEMPLATECOPY_PAGE_PASSWORD`
-  - `IDP_TEST_PAGE_PASSWORD`
-- 로컬 반영 순서
-  1. `vercel env pull .env.local`
-  2. `vercel dev` 재시작
+환경 변수 변경 후 로컬 반영 순서:
+1. `vercel env pull .env.local`
+2. `vercel dev` 재시작
