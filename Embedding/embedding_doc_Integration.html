@@ -76,8 +76,8 @@
         }
 
         /* 터치 편의성을 위한 크기 조정 */
-        .btn, .switch, input, select {
-          min-height: 48px; 
+        .btn, input, select {
+          min-height: 48px;
           font-size: 16px; /* 모바일 입력 확대 방지 */
         }
       }
@@ -182,6 +182,7 @@
           if (envType === "custom") {
             customFields.style.display = "block";
             document.getElementById("currentStatus").innerText = "Custom 설정 값을 입력 후 적용해주세요.";
+            document.getElementById("selectedServerUrl").innerText = "";
           } else {
             customFields.style.display = "none";
             loadLibrary(envType);
@@ -284,7 +285,11 @@
         $("#tokenMethodSelect").on("change", updateTokenLabel);
         $("#modeTypeSelect").on("change", toggleDocId).trigger("change");
         $("#userTypeSelect").on("change", toggleUserSection).trigger("change");
-        $("#toggleOptionsBtn").click(() => $("#additionalOptions").slideToggle());
+        $("#toggleOptionsBtn").click(function() {
+          const willOpen = $("#additionalOptions").is(":hidden");
+          $("#additionalOptions").slideToggle();
+          $(this).text(willOpen ? "- 추가 옵션 (레이아웃/Prefill)" : "+ 추가 옵션 (레이아웃/Prefill)");
+        });
         $("#toggleActionSwitch").on("change", toggleActions).trigger("change");
         $("#addFieldBtn").click(addFieldEntry);
         $("#addRecipientBtn").click(addRecipientEntry);
@@ -1000,57 +1005,32 @@
             </select>
           </div>
           <div class="form-group">
-            <label>헤더:</label>
-            <div class="switch-wrapper" style="justify-content: flex-start">
-              <label class="switch"
-                ><input type="checkbox" id="layoutHeader" checked /><span
-                  class="slider"
-                ></span
-              ></label>
+            <div class="switch-wrapper" style="justify-content: flex-start; margin-bottom: 5px;">
+              <label class="switch"><input type="checkbox" id="layoutHeader" checked /><span class="slider"></span></label>
+              <span style="margin-left: 8px;">헤더</span>
+            </div>
+            <div class="switch-wrapper" style="justify-content: flex-start; margin-bottom: 5px;">
+              <label class="switch"><input type="checkbox" id="layoutFooter" checked /><span class="slider"></span></label>
+              <span style="margin-left: 8px;">푸터</span>
+            </div>
+            <div class="switch-wrapper" style="justify-content: flex-start;">
+              <label class="switch"><input type="checkbox" id="layoutContextMenu" checked /><span class="slider"></span></label>
+              <span style="margin-left: 8px;">컨텍스트 메뉴</span>
             </div>
           </div>
           <div class="form-group">
-            <label>푸터:</label>
-            <div class="switch-wrapper" style="justify-content: flex-start">
-              <label class="switch"
-                ><input type="checkbox" id="layoutFooter" checked /><span
-                  class="slider"
-                ></span
-              ></label>
+            <label>줌 레벨:</label>
+            <input id="layoutZoom" value="1.0" placeholder="1.0" />
+          </div>
+          <div class="form-group">
+            <label>뷰어 툴바:</label>
+            <div class="switch-wrapper" style="justify-content: flex-start; margin-bottom: 5px;">
+              <label class="switch"><input type="checkbox" id="layoutSave" checked /><span class="slider"></span></label>
+              <span style="margin-left: 8px;">저장 버튼</span>
             </div>
-          </div>
-          <div class="form-group">
-            <label>컨텍스트 메뉴:</label>
-            <div class="switch-wrapper" style="justify-content: flex-start">
-              <label class="switch"
-                ><input type="checkbox" id="layoutContextMenu" checked /><span
-                  class="slider"
-                ></span
-              ></label>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>줌 레벨:</label
-            ><input id="layoutZoom" value="1.0" placeholder="1.0" />
-          </div>
-          <div class="form-group">
-            <label>저장 버튼:</label>
-            <div class="switch-wrapper" style="justify-content: flex-start">
-              <label class="switch"
-                ><input type="checkbox" id="layoutSave" checked /><span
-                  class="slider"
-                ></span
-              ></label>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>인쇄 버튼:</label>
-            <div class="switch-wrapper" style="justify-content: flex-start">
-              <label class="switch"
-                ><input type="checkbox" id="layoutPrint" checked /><span
-                  class="slider"
-                ></span
-              ></label>
+            <div class="switch-wrapper" style="justify-content: flex-start;">
+              <label class="switch"><input type="checkbox" id="layoutPrint" checked /><span class="slider"></span></label>
+              <span style="margin-left: 8px;">인쇄 버튼</span>
             </div>
           </div>
           
