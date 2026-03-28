@@ -223,6 +223,21 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | Document Bulk Delete | 문서 일괄 삭제 |
 | Document Bulk Download | 문서 일괄 다운로드 |
 | Template Delete Tool | 템플릿 일괄 삭제 |
+## 2026-03-28 Update
+
+### Open API Tester — 모바일 반응형 대응
+
+- **모바일 사이드바 드로어**: `@media (max-width: 640px)` 브레이크포인트에서 사이드바가 고정 위치 슬라이드 드로어로 전환됩니다.
+  - 헤더 좌측 햄버거(`#btnMenu`) 버튼으로 사이드바 열기/닫기
+  - 배경 오버레이(`#sidebarBackdrop`) 클릭으로도 닫기 가능
+  - API 항목 선택 시 사이드바 자동 닫힘
+- **터치 타겟 최소 44×44px 보장**: 버튼, 탭 등 모든 인터랙션 요소에 적용
+- **인증 패널 그리드**: 모바일에서 1열 레이아웃으로 전환
+- **빈 화면 안내**: 모바일에서 "API 목록 열기" 버튼 표시
+- 640px 초과(태블릿·PC)에서는 기존 상시 표시 사이드바 유지
+
+---
+
 ## 2026-03-26 Update
 
 ### Protected Page Refactor

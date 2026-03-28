@@ -153,6 +153,12 @@ const DOMAINS = {
 - **DELETE with Body**: `sendRequest`에서 DELETE도 body 포함 메서드로 처리 — Body가 있는 DELETE API(OPA2_009, OPA2_020 등) 정상 전송
 - **URL 표시 인코딩**: `,` `@` `:` `/` 는 인코딩하지 않고 그대로 표시 (`encodeForDisplay` 함수, `ui.js` `updateUrlPreview`)
 - **OPA2_001 SaaS 전용 URL**: `saasBaseUrl` 필드로 op_saas 환경에서만 `https://api.eformsign.com` 사용
+- **모바일 사이드바 드로어**: `@media (max-width: 640px)`에서 사이드바가 고정 위치 슬라이드 드로어로 전환됨
+  - `#btnMenu` 햄버거 버튼(헤더 좌측)으로 열기/닫기
+  - `#sidebarBackdrop` 반투명 오버레이 클릭 시 닫힘
+  - `init.js`의 `toggleMobileSidebar()` / `closeMobileSidebar()` 함수로 제어
+  - API 항목 선택(`selectEndpoint`) 시 `ui.js`에서 모바일 폭(`window.innerWidth <= 768`)이면 자동으로 사이드바 닫힘
+  - 640px 초과(태블릿·PC)에서는 기존 상시 표시 사이드바 유지
 
 ### API 데이터 구조 (`API_LIST`)
 ```javascript
