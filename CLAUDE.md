@@ -10,6 +10,7 @@ Vercel 서버리스 환경에서 동작하며, 브라우저 기반 HTML 도구 +
 ```
 ProjectImprove/
 ├── index.html                  # 메인 허브 페이지 (모든 도구 링크 모음)
+├── favicon.svg                 # 전체 페이지 공통 파비콘 (플러그 아이콘, 프로젝트 블루 #1a73e8)
 ├── vercel.json                 # Vercel 배포 라우팅 설정
 ├── package.json
 │

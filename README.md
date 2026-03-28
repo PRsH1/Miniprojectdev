@@ -225,6 +225,12 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | Template Delete Tool | 템플릿 일괄 삭제 |
 ## 2026-03-28 Update
 
+### 파비콘 (Favicon) 추가
+
+- `/favicon.svg` 신규 생성 — 프로젝트 블루(`#1a73e8`) 배경의 플러그 아이콘 SVG
+- 전체 HTML 파일 31개에 `<link rel="icon" href="/favicon.svg" type="image/svg+xml">` 일괄 추가
+- 하위 경로(`utils/`, `API(JS,HTML)/`, `Embedding/` 등)에서도 절대경로로 동일 파비콘 사용
+
 ### Open API Tester — 모바일 반응형 대응
 
 - **모바일 사이드바 드로어**: `@media (max-width: 640px)` 브레이크포인트에서 사이드바가 고정 위치 슬라이드 드로어로 전환됩니다.
