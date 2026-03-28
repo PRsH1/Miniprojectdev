@@ -1,0 +1,22 @@
+﻿{
+  "profileName": "Imported Profile",
+  "config": {
+    "defaultEnvironment": "csap",
+    "auth": {
+      "mode": "apiKey",
+      "accessToken": "import-token",
+      "apiKey": "import-api-key",
+      "memberId": "import-member",
+      "secretKey": "import-secret"
+    },
+    "data": {
+      "internalTemplateId": "import-template-001",
+      "externalCompanyApiKey": "import-company-key",
+      "targetRecipient": {
+        "email": "import@example.com",
+        "name": "Import User",
+        "phone": "01000000000"
+      }
+    }
+  }
+}

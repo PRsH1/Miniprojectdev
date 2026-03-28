@@ -19,6 +19,7 @@ const controllers = {
 
   // --- 페이지 엔드포인트 ---
   'ApiAutoTest': () => require('../controllers/ApiAutoTest'),
+  'OpenAPIAutoTest': () => require('../controllers/OpenAPIAutoTest'),
 };
 
 module.exports = async (req, res) => {
@@ -32,6 +33,8 @@ module.exports = async (req, res) => {
     controllerKey = path.replace('/api/', '').replace('/', '');
   } else if (path === '/ApiAutoTest') {
     controllerKey = 'ApiAutoTest';
+  } else if (path === '/OpenAPIAutoTest') {
+    controllerKey = 'OpenAPIAutoTest';
   } else if (path === '/templatecopy') {
     controllerKey = 'templatecopy';
   } else if (path === '/idptestauth') {

@@ -306,6 +306,9 @@
                             <input id="profileNameInput" type="text" class="btn-secondary" style="min-width:140px;padding:9px 10px" placeholder="새 프로필 이름">
                             <button class="btn-secondary" id="saveProfileBtn" type="button">프로필 저장</button>
                             <button class="btn-secondary" id="deleteProfileBtn" type="button">프로필 삭제</button>
+                            <button class="btn-secondary" id="exportProfileBtn" type="button">프로필 Export</button>
+                            <button class="btn-secondary" id="importProfileBtn" type="button">프로필 Import</button>
+                            <input id="importProfileFile" type="file" accept="application/json" hidden>
                         </div>
                         <div class="settings-subtitle">일반 설정</div>
                         <div class="settings-grid">
@@ -375,6 +378,9 @@
                         </div>
                         <div class="settings-divider"></div>
                         <div class="settings-subtitle">민감 정보</div>
+                        <div class="settings-toolbar">
+                            <button class="btn-secondary" id="toggleSensitiveBtn" type="button">민감정보 보기</button>
+                        </div>
                         <div class="settings-grid">
                             <div class="settings-field span-2">
                                 <label for="formAccessToken">Access Token</label>
@@ -406,6 +412,16 @@
                         </div>
                         <textarea id="settingsEditor" class="settings-editor" spellcheck="false"></textarea>
                         <p class="settings-help" id="settingsStatusText">이 브라우저의 localStorage에 사용자별 설정이 저장됩니다.</p>
+                    </div>
+                </section>
+
+                <section class="detail-section">
+                    <h2>프로필별 실행 이력</h2>
+                    <div class="detail-card">
+                        <div class="settings-toolbar">
+                            <button class="btn-secondary" id="clearHistoryBtn" type="button">현재 프로필 이력 삭제</button>
+                        </div>
+                        <div class="config-list" id="historyList"></div>
                     </div>
                 </section>
 
