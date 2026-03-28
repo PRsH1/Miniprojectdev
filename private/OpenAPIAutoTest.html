@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eformsign Open API Auto Test Runner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --sidebar-w: 300px;
+            --sidebar-bg: #1e2a38;
+            --sidebar-hover: #2a3a4f;
+            --sidebar-selected: #2d7be0;
+            --sidebar-text: #c9d4df;
+            --sidebar-muted: #7a8fa6;
+            --header-h: 52px;
+            --border: #e2e8f0;
+            --bg: #f1f5f9;
+            --white: #ffffff;
+            --blue: #2d7be0;
+            --blue-dark: #1a5fb4;
+            --green: #1f9d55;
+            --yellow: #c78b07;
+            --red: #d64545;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: #1a202c;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .app-header {
+            height: var(--header-h);
+            background: var(--sidebar-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 12px;
+            flex-shrink: 0;
+            border-bottom: 1px solid #0d1820;
+        }
+        .logo { color: #fff; font-size: 1.05rem; font-weight: 700; letter-spacing: -0.3px; }
+        .logo span { color: #4fa8ff; }
+        .header-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+        .header-tools label { color: var(--sidebar-muted); font-size: 0.8rem; }
+        .header-tools select {
+            background: #2a3a4f; color: #fff; border: 1px solid #3a4f6a;
+            border-radius: 6px; padding: 6px 10px; font-size: 0.84rem;
+        }
+        .base-url-badge, .config-badge {
+            background: #0d1820; color: #4fa8ff; font-size: 0.78rem;
+            padding: 4px 10px; border-radius: 999px; border: 1px solid #1e3550; white-space: nowrap;
+        }
+        .app-body { display: flex; flex: 1; overflow: hidden; }
+        .sidebar {
+            width: var(--sidebar-w); background: var(--sidebar-bg); display: flex;
+            flex-direction: column; flex-shrink: 0; overflow: hidden;
+        }
+        .sidebar-search { padding: 12px; border-bottom: 1px solid #0d1820; }
+        .sidebar-search input {
+            width: 100%; background: #2a3a4f; border: 1px solid #3a4f6a;
+            border-radius: 6px; color: #fff; padding: 8px 10px; font-size: 0.84rem;
+        }
+        .sidebar-actions { display: flex; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #0d1820; }
+        .sidebar-btn {
+            flex: 1; background: #2a3a4f; border: 1px solid #3a4f6a; color: #fff;
+            border-radius: 6px; padding: 7px 8px; font-size: 0.77rem; cursor: pointer;
+        }
+        .sidebar-btn:hover { border-color: var(--blue); }
+        .sidebar-list { overflow-y: auto; flex: 1; padding: 8px 0; }
+        .sidebar-list::-webkit-scrollbar { width: 4px; }
+        .sidebar-list::-webkit-scrollbar-thumb { background: #3a4f6a; border-radius: 4px; }
+        .api-group-header {
+            padding: 8px 14px; color: var(--sidebar-muted); font-size: 0.74rem;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .scenario-item { padding: 10px 14px; border-left: 3px solid transparent; cursor: pointer; transition: background 0.15s; }
+        .scenario-item:hover { background: var(--sidebar-hover); }
+        .scenario-item.active { background: rgba(45, 123, 224, 0.15); border-left-color: var(--sidebar-selected); }
+        .scenario-check { display: flex; align-items: flex-start; gap: 10px; color: var(--sidebar-text); }
+        .scenario-check input { margin-top: 3px; accent-color: var(--blue); }
+        .scenario-main { flex: 1; min-width: 0; }
+        .scenario-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .scenario-code { color: #fff; font-weight: 700; font-size: 0.86rem; }
+        .method-chip { font-size: 0.68rem; padding: 2px 6px; border-radius: 999px; font-weight: 700; }
+        .method-get { background: #1f9d55; color: #fff; }
+        .method-post { background: #2d7be0; color: #fff; }
+        .method-patch { background: #d5a021; color: #1f2937; }
+        .method-delete { background: #d64545; color: #fff; }
+        .scenario-name { color: var(--sidebar-text); font-size: 0.82rem; line-height: 1.35; }
+        .scenario-meta { display: flex; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
+        .mini-badge { font-size: 0.68rem; padding: 2px 6px; border-radius: 999px; background: rgba(255,255,255,0.08); color: var(--sidebar-muted); }
+        .mini-badge.ready { color: #84f2b2; }
+        .mini-badge.warn { color: #ffd269; }
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .summary-panel { background: var(--white); border-bottom: 1px solid var(--border); padding: 16px 20px; flex-shrink: 0; }
+        .summary-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+        .summary-title h1 { font-size: 1.1rem; margin-bottom: 6px; }
+        .summary-title p { color: #64748b; font-size: 0.86rem; line-height: 1.45; max-width: 780px; }
+        .run-actions { display: flex; gap: 10px; flex-shrink: 0; }
+        .btn-primary, .btn-secondary { border-radius: 6px; padding: 10px 14px; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+        .btn-primary { border: none; background: var(--blue); color: #fff; }
+        .btn-primary:hover { background: var(--blue-dark); }
+        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-secondary { border: 1px solid var(--border); background: #fff; color: #475569; }
+        .btn-secondary:hover { border-color: #94a3b8; }
+        .status-grid { margin-top: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+        .status-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: #f8fafc; }
+        .status-card .label { color: #64748b; font-size: 0.77rem; margin-bottom: 6px; }
+        .status-card .value { font-size: 1rem; font-weight: 700; color: #0f172a; }
+        .content { display: grid; grid-template-columns: minmax(340px, 420px) 1fr; gap: 0; flex: 1; min-height: 0; }
+        .detail-panel { border-right: 1px solid var(--border); background: #fff; overflow-y: auto; padding: 18px 20px; }
+        .detail-section + .detail-section { margin-top: 20px; }
+        .detail-section h2 { font-size: 0.9rem; margin-bottom: 10px; color: #0f172a; }
+        .detail-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: #f8fafc; }
+        .detail-card p { font-size: 0.84rem; color: #475569; line-height: 1.45; }
+        .settings-toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .settings-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .settings-field label {
+            font-size: 0.76rem;
+            color: #475569;
+            font-weight: 600;
+        }
+        .settings-field input,
+        .settings-field select {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            font-size: 0.82rem;
+            color: #0f172a;
+            background: #fff;
+        }
+        .settings-field.span-2 { grid-column: span 2; }
+        .settings-subtitle {
+            font-size: 0.78rem;
+            color: #334155;
+            font-weight: 700;
+            margin: 10px 0 8px;
+        }
+        .settings-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 12px 0;
+        }
+        .settings-editor {
+            width: 100%;
+            min-height: 280px;
+            resize: vertical;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font: 12px/1.5 Consolas, Monaco, monospace;
+            color: #0f172a;
+            background: #fff;
+        }
+        .settings-help {
+            margin-top: 8px;
+            font-size: 0.78rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+        .config-list, .pipeline-list { display: flex; flex-direction: column; gap: 8px; }
+        .config-row, .pipeline-row {
+            display: flex; justify-content: space-between; gap: 12px; border: 1px solid var(--border);
+            border-radius: 8px; padding: 10px 12px; background: #fff; font-size: 0.82rem;
+        }
+        .config-key, .pipeline-label { color: #475569; }
+        .config-value, .pipeline-value { color: #0f172a; font-weight: 600; text-align: right; }
+        .config-value.missing { color: var(--red); }
+        .config-value.ready { color: var(--green); }
+        .result-panel { display: flex; flex-direction: column; min-width: 0; overflow: hidden; background: #fff; }
+        .progress-wrap { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); background: #fff; }
+        .progress-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .progress-header h2 { font-size: 0.94rem; }
+        .progress-header span { color: #64748b; font-size: 0.82rem; }
+        .progress-bar-bg { width: 100%; height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #2d7be0, #4fa8ff); transition: width 0.2s ease; }
+        .table-wrap { flex: 1; overflow: auto; background: #fff; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+        thead th {
+            position: sticky; top: 0; background: #f8fafc; z-index: 1; text-align: left; color: #475569;
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid var(--border); padding: 12px 14px;
+        }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid #eef2f7; vertical-align: top; }
+        tbody tr:hover { background: #f8fafc; }
+        .status-pill {
+            display: inline-flex; align-items: center; justify-content: center; min-width: 74px;
+            padding: 4px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+        }
+        .status-pass { background: #e9f9ef; color: var(--green); }
+        .status-fail { background: #fdecec; color: var(--red); }
+        .status-skip { background: #fff7df; color: var(--yellow); }
+        .step-name { font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+        .step-url { color: #64748b; font-size: 0.76rem; word-break: break-all; }
+        .log-btn {
+            border: 1px solid var(--border); background: #fff; border-radius: 6px;
+            padding: 5px 8px; font-size: 0.75rem; cursor: pointer; color: #475569;
+        }
+        .log-btn:hover { border-color: #94a3b8; }
+        .log-row td { background: #f8fafc; padding-top: 0; }
+        .log-box { display: none; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: #fff; margin: 0 0 12px; }
+        .log-box pre {
+            white-space: pre-wrap; word-break: break-word; font-size: 0.78rem; line-height: 1.45;
+            background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow-x: auto;
+        }
+        .log-box h3 { font-size: 0.8rem; margin-bottom: 8px; color: #334155; }
+        @media (max-width: 1100px) {
+            .content { grid-template-columns: 1fr; }
+            .detail-panel { border-right: none; border-bottom: 1px solid var(--border); }
+        }
+        @media (max-width: 860px) {
+            .app-body { flex-direction: column; }
+            .sidebar { width: 100%; max-height: 38vh; border-bottom: 1px solid #0d1820; }
+            .status-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .summary-top { flex-direction: column; }
+            .run-actions { width: 100%; }
+            .run-actions button { flex: 1; }
+        }
+    </style>
+</head>
+<body>
+<header class="app-header">
+    <div class="logo">eformsign <span>Open API Auto Test</span></div>
+    <div class="header-tools">
+        <label for="envSelect">환경</label>
+        <select id="envSelect"></select>
+        <div class="base-url-badge" id="baseUrlBadge"></div>
+        <div class="config-badge" id="configBadge">설정 확인 중</div>
+    </div>
+</header>
+
+<div class="app-body">
+    <aside class="sidebar">
+        <div class="sidebar-search">
+            <input type="text" id="scenarioSearch" placeholder="OPA 번호 또는 이름 검색">
+        </div>
+        <div class="sidebar-actions">
+            <button class="sidebar-btn" id="selectAllBtn">전체 선택</button>
+            <button class="sidebar-btn" id="clearAllBtn">선택 해제</button>
+        </div>
+        <div class="sidebar-list" id="scenarioList"></div>
+    </aside>
+
+    <main class="main">
+        <section class="summary-panel">
+            <div class="summary-top">
+                <div class="summary-title">
+                    <h1>OPA 번호 기준 자동 테스트 실행기</h1>
+                    <p>OpenAPITester의 화면 구조를 유지하면서, 테스트 데이터와 인증 정보를 코드 안의 설정으로 고정한 자동 실행 전용 페이지입니다. 사용자는 OPA 항목만 선택하고 한 번의 실행 버튼으로 테스트를 돌릴 수 있습니다.</p>
+                </div>
+                <div class="run-actions">
+                    <button class="btn-secondary" id="runActiveBtn">현재 OPA만 실행</button>
+                    <button class="btn-primary" id="runSelectedBtn">선택한 OPA 실행</button>
+                </div>
+            </div>
+
+            <div class="status-grid">
+                <div class="status-card"><div class="label">선택된 OPA</div><div class="value" id="selectedCount">0개</div></div>
+                <div class="status-card"><div class="label">실행 단계</div><div class="value" id="plannedStepCount">0개</div></div>
+                <div class="status-card"><div class="label">준비 상태</div><div class="value" id="readinessLabel">확인 중</div></div>
+                <div class="status-card"><div class="label">최근 실행 결과</div><div class="value" id="lastRunSummary">아직 없음</div></div>
+            </div>
+        </section>
+
+        <div class="content">
+            <aside class="detail-panel">
+                <section class="detail-section">
+                    <h2>선택된 OPA</h2>
+                    <div class="detail-card">
+                        <p id="activeScenarioDescription">왼쪽에서 OPA 항목을 선택하면 시나리오 설명과 실행 파이프라인이 표시됩니다.</p>
+                    </div>
+                </section>
+
+                <section class="detail-section">
+                    <h2>시나리오 파이프라인</h2>
+                    <div class="pipeline-list" id="pipelineList"></div>
+                </section>
+
+                <section class="detail-section">
+                    <h2>사용자 설정</h2>
+                    <div class="detail-card">
+                        <div class="settings-toolbar">
+                            <select id="profileSelect" class="btn-secondary" style="min-width:150px"></select>
+                            <input id="profileNameInput" type="text" class="btn-secondary" style="min-width:140px;padding:9px 10px" placeholder="새 프로필 이름">
+                            <button class="btn-secondary" id="saveProfileBtn" type="button">프로필 저장</button>
+                            <button class="btn-secondary" id="deleteProfileBtn" type="button">프로필 삭제</button>
+                        </div>
+                        <div class="settings-subtitle">일반 설정</div>
+                        <div class="settings-grid">
+                            <div class="settings-field">
+                                <label for="formDefaultEnvironment">기본 환경</label>
+                                <select id="formDefaultEnvironment">
+                                    <option value="saas">운영 (SaaS)</option>
+                                    <option value="csap">공공 (CSAP)</option>
+                                </select>
+                            </div>
+                            <div class="settings-field">
+                                <label for="formAuthMode">인증 방식</label>
+                                <select id="formAuthMode">
+                                    <option value="accessToken">Access Token</option>
+                                    <option value="signature">Signature</option>
+                                    <option value="bearer">Bearer</option>
+                                </select>
+                            </div>
+                            <div class="settings-field">
+                                <label for="formInternalTemplateId">내부 Template ID</label>
+                                <input id="formInternalTemplateId" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formSecondaryTemplateId">보조 Template ID</label>
+                                <input id="formSecondaryTemplateId" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formExternalCompanyId">외부 Company ID</label>
+                                <input id="formExternalCompanyId" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formExternalTemplateId">외부 Template ID</label>
+                                <input id="formExternalTemplateId" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formDownloadDocumentId">다운로드 문서 ID</label>
+                                <input id="formDownloadDocumentId" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formAttachDocumentId">첨부 문서 ID</label>
+                                <input id="formAttachDocumentId" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formMemberId">테스트 멤버 ID</label>
+                                <input id="formMemberId" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formPdfRecipientName">PDF 수신자 이름</label>
+                                <input id="formPdfRecipientName" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formTargetEmail">기본 수신자 Email</label>
+                                <input id="formTargetEmail" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formTargetPhone">기본 수신자 Phone</label>
+                                <input id="formTargetPhone" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formTargetName">기본 수신자 Name</label>
+                                <input id="formTargetName" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formPdfRecipientEmail">PDF 수신자 Email</label>
+                                <input id="formPdfRecipientEmail" type="text">
+                            </div>
+                        </div>
+                        <div class="settings-divider"></div>
+                        <div class="settings-subtitle">민감 정보</div>
+                        <div class="settings-grid">
+                            <div class="settings-field span-2">
+                                <label for="formAccessToken">Access Token</label>
+                                <input id="formAccessToken" type="password">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formApiKey">API Key</label>
+                                <input id="formApiKey" type="password">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formAuthMemberId">Auth Member ID</label>
+                                <input id="formAuthMemberId" type="text">
+                            </div>
+                            <div class="settings-field span-2">
+                                <label for="formSecretKey">Secret Key</label>
+                                <input id="formSecretKey" type="password">
+                            </div>
+                            <div class="settings-field span-2">
+                                <label for="formExternalCompanyApiKey">외부 Company API Key</label>
+                                <input id="formExternalCompanyApiKey" type="password">
+                            </div>
+                        </div>
+                        <div class="settings-divider"></div>
+                        <div class="settings-subtitle">고급 JSON 편집</div>
+                        <div class="settings-toolbar">
+                            <button class="btn-secondary" id="saveSettingsBtn" type="button">설정 저장</button>
+                            <button class="btn-secondary" id="reloadSettingsBtn" type="button">저장값 다시 불러오기</button>
+                            <button class="btn-secondary" id="resetSettingsBtn" type="button">기본값으로 초기화</button>
+                        </div>
+                        <textarea id="settingsEditor" class="settings-editor" spellcheck="false"></textarea>
+                        <p class="settings-help" id="settingsStatusText">이 브라우저의 localStorage에 사용자별 설정이 저장됩니다.</p>
+                    </div>
+                </section>
+
+                <section class="detail-section">
+                    <h2>고정 설정 상태</h2>
+                    <div class="config-list" id="configStatusList"></div>
+                </section>
+            </aside>
+
+            <section class="result-panel">
+                <div class="progress-wrap">
+                    <div class="progress-header">
+                        <h2>실행 결과</h2>
+                        <span id="progressText">대기 중</span>
+                    </div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
+                </div>
+
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 70px;">No.</th>
+                                <th>Step</th>
+                                <th style="width: 90px;">Method</th>
+                                <th style="width: 110px;">Status</th>
+                                <th style="width: 110px;">Duration</th>
+                                <th style="width: 110px;">Detail</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+    </main>
+</div>
+
+<script>
+window.OPEN_API_AUTO_TEST_CONFIG = window.OPEN_API_AUTO_TEST_CONFIG || {
+    defaultEnvironment: "saas",
+    auth: {
+        mode: "accessToken",
+        accessToken: "",
+        apiKey: "",
+        memberId: "",
+        secretKey: ""
+    },
+    data: {
+        internalTemplateId: "",
+        externalCompanyId: "",
+        externalTemplateId: "",
+        externalCompanyApiKey: "",
+        secondaryTemplateId: "",
+        targetRecipient: {
+            email: "",
+            name: "",
+            phone: ""
+        },
+        secondaryRecipient: {
+            email: "",
+            name: "",
+            phone: ""
+        },
+        pdfRecipient: {
+            name: "PDF 수신자",
+            email: "",
+            phone: ""
+        },
+        lookupTargets: {
+            downloadDocumentId: "",
+            attachDocumentId: ""
+        },
+        member: {
+            id: "test.autorun@example.com"
+        },
+        commonFields: [],
+        secondaryFields: []
+    }
+};
+</script>
+<script src="/assets/js/OpenAPIAutoTest.js"></script>
+</body>
+</html>
