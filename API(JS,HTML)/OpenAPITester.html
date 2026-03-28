@@ -683,12 +683,119 @@
         }
         .spec-error-msg { color: #e74c3c; font-size: 0.8rem; }
         .spec-empty { color: #a0aec0; font-size: 0.84rem; padding: 10px 0; }
+
+        /* ========== MOBILE RESPONSIVE ========== */
+        .btn-menu { display: none; }
+
+        @media (max-width: 768px) {
+            body { height: 100vh; height: 100dvh; }
+
+            /* Header */
+            .app-header { padding: 0 10px; gap: 6px; }
+            .btn-menu {
+                display: flex !important;
+                align-items: center; justify-content: center;
+                background: none; border: none; color: #fff;
+                font-size: 1.1rem; cursor: pointer;
+                padding: 6px 8px; border-radius: 6px; flex-shrink: 0;
+                transition: background 0.15s;
+            }
+            .btn-menu:hover { background: rgba(255,255,255,0.12); }
+            .app-header .logo { font-size: 0.92rem; }
+            .base-url-badge { display: none; }
+            .btn-guide { padding: 5px 8px; }
+            .btn-guide .btn-guide-label { display: none; }
+            #customDomainInput { width: 130px; }
+
+            /* Sidebar → 슬라이드 드로어 */
+            .sidebar {
+                position: fixed;
+                left: -320px;
+                top: var(--header-h);
+                height: calc(100dvh - var(--header-h));
+                height: calc(100vh - var(--header-h));
+                width: 300px !important;
+                max-width: 85vw;
+                z-index: 200;
+                transition: left 0.28s cubic-bezier(.4, 0, .2, 1);
+            }
+            .sidebar.mobile-open {
+                left: 0;
+                box-shadow: 6px 0 28px rgba(0,0,0,0.45);
+            }
+            .sidebar-resizer { display: none; }
+
+            /* 사이드바 백드롭 */
+            .sidebar-backdrop {
+                position: fixed;
+                inset: 0;
+                top: var(--header-h);
+                background: rgba(0,0,0,0.5);
+                z-index: 199;
+                display: none;
+            }
+            .sidebar-backdrop.open { display: block; }
+
+            /* Auth 패널 */
+            .auth-grid { grid-template-columns: 1fr; }
+            .auth-grid .span2 { grid-column: span 1; }
+            .auth-panel-body { padding: 0 14px 14px; }
+            .auth-actions { flex-wrap: wrap; gap: 8px; }
+            .token-display { width: 100%; flex: none; }
+
+            /* Request URL 바 */
+            .request-section { padding: 12px 14px; }
+            .request-url-bar { flex-wrap: wrap; gap: 6px; }
+            .method-badge-select { order: 1; flex-shrink: 0; }
+            .url-input { order: 2; flex: 1 1 calc(100% - 110px); min-width: 0; }
+            .btn-code { order: 3; flex-shrink: 0; }
+            .btn-spec { order: 3; flex-shrink: 0; }
+            .btn-send-wrap { order: 3; flex-shrink: 0; margin-left: auto; }
+
+            /* 탭 컨테이너 */
+            #tabsContainer { height: auto !important; max-height: 42vh; overflow: hidden; }
+            .h-resizer { display: none; }
+            .tabs-nav { padding: 0 10px; }
+            .tab-pane.active { padding: 10px 12px; }
+
+            /* KV 테이블 */
+            .kv-table .col-key { width: 38%; }
+            .kv-table .param-desc { display: none; }
+
+            /* 응답 영역 */
+            .response-header { padding: 8px 14px; flex-wrap: wrap; gap: 6px; }
+            .response-actions { margin-left: 0; }
+            .response-pre { padding: 12px 14px; font-size: 0.78rem; }
+
+            /* Empty state */
+            #emptyState { padding: 30px 16px; }
+            #emptyStateArrow { display: none; }
+            #emptyStateHint { display: block !important; }
+
+            /* 토스트 */
+            .toast { bottom: 12px; right: 12px; left: 12px; text-align: center; }
+
+            /* 가이드 모달 */
+            .guide-steps { grid-template-columns: 1fr; }
+            .guide-modal { width: 95%; }
+            .guide-body { padding: 16px; }
+
+            /* 명세 모달 */
+            .spec-modal { width: 95%; }
+            .spec-modal-body { padding: 14px 16px; }
+
+            /* 코드 모달 */
+            .code-modal { width: 95%; }
+        }
     </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <header class="app-header">
+    <button class="btn-menu" id="btnMenu" aria-label="메뉴 열기" onclick="toggleMobileSidebar()">
+        <i class="fa-solid fa-bars"></i>
+    </button>
     <div class="logo">eformsign <span>API Tester</span></div>
     <div class="env-select-wrap">
         <label for="envSelect">환경:</label>
@@ -702,12 +809,15 @@
         </div>
         <div class="base-url-badge" id="baseUrlBadge"></div>
         <button class="btn-guide" onclick="openGuide()">
-            <i class="fa-solid fa-circle-question fa-sm"></i> 사용 가이드
+            <i class="fa-solid fa-circle-question fa-sm"></i><span class="btn-guide-label"> 사용 가이드</span>
         </button>
     </div>
 </header>
 
 <div class="app-body">
+
+    <!-- 모바일 사이드바 백드롭 -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
@@ -773,8 +883,11 @@
 
         <!-- REQUEST SECTION -->
         <div id="emptyState" class="empty-select">
-            <i class="fa-solid fa-arrow-left-long"></i>
+            <i class="fa-solid fa-arrow-left-long" id="emptyStateArrow"></i>
             <p>왼쪽 목록에서 API를 선택하세요</p>
+            <button class="btn-primary" id="emptyStateHint" onclick="toggleMobileSidebar()" style="display:none; margin-top:16px; font-size:0.85rem; align-items:center; gap:8px;">
+                <i class="fa-solid fa-list fa-sm"></i> API 목록 열기
+            </button>
         </div>
 
         <div id="requestArea" style="display:none; flex:1; display:none; flex-direction:column; overflow:hidden;">

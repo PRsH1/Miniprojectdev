@@ -91,6 +91,9 @@ $(document).ready(function() {
     $(document).on('click', function() {
         $('#sendDropdownMenu').removeClass('open');
     });
+
+    // 모바일 사이드바 백드롭 클릭 시 닫기
+    $('#sidebarBackdrop').on('click', closeMobileSidebar);
 });
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -163,6 +166,26 @@ $(document).ready(function() {
 function updateBaseUrlBadge() {
     const url = getBaseUrl();
     $('#baseUrlBadge').text(url || '(도메인 미지정)');
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// 모바일 사이드바 토글
+// ──────────────────────────────────────────────────────────────────────────
+function toggleMobileSidebar() {
+    const isOpen = $('#sidebar').hasClass('mobile-open');
+    if (isOpen) {
+        closeMobileSidebar();
+    } else {
+        $('#sidebar').addClass('mobile-open');
+        $('#sidebarBackdrop').addClass('open');
+        $('#btnMenu i').removeClass('fa-bars').addClass('fa-xmark');
+    }
+}
+
+function closeMobileSidebar() {
+    $('#sidebar').removeClass('mobile-open');
+    $('#sidebarBackdrop').removeClass('open');
+    $('#btnMenu i').removeClass('fa-xmark').addClass('fa-bars');
 }
 
 

@@ -102,6 +102,13 @@ function selectEndpoint(id) {
     $('.endpoint-item').removeClass('active');
     $(`.endpoint-item[data-id="${id}"]`).addClass('active');
 
+    // 모바일: API 선택 후 사이드바 자동 닫기
+    if (window.innerWidth <= 768) {
+        $('#sidebar').removeClass('mobile-open');
+        $('#sidebarBackdrop').removeClass('open');
+        $('#btnMenu i').removeClass('fa-xmark').addClass('fa-bars');
+    }
+
     // Show request area
     $('#emptyState').hide();
     $('#requestArea').css('display', 'flex');
