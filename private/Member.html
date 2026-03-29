@@ -412,8 +412,9 @@
         </div>
         <div class="form-group">
           <label>external_sso_info:</label>
-          <input type="text" id="externalUuid" placeholder="예: 123456789">
-          <input type="text" id="externalAccountId" placeholder="예: pks2111@naver.com">
+          <input type="text" id="externalUuid" placeholder="uuid 예: 123456789">
+          <input type="text" id="externalIdpName" placeholder="idp_name 예: google">
+          <input type="text" id="externalAccountId" placeholder="account_id 예: pks2111@naver.com">
         </div>
       </div>
       <button class="btn-primary" onclick="addMember(this)">멤버 추가</button>
@@ -423,7 +424,7 @@
       <div id="excelUploadSection">
         <p>엑셀 파일에는 아래와 같은 헤더가 필요합니다:</p>
         <p>id, password, first_name, contact_tel, contact_number, contact_country_number, department, position,
-          agreement_marketing, role, external_uuid, external_account_id</p>
+          agreement_marketing, role, external_uuid, external_idp_name, external_account_id</p>
         <button type="button" class="download-btn" onclick="downloadTemplate()">템플릿 다운로드 (.xlsx)</button>
         <div class="form-group">
           <input type="file" id="excelFileInput" accept=".xlsx, .xls">
@@ -979,8 +980,10 @@
       // external_sso_info
       let external = {};
       const extUuid = $('#externalUuid').val().trim();
+      const extIdpName = $('#externalIdpName').val().trim();
       const extAcc = $('#externalAccountId').val().trim();
       if (extUuid) external.uuid = extUuid;
+      if (extIdpName) external.idp_name = extIdpName;
       if (extAcc) external.account_id = extAcc;
       if (Object.keys(external).length) account.external_sso_info = external;
 
@@ -1483,8 +1486,8 @@
     function downloadTemplate() {
       var wb = XLSX.utils.book_new();
       var ws_data = [
-        ["id", "password", "first_name", "contact_tel", "contact_number", "contact_country_number", "department", "position", "agreement_marketing", "role", "external_uuid", "external_account_id"],
-        ["example@forcs.com", "1111", "Example", "01012345678", "01087654321", "+82", "연구소", "연구원", "true", "company_manager,template_manager", "123456", "example@sso.com"]
+        ["id", "password", "first_name", "contact_tel", "contact_number", "contact_country_number", "department", "position", "agreement_marketing", "role", "external_uuid", "external_idp_name", "external_account_id"],
+        ["example@forcs.com", "1111", "Example", "01012345678", "01087654321", "+82", "연구소", "연구원", "true", "company_manager,template_manager", "123456", "google", "example@sso.com"]
       ];
       var ws = XLSX.utils.aoa_to_sheet(ws_data);
       XLSX.utils.book_append_sheet(wb, ws, "Template");
@@ -1591,6 +1594,7 @@
         if (row['agreement_marketing'] === "true" || row['agreement_marketing'] === true) account.agreement = { marketing: true };
         if (row['role']) account.role = row['role'].split(",").map(s => s.trim());
         if (row['external_uuid']) account.external_sso_info = Object.assign(account.external_sso_info || {}, { uuid: row['external_uuid'] });
+        if (row['external_idp_name']) account.external_sso_info = Object.assign(account.external_sso_info || {}, { idp_name: row['external_idp_name'] });
         if (row['external_account_id']) account.external_sso_info = Object.assign(account.external_sso_info || {}, { account_id: row['external_account_id'] });
 
         return fetch(baseUrl, {
