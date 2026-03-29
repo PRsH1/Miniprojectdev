@@ -26,7 +26,8 @@ ProjectImprove/
 │   ├── getDocumentInfo.js      # 문서 메타데이터 조회
 │   ├── webhook-receiver.js     # Webhook 수신 → Pusher 브로드캐스트
 │   ├── memberPage.js           # 멤버 관리 페이지 (인증 보호)
-│   ├── ApiAutoTest.js          # API 자동화 테스트 페이지 (인증 보호)
+│   ├── ApiAutoTest.js          # (deprecated) 구 API 자동화 테스트 페이지
+│   ├── OpenAPIAutoTest.js      # OPA 번호 기준 자동 테스트 페이지 (인증 보호)
 │   ├── templatecopy.js         # 템플릿 복제 도구 (인증 보호)
 │   ├── idptestauth.js          # IdP 테스트 페이지 (인증 보호)
 │   ├── auth.js                 # SAML 응답 생성
@@ -43,7 +44,8 @@ ProjectImprove/
 │   └── login.html              # 인증 보호 페이지용 로그인 UI
 │
 ├── private/                    # 비밀번호 보호 콘텐츠 (컨트롤러에서 서빙)
-│   └── ApiAutoTest.html / Member.html / templatecopy.html / idp-test.html
+│   └── OpenAPIAutoTest.html / Member.html / templatecopy.html / idp-test.html
+│       # ApiAutoTest.html은 deprecated — index.html 카드에서 제거됨
 │
 ├── API(JS,HTML)/               # eformsign Open API 연동 도구 (브라우저 전용)
 │   └── OpenAPITester.html      # ★ Postman 스타일 API 테스터 (Beta) — HTML/CSS만 포함
@@ -52,7 +54,8 @@ ProjectImprove/
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
 │
 ├── assets/js/
-│   ├── ApiAutoTestStart.js     # API 자동화 테스트 로직 (OPA2_XXX 목록 포함)
+│   ├── OpenAPIAutoTest.js      # ★ OPA 자동 테스트 전체 로직 (단일 파일)
+│   ├── ApiAutoTestStart.js     # (deprecated) 구 자동화 테스트 로직
 │   ├── OpenAPITester.js        # ★ 원본 보존용 (롤백 시 참고) — 직접 편집 금지
 │   └── openapi/                # ★ OpenAPITester 분할 모듈 (로드 순서 중요)
 │       ├── api-list.js         #   API_LIST 데이터 — 신규 API 추가/수정 시 편집
@@ -121,6 +124,83 @@ const DOMAINS = {
 ### 5. 새 공개 도구 추가
 1. `/utils/` 에 HTML 파일 생성
 2. `index.html` 의 해당 섹션에 링크 추가
+
+---
+
+## OpenAPIAutoTest (★ 현재 작업 중인 주요 파일)
+
+OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러너입니다.
+각 OPA 항목은 생성 → 검증 → 정리 단계를 자동으로 묶어서 실행합니다.
+
+**경로:**
+- `private/OpenAPIAutoTest.html` — UI 구조 (모달 뼈대만 포함, 내용은 JS에서 주입)
+- `assets/js/OpenAPIAutoTest.js` — 전체 로직 (시나리오 정의, step 핸들러, UI 렌더링, 가이드)
+
+**접근 경로:** `/api/OpenAPIAutoTest` (쿠키 인증 보호)
+
+### 시나리오 데이터 구조
+```javascript
+{
+    code: "OPA 003",
+    group: "문서",
+    method: "GET",
+    name: "문서 정보 조회",
+    desc: "시나리오 설명",
+    steps: ["listFormsForSeed", "tryCreateAuto", "docInfoBasic", ...],
+    keys: ["auth.mode", "data.extTemplateId"]  // 준비 상태 체크 대상
+}
+```
+
+- `keys`의 각 항목이 모두 채워져야 사이드바에 **준비됨** 배지 표시
+- `"auth.mode"`는 항상 포함 — 인증 패널 입력 여부를 체크하는 트리거
+- `"data.*"` 형태는 `data()` 함수의 반환값 경로를 참조
+
+### 자동탐색 패턴 (step 조합)
+
+| 패턴 | steps | 대상 OPA |
+|---|---|---|
+| 템플릿 자동탐색 | `listFormsForSeed` → `tryCreateAuto` | 003, 005, 014, 016, 021, 042 |
+| 완료 문서 자동탐색 (단건) | `listCompletedDocsForDownload` → `tryDownloadDocAuto` | 004 |
+| 완료 문서 자동탐색 (다건) | `listDocsBasic` → `tryXxxAuto` | 037, 040, 045 |
+
+- `listFormsForSeed`: GET /v2.0/api/forms → 최대 3개 `form_id`를 `state.shared.candidateTemplateIds`에 저장
+- `tryCreateAuto`: 후보 ID를 순차 시도, 첫 성공 → `state.shared.lastCreatedId` + `createdIdList`에 저장
+- `listCompletedDocsForDownload` / `listDocsBasic`: POST /v2.0/api/list_document → `status_type === "003"` 필터 후 최대 5개를 `candidateDocIds` / `completedDocIds`에 저장
+- OPA 040/037은 C(n,2) 조합을 순차 시도, 첫 성공 조합에서 PASS
+
+### 자동 채움 값
+- `companyId`: 토큰 발급 응답의 `api_key.company.company_id`에서 자동 추출 → `state.companyId`
+- `companyApiKey`: 인증 패널의 API Key 입력값에서 자동 채움 (`els.authApiKey.value`)
+- 두 값 모두 설정 모달에 입력 필드 없음 — 직접 입력 불필요
+
+### 준비 상태(readiness) 시스템
+- `readiness(scenario)`: `scenario.keys`를 순회하여 비어 있는 항목을 `missing` 배열로 반환
+- `missing.length === 0` → 준비됨 / 하나라도 있으면 → 설정 필요
+- 상세 패널 "누락된 설정" 섹션(`#missingSectionWrap`)은 누락 시에만 표시, 준비되면 숨김
+
+### 설정 모달 입력 필드 (현재 유효한 항목만)
+| 필드 ID | 매핑 | 사용 OPA |
+|---|---|---|
+| `formExternalTemplateId` | `data.extTemplateId` | 007 |
+| `formAttachDocumentId` | `data.lookupTargets.attachDocumentId` | 006 |
+| `formMemberId` | `data.memberId` | 011~013, 018~020, 030 |
+| `formTargetEmail` | `data.targetEmail` | 014 |
+| `formTargetPhone` | `data.targetPhone` | 014 (선택) |
+| `formTargetName` | `data.targetName` | 014 (선택) |
+| `formPdfRecipientEmail` | `data.pdfTargetEmail` | 037 |
+| `formPdfRecipientName` | `data.pdfTargetName` | 037 (선택) |
+
+### 사용 가이드 (`hydrateGuideContent`)
+- 가이드 모달 내용은 `OpenAPIAutoTest.js` 하단의 `hydrateGuideContent()` 함수에서 주입
+- `private/OpenAPIAutoTest.html`의 가이드 모달은 뼈대(`.guide-header-text`, `.guide-steps`, `.guide-tip p`)만 존재하며 내용은 비어 있음
+- **가이드 수정 시 JS 파일만 편집할 것** — HTML을 편집해도 런타임에 덮어써짐
+
+### 비(非)자명한 동작 — 수정 시 주의
+- **완료 문서 판별 기준**: `doc.current_status.status_type === "003"` — `"doc_complete"` 등 문자열이 아닌 숫자 코드
+- **OPA 037 pdfTargetPhone은 선택**: email 또는 phone 중 하나만 있으면 실행 가능. `keys`에는 `data.pdfTargetEmail`만 포함
+- **`freshShared()`**: 실행 시마다 초기화되는 step 간 공유 상태. 새 공유 변수 추가 시 이 함수에도 추가할 것
+- **`globalChecks()`의 "주 템플릿" 항목 없음**: 모든 문서 생성 OPA가 자동탐색으로 전환되어 제거됨
+- **상세 패널 제목**: `renderDetail()`에서 `activeScenarioTitle` 요소에 `"OPA XXX — API 이름"` 형식으로 동적 설정
 
 ---
 
