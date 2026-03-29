@@ -466,7 +466,14 @@
         <button onclick="validateExcelFileForDeletion(this)">엑셀 파일 검증 (삭제)</button>
         <div id="excelDeleteResult"></div>
         <div id="excelDeleteExecuteSection" style="display:none;">
-          <button onclick="executeExcelMemberDeletion(this)">멤버 삭제 실행</button>
+          <div class="form-group mail-option-delete-excel">
+            <label>이메일 전송 옵션 (엑셀 삭제):</label>
+            <div class="radio-group">
+              <label><input type="radio" name="mailOptionDeleteExcel" value="true" checked> 삭제 시 이메일 발송 (기본값)</label>
+              <label><input type="radio" name="mailOptionDeleteExcel" value="false"> 이메일 발송 안 함</label>
+            </div>
+          </div>
+          <button class="btn-danger" onclick="executeExcelMemberDeletion(this)">멤버 삭제 실행</button>
         </div>
       </div>
     </div>
@@ -703,6 +710,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <script>
+    // 엑셀 검증 결과 전역 변수
+    let validExcelRows = [], invalidExcelRows = [];
+    let validDeleteRows = [], invalidDeleteRows = [];
+    let validUpdateRows = [], invalidUpdateRows = [];
+
     // 고정 URL 매핑
     const tokenUrlMap = {
       "op_saas": "https://kr-api.eformsign.com/v2.0/api_auth/access_token",
@@ -712,6 +724,19 @@
       "op_saas": "https://kr-api.eformsign.com/v2.0/api/members",
       "csap": "https://www.gov-eformsign.com/Service/v2.0/api/members"
     };
+    const groupUrlMap = {
+      "op_saas": "https://kr-api.eformsign.com/v2.0/api/groups",
+      "csap": "https://www.gov-eformsign.com/Service/v2.0/api/groups"
+    };
+
+    // 환경별 그룹 Base URL 반환 헬퍼
+    function getGroupBaseUrl() {
+      const env = $('#envSelection').val();
+      if (env === 'custom') {
+        return ($('#customEnvUrl').val().trim().replace(/\/$/, '') || '') + '/v2.0/api/groups';
+      }
+      return groupUrlMap[env];
+    }
 
     // ★★★ 개선 사항 2: 로딩 상태 제어 헬퍼 함수 수정 ★★★
     /**
@@ -1001,17 +1026,15 @@
 
     // === 멤버 삭제 ===
     function deleteMember(button) {
+      const memberId = $('#deleteMemberId').val().trim();
+      if (!memberId) return alert('삭제할 member_id를 입력해주세요.');
+      if (!confirm(`멤버 "${memberId}"를 삭제하시겠습니까?\n삭제 시 이메일이 발송되며 되돌릴 수 없습니다.`)) return;
+
       showLoading(button);
       const token = $('#accessToken').val().trim();
       if (!token) {
         hideLoading(button);
         return alert('먼저 Access Token 발급해주세요.');
-      }
-
-      const memberId = $('#deleteMemberId').val().trim();
-      if (!memberId) {
-        hideLoading(button);
-        return alert('삭제할 member_id를 입력해주세요.');
       }
 
       const env = $('#envSelection').val();
@@ -1158,18 +1181,16 @@
             $('#tableContainer').show();
             $('#listResultTable tbody').empty();
 
+            const tbody = document.querySelector('#listResultTable tbody');
             data.members.forEach(m => {
               const date = new Date(m.create_date).toLocaleString();
-              $('#listResultTable tbody').append(`
-                <tr>
-                  <td>${m.id}</td>
-                  <td>${m.name}</td>
-                  <td>${m.department || '-'}</td>
-                  <td>${m.position || '-'}</td>
-                  <td>${date}</td>
-                  <td>${m.enabled}</td>
-                </tr>
-              `);
+              const tr = document.createElement('tr');
+              [m.id, m.name, m.department || '-', m.position || '-', date, String(m.enabled)].forEach(val => {
+                const td = document.createElement('td');
+                td.textContent = val;
+                tr.appendChild(td);
+              });
+              tbody.appendChild(tr);
             });
           }
         })
@@ -1191,22 +1212,12 @@
         return;
       }
 
-      // Base URL 결정 (custom 포함)
-      let baseUrl;
-      const env = document.getElementById("envSelection").value;
-      if (env === "custom") {
-        const b = document.getElementById("customEnvUrl").value.trim().replace(/\/$/, "");
-        if (!b) {
-          hideLoading(button);
-          alert("사용자 지정 Base URL을 입력해주세요.");
-          return;
-        }
-        baseUrl = b + "/v2.0/api/groups";
-      } else {
-        // SaaS / CSAP 환경
-        baseUrl = env === "op_saas"
-          ? "https://kr-api.eformsign.com/v2.0/api/groups"
-          : "https://www.gov-eformsign.com/Service/v2.0/api/groups";
+      // Base URL 결정
+      const baseUrl = getGroupBaseUrl();
+      if (!baseUrl.startsWith('http')) {
+        hideLoading(button);
+        alert("사용자 지정 Base URL을 입력해주세요.");
+        return;
       }
 
       // 폼 입력 값 수집
@@ -1276,13 +1287,12 @@
         return alert('먼저 Access Token을 발급받아주세요.');
       }
       // Base URL
-      let env = $('#envSelection').val(),
-        base = env === 'custom'
-          ? $('#customEnvUrl').val().trim().replace(/\/$/, '')
-          : env === 'op_saas'
-            ? 'https://kr-api.eformsign.com'
-            : 'https://www.gov-eformsign.com/Service';
-      const url = `${base}/v2.0/api/groups/${encodeURIComponent($('#updGroupId').val().trim())}`;
+      const baseUrl = getGroupBaseUrl();
+      if (!baseUrl.startsWith('http')) {
+        hideLoading(button);
+        return alert('사용자 지정 Base URL을 입력해주세요.');
+      }
+      const url = `${baseUrl}/${encodeURIComponent($('#updGroupId').val().trim())}`;
       // Body 조립
       const members = $('#updGroupMembers').val().split(',').map(s => s.trim()).filter(s => s);
       const body = {
@@ -1346,9 +1356,10 @@
 
     // ④ 엑셀 검증 (수정)
     let validGroupUpdateRows = [], invalidGroupUpdateRows = [];
-    function validateExcelGroupUpdateFile() {
+    function validateExcelGroupUpdateFile(button) {
       const input = document.getElementById('excelGroupUpdateFileInput');
       if (!input.files.length) return alert('파일을 선택해주세요.');
+      showLoading(button);
       const reader = new FileReader();
       reader.onload = e => {
         const wb = XLSX.read(e.target.result, { type: 'binary' });
@@ -1367,6 +1378,7 @@
         if (invalidGroupUpdateRows.length) msg += `\n오류행:${invalidGroupUpdateRows.join(',')}`;
         $('#excelGroupUpdateResult').text(msg);
         $('#excelGroupUpdateExecuteSection').toggle(validGroupUpdateRows.length > 0);
+        hideLoading(button);
       };
       reader.readAsBinaryString(input.files[0]);
     }
@@ -1380,14 +1392,13 @@
         return alert('먼저 Access Token을 발급받아주세요.');
       }
       // Base URL
-      let env = $('#envSelection').val(),
-        base = env === 'custom'
-          ? $('#customEnvUrl').val().trim().replace(/\/$/, '')
-          : env === 'op_saas'
-            ? 'https://kr-api.eformsign.com'
-            : 'https://www.gov-eformsign.com/Service';
+      const baseUrl = getGroupBaseUrl();
+      if (!baseUrl.startsWith('http')) {
+        hideLoading(button);
+        return alert('사용자 지정 Base URL을 입력해주세요.');
+      }
       const promises = validGroupUpdateRows.map(r => {
-        const url = `${base}/v2.0/api/groups/${encodeURIComponent(r.group_id)}`;
+        const url = `${baseUrl}/${encodeURIComponent(r.group_id)}`;
         return fetch(url, {
           method: 'PATCH',
           headers: {
@@ -1422,6 +1433,10 @@
     }
     // == 수동 그룹 삭제 ===
     function deleteGroups(button) {
+      const ids = $('#delGroupIds').val().split(',').map(s => s.trim()).filter(s => s);
+      if (!ids.length) return alert('삭제할 그룹 ID를 입력해주세요.');
+      if (!confirm(`그룹 ${ids.length}개를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
       showLoading(button);
       const token = $('#accessToken').val().trim();
       if (!token) {
@@ -1429,27 +1444,11 @@
         return alert('먼저 Access Token을 발급받아주세요.');
       }
 
-      // Base URL 결정 (custom 포함)
-      let baseUrl;
-      const env = $('#envSelection').val();
-      if (env === 'custom') {
-        const b = $('#customEnvUrl').val().trim().replace(/\/$/, '');
-        if (!b) {
-          hideLoading(button);
-          return alert('사용자 지정 Base URL을 입력해주세요.');
-        }
-        baseUrl = b + '/v2.0/api/groups';
-      } else {
-        baseUrl = env === 'op_saas'
-          ? 'https://kr-api.eformsign.com/v2.0/api/groups'
-          : 'https://www.gov-eformsign.com/Service/v2.0/api/groups';
-      }
-
-      // IDs
-      const ids = $('#delGroupIds').val().split(',').map(s => s.trim()).filter(s => s);
-      if (!ids.length) {
+      // Base URL 결정
+      const baseUrl = getGroupBaseUrl();
+      if (!baseUrl.startsWith('http')) {
         hideLoading(button);
-        return alert('삭제할 그룹 ID를 입력해주세요.');
+        return alert('사용자 지정 Base URL을 입력해주세요.');
       }
 
       const body = { group_ids: ids };
@@ -1818,20 +1817,11 @@
         return alert("먼저 Access Token을 발급받아주세요.");
       }
 
-      // ① Base URL 결정 (custom 포함)
-      let baseUrl;
-      const env = document.getElementById("envSelection").value;
-      if (env === "custom") {
-        const b = document.getElementById("customEnvUrl").value.trim().replace(/\/$/, "");
-        if (!b) {
-            hideLoading(button);
-            return alert("사용자 지정 Base URL을 입력해주세요.");
-        }
-        baseUrl = b + "/v2.0/api/groups";
-      } else {
-        baseUrl = env === "op_saas"
-          ? "https://kr-api.eformsign.com/v2.0/api/groups"
-          : "https://www.gov-eformsign.com/Service/v2.0/api/groups";
+      // ① Base URL 결정
+      const baseUrl = getGroupBaseUrl();
+      if (!baseUrl.startsWith('http')) {
+        hideLoading(button);
+        return alert("사용자 지정 Base URL을 입력해주세요.");
       }
 
       // ② 모든 행에 대해 fetch → JSON 파싱 → 성공/실패 객체 생성
@@ -1932,18 +1922,10 @@
       }
 
       // Base URL 결정 (위 deleteGroups와 동일)
-      let baseUrl, env = $('#envSelection').val();
-      if (env === 'custom') {
-        const b = $('#customEnvUrl').val().trim().replace(/\/$/, '');
-        if (!b) {
-            hideLoading(button);
-            return alert('사용자 지정 Base URL을 입력해주세요.');
-        }
-        baseUrl = b + '/v2.0/api/groups';
-      } else {
-        baseUrl = env === 'op_saas'
-          ? 'https://kr-api.eformsign.com/v2.0/api/groups'
-          : 'https://www.gov-eformsign.com/Service/v2.0/api/groups';
+      const baseUrl = getGroupBaseUrl();
+      if (!baseUrl.startsWith('http')) {
+        hideLoading(button);
+        return alert('사용자 지정 Base URL을 입력해주세요.');
       }
 
       const promises = validGroupDeleteRows.map(ids => {
