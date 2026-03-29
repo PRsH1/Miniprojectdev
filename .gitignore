@@ -39,6 +39,9 @@ Thumbs.db
 # Zip files
 *.zip
 
+# Temp / test fixture files
+tmp-*.json
+
 # IDE Settings (선택 사항 - VSCode 설정 공유 안 할거면 추가)
 .vscode/
 

@@ -64,36 +64,39 @@
         selectedCodes: new Set(),
         running: false,
         shared: freshShared(),
-        token: ""
+        token: "",
+        companyId: "",
+        authMethod: "signature",
+        viewMode: "group"
     };
     const els = {};
 
     const scenarios = [
-        { code: "OPA 003", group: "문서", method: "GET", name: "문서 정보 조회", desc: "내부 문서를 만들고 기본/상세 조회를 검증합니다.", steps: ["seedInternalDoc", "docInfoBasic", "docInfoDetail", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.targetTemplateId"] },
-        { code: "OPA 004", group: "문서", method: "GET", name: "문서 파일 다운로드", desc: "완료 문서 PDF와 audit trail 다운로드를 검증합니다.", steps: ["downloadDoc"], keys: ["auth.mode", "data.downloadDocId"] },
-        { code: "OPA 005", group: "문서", method: "POST", name: "새 문서 작성 (내부)", desc: "내부 문서를 생성하고 정리합니다.", steps: ["seedInternalDoc", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.targetTemplateId"] },
+        { code: "OPA 003", group: "문서", method: "GET", name: "문서 정보 조회", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 기본/상세 조회를 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "docInfoBasic", "docInfoDetail", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
+        { code: "OPA 004", group: "문서", method: "GET", name: "문서 파일 다운로드", desc: "완료(status_type=003) 문서 목록을 조회하여 최대 5개의 문서 ID를 자동 수집한 뒤 순차적으로 다운로드를 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listCompletedDocsForDownload", "tryDownloadDocAuto"], keys: ["auth.mode"] },
+        { code: "OPA 005", group: "문서", method: "POST", name: "새 문서 작성 (내부)", desc: "작성 가능한 템플릿 목록에서 최대 3개를 자동 추출한 뒤 순차적으로 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 006", group: "문서", method: "GET", name: "문서 첨부 파일 다운로드", desc: "첨부 파일 포함 문서의 첨부 다운로드를 검증합니다.", steps: ["downloadAttach"], keys: ["auth.mode", "data.attachDocId"] },
-        { code: "OPA 007", group: "문서", method: "POST", name: "새 문서 작성 (외부)", desc: "외부 문서를 생성하고 정리합니다.", steps: ["createExternalDoc", "cancelDocs", "deleteDocs"], keys: ["data.companyId", "data.extTemplateId", "data.companyApiKey"] },
+        { code: "OPA 007", group: "문서", method: "POST", name: "새 문서 작성 (외부)", desc: "외부 문서를 생성하고 정리합니다. company_id와 API Key는 토큰 발급 정보에서 자동으로 채워집니다.", steps: ["createExternalDoc", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.extTemplateId"] },
         { code: "OPA 008", group: "문서", method: "POST", name: "문서 목록 조회", desc: "문서 목록 기본/상세 조회를 검증합니다.", steps: ["listDocsBasic", "listDocsDetail"], keys: ["auth.mode"] },
         { code: "OPA 010", group: "멤버", method: "GET", name: "멤버 목록 조회", desc: "멤버 목록 조회를 검증합니다.", steps: ["listMembers"], keys: ["auth.mode"] },
         { code: "OPA 011", group: "멤버", method: "POST", name: "멤버 추가", desc: "테스트 멤버를 추가하고 정리합니다.", steps: ["createMember", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 012", group: "멤버", method: "PATCH", name: "멤버 수정", desc: "테스트 멤버를 생성, 수정 후 정리합니다.", steps: ["createMember", "updateMember", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 013", group: "멤버", method: "DELETE", name: "멤버 삭제", desc: "테스트 멤버를 생성한 뒤 삭제를 검증합니다.", steps: ["createMember", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
-        { code: "OPA 014", group: "문서", method: "POST", name: "수신자 문서 재요청", desc: "내부 문서 생성 후 재요청을 검증합니다.", steps: ["seedInternalDoc", "rerequestDoc", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.targetTemplateId", "data.targetEmail"] },
+        { code: "OPA 014", group: "문서", method: "POST", name: "수신자 문서 재요청", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 수신자 재요청을 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "rerequestDoc", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.targetEmail"] },
         { code: "OPA 015", group: "문서", method: "GET", name: "작성 가능한 템플릿 목록", desc: "작성 가능한 템플릿 목록을 조회합니다.", steps: ["listForms"], keys: ["auth.mode"] },
-        { code: "OPA 016", group: "문서", method: "POST", name: "문서 일괄 작성", desc: "같은 템플릿으로 일괄 문서를 만들고 정리합니다.", steps: ["massCreateDocs", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.targetTemplateId"] },
+        { code: "OPA 016", group: "문서", method: "POST", name: "문서 일괄 작성", desc: "작성 가능한 템플릿 목록에서 최대 3개를 자동 추출한 뒤 순차적으로 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 017", group: "그룹", method: "GET", name: "그룹 목록 조회", desc: "그룹 목록 조회를 검증합니다.", steps: ["listGroups"], keys: ["auth.mode"] },
         { code: "OPA 018", group: "그룹", method: "POST", name: "그룹 추가", desc: "테스트 그룹 생성 후 정리합니다.", steps: ["createMember", "createGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 019", group: "그룹", method: "PATCH", name: "그룹 수정", desc: "테스트 그룹 생성, 수정 후 정리합니다.", steps: ["createMember", "createGroup", "updateGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 020", group: "그룹", method: "DELETE", name: "그룹 삭제", desc: "테스트 그룹 생성 후 삭제를 검증합니다.", steps: ["createMember", "createGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
-        { code: "OPA 021", group: "문서", method: "POST", name: "문서 일괄 작성 (멀티)", desc: "두 템플릿으로 멀티 문서를 만들고 정리합니다.", steps: ["massCreateMultiDocs", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.targetTemplateId", "data.targetTemplateId2"] },
+        { code: "OPA 021", group: "문서", method: "POST", name: "문서 일괄 작성 (멀티)", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID 조합으로 멀티 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateMultiAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 025", group: "회사 도장", method: "GET", name: "회사 도장 정보 조회", desc: "도장 목록을 먼저 조회한 뒤 상세를 검증합니다.", steps: ["listStamps", "stampDetail"], keys: ["auth.mode"] },
         { code: "OPA 029", group: "회사 도장", method: "GET", name: "회사 도장 목록 조회", desc: "회사 도장 목록 조회를 검증합니다.", steps: ["listStamps"], keys: ["auth.mode"] },
         { code: "OPA 030", group: "멤버", method: "POST", name: "멤버 일괄 추가", desc: "일괄 멤버 추가와 정리를 검증합니다.", steps: ["bulkCreateMembers", "cleanupBulk1", "cleanupBulk2"], keys: ["auth.mode", "data.memberId"] },
-        { code: "OPA 037", group: "문서", method: "POST", name: "일괄 완료 문서 PDF 전송", desc: "완료 문서 수집 후 PDF 전송을 검증합니다.", steps: ["listDocsBasic", "sendPdf"], keys: ["auth.mode", "data.companyId", "data.pdfTargetEmail", "data.pdfTargetPhone"] },
-        { code: "OPA 040", group: "문서", method: "POST", name: "문서 파일 일괄 다운로드", desc: "완료 문서 수집 후 다건 다운로드를 검증합니다.", steps: ["listDocsBasic", "downloadMulti"], keys: ["auth.mode"] },
-        { code: "OPA 042", group: "문서", method: "POST", name: "문서 취소", desc: "테스트 문서를 생성하고 취소 API를 검증합니다.", steps: ["seedInternalDoc", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.targetTemplateId"] },
-        { code: "OPA 045", group: "문서", method: "POST", name: "완료 토큰 기한 연장", desc: "완료 문서를 수집한 뒤 기한 연장을 검증합니다.", steps: ["listDocsBasic", "refreshCompleteToken"], keys: ["auth.mode"] }
+        { code: "OPA 037", group: "문서", method: "POST", name: "일괄 완료 문서 PDF 전송", desc: "완료 문서 최대 5개를 수집한 뒤 2개 조합으로 PDF 전송을 시도하고, 하나라도 성공하면 통과합니다. company_id는 토큰 발급 정보에서 자동으로 채워집니다.", steps: ["listDocsBasic", "trySendPdfAuto"], keys: ["auth.mode", "data.pdfTargetEmail"] },
+        { code: "OPA 040", group: "문서", method: "POST", name: "문서 파일 일괄 다운로드", desc: "완료 문서 최대 5개를 수집한 뒤 2개 조합으로 일괄 다운로드를 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listDocsBasic", "tryDownloadMultiAuto"], keys: ["auth.mode"] },
+        { code: "OPA 042", group: "문서", method: "POST", name: "문서 취소", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 취소 API를 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
+        { code: "OPA 045", group: "문서", method: "POST", name: "완료 토큰 기한 연장", desc: "완료 문서 최대 5개를 수집한 뒤 순차적으로 기한 연장을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listDocsBasic", "tryRefreshCompleteTokenAuto"], keys: ["auth.mode"] }
     ];
 
     document.addEventListener("DOMContentLoaded", init);
@@ -102,8 +105,15 @@
         [
             "envSelect", "baseUrlBadge", "configBadge", "scenarioSearch", "scenarioList", "selectAllBtn", "clearAllBtn",
             "runActiveBtn", "runSelectedBtn", "selectedCount", "plannedStepCount", "readinessLabel", "lastRunSummary",
-            "activeScenarioDescription", "pipelineList", "configStatusList", "progressText", "progressBar", "resultTableBody",
-            "settingsEditor", "saveSettingsBtn", "reloadSettingsBtn", "resetSettingsBtn", "settingsStatusText"
+            "activeScenarioTitle", "activeScenarioDescription", "activeScenarioMissing", "missingSectionWrap", "pipelineList", "configStatusList", "progressText", "progressBar", "resultTableBody",
+            "settingsEditor", "saveSettingsBtn", "reloadSettingsBtn", "resetSettingsBtn", "settingsStatusText",
+            "openSettingsModalBtn", "openSettingsModalBtnInline", "closeSettingsModalBtn", "settingsModalCard", "settingsModalOverlay", "settingsSummaryText",
+            "authPanelToggle", "authPanelBody", "authChevron", "authStatusBadge",
+            "authApiKey", "authMemberId", "authSecretKey", "authSecretLabel",
+            "authTabSignature", "authTabBearer",
+            "btnIssueToken", "btnClearToken", "authTokenDisplay", "authCompanyIdDisplay", "authCompanyIdValue",
+            "modalIssueTokenBtn", "modalClearTokenBtn", "modalTokenDisplay", "modalCompanyIdDisplay", "modalCompanyIdValue",
+            "sortGroupBtn", "sortOpaBtn"
         ].forEach((id) => { els[id] = document.getElementById(id); });
 
         Object.entries(config.environments || {}).forEach(([key, value]) => {
@@ -114,16 +124,21 @@
         scenarios.forEach((scenario) => state.selectedCodes.add(scenario.code));
         state.activeCode = scenarios[0] ? scenarios[0].code : null;
 
+        initAuthPanel();
+
         els.envSelect.addEventListener("change", refreshStatus);
         els.scenarioSearch.addEventListener("input", refreshAll);
         els.selectAllBtn.addEventListener("click", () => { scenarios.forEach((s) => state.selectedCodes.add(s.code)); refreshAll(); });
         els.clearAllBtn.addEventListener("click", () => { state.selectedCodes.clear(); refreshAll(); });
+        els.sortGroupBtn.addEventListener("click", () => { state.viewMode = "group"; els.sortGroupBtn.classList.add("active"); els.sortOpaBtn.classList.remove("active"); renderList(); });
+        els.sortOpaBtn.addEventListener("click", () => { state.viewMode = "opa"; els.sortOpaBtn.classList.add("active"); els.sortGroupBtn.classList.remove("active"); renderList(); });
         els.runSelectedBtn.addEventListener("click", () => runSet([...state.selectedCodes]));
         els.runActiveBtn.addEventListener("click", () => state.activeCode && runSet([state.activeCode]));
         els.saveSettingsBtn.addEventListener("click", saveSettingsFromEditor);
         els.reloadSettingsBtn.addEventListener("click", loadSettingsIntoEditor);
         els.resetSettingsBtn.addEventListener("click", resetStoredSettings);
 
+        hydrateGuideContent();
         loadSettingsIntoEditor();
         refreshAll();
     }
@@ -133,6 +148,7 @@
         renderDetail();
         renderConfig();
         renderHistory();
+        renderSettingsSummary();
         refreshStatus();
     }
 
@@ -156,17 +172,28 @@
         } else if (!state.activeCode || !state.filteredCodes.includes(state.activeCode)) {
             state.activeCode = filtered[0].code;
         }
-        const groups = filtered.reduce((acc, item) => {
-            (acc[item.group] ||= []).push(item);
-            return acc;
-        }, {});
+        let listHtml;
+        if (state.viewMode === "opa") {
+            const sorted = [...filtered].sort((a, b) => {
+                const numA = parseInt(a.code.replace(/\D/g, ""), 10);
+                const numB = parseInt(b.code.replace(/\D/g, ""), 10);
+                return numA - numB;
+            });
+            listHtml = sorted.map(renderItem).join("") || `<div class="api-group-header">검색 결과 없음</div>`;
+        } else {
+            const groups = filtered.reduce((acc, item) => {
+                (acc[item.group] ||= []).push(item);
+                return acc;
+            }, {});
+            listHtml = Object.keys(groups).sort().map((group) => `
+                <div class="api-group">
+                    <div class="api-group-header">${esc(group)}</div>
+                    ${groups[group].map(renderItem).join("")}
+                </div>
+            `).join("") || `<div class="api-group-header">검색 결과 없음</div>`;
+        }
 
-        els.scenarioList.innerHTML = Object.keys(groups).sort().map((group) => `
-            <div class="api-group">
-                <div class="api-group-header">${esc(group)}</div>
-                ${groups[group].map(renderItem).join("")}
-            </div>
-        `).join("") || `<div class="api-group-header">검색 결과 없음</div>`;
+        els.scenarioList.innerHTML = listHtml;
 
         els.scenarioList.querySelectorAll(".scenario-item").forEach((item) => {
             const code = item.getAttribute("data-code");
@@ -219,41 +246,17 @@
         `).join("");
     }
 
-    function loadSettingsIntoEditor() {
-        if (!els.settingsEditor) return;
-        els.settingsEditor.value = JSON.stringify(config, null, 2);
-        setSettingsStatus(storedConfig ? "저장된 사용자 설정을 불러왔습니다." : "현재 설정을 표시 중입니다. 저장하면 이 브라우저에 유지됩니다.");
-    }
-
-    function saveSettingsFromEditor() {
-        try {
-            const parsed = JSON.parse(els.settingsEditor.value);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-            setSettingsStatus("설정을 저장했습니다. 페이지를 다시 적용합니다.");
-            window.location.reload();
-        } catch (error) {
-            setSettingsStatus(`저장 실패: ${error.message}`, true);
-        }
-    }
-
-    function resetStoredSettings() {
-        localStorage.removeItem(STORAGE_KEY);
-        els.settingsEditor.value = JSON.stringify(DEFAULT_CONFIG, null, 2);
-        setSettingsStatus("저장된 사용자 설정을 삭제했습니다. 페이지를 다시 적용합니다.");
-        window.location.reload();
-    }
-
-    function setSettingsStatus(message, isError = false) {
-        if (!els.settingsStatusText) return;
-        els.settingsStatusText.textContent = message;
-        els.settingsStatusText.style.color = isError ? "#d64545" : "#64748b";
-    }
-
     function stepMeta(id) {
         const dict = {
             seedInternalDoc: ["POST", "새 문서 작성 (OPA 005 - 내부 seed)"],
+            listFormsForSeed: ["GET", "작성 가능한 템플릿 목록 조회 (자동 탐색)"],
+            tryCreateAuto: ["POST", "새 문서 작성 (자동 선택 - 최대 3개 시도)"],
+            tryMassCreateAuto: ["POST", "문서 일괄 작성 (자동 선택 - 최대 3개 시도)"],
+            tryMassCreateMultiAuto: ["POST", "문서 일괄 작성 - 멀티 (자동 선택 조합 시도)"],
             docInfoBasic: ["GET", "문서 정보 조회 - 기본"],
             docInfoDetail: ["GET", "문서 정보 조회 - 상세"],
+            listCompletedDocsForDownload: ["POST", "완료 문서 목록 조회 (자동 탐색 - status 003)"],
+            tryDownloadDocAuto: ["GET", "문서 파일 다운로드 (자동 선택 - 최대 5개 시도)"],
             downloadDoc: ["GET", "문서 파일 다운로드"],
             downloadAttach: ["GET", "문서 첨부 파일 다운로드"],
             createExternalDoc: ["POST", "새 문서 작성 (외부)"],
@@ -274,6 +277,9 @@
             listStamps: ["GET", "회사 도장 목록 조회"],
             stampDetail: ["GET", "회사 도장 정보 조회"],
             bulkCreateMembers: ["POST", "멤버 일괄 추가"],
+            tryRefreshCompleteTokenAuto: ["POST", "완료 토큰 기한 연장 (자동 선택 - 최대 5개 시도)"],
+            tryDownloadMultiAuto: ["POST", "문서 파일 일괄 다운로드 (자동 선택 - 2개 조합 시도)"],
+            trySendPdfAuto: ["POST", "일괄 완료 문서 PDF 전송 (자동 선택 - 2개 조합 시도)"],
             sendPdf: ["POST", "일괄 완료 문서 PDF 전송"],
             downloadMulti: ["POST", "문서 파일 일괄 다운로드"],
             refreshCompleteToken: ["POST", "완료 토큰 기한 연장"],
@@ -291,17 +297,86 @@
         if (id === "seedInternalDoc") return request({ id, method: "POST", path: `/v2.0/api/documents?template_id=${encodeURIComponent(must(d.targetTemplateId, "Template ID가 비어 있습니다."))}`, body: docBody(), ok: [200], after: (json) => rememberDoc(json) });
         if (id === "docInfoBasic") return request({ id, method: "GET", path: `/v2.0/api/documents/${must(state.shared.lastCreatedId, "조회할 문서 ID가 없습니다.")}`, ok: [200] });
         if (id === "docInfoDetail") return request({ id, method: "GET", path: `/v2.0/api/documents/${must(state.shared.lastCreatedId, "조회할 문서 ID가 없습니다.")}?include_fields=true&include_histories=true&include_previous_status=true&include_next_status=true&include_external_token=true&include_detail_template_info=true`, ok: [200] });
+        if (id === "listCompletedDocsForDownload") return request({ id, method: "POST", path: "/v2.0/api/list_document", body: listBody(), ok: [200], after: (json) => {
+            const docs = Array.isArray(json.documents) ? json.documents : [];
+            state.shared.candidateDocIds = docs.filter((doc) => doc.current_status && doc.current_status.status_type === "003").slice(0, 5).map((doc) => doc.id);
+            if (!state.shared.candidateDocIds.length) throw new Error("다운로드 가능한 완료 문서(status_type=003)가 없습니다. 계정에 완료된 문서가 있는지 확인해 주세요.");
+        } });
+        if (id === "tryDownloadDocAuto") {
+            const candidates = state.shared.candidateDocIds || [];
+            if (!candidates.length) throw new Error("시도할 문서 ID가 없습니다. listCompletedDocsForDownload 단계가 먼저 실행되어야 합니다.");
+            const attemptLog = [];
+            for (const docId of candidates) {
+                const result = await request({ id, method: "GET", path: `/v2.0/api/documents/${encodeURIComponent(docId)}/download_files?file_type=document,audit_trail`, ok: [200] });
+                attemptLog.push(`[${docId}] → ${result.statusType} ${result.responseStatus}`);
+                if (result.statusType === "PASS") {
+                    return { ...result, label: `문서 파일 다운로드 (자동 선택: ...${docId.slice(-8)})`, responseText: `시도 결과 (${candidates.length}개 중 성공):\n${attemptLog.join("\n")}\n\n--- 응답 ---\n${result.responseText}` };
+                }
+            }
+            return { statusType: "FAIL", responseStatus: "ALL_FAIL", method: "GET", label: stepMeta(id).label, url: `${baseUrl()}/v2.0/api/documents/.../download_files`, duration: "-", requestBody: null, responseText: `${candidates.length}개 문서 모두 실패:\n${attemptLog.join("\n")}` };
+        }
         if (id === "downloadDoc") return request({ id, method: "GET", path: `/v2.0/api/documents/${encodeURIComponent(must(d.downloadDocId, "downloadDocId가 비어 있습니다."))}/download_files?file_type=document,audit_trail`, ok: [200] });
         if (id === "downloadAttach") return request({ id, method: "GET", path: `/v2.0/api/documents/${encodeURIComponent(must(d.attachDocId, "attachDocId가 비어 있습니다."))}/download_attach_files`, ok: [200] });
         if (id === "createExternalDoc") return request({ id, method: "POST", useToken: false, headers: { Authorization: `Bearer ${btoa(must(d.companyApiKey, "companyApiKey가 비어 있습니다."))}` }, path: `/v2.0/api/documents/external?company_id=${encodeURIComponent(must(d.companyId, "companyId가 비어 있습니다."))}&template_id=${encodeURIComponent(must(d.extTemplateId, "extTemplateId가 비어 있습니다."))}`, body: docBody(), ok: [200], after: (json) => rememberDoc(json) });
-        if (id === "listDocsBasic") return request({ id, method: "POST", path: "/v2.0/api/list_document", body: listBody(), ok: [200], after: (json) => { const docs = Array.isArray(json.documents) ? json.documents : []; state.shared.completedDocIds = docs.filter((doc) => doc.current_status && doc.current_status.status_type === "003").map((doc) => doc.id); } });
+        if (id === "listDocsBasic") return request({ id, method: "POST", path: "/v2.0/api/list_document", body: listBody(), ok: [200], after: (json) => { const docs = Array.isArray(json.documents) ? json.documents : []; state.shared.completedDocIds = docs.filter((doc) => doc.current_status && doc.current_status.status_type === "003").slice(0, 5).map((doc) => doc.id); } });
         if (id === "listDocsDetail") return request({ id, method: "POST", path: "/v2.0/api/list_document?include_fields=true&include_histories=true&include_previous_status=true&include_next_status=true&include_external_token=true&include_detail_template_info=true", body: listBody(), ok: [200] });
         if (id === "listMembers") return request({ id, method: "GET", path: "/v2.0/api/members", ok: [200] });
-        if (id === "createMember") return request({ id, method: "POST", path: "/v2.0/api/members?mailOption=false", body: { account: { id: must(d.memberId, "memberId가 비어 있습니다."), password: "forcs0421!@", first_name: "자동", last_name: "테스트", external_sso_info: { uuid: "123", account_id: "test" } } }, ok: [200, 400] });
+        if (id === "createMember") return request({ id, method: "POST", path: "/v2.0/api/members?mailOption=false", body: { account: { id: must(d.memberId, "memberId가 비어 있습니다."), password: "forcs1700!@", first_name: "자동", last_name: "테스트", external_sso_info: { uuid: "123", account_id: "test" } } }, ok: [200, 400] });
         if (id === "updateMember") return request({ id, method: "PATCH", path: `/v2.0/api/members/${encodeURIComponent(must(d.memberId, "memberId가 비어 있습니다."))}`, body: { account: { id: d.memberId, name: "자동수정 테스트", enabled: true, contact: { number: "010-1111-1111", tel: "02-1234-5678" }, department: "테스트팀", position: "자동화", role: ["template_manager"] } }, ok: [200] });
         if (id === "deleteMember") return request({ id, method: "DELETE", path: `/v2.0/api/members/${encodeURIComponent(must(d.memberId, "memberId가 비어 있습니다."))}`, ok: [200, 400, 404] });
         if (id === "rerequestDoc") return request({ id, method: "POST", path: `/v2.0/api/documents/${must(state.shared.lastCreatedId, "재요청 대상 문서가 없습니다.")}/re_request_outsider`, body: rerequestBody(), ok: [200] });
         if (id === "listForms") return request({ id, method: "GET", path: "/v2.0/api/forms", ok: [200] });
+        if (id === "listFormsForSeed") return request({ id, method: "GET", path: "/v2.0/api/forms", ok: [200], after: (json) => {
+            const forms = Array.isArray(json.templates) ? json.templates : [];
+            state.shared.candidateTemplateIds = forms.filter((f) => f.enabled !== false).slice(0, 3).map((f) => f.form_id);
+            if (!state.shared.candidateTemplateIds.length) throw new Error("작성 가능한 템플릿이 없습니다. 계정에 활성화된 템플릿을 확인해 주세요.");
+        } });
+        if (id === "tryCreateAuto") {
+            const candidates = state.shared.candidateTemplateIds || [];
+            if (!candidates.length) throw new Error("시도할 템플릿 ID가 없습니다. listFormsForSeed 단계가 먼저 실행되어야 합니다.");
+            const attemptLog = [];
+            for (const templateId of candidates) {
+                const result = await request({ id, method: "POST", path: `/v2.0/api/documents?template_id=${encodeURIComponent(templateId)}`, body: docBody(), ok: [200], after: (json) => rememberDoc(json) });
+                attemptLog.push(`[${templateId}] → ${result.statusType} ${result.responseStatus}`);
+                if (result.statusType === "PASS") {
+                    return { ...result, label: `새 문서 작성 (자동 선택: ${templateId})`, responseText: `시도 결과 (${candidates.length}개 중 성공):\n${attemptLog.join("\n")}\n\n--- 응답 ---\n${result.responseText}` };
+                }
+            }
+            return { statusType: "FAIL", responseStatus: "ALL_FAIL", method: "POST", label: stepMeta(id).label, url: `${baseUrl()}/v2.0/api/documents`, duration: "-", requestBody: null, responseText: `${candidates.length}개 템플릿 모두 실패:\n${attemptLog.join("\n")}` };
+        }
+        if (id === "tryMassCreateAuto") {
+            const candidates = state.shared.candidateTemplateIds || [];
+            if (!candidates.length) throw new Error("시도할 템플릿 ID가 없습니다. listFormsForSeed 단계가 먼저 실행되어야 합니다.");
+            const attemptLog = [];
+            for (const templateId of candidates) {
+                const result = await request({ id, method: "POST", path: `/v2.0/api/forms/mass_documents?template_id=${encodeURIComponent(templateId)}`, body: massBody(), ok: [200], after: collectDocs });
+                attemptLog.push(`[${templateId}] → ${result.statusType} ${result.responseStatus}`);
+                if (result.statusType === "PASS") {
+                    return { ...result, label: `문서 일괄 작성 (자동 선택: ${templateId})`, responseText: `시도 결과 (${candidates.length}개 중 성공):\n${attemptLog.join("\n")}\n\n--- 응답 ---\n${result.responseText}` };
+                }
+            }
+            return { statusType: "FAIL", responseStatus: "ALL_FAIL", method: "POST", label: stepMeta(id).label, url: `${baseUrl()}/v2.0/api/forms/mass_documents`, duration: "-", requestBody: null, responseText: `${candidates.length}개 템플릿 모두 실패:\n${attemptLog.join("\n")}` };
+        }
+        if (id === "tryMassCreateMultiAuto") {
+            const candidates = state.shared.candidateTemplateIds || [];
+            if (!candidates.length) throw new Error("시도할 템플릿 ID가 없습니다. listFormsForSeed 단계가 먼저 실행되어야 합니다.");
+            const combos = [];
+            for (let i = 0; i < candidates.length; i++) for (let j = i + 1; j < candidates.length; j++) combos.push([candidates[i], candidates[j]]);
+            if (!combos.length) combos.push([candidates[0], candidates[0]]);
+            const attemptLog = [];
+            for (const [tId1, tId2] of combos) {
+                const body = { documents: [
+                    { template_id: tId1, ...innerDoc(d.targetEmail, d.targetName, d.targetPhone, d.commonFields || []) },
+                    { template_id: tId2, ...innerDoc(d.targetEmail2, d.targetName2, d.targetPhone2, d.doc2Fields || []) }
+                ] };
+                const result = await request({ id, method: "POST", path: "/v2.0/api/forms/mass_multi_documents", body, ok: [200], after: collectDocs });
+                attemptLog.push(`[${tId1} + ${tId2}] → ${result.statusType} ${result.responseStatus}`);
+                if (result.statusType === "PASS") {
+                    return { ...result, label: `문서 일괄 작성 - 멀티 (자동 선택: ${tId1.slice(-8)} + ${tId2.slice(-8)})`, responseText: `시도 결과:\n${attemptLog.join("\n")}\n\n--- 응답 ---\n${result.responseText}` };
+                }
+            }
+            return { statusType: "FAIL", responseStatus: "ALL_FAIL", method: "POST", label: stepMeta(id).label, url: `${baseUrl()}/v2.0/api/forms/mass_multi_documents`, duration: "-", requestBody: null, responseText: `${combos.length}개 조합 모두 실패:\n${attemptLog.join("\n")}` };
+        }
         if (id === "massCreateDocs") return request({ id, method: "POST", path: `/v2.0/api/forms/mass_documents?template_id=${encodeURIComponent(must(d.targetTemplateId, "Template ID가 비어 있습니다."))}`, body: massBody(), ok: [200], after: collectDocs });
         if (id === "listGroups") return request({ id, method: "GET", path: "/v2.0/api/groups", ok: [200] });
         if (id === "createGroup") return request({ id, method: "POST", path: "/v2.0/api/groups", body: { group: { name: "자동테스트 그룹", description: "Open API 자동 테스트", members: [must(d.memberId, "memberId가 비어 있습니다.")] } }, ok: [200], after: (json) => { if (json.group && json.group.id) state.shared.createdGroupId = json.group.id; } });
@@ -311,6 +386,57 @@
         if (id === "listStamps") return request({ id, method: "GET", path: "/v2.0/api/company_stamp", ok: [200], after: (json) => { const first = Array.isArray(json.company_stamps) ? json.company_stamps[0] : null; state.shared.companyStampId = first ? first.id : null; } });
         if (id === "stampDetail") return request({ id, method: "GET", path: `/v2.0/api/company_stamp/${must(state.shared.companyStampId, "조회할 회사 도장 ID가 없습니다.")}`, ok: [200] });
         if (id === "bulkCreateMembers") return request({ id, method: "POST", path: "/v2.0/api/list_members", body: bulkBody(), ok: [200], after: (json) => { const failed = (json.members || []).filter((m) => m.success === false); if (failed.length) throw new Error("일괄 멤버 추가 응답에 success:false 항목이 포함되었습니다."); } });
+        if (id === "tryRefreshCompleteTokenAuto") {
+            const candidates = state.shared.completedDocIds || [];
+            if (!candidates.length) throw new Error("시도할 완료 문서가 없습니다. listDocsBasic 단계가 먼저 실행되어야 합니다.");
+            const attemptLog = [];
+            for (const docId of candidates) {
+                const result = await request({ id, method: "POST", path: `/v2.0/api/documents/${encodeURIComponent(docId)}/refresh_complete_token`, body: { step_seq: [] }, ok: [200] });
+                attemptLog.push(`[...${docId.slice(-8)}] → ${result.statusType} ${result.responseStatus}`);
+                if (result.statusType === "PASS") {
+                    return { ...result, label: `완료 토큰 기한 연장 (자동: ...${docId.slice(-8)})`, responseText: `시도 결과 (${candidates.length}개 중 성공):\n${attemptLog.join("\n")}\n\n--- 응답 ---\n${result.responseText}` };
+                }
+            }
+            return { statusType: "FAIL", responseStatus: "ALL_FAIL", method: "POST", label: stepMeta(id).label, url: `${baseUrl()}/v2.0/api/documents/.../refresh_complete_token`, duration: "-", requestBody: null, responseText: `${candidates.length}개 문서 모두 실패:\n${attemptLog.join("\n")}` };
+        }
+        if (id === "tryDownloadMultiAuto") {
+            const candidates = state.shared.completedDocIds || [];
+            if (!candidates.length) throw new Error("시도할 완료 문서가 없습니다. listDocsBasic 단계가 먼저 실행되어야 합니다.");
+            const pairs = [];
+            for (let i = 0; i < candidates.length; i++) for (let j = i + 1; j < candidates.length; j++) pairs.push([candidates[i], candidates[j]]);
+            if (!pairs.length) pairs.push([candidates[0]]);
+            const attemptLog = [];
+            for (const pair of pairs) {
+                const body = { document_ids: pair, file_type: ["document", "audit_trail"] };
+                const result = await request({ id, method: "POST", path: "/v2.0/api/documents/download_multi_files", body, ok: [200] });
+                attemptLog.push(`[${pair.map((pid) => "..." + pid.slice(-8)).join(" + ")}] → ${result.statusType} ${result.responseStatus}`);
+                if (result.statusType === "PASS") {
+                    return { ...result, label: `문서 파일 일괄 다운로드 (자동: ${pair.length}개)`, responseText: `시도 결과:\n${attemptLog.join("\n")}\n\n--- 응답 ---\n${result.responseText}` };
+                }
+            }
+            return { statusType: "FAIL", responseStatus: "ALL_FAIL", method: "POST", label: stepMeta(id).label, url: `${baseUrl()}/v2.0/api/documents/download_multi_files`, duration: "-", requestBody: null, responseText: `${pairs.length}개 조합 모두 실패:\n${attemptLog.join("\n")}` };
+        }
+        if (id === "trySendPdfAuto") {
+            const candidates = state.shared.completedDocIds || [];
+            if (!candidates.length) throw new Error("시도할 완료 문서가 없습니다. listDocsBasic 단계가 먼저 실행되어야 합니다.");
+            const pairs = [];
+            for (let i = 0; i < candidates.length; i++) for (let j = i + 1; j < candidates.length; j++) pairs.push([candidates[i], candidates[j]]);
+            if (!pairs.length) pairs.push([candidates[0], candidates[0]]);
+            const attemptLog = [];
+            for (const [docId1, docId2] of pairs) {
+                const sendPdfs = [];
+                if (d.pdfTargetEmail) sendPdfs.push({ document_id: docId1, pdf_send_infos: [{ name: d.pdfTargetName || "PDF 수신자", method: "email", method_info: d.pdfTargetEmail, sms_option: {} }] });
+                if (d.pdfTargetPhone) sendPdfs.push({ document_id: docId2, pdf_send_infos: [{ name: d.pdfTargetName || "PDF 수신자", method: "sms", method_info: d.pdfTargetPhone, code: "+82", sms_option: {} }] });
+                if (!sendPdfs.length) throw new Error("pdfTargetEmail 또는 pdfTargetPhone 중 하나는 필요합니다.");
+                const body = { input: { send_pdfs: sendPdfs } };
+                const result = await request({ id, method: "POST", path: `/v2.0/api/companies/${encodeURIComponent(must(d.companyId, "companyId가 비어 있습니다."))}/send_multiple_completed_document`, body, ok: [200] });
+                attemptLog.push(`[...${docId1.slice(-8)} + ...${docId2.slice(-8)}] → ${result.statusType} ${result.responseStatus}`);
+                if (result.statusType === "PASS") {
+                    return { ...result, label: `일괄 완료 문서 PDF 전송 (자동: 2개)`, responseText: `시도 결과:\n${attemptLog.join("\n")}\n\n--- 응답 ---\n${result.responseText}` };
+                }
+            }
+            return { statusType: "FAIL", responseStatus: "ALL_FAIL", method: "POST", label: stepMeta(id).label, url: `${baseUrl()}/v2.0/api/companies/.../send_multiple_completed_document`, duration: "-", requestBody: null, responseText: `${pairs.length}개 조합 모두 실패:\n${attemptLog.join("\n")}` };
+        }
         if (id === "sendPdf") return request({ id, method: "POST", path: `/v2.0/api/companies/${encodeURIComponent(must(d.companyId, "companyId가 비어 있습니다."))}/send_multiple_completed_document`, body: sendPdfBody(), ok: [200] });
         if (id === "downloadMulti") return request({ id, method: "POST", path: "/v2.0/api/documents/download_multi_files", body: multiDownloadBody(), ok: [200] });
         if (id === "refreshCompleteToken") return request({ id, method: "POST", path: `/v2.0/api/documents/${pickCompleted()}/refresh_complete_token`, body: { step_seq: [] }, ok: [200] });
@@ -323,25 +449,49 @@
 
     async function token() {
         if (state.token) return state.token;
-        const auth = config.auth || {};
-        if (auth.mode === "accessToken" || auth.mode === "bearer") {
-            state.token = must(auth.accessToken, "auth.accessToken이 비어 있습니다.");
+
+        // 인증 패널 우선 사용
+        const panelApiKey = els.authApiKey ? els.authApiKey.value.trim() : "";
+        const panelMemberId = els.authMemberId ? els.authMemberId.value.trim() : "";
+        const panelSecretKey = els.authSecretKey ? els.authSecretKey.value.trim() : "";
+
+        if (state.authMethod === "bearer" && panelSecretKey) {
+            state.token = panelSecretKey;
+            updateAuthPanelUI();
             return state.token;
         }
-        if (auth.mode !== "signature") throw new Error(`지원하지 않는 auth.mode: ${auth.mode}`);
+
+        if (state.authMethod === "signature" && panelApiKey && panelMemberId && panelSecretKey) {
+            return await issueTokenFromPanel(panelApiKey, panelMemberId, panelSecretKey);
+        }
+
+        // 인증 패널 미입력 시 설정(config) 폴백
+        const auth = config.auth || {};
+        if (auth.mode === "accessToken" || auth.mode === "bearer") {
+            state.token = must(auth.accessToken, "auth.accessToken이 비어 있습니다. 상단 인증 패널에서 토큰을 발급받으세요.");
+            return state.token;
+        }
+        if (auth.mode !== "signature") throw new Error("상단 인증 패널에서 인증 정보를 입력하고 토큰을 발급받으세요.");
+        return await issueTokenFromPanel(
+            must(auth.apiKey, "API Key가 비어 있습니다. 상단 인증 패널에서 입력하세요."),
+            must(auth.memberId, "Member ID가 비어 있습니다. 상단 인증 패널에서 입력하세요."),
+            must(auth.secretKey, "Secret Key가 비어 있습니다. 상단 인증 패널에서 입력하세요.")
+        );
+    }
+
+    async function issueTokenFromPanel(apiKey, memberId, secretKey) {
         const response = await fetch("/api/getToken", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                domain: baseUrl(),
-                apiKey: must(auth.apiKey, "auth.apiKey가 비어 있습니다."),
-                memberId: must(auth.memberId, "auth.memberId가 비어 있습니다."),
-                secretKey: must(auth.secretKey, "auth.secretKey가 비어 있습니다.")
-            })
+            body: JSON.stringify({ domain: baseUrl(), apiKey, memberId, secretKey })
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.message || payload.ErrorMessage || "Access Token 발급에 실패했습니다.");
         state.token = must(payload && payload.oauth_token && payload.oauth_token.access_token, "응답에서 access_token을 찾지 못했습니다.");
+        // company_id 자동 추출
+        const cid = payload.api_key && payload.api_key.company && payload.api_key.company.company_id;
+        if (cid) { state.companyId = cid; }
+        updateAuthPanelUI();
         return state.token;
     }
 
@@ -396,22 +546,25 @@
     }
 
     function globalChecks() {
-        const auth = config.auth || {};
+        const auth = authSnapshot();
+
         return [
             { label: "Base URL", ready: !!baseUrl(), message: baseUrl() || "환경 선택 필요" },
-            { label: "인증 방식", ready: !!auth.mode, message: auth.mode || "설정 필요" },
-            { label: "Access Token", ready: auth.mode === "signature" ? true : has(auth.accessToken), message: auth.mode === "signature" ? "signature 방식에서 런타임 발급" : mask(auth.accessToken) },
-            { label: "API Key / Member / Secret", ready: auth.mode !== "signature" || (has(auth.apiKey) && has(auth.memberId) && has(auth.secretKey)), message: auth.mode !== "signature" ? "사용 안 함" : `${mask(auth.apiKey)} / ${mask(auth.memberId)} / ${mask(auth.secretKey)}` },
-            { label: "주 템플릿", ready: has(data().targetTemplateId), message: mask(data().targetTemplateId) },
-            { label: "회사 정보", ready: has(data().companyId) && has(data().companyApiKey), message: `${mask(data().companyId)} / ${mask(data().companyApiKey)}` }
+            { label: "인증 방식", ready: true, message: auth.mode === "bearer" ? "Bearer" : "Signature" },
+            { label: "토큰 / 인증 정보", ready: auth.ready, message: state.token ? "토큰 보유" : auth.ready ? "인증 정보 입력됨" : "인증 패널에서 입력 필요" },
+            { label: "회사 정보", ready: has(data().companyId), message: `company_id: ${mask(data().companyId)} (토큰 발급 시 자동)` }
         ];
     }
 
     function readiness(scenario) {
-        const missing = (scenario.keys || []).filter((key) => !has(getByPath(config, key)));
+        const missing = (scenario.keys || []).filter((key) => {
+            if (key === "auth.mode") return false;
+            if (key.startsWith("data.")) return !has(getByPath(data(), key.slice(5)));
+            if (key === "data.companyId") return !has(data().companyId);
+            return !has(getByPath(config, key));
+        });
         if (scenario.keys.includes("auth.mode")) {
-            if (config.auth.mode === "signature") ["auth.apiKey", "auth.memberId", "auth.secretKey"].forEach((key) => !has(getByPath(config, key)) && !missing.includes(key) && missing.push(key));
-            if ((config.auth.mode === "accessToken" || config.auth.mode === "bearer") && !has(config.auth.accessToken) && !missing.includes("auth.accessToken")) missing.push("auth.accessToken");
+            if (!authSnapshot().ready && !missing.includes("auth.panel")) missing.push("auth.panel");
         }
         return { ready: missing.length === 0, missing };
     }
@@ -497,15 +650,15 @@
     }
 
     function listBody() { return { type: "04", title_and_content: "", title: "", content: "", limit: "100", skip: "0" }; }
-    function innerDoc(email, name, phone, fields) { return { fields, recipients: email || name || phone ? [{ step_type: "05", use_mail: true, use_sms: true, member: { id: email, name, sms: { country_code: "82", phone_number: phone } }, auth: { password: "", valid: { day: 0, hour: 0 } } }] : [], parameters: [], notification: [] }; }
+    function innerDoc(email, name, phone, fields) { return { fields, recipients: email || name || phone ? [{ step_type: "05", use_mail: true, use_sms: true, member: { id: email, name, sms: { country_code: "+82", phone_number: phone } }, auth: { password: "", valid: { day: 0, hour: 0 } } }] : [], parameters: [], notification: [] }; }
     function pickCompleted() { const ids = must(state.shared.completedDocIds, "완료 문서가 없습니다."); return ids[Math.floor(Math.random() * ids.length)]; }
     function data() {
         const raw = config.data || {};
         return {
             targetTemplateId: raw.targetTemplateId || raw.internalTemplateId || "",
-            companyId: raw.companyId || raw.externalCompanyId || "",
+            companyId: state.companyId || raw.companyId || raw.externalCompanyId || "",
             extTemplateId: raw.extTemplateId || raw.externalTemplateId || "",
-            companyApiKey: raw.companyApiKey || raw.externalCompanyApiKey || "",
+            companyApiKey: raw.companyApiKey || raw.externalCompanyApiKey || (els.authApiKey && els.authApiKey.value.trim()) || config.auth.apiKey || "",
             targetTemplateId2: raw.targetTemplateId2 || raw.secondaryTemplateId || "",
 
             targetEmail: raw.targetEmail || (raw.targetRecipient && raw.targetRecipient.email) || "",
@@ -529,20 +682,33 @@
         };
     }
     function baseUrl() { const env = config.environments[els.envSelect.value]; return env ? env.baseUrl.replace(/\/$/, "") : ""; }
-    function freshShared() { return { lastCreatedId: null, createdIdList: [], createdGroupId: null, companyStampId: null, bulkMemberIds: [], completedDocIds: [] }; }
+    function freshShared() { return { lastCreatedId: null, createdIdList: [], createdGroupId: null, companyStampId: null, bulkMemberIds: [], completedDocIds: [], candidateTemplateIds: [], candidateDocIds: [] }; }
     function toggleButtons(disabled) { els.runActiveBtn.disabled = disabled; els.runSelectedBtn.disabled = disabled; els.selectAllBtn.disabled = disabled; els.clearAllBtn.disabled = disabled; }
     function progress(width, text) { els.progressBar.style.width = `${width}%`; els.progressText.textContent = text; }
     function renderDetail() {
         const scenario = scenarios.find((item) => item.code === state.activeCode);
         if (!scenario) {
+            if (els.activeScenarioTitle) els.activeScenarioTitle.textContent = "선택된 OPA";
             els.activeScenarioDescription.textContent = state.filteredCodes.length
                 ? "왼쪽에서 OPA 항목을 선택하면 시나리오 설명과 실행 파이프라인이 표시됩니다."
                 : "검색 결과가 없습니다. 검색어를 조정해 주세요.";
+            if (els.missingSectionWrap) els.missingSectionWrap.style.display = "none";
+            if (els.activeScenarioMissing) els.activeScenarioMissing.textContent = "";
             els.pipelineList.innerHTML = "";
             return;
         }
         const ready = readiness(scenario);
-        els.activeScenarioDescription.textContent = scenario.desc + (ready.ready ? "" : ` 현재 누락된 설정: ${ready.missing.join(", ")}`);
+        if (els.activeScenarioTitle) els.activeScenarioTitle.textContent = `${scenario.code} — ${scenario.name}`;
+        els.activeScenarioDescription.textContent = scenario.desc;
+        if (els.missingSectionWrap && els.activeScenarioMissing) {
+            if (ready.ready) {
+                els.missingSectionWrap.style.display = "none";
+                els.activeScenarioMissing.textContent = "";
+            } else {
+                els.missingSectionWrap.style.display = "";
+                els.activeScenarioMissing.textContent = ready.missing.join(", ");
+            }
+        }
         els.pipelineList.innerHTML = scenario.steps.map((stepId, index) => `<div class="pipeline-row"><span class="pipeline-label">${index + 1}. ${stepMeta(stepId).label}</span><span class="pipeline-value">${stepMeta(stepId).method}</span></div>`).join("");
     }
     async function runSet(codes) {
@@ -552,6 +718,7 @@
         state.running = true;
         state.shared = freshShared();
         state.token = "";
+        state.companyId = state.companyId || "";  // 인증 패널에서 발급된 companyId는 유지
         els.resultTableBody.innerHTML = "";
         toggleButtons(true);
         progress(0, "토큰과 실행 계획 준비 중");
@@ -623,12 +790,11 @@
     const DEFAULT_PROFILE_NAME = "Default";
     const PROFILE_FIELD_IDS = [
         "profileSelect", "profileNameInput", "saveProfileBtn", "deleteProfileBtn", "exportProfileBtn", "importProfileBtn",
-        "importProfileFile", "toggleSensitiveBtn", "clearHistoryBtn", "historyList",
-        "formDefaultEnvironment", "formAuthMode", "formInternalTemplateId", "formSecondaryTemplateId",
-        "formExternalCompanyId", "formExternalTemplateId", "formDownloadDocumentId", "formAttachDocumentId",
+        "importProfileFile", "clearHistoryBtn", "historyList",
+        "openSettingsModalBtn", "openSettingsModalBtnInline", "closeSettingsModalBtn", "settingsModalCard", "settingsModalOverlay", "settingsSummaryText",
+        "formDefaultEnvironment", "formAuthMode", "formExternalTemplateId", "formAttachDocumentId",
         "formMemberId", "formPdfRecipientName", "formTargetEmail", "formTargetPhone", "formTargetName",
-        "formPdfRecipientEmail", "formAccessToken", "formApiKey", "formAuthMemberId", "formSecretKey",
-        "formExternalCompanyApiKey"
+        "formPdfRecipientEmail", "formApiKey", "formAuthMemberId", "formSecretKey"
     ];
 
     function baseDefaultConfig() {
@@ -707,22 +873,76 @@
         if (els.profileNameInput) els.profileNameInput.value = els.profileSelect.value;
     }
 
+    function normalizedAuthMode(value) {
+        return value === "bearer" ? "bearer" : "signature";
+    }
+
+    function authSnapshot() {
+        const auth = config.auth || {};
+        const mode = normalizedAuthMode(state.authMethod || auth.mode);
+        const panelApiKey = els.authApiKey ? els.authApiKey.value.trim() : "";
+        const panelMemberId = els.authMemberId ? els.authMemberId.value.trim() : "";
+        const panelSecretKey = els.authSecretKey ? els.authSecretKey.value.trim() : "";
+        const bearerToken = mode === "bearer" ? (state.token || panelSecretKey || auth.accessToken || "") : (state.token || auth.accessToken || "");
+        const apiKey = panelApiKey || auth.apiKey || "";
+        const memberId = panelMemberId || auth.memberId || "";
+        const secretKey = mode === "signature" ? (panelSecretKey || auth.secretKey || "") : "";
+        const ready = mode === "bearer" ? has(bearerToken) : has(apiKey) && has(memberId) && has(secretKey);
+        return { mode, bearerToken, apiKey, memberId, secretKey, ready };
+    }
+
+    function syncConfigFromAuthPanel() {
+        const auth = authSnapshot();
+        config.auth = config.auth || {};
+        config.auth.mode = auth.mode;
+        config.auth.apiKey = auth.apiKey;
+        config.auth.memberId = auth.memberId;
+        config.auth.secretKey = auth.secretKey;
+        config.auth.accessToken = auth.bearerToken;
+        config.data = config.data || {};
+        if (state.companyId && !has(config.data.externalCompanyId)) config.data.externalCompanyId = state.companyId;
+    }
+
+    function applyAuthModeUi(mode) {
+        state.authMethod = normalizedAuthMode(mode);
+        if (els.authTabSignature) els.authTabSignature.classList.toggle("active", state.authMethod === "signature");
+        if (els.authTabBearer) els.authTabBearer.classList.toggle("active", state.authMethod === "bearer");
+        if (els.authSecretLabel) {
+            els.authSecretLabel.textContent = state.authMethod === "bearer" ? "Access Token (Bearer)" : "비밀 키 (Secret Key, Hex)";
+        }
+        if (els.authSecretKey) {
+            els.authSecretKey.placeholder = state.authMethod === "bearer" ? "발급된 Access Token 직접 입력" : "비밀 키 입력 (Hex 형식)";
+            els.authSecretKey.type = "password";
+        }
+        [els.authApiKey, els.authMemberId].forEach((el) => {
+            if (el && el.closest(".auth-field")) el.closest(".auth-field").style.display = state.authMethod === "bearer" ? "none" : "";
+        });
+        if (els.formAuthMode) els.formAuthMode.value = state.authMethod;
+    }
+
+    function populateAuthPanelFromConfig() {
+        const auth = config.auth || {};
+        applyAuthModeUi(auth.mode || "signature");
+        if (els.authApiKey) els.authApiKey.value = auth.apiKey || "";
+        if (els.authMemberId) els.authMemberId.value = auth.memberId || "";
+        if (els.authSecretKey) els.authSecretKey.value = state.authMethod === "bearer" ? (auth.accessToken || "") : (auth.secretKey || "");
+        state.token = state.authMethod === "bearer" ? (auth.accessToken || "") : "";
+        state.companyId = (config.data && config.data.externalCompanyId) || state.companyId || "";
+        updateAuthPanelUI();
+    }
+
     function populateSettingsFormFromConfig() {
         ensureProfileElements();
         if (!els.formDefaultEnvironment) return;
         const dataConfig = data();
         fillOptions(els.formDefaultEnvironment, Object.entries(config.environments || {}).map(([key, value]) => ({ value: key, label: value.label || key })));
         fillOptions(els.formAuthMode, [
-            { value: "accessToken", label: "Access Token" },
-            { value: "apiKey", label: "API Key + Member + Secret" }
+            { value: "signature", label: "Signature" },
+            { value: "bearer", label: "Bearer Token" }
         ]);
         setInputValue("formDefaultEnvironment", config.defaultEnvironment);
-        setInputValue("formAuthMode", config.auth && config.auth.mode);
-        setInputValue("formInternalTemplateId", dataConfig.targetTemplateId);
-        setInputValue("formSecondaryTemplateId", dataConfig.targetTemplateId2);
-        setInputValue("formExternalCompanyId", dataConfig.companyId);
+        setInputValue("formAuthMode", normalizedAuthMode(config.auth && config.auth.mode));
         setInputValue("formExternalTemplateId", dataConfig.extTemplateId);
-        setInputValue("formDownloadDocumentId", dataConfig.downloadDocId);
         setInputValue("formAttachDocumentId", dataConfig.attachDocId);
         setInputValue("formMemberId", dataConfig.memberId);
         setInputValue("formPdfRecipientName", dataConfig.pdfTargetName);
@@ -730,12 +950,11 @@
         setInputValue("formTargetPhone", dataConfig.targetPhone);
         setInputValue("formTargetName", dataConfig.targetName);
         setInputValue("formPdfRecipientEmail", dataConfig.pdfTargetEmail);
-        setInputValue("formAccessToken", config.auth && config.auth.accessToken);
         setInputValue("formApiKey", config.auth && config.auth.apiKey);
         setInputValue("formAuthMemberId", config.auth && config.auth.memberId);
-        setInputValue("formSecretKey", config.auth && config.auth.secretKey);
-        setInputValue("formExternalCompanyApiKey", config.data && config.data.externalCompanyApiKey);
+        setInputValue("formSecretKey", normalizedAuthMode(config.auth && config.auth.mode) === "bearer" ? config.auth && config.auth.accessToken : config.auth && config.auth.secretKey);
         if (els.envSelect) els.envSelect.value = config.defaultEnvironment in config.environments ? config.defaultEnvironment : Object.keys(config.environments)[0];
+        populateAuthPanelFromConfig();
     }
 
     function updateEditorFromConfig() {
@@ -771,19 +990,14 @@
         const next = merge(clone(baseDefaultConfig()), targetConfig || {});
         next.defaultEnvironment = getInputValue("formDefaultEnvironment") || next.defaultEnvironment;
         next.auth = next.auth || {};
-        next.auth.mode = getInputValue("formAuthMode") || next.auth.mode || "accessToken";
-        next.auth.accessToken = getInputValue("formAccessToken");
+        next.auth.mode = normalizedAuthMode(getInputValue("formAuthMode") || next.auth.mode || "signature");
         next.auth.apiKey = getInputValue("formApiKey");
         next.auth.memberId = getInputValue("formAuthMemberId");
-        next.auth.secretKey = getInputValue("formSecretKey");
+        next.auth.secretKey = next.auth.mode === "signature" ? getInputValue("formSecretKey") : "";
+        next.auth.accessToken = next.auth.mode === "bearer" ? getInputValue("formSecretKey") : (state.token || next.auth.accessToken || "");
         next.data = next.data || {};
-        next.data.internalTemplateId = getInputValue("formInternalTemplateId");
-        next.data.secondaryTemplateId = getInputValue("formSecondaryTemplateId");
-        next.data.externalCompanyId = getInputValue("formExternalCompanyId");
         next.data.externalTemplateId = getInputValue("formExternalTemplateId");
-        next.data.externalCompanyApiKey = getInputValue("formExternalCompanyApiKey");
         next.data.lookupTargets = next.data.lookupTargets || {};
-        next.data.lookupTargets.downloadDocumentId = getInputValue("formDownloadDocumentId");
         next.data.lookupTargets.attachDocumentId = getInputValue("formAttachDocumentId");
         next.data.member = next.data.member || {};
         next.data.member.id = getInputValue("formMemberId");
@@ -798,8 +1012,13 @@
     }
 
     function syncConfigFromForm() {
+        if (els.formAuthMode) applyAuthModeUi(els.formAuthMode.value);
+        if (els.authApiKey && els.formApiKey) els.authApiKey.value = els.formApiKey.value;
+        if (els.authMemberId && els.formAuthMemberId) els.authMemberId.value = els.formAuthMemberId.value;
+        if (els.authSecretKey && els.formSecretKey) els.authSecretKey.value = els.formSecretKey.value;
         const next = applyFormValues(config);
         replaceConfig(next);
+        syncConfigFromAuthPanel();
         updateEditorFromConfig();
         refreshAll();
     }
@@ -825,6 +1044,9 @@
             draft = merge(clone(baseDefaultConfig()), JSON.parse(els.settingsEditor.value));
         }
         const finalConfig = applyFormValues(draft);
+        replaceConfig(finalConfig);
+        syncConfigFromAuthPanel();
+        merge(finalConfig, clone(config));
         const profiles = readProfiles();
         profiles[profileName] = finalConfig;
         writeProfiles(profiles);
@@ -861,12 +1083,37 @@
 
     function toggleSensitiveFields() {
         ensureProfileElements();
-        const fields = ["formAccessToken", "formApiKey", "formSecretKey", "formExternalCompanyApiKey"];
+        const fields = ["formApiKey", "formSecretKey", "authSecretKey"];
         const show = fields.some((id) => els[id] && els[id].type === "password");
         fields.forEach((id) => {
             if (els[id]) els[id].type = show ? "text" : "password";
         });
-        if (els.toggleSensitiveBtn) els.toggleSensitiveBtn.textContent = show ? "민감정보 숨기기" : "민감정보 보기";
+    }
+
+    function renderSettingsSummary() {
+        ensureProfileElements();
+        if (!els.settingsSummaryText) return;
+        const auth = authSnapshot();
+        const info = [];
+        info.push(`프로필: ${currentProfileName()}`);
+        info.push(`인증: ${auth.mode === "bearer" ? "Bearer" : "Signature"}${auth.ready ? " 준비됨" : " 입력 필요"}`);
+        if (has(data().companyId)) info.push(`Company ${mask(data().companyId)}`);
+        else info.push("토큰 발급 후 Company ID가 자동으로 채워집니다.");
+        els.settingsSummaryText.textContent = info.join(" | ");
+    }
+
+    function openSettingsModal() {
+        ensureProfileElements();
+        if (els.settingsModalOverlay) els.settingsModalOverlay.classList.add("open");
+        if (els.settingsModalCard) els.settingsModalCard.classList.add("modal-open");
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeSettingsModal() {
+        ensureProfileElements();
+        if (els.settingsModalOverlay) els.settingsModalOverlay.classList.remove("open");
+        if (els.settingsModalCard) els.settingsModalCard.classList.remove("modal-open");
+        document.body.style.overflow = "";
     }
 
     function exportCurrentProfile() {
@@ -949,11 +1196,9 @@
     function bindSettingsInputs() {
         ensureProfileElements();
         [
-            "formDefaultEnvironment", "formAuthMode", "formInternalTemplateId", "formSecondaryTemplateId",
-            "formExternalCompanyId", "formExternalTemplateId", "formDownloadDocumentId", "formAttachDocumentId",
+            "formDefaultEnvironment", "formAuthMode", "formExternalTemplateId", "formAttachDocumentId",
             "formMemberId", "formPdfRecipientName", "formTargetEmail", "formTargetPhone", "formTargetName",
-            "formPdfRecipientEmail", "formAccessToken", "formApiKey", "formAuthMemberId", "formSecretKey",
-            "formExternalCompanyApiKey"
+            "formPdfRecipientEmail", "formApiKey", "formAuthMemberId", "formSecretKey"
         ].forEach((id) => {
             if (!els[id] || els[id].dataset.bound === "true") return;
             const eventName = els[id].tagName === "SELECT" ? "change" : "input";
@@ -990,13 +1235,22 @@
             els.importProfileFile.addEventListener("change", (event) => importProfileFromFile(event.target.files && event.target.files[0]));
             els.importProfileFile.dataset.bound = "true";
         }
-        if (els.toggleSensitiveBtn && els.toggleSensitiveBtn.dataset.bound !== "true") {
-            els.toggleSensitiveBtn.addEventListener("click", toggleSensitiveFields);
-            els.toggleSensitiveBtn.dataset.bound = "true";
-        }
         if (els.clearHistoryBtn && els.clearHistoryBtn.dataset.bound !== "true") {
             els.clearHistoryBtn.addEventListener("click", clearCurrentHistory);
             els.clearHistoryBtn.dataset.bound = "true";
+        }
+        [els.openSettingsModalBtn, els.openSettingsModalBtnInline].forEach((button) => {
+            if (!button || button.dataset.bound === "true") return;
+            button.addEventListener("click", openSettingsModal);
+            button.dataset.bound = "true";
+        });
+        if (els.closeSettingsModalBtn && els.closeSettingsModalBtn.dataset.bound !== "true") {
+            els.closeSettingsModalBtn.addEventListener("click", closeSettingsModal);
+            els.closeSettingsModalBtn.dataset.bound = "true";
+        }
+        if (els.settingsModalOverlay && els.settingsModalOverlay.dataset.bound !== "true") {
+            els.settingsModalOverlay.addEventListener("click", closeSettingsModal);
+            els.settingsModalOverlay.dataset.bound = "true";
         }
     }
 
@@ -1007,6 +1261,7 @@
         populateSettingsFormFromConfig();
         updateEditorFromConfig();
         renderHistory();
+        renderSettingsSummary();
     }
 
     function loadSettingsIntoEditor() {
@@ -1052,9 +1307,304 @@
         }
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", bootstrapSettingsUi);
-    } else {
-        bootstrapSettingsUi();
+    // ── AUTH PANEL ──────────────────────────────────────────────────────────
+    function initAuthPanel() {
+        if (!els.authPanelToggle) return;
+
+        // 패널 토글
+        els.authPanelToggle.addEventListener("click", () => openSettingsModal());
+        els.authPanelToggle.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openSettingsModal();
+            }
+        });
+
+        // 인증 방식 탭
+        [els.authTabSignature, els.authTabBearer].forEach((tab) => {
+            if (!tab) return;
+            tab.addEventListener("click", () => {
+                applyAuthModeUi(tab.getAttribute("data-method"));
+                syncConfigFromAuthPanel();
+                updateEditorFromConfig();
+                refreshAll();
+            });
+        });
+
+        [els.authApiKey, els.authMemberId, els.authSecretKey].forEach((input) => {
+            if (!input) return;
+            input.addEventListener("input", () => {
+                if (els.formApiKey) els.formApiKey.value = els.authApiKey ? els.authApiKey.value : "";
+                if (els.formAuthMemberId) els.formAuthMemberId.value = els.authMemberId ? els.authMemberId.value : "";
+                if (els.formSecretKey) els.formSecretKey.value = els.authSecretKey ? els.authSecretKey.value : "";
+                syncConfigFromAuthPanel();
+                updateEditorFromConfig();
+                refreshAll();
+            });
+        });
+
+        const handleIssueTokenFromModal = async (button) => {
+            const authMode = normalizedAuthMode(els.formAuthMode ? els.formAuthMode.value : state.authMethod);
+            const apiKey = els.formApiKey ? els.formApiKey.value.trim() : "";
+            const memberId = els.formAuthMemberId ? els.formAuthMemberId.value.trim() : "";
+            const secretKey = els.formSecretKey ? els.formSecretKey.value.trim() : "";
+
+            if (!secretKey) { alert("인증 값이 비어 있습니다."); return; }
+
+            if (els.authApiKey) els.authApiKey.value = apiKey;
+            if (els.authMemberId) els.authMemberId.value = memberId;
+            if (els.authSecretKey) els.authSecretKey.value = secretKey;
+            applyAuthModeUi(authMode);
+
+            state.token = "";
+            state.companyId = "";
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-sm"></i> 토큰 발급 중';
+
+            try {
+                if (authMode === "bearer") {
+                    state.token = secretKey;
+                    updateAuthPanelUI();
+                } else {
+                    if (!apiKey || !memberId) { alert("API Key와 User ID를 입력해 주세요."); return; }
+                    await issueTokenFromPanel(apiKey, memberId, secretKey);
+                }
+                syncConfigFromAuthPanel();
+                updateEditorFromConfig();
+                refreshAll();
+            } catch (err) {
+                alert("토큰 발급 실패: " + (err.message || String(err)));
+            } finally {
+                button.disabled = false;
+                button.innerHTML = '<i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급';
+            }
+        };
+
+        if (els.modalIssueTokenBtn) {
+            els.modalIssueTokenBtn.addEventListener("click", () => handleIssueTokenFromModal(els.modalIssueTokenBtn));
+        }
+
+        // 토큰 발급 버튼
+        if (els.btnIssueToken) {
+            els.btnIssueToken.addEventListener("click", async () => {
+                const apiKey = els.authApiKey ? els.authApiKey.value.trim() : "";
+                const memberId = els.authMemberId ? els.authMemberId.value.trim() : "";
+                const secretKey = els.authSecretKey ? els.authSecretKey.value.trim() : "";
+
+                if (!secretKey) { alert("인증 정보를 입력해 주세요."); return; }
+
+                state.token = "";
+                state.companyId = "";
+                els.btnIssueToken.disabled = true;
+                els.btnIssueToken.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-sm"></i> 발급 중...';
+
+                try {
+                    if (state.authMethod === "bearer") {
+                        state.token = secretKey;
+                        updateAuthPanelUI();
+                    } else {
+                        if (!apiKey || !memberId) { alert("API Key와 User ID를 입력해 주세요."); return; }
+                        await issueTokenFromPanel(apiKey, memberId, secretKey);
+                    }
+                        syncConfigFromAuthPanel();
+                    updateEditorFromConfig();
+                    refreshStatus();
+                } catch (err) {
+                    alert("토큰 발급 실패: " + (err.message || String(err)));
+                } finally {
+                    els.btnIssueToken.disabled = false;
+                    els.btnIssueToken.innerHTML = '<i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급';
+                }
+            });
+        }
+
+        // 초기화 버튼
+        if (els.btnClearToken) {
+            els.btnClearToken.addEventListener("click", () => {
+                state.token = "";
+                state.companyId = "";
+                syncConfigFromAuthPanel();
+                updateEditorFromConfig();
+                updateAuthPanelUI();
+                refreshAll();
+            });
+        }
+
+        if (els.modalClearTokenBtn) {
+            els.modalClearTokenBtn.addEventListener("click", () => {
+                state.token = "";
+                state.companyId = "";
+                syncConfigFromAuthPanel();
+                updateEditorFromConfig();
+                updateAuthPanelUI();
+                refreshAll();
+            });
+        }
+
+        // 토큰 표시 클릭 → 복사
+        if (els.authTokenDisplay) {
+            els.authTokenDisplay.addEventListener("click", () => {
+                if (!state.token) return;
+                navigator.clipboard.writeText(state.token).then(() => {
+                    const orig = els.authTokenDisplay.textContent;
+                    els.authTokenDisplay.textContent = "복사됨!";
+                    setTimeout(() => { els.authTokenDisplay.textContent = orig; }, 1200);
+                }).catch(() => {});
+            });
+        }
+
+        if (els.modalTokenDisplay) {
+            els.modalTokenDisplay.addEventListener("click", () => {
+                if (!state.token) return;
+                navigator.clipboard.writeText(state.token).then(() => {
+                    const orig = els.modalTokenDisplay.textContent;
+                    els.modalTokenDisplay.textContent = "복사됨";
+                    setTimeout(() => { els.modalTokenDisplay.textContent = orig; }, 1200);
+                }).catch(() => {});
+            });
+        }
+
+        populateAuthPanelFromConfig();
     }
+
+    function updateAuthPanelUI() {
+        if (!els.authStatusBadge) return;
+        if (state.token) {
+            const short = state.token.length > 40 ? state.token.slice(0, 40) + "..." : state.token;
+            if (els.authTokenDisplay) {
+                els.authTokenDisplay.textContent = short;
+                els.authTokenDisplay.classList.add("has-token");
+            }
+        } else {
+            if (els.authTokenDisplay) {
+                els.authTokenDisplay.textContent = "토큰을 발급받아 주세요";
+                els.authTokenDisplay.classList.remove("has-token");
+            }
+        }
+        els.authStatusBadge.textContent = "사용자 설정";
+        els.authStatusBadge.className = "auth-status action";
+
+        if (els.modalTokenDisplay) {
+            if (state.token) {
+                const short = state.token.length > 40 ? state.token.slice(0, 40) + "..." : state.token;
+                els.modalTokenDisplay.textContent = short;
+                els.modalTokenDisplay.classList.add("has-token");
+            } else {
+                els.modalTokenDisplay.textContent = "토큰을 발급받은 뒤 확인하세요.";
+                els.modalTokenDisplay.classList.remove("has-token");
+            }
+        }
+
+        if (els.modalCompanyIdDisplay && els.modalCompanyIdValue) {
+            if (state.companyId) {
+                els.modalCompanyIdDisplay.style.display = "";
+                els.modalCompanyIdValue.textContent = state.companyId;
+            } else {
+                els.modalCompanyIdDisplay.style.display = "none";
+            }
+        }
+
+        if (els.authCompanyIdDisplay && els.authCompanyIdValue) {
+            if (state.companyId) {
+                els.authCompanyIdDisplay.style.display = "";
+                els.authCompanyIdValue.textContent = state.companyId;
+            } else {
+                els.authCompanyIdDisplay.style.display = "none";
+            }
+        }
+    }
+
+    // ── GUIDE ────────────────────────────────────────────────────────────────
+    function hydrateGuideContent() {
+        const root = document.getElementById("guideModal");
+        if (!root) return;
+
+        const header = root.querySelector(".guide-header-text");
+        const steps = root.querySelector(".guide-steps");
+        const tip = root.querySelector(".guide-tip p");
+        if (!header || !steps || !tip) return;
+
+        header.innerHTML = `
+            <h2>Open API Auto Test 사용 가이드</h2>
+            <p>eformsign Open API의 주요 기능을 시나리오 단위로 자동 검증하는 도구입니다. 각 OPA 항목은 생성 → 검증 → 정리 단계를 자동으로 묶어서 실행합니다.</p>
+        `;
+
+        steps.innerHTML = `
+            <div class="guide-step">
+                <div class="guide-step-num">1</div>
+                <i class="fa-solid fa-globe guide-step-icon"></i>
+                <h3>환경 선택</h3>
+                <p>상단 드롭다운에서 테스트 대상 환경을 먼저 선택합니다. API Key가 해당 환경용인지 확인하세요.</p>
+                <ul>
+                    <li><strong>운영 (SaaS)</strong> — kr-api.eformsign.com</li>
+                    <li><strong>공공 (CSAP)</strong> — www.gov-eformsign.com</li>
+                    <li>환경이 맞지 않으면 토큰 발급 단계에서 인증 오류가 발생합니다.</li>
+                </ul>
+            </div>
+            <div class="guide-step">
+                <div class="guide-step-num">2</div>
+                <i class="fa-solid fa-key guide-step-icon"></i>
+                <h3>인증 설정 및 토큰 발급</h3>
+                <p>상단의 <strong>사용자 설정</strong>을 클릭해 모달을 열고, 인증 방식을 선택한 뒤 값을 입력합니다.</p>
+                <ul>
+                    <li><strong>Signature</strong> — API Key + User ID + Secret Key(Hex)를 입력하고 토큰 발급 버튼을 클릭합니다. 발급 성공 시 Company ID가 자동으로 채워집니다.</li>
+                    <li><strong>Bearer Token</strong> — 이미 보유한 Access Token을 직접 붙여넣습니다. 토큰 발급 버튼 없이 바로 입력값을 사용합니다.</li>
+                    <li>발급된 토큰과 Company ID는 모달 하단에서 확인할 수 있으며, 클릭하면 클립보드에 복사됩니다.</li>
+                </ul>
+            </div>
+            <div class="guide-step">
+                <div class="guide-step-num">3</div>
+                <i class="fa-solid fa-file-pen guide-step-icon"></i>
+                <h3>테스트 데이터 입력</h3>
+                <p>사용자 설정 모달의 일반 설정 섹션에서 테스트에 필요한 값을 채웁니다. 실행하려는 OPA에 따라 필요한 항목이 다릅니다.</p>
+                <ul>
+                    <li><strong>외부 Template ID</strong> — OPA 007(외부 문서 작성)에 필요. Company ID와 API Key는 토큰 발급 정보에서 자동으로 채워집니다.</li>
+                    <li><strong>첨부 문서 ID</strong> — OPA 006(첨부 파일 다운로드)에 사용. 실제 첨부 파일이 있는 완료 문서 ID를 입력해야 합니다.</li>
+                    <li><strong>테스트 멤버 ID</strong> — 멤버·그룹 관련 OPA(011~013, 018~020, 030)에 필요합니다.</li>
+                    <li><strong>기본 수신자 (이름/이메일/휴대폰)</strong> — OPA 014(재요청) 시나리오에서 수신자 정보로 사용됩니다.</li>
+                    <li><strong>PDF 수신자 (이름/이메일)</strong> — OPA 037(완료 문서 PDF 전송)에 필요</li>
+                    <li>문서 생성·취소·다운로드 관련 OPA(003, 004, 005, 016, 021, 040, 042, 045)는 템플릿·완료 문서를 자동 탐색하므로 별도 ID 입력 불필요</li>
+                    <li>설정을 프로필로 저장해두면 다음 테스트 시 재입력 없이 바로 불러올 수 있습니다.</li>
+                </ul>
+            </div>
+            <div class="guide-step">
+                <div class="guide-step-num">4</div>
+                <i class="fa-solid fa-list-check guide-step-icon"></i>
+                <h3>OPA 선택</h3>
+                <p>모달을 닫고 좌측 사이드바에서 실행할 OPA를 선택합니다. 각 항목의 상태 배지를 확인하세요.</p>
+                <ul>
+                    <li><strong class="guide-ready">준비됨</strong> — 현재 입력된 설정으로 바로 실행 가능합니다.</li>
+                    <li><strong class="guide-warn">설정 필요</strong> — 누락된 값이 있습니다. 항목을 클릭하면 우측 상세 패널에서 어떤 설정이 부족한지 확인할 수 있습니다.</li>
+                    <li>체크박스로 여러 OPA를 선택하면 step이 중복되지 않도록 자동으로 최적화하여 순서대로 실행합니다.</li>
+                    <li>우측 실행 파이프라인 패널에서 어떤 단계들이 실제로 실행될지 미리 확인할 수 있습니다.</li>
+                </ul>
+            </div>
+            <div class="guide-step">
+                <div class="guide-step-num">5</div>
+                <i class="fa-solid fa-play guide-step-icon"></i>
+                <h3>실행 및 결과 확인</h3>
+                <p>실행 버튼을 누르면 토큰 준비부터 정리 단계까지 자동으로 처리됩니다. 각 step의 결과가 테이블로 표시됩니다.</p>
+                <ul>
+                    <li><strong>현재 OPA만 실행</strong> — 사이드바에서 선택(클릭)된 OPA 하나만 실행합니다.</li>
+                    <li><strong>선택한 OPA 실행</strong> — 체크박스로 선택된 OPA 전체를 연속 실행합니다.</li>
+                    <li><strong>PASS / FAIL</strong> — step 단위로 결과가 표시됩니다. FAIL 시 <strong>결과 보기</strong>를 클릭하면 요청 바디와 응답 전문을 확인할 수 있습니다.</li>
+                    <li>실행 이력은 프로필별로 최근 10회까지 사용자 설정 모달에서 확인할 수 있습니다.</li>
+                </ul>
+            </div>
+        `;
+
+        tip.innerHTML = `<strong>팁:</strong> OPA 003·004·005·016·021·040·042·045는 템플릿 또는 완료 문서를 자동으로 탐색하므로 ID를 별도로 입력하지 않아도 됩니다. OPA 037(PDF 전송), OPA 040(일괄 다운로드), OPA 045(완료 토큰 연장), OPA 004(단건 다운로드)는 계정에 완료 상태(status_type=003) 문서가 없으면 실행해도 의미 있는 검증이 되지 않습니다. OPA 006은 실제 첨부 파일이 있는 완료 문서 ID를 첨부 문서 ID에 직접 입력해야 합니다.`;
+    }
+
+    window.openGuide = function () {
+        const el = document.getElementById("guideModal");
+        if (el) el.classList.add("open");
+    };
+    window.closeGuide = function () {
+        const el = document.getElementById("guideModal");
+        if (el) el.classList.remove("open");
+    };
+    window.closeGuideOutside = function (event) {
+        if (event.target === document.getElementById("guideModal")) window.closeGuide();
+    };
 })();
