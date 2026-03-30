@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design Preview — 멤버 관리 API 도구</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=SUIT:wght@400;500;600;700&family=Sora:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Sidebar */
+      --sidebar-bg: #111827;
+      --sidebar-surface: #182131;
+      --sidebar-hover: #1a2740;
+      --sidebar-active-bg: #1a2f50;
+      --sidebar-active-indicator: #00c2a8;
+      --sidebar-text: #c7d3e3;
+      --sidebar-text-muted: #6b8099;
+      
+      --sidebar-text-active: #f0f7ff;
+      --sidebar-divider: #1e2d40;
+
+      /* Content */
+      --bg: #f0f4f8;
+      --surface: #ffffff;
+      --border: #d7dfea;
+      --border-hover: #aebccf;
+      --text: #17212b;
+      --text-secondary: #556273;
+      --text-muted: #7b8794;
+
+      /* Actions */
+      --primary: #1a73e8;
+      --primary-hover: #155bc0;
+      --primary-ring: rgba(26, 115, 232, 0.18);
+      --danger: #dc3545;
+      --danger-hover: #b92c3a;
+      --success: #1f9d68;
+
+      /* Teal (system voice) */
+      --teal: #00c2a8;
+      --teal-ring: rgba(0, 194, 168, 0.20);
+      --teal-subtle: rgba(0, 194, 168, 0.10);
+
+      /* Typography */
+      --font-ui: 'SUIT', sans-serif;
+      --font-heading: 'Sora', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+
+      /* Radii */
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 16px;
+
+      /* Shadows */
+      --shadow-card: 0 2px 8px rgba(17, 24, 39, 0.05), 0 1px 2px rgba(17, 24, 39, 0.04);
+      --shadow-card-hover: 0 8px 24px rgba(17, 24, 39, 0.10), 0 2px 6px rgba(17, 24, 39, 0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── DESIGN SYSTEM HEADER ─────────────────────────────── */
+    .ds-header {
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--sidebar-divider);
+    }
+    .ds-header h1 {
+      font-family: var(--font-heading);
+      font-size: 14px;
+      color: var(--sidebar-text-active);
+      letter-spacing: 0.01em;
+    }
+    .ds-header .ds-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--sidebar-text-muted);
+    }
+    .ds-palette-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .swatch {
+      width: 18px; height: 18px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* ─── APP SHELL ─────────────────────────────────────────── */
+    .app-shell {
+      display: flex;
+      height: calc(100vh - 49px);
+      min-height: 700px;
+    }
+
+    /* ─── SIDEBAR ───────────────────────────────────────────── */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--sidebar-divider);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar-token-panel {
+      padding: 14px 14px 12px;
+      background: var(--sidebar-surface);
+      border-bottom: 1px solid var(--sidebar-divider);
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+    .sidebar-token-panel:hover { background: var(--sidebar-hover); }
+    .sidebar-token-panel-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--sidebar-text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 7px;
+    }
+    .sidebar-token-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--sidebar-text);
+    }
+    .token-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 0 2px var(--teal-subtle);
+      flex-shrink: 0;
+    }
+    .token-dot.inactive {
+      background: #3a4a5a;
+      box-shadow: none;
+    }
+    .sidebar-token-value {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--sidebar-text-muted);
+      margin-top: 5px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sidebar-token-expand {
+      font-size: 10px;
+      color: var(--sidebar-text-muted);
+      margin-top: 5px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sidebar-section {
+      padding: 14px 0 4px;
+    }
+    .sidebar-section-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--sidebar-text-muted);
+      padding: 0 16px;
+      margin-bottom: 3px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 16px 8px 13px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--sidebar-text);
+      cursor: pointer;
+      transition: background 100ms ease, color 80ms ease;
+      border-left: 3px solid transparent;
+      user-select: none;
+    }
+    .nav-item:hover {
+      background: var(--sidebar-hover);
+      color: #ddeeff;
+    }
+    .nav-item.active {
+      background: var(--sidebar-active-bg);
+      color: var(--sidebar-text-active);
+      border-left-color: var(--teal);
+    }
+    .nav-item .nav-icon {
+      font-size: 13px;
+      width: 18px;
+      text-align: center;
+      opacity: 0.75;
+    }
+    .nav-item.danger-item { color: #f08090; }
+    .nav-item.danger-item:hover { background: rgba(220, 53, 69, 0.12); color: #ff9aa8; }
+    .nav-item.danger-item.active {
+      background: rgba(220, 53, 69, 0.15);
+      border-left-color: var(--danger);
+      color: #ffb3bc;
+    }
+
+    /* ─── MAIN CONTENT ──────────────────────────────────────── */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+      max-width: 980px;
+    }
+
+    .page-title {
+      font-family: var(--font-heading);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    /* Warning */
+    .alert-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: #fffbeb;
+      border: 1px solid #fbbf24;
+      border-left: 3px solid #f59e0b;
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #92400e;
+      margin-bottom: 20px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-card);
+      margin-bottom: 14px;
+      transition: box-shadow 150ms ease;
+    }
+    .card:hover { box-shadow: var(--shadow-card-hover); }
+    .card-header {
+      padding: 14px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-title {
+      font-family: var(--font-heading);
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .card-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: #f0f4ff;
+      color: #3b5bdb;
+      border: 1px solid #dbe4ff;
+    }
+    .card-body { padding: 18px 20px; }
+
+    /* Form elements */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .form-row.single { grid-template-columns: 1fr; }
+    .form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .form-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #445164;
+      letter-spacing: 0.01em;
+    }
+    .form-label .required {
+      color: var(--danger);
+      margin-left: 2px;
+    }
+    .form-input {
+      height: 40px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 0 12px;
+      font-family: var(--font-ui);
+      font-size: 14px;
+      color: var(--text);
+      background: var(--surface);
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+      outline: none;
+      width: 100%;
+    }
+    .form-input::placeholder { color: #9ca8b4; }
+    .form-input:hover { border-color: var(--border-hover); }
+    .form-input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px var(--teal-ring);
+    }
+    .form-input.mono {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: #2a4a6a;
+      background: #f8fbff;
+    }
+    .form-input.readonly {
+      background: #f4f7fb;
+      color: var(--text-secondary);
+      cursor: default;
+    }
+
+    .radio-group {
+      display: flex;
+      gap: 16px;
+      padding: 6px 0;
+    }
+    .radio-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13.5px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .radio-label input { accent-color: var(--primary); }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 38px;
+      padding: 0 16px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-ui);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 120ms ease, box-shadow 120ms ease, opacity 100ms;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+      border-color: var(--danger);
+    }
+    .btn-danger:hover { background: var(--danger-hover); }
+    .btn-secondary {
+      background: #fff;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--border-hover); background: #f8fafb; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--primary);
+      border-color: transparent;
+      padding: 0 8px;
+    }
+    .btn-ghost:hover { background: #eef4fd; }
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    /* Collapsible section */
+    .collapse-trigger {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      margin-top: 8px;
+      margin-bottom: 4px;
+      transition: background 100ms;
+      width: 100%;
+    }
+    .collapse-trigger:hover { background: #f0f4f8; }
+    .collapse-trigger .chevron {
+      margin-left: auto;
+      transition: transform 200ms;
+    }
+    .collapse-trigger.open .chevron { transform: rotate(180deg); }
+
+    /* Result panel */
+    .result-panel-body {
+      padding: 14px 16px;
+      background: #1a2332;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.7;
+      color: #a8c4e0;
+      white-space: pre-wrap;
+      border-radius: 0 0 16px 16px;
+    }
+    .result-panel-body .key { color: #79b8ff; }
+    .result-panel-body .str { color: #85e89d; }
+    .result-panel-body .num { color: #f0a050; }
+    .result-panel-body .bool { color: #ae81ff; }
+
+    /* SSO info group */
+    .sso-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* Section sub-heading */
+    .sub-heading {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      margin-top: 4px;
+    }
+
+    /* Excel upload area */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-bottom: 10px;
+      transition: border-color 120ms, background 120ms;
+      cursor: pointer;
+    }
+    .upload-area:hover {
+      border-color: var(--primary);
+      background: #f0f6ff;
+      color: var(--primary);
+    }
+
+    /* Step indicator */
+    .step-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .step-badge {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-badge.done { background: var(--success); }
+    .step-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    /* ─── DESIGN SYSTEM SPEC SECTION ────────────────────────── */
+    .ds-section {
+      background: var(--sidebar-bg);
+      padding: 36px 32px;
+      color: var(--sidebar-text);
+    }
+    .ds-section h2 {
+      font-family: var(--font-heading);
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--sidebar-text-active);
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--sidebar-divider);
+    }
+    .ds-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 28px; }
+
+    .swatch-group h3 {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--sidebar-text-muted);
+      margin-bottom: 10px;
+    }
+    .swatch-list { display: flex; flex-direction: column; gap: 6px; }
+    .swatch-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .swatch-box {
+      width: 26px; height: 26px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0;
+    }
+    .swatch-name { color: var(--sidebar-text); }
+    .swatch-hex { font-family: var(--font-mono); font-size: 11px; color: var(--sidebar-text-muted); margin-left: auto; }
+
+    .font-specimen { margin-bottom: 18px; }
+    .font-specimen .role {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--sidebar-text-muted);
+      margin-bottom: 5px;
+    }
+    .specimen-heading {
+      font-family: var(--font-heading);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--sidebar-text-active);
+      line-height: 1.2;
+    }
+    .specimen-body {
+      font-family: var(--font-ui);
+      font-size: 15px;
+      color: var(--sidebar-text);
+      line-height: 1.6;
+    }
+    .specimen-mono {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--teal);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ■ DESIGN SYSTEM BAR -->
+<div class="ds-header">
+  <h1>멤버 관리 API 도구 — 디자인 시스템 프리뷰</h1>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="ds-palette-row">
+      <div class="swatch" style="background:#111827;"></div>
+      <div class="swatch" style="background:#1a73e8;"></div>
+      <div class="swatch" style="background:#00c2a8;"></div>
+      <div class="swatch" style="background:#dc3545;"></div>
+      <div class="swatch" style="background:#f0f4f8;border-color:rgba(255,255,255,0.2);"></div>
+    </div>
+    <div class="ds-meta">SUIT · Sora · JetBrains Mono</div>
+  </div>
+</div>
+
+<!-- ■ APP SHELL -->
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-token-panel">
+      <div class="sidebar-token-panel-title">🔑 Access Token</div>
+      <div class="sidebar-token-status">
+        <div class="token-dot"></div>
+        <span style="font-size:12px;">발급됨 · <span style="color:var(--teal);font-family:var(--font-mono);font-size:10px;">kr-api</span></span>
+      </div>
+      <div class="sidebar-token-value">eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb21w...</div>
+      <div class="sidebar-token-expand">▾ 패널 열기 / 토큰 재발급</div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">멤버</div>
+      <div class="nav-item active">
+        <span class="nav-icon">＋</span>멤버 추가
+      </div>
+      <div class="nav-item danger-item">
+        <span class="nav-icon">✕</span>멤버 삭제
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">✎</span>멤버 수정
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">≡</span>구성원 목록 조회
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">그룹</div>
+      <div class="nav-item">
+        <span class="nav-icon">＋</span>그룹 추가
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">✎</span>그룹 수정
+      </div>
+      <div class="nav-item danger-item">
+        <span class="nav-icon">✕</span>그룹 삭제
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">≡</span>그룹 목록 조회
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+    <div class="page-title">멤버 추가</div>
+    <div class="page-subtitle">eformsign 구성원에 새 멤버를 추가합니다. 좌측 Access Token 패널에서 발급된 토큰이 자동으로 사용됩니다.</div>
+
+    <div class="alert-warning">
+      ⚠️ 멤버 삭제 시 해당 멤버에게 메일이 발송됩니다. (Postman 환경에서는 발송되지 않음)
+    </div>
+
+    <!-- Form Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">수동 입력</span>
+        <span class="card-badge">필수 정보</span>
+      </div>
+      <div class="card-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">계정 이메일/ID <span class="required">*</span></label>
+            <input class="form-input" type="text" placeholder="예: test98@forcs.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">비밀번호 <span class="required">*</span></label>
+            <input class="form-input" type="password" placeholder="비밀번호 입력">
+          </div>
+        </div>
+        <div class="form-row single">
+          <div class="form-group">
+            <label class="form-label">사용자 이름 <span class="required">*</span></label>
+            <input class="form-input" type="text" placeholder="예: 홍길동">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">이메일 전송 옵션</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="mail" checked> 가입 시 이메일 발송 (기본값)</label>
+            <label class="radio-label"><input type="radio" name="mail"> 이메일 발송 안 함</label>
+          </div>
+        </div>
+
+        <button class="collapse-trigger open">
+          <span>📋 추가 옵션</span>
+          <span style="font-size:12px;color:var(--text-muted);margin-left:6px;">연락처 · 부서 · 권한 · SSO 정보</span>
+          <span class="chevron">▾</span>
+        </button>
+
+        <div style="padding-bottom:6px;">
+          <div class="sub-heading" style="margin-top:12px;">연락처 정보</div>
+          <div class="form-row triple">
+            <div class="form-group">
+              <label class="form-label">전화번호</label>
+              <input class="form-input" type="text" placeholder="010-1234-5678">
+            </div>
+            <div class="form-group">
+              <label class="form-label">휴대폰 번호</label>
+              <input class="form-input" type="text" placeholder="010-2345-6789">
+            </div>
+            <div class="form-group">
+              <label class="form-label">국가 번호</label>
+              <input class="form-input" type="text" placeholder="+82">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">부서</label>
+              <input class="form-input" type="text" placeholder="예: 연구소">
+            </div>
+            <div class="form-group">
+              <label class="form-label">직책</label>
+              <input class="form-input" type="text" placeholder="예: 연구원">
+            </div>
+          </div>
+          <div class="form-row single">
+            <div class="form-group">
+              <label class="form-label">사용자 권한 (콤마 구분)</label>
+              <input class="form-input" type="text" placeholder="예: company_manager, template_manager">
+            </div>
+          </div>
+          <div class="sub-heading">external_sso_info</div>
+          <div class="sso-group">
+            <div class="form-group">
+              <label class="form-label">uuid</label>
+              <input class="form-input" type="text" placeholder="123456789">
+            </div>
+            <div class="form-group">
+              <label class="form-label">idp_name</label>
+              <input class="form-input" type="text" placeholder="google">
+            </div>
+            <div class="form-group">
+              <label class="form-label">account_id</label>
+              <input class="form-input" type="text" placeholder="user@email.com">
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary">멤버 추가</button>
+          <button class="btn btn-secondary">초기화</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Result Panel -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">응답 결과</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span style="font-size:11px;font-family:var(--font-mono);color:var(--success);background:#edfaf4;padding:2px 8px;border-radius:99px;border:1px solid #b7efd8;">200 OK</span>
+          <button class="btn btn-ghost" style="font-size:12px;height:28px;padding:0 10px;">복사</button>
+        </div>
+      </div>
+      <div class="result-panel-body"><span class="key">"api_key"</span>: {
+  <span class="key">"company"</span>: {
+    <span class="key">"company_id"</span>: <span class="str">"abc123def456"</span>,
+    <span class="key">"company_name"</span>: <span class="str">"테스트 회사"</span>
+  },
+  <span class="key">"access_token"</span>: <span class="str">"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9..."</span>,
+  <span class="key">"refresh_token"</span>: <span class="str">"dGVzdC1yZWZyZXNoLXRva2Vu..."</span>,
+  <span class="key">"token_type"</span>: <span class="str">"Bearer"</span>
+}</div>
+    </div>
+
+    <!-- Excel Upload Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">엑셀 파일 업로드</span>
+        <span style="font-size:12px;color:var(--text-muted);">대량 멤버 추가 시 사용</span>
+      </div>
+      <div class="card-body">
+        <div class="step-row">
+          <div class="step-badge done">✓</div>
+          <span class="step-label">템플릿 다운로드</span>
+          <button class="btn btn-secondary" style="height:30px;font-size:12px;margin-left:auto;">템플릿 다운로드 (.xlsx)</button>
+        </div>
+        <div class="step-row">
+          <div class="step-badge" style="background:#9ca8b4;">2</div>
+          <span class="step-label">파일 업로드 및 검증</span>
+        </div>
+        <div class="upload-area">
+          📂 &nbsp;.xlsx 또는 .xls 파일을 드래그하거나 클릭하여 선택
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">
+          필요 헤더: <code style="font-family:var(--font-mono);background:#f0f4f8;padding:1px 5px;border-radius:4px;font-size:11px;">id, password, first_name, department, position, role...</code>
+        </div>
+        <div class="step-row">
+          <div class="step-badge" style="background:#9ca8b4;">3</div>
+          <span class="step-label">검증 통과 시 실행 버튼 활성화</span>
+        </div>
+        <button class="btn btn-secondary" disabled style="opacity:0.4;cursor:not-allowed;">엑셀 파일 검증</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ■ DESIGN SYSTEM SPEC -->
+<div class="ds-section">
+  <h2>디자인 시스템 명세</h2>
+  <div class="ds-grid">
+
+    <div class="swatch-group">
+      <h3>사이드바 팔레트</h3>
+      <div class="swatch-list">
+        <div class="swatch-row"><div class="swatch-box" style="background:#111827;"></div><span class="swatch-name">sidebar-bg</span><span class="swatch-hex">#111827</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#182131;"></div><span class="swatch-name">sidebar-surface</span><span class="swatch-hex">#182131</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#1a2740;"></div><span class="swatch-name">sidebar-hover</span><span class="swatch-hex">#1a2740</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#1a2f50;"></div><span class="swatch-name">active-bg</span><span class="swatch-hex">#1a2f50</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#00c2a8;"></div><span class="swatch-name">teal (active indicator)</span><span class="swatch-hex">#00c2a8</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#dc3545;"></div><span class="swatch-name">danger indicator</span><span class="swatch-hex">#dc3545</span></div>
+      </div>
+    </div>
+
+    <div class="swatch-group">
+      <h3>콘텐츠 팔레트</h3>
+      <div class="swatch-list">
+        <div class="swatch-row"><div class="swatch-box" style="background:#f0f4f8;border-color:rgba(0,0,0,0.1);"></div><span class="swatch-name">bg</span><span class="swatch-hex">#f0f4f8</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#ffffff;border-color:rgba(0,0,0,0.1);"></div><span class="swatch-name">surface (card)</span><span class="swatch-hex">#ffffff</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#1a73e8;"></div><span class="swatch-name">primary</span><span class="swatch-hex">#1a73e8</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#dc3545;"></div><span class="swatch-name">danger</span><span class="swatch-hex">#dc3545</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#1f9d68;"></div><span class="swatch-name">success</span><span class="swatch-hex">#1f9d68</span></div>
+        <div class="swatch-row"><div class="swatch-box" style="background:#1a2332;"></div><span class="swatch-name">result-panel-bg</span><span class="swatch-hex">#1a2332</span></div>
+      </div>
+    </div>
+
+    <div class="swatch-group">
+      <h3>타이포그래피</h3>
+      <div class="font-specimen">
+        <div class="role">Heading — Sora 700</div>
+        <div class="specimen-heading">멤버 추가 API</div>
+      </div>
+      <div class="font-specimen">
+        <div class="role">UI / 레이블 — SUIT 500</div>
+        <div class="specimen-body" style="color:var(--sidebar-text);">계정 이메일/ID, 부서, 직책</div>
+      </div>
+      <div class="font-specimen">
+        <div class="role">Mono — JetBrains Mono 400</div>
+        <div class="specimen-mono">company_id: "abc123"<br>token: "eyJ..."</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top:1px solid var(--sidebar-divider);padding-top:22px;">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--sidebar-text-muted);margin-bottom:14px;">핵심 디자인 결정</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div style="background:var(--sidebar-surface);border-radius:10px;padding:14px;border:1px solid var(--sidebar-divider);">
+        <div style="font-size:10px;font-weight:700;color:var(--teal);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">SAFE — 카테고리 기준선</div>
+        <div style="font-size:12.5px;color:var(--sidebar-text);line-height:1.9;">
+          • 좌측 사이드바 내비게이션 (admin tool 표준)<br>
+          • #1a73e8 primary, #dc3545 danger 유지<br>
+          • 카드 기반 폼 레이아웃<br>
+          • 토큰 상태 사이드바 상단 고정
+        </div>
+      </div>
+      <div style="background:var(--sidebar-surface);border-radius:10px;padding:14px;border:1px solid var(--sidebar-divider);">
+        <div style="font-size:10px;font-weight:700;color:#f0a050;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">RISK — 차별화 포인트</div>
+        <div style="font-size:12.5px;color:var(--sidebar-text);line-height:1.9;">
+          • 틸 #00c2a8 — active indicator + focus ring에만 사용. 버튼은 블루 유지. "시스템의 목소리"와 "사용자의 액션"을 색으로 구분<br>
+          • SUIT(한국어 최적화) + Sora 헤딩 — 내부 도구에 Sora는 이례적<br>
+          • 응답 결과를 어두운 코드 패널로 표시 — 개발자 도구 느낌
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
