@@ -94,7 +94,8 @@ const API_SPECS = {
 
 - **사이드바 정렬 모드**: `ui.js`의 `currentViewMode` 변수로 관리 (`'group'` | `'code'` | `'method'`)
 - **API 선택 시 자동 탭 전환**: Path 파라미터 있음 → Path 탭 / Body 있음 → Body 탭 / 그 외 → Query 탭
-- **DELETE with Body**: `sendRequest`에서 DELETE도 body 포함 메서드로 처리 — Body가 있는 DELETE API(OPA2_009, OPA2_020 등) 정상 전송
+- **DELETE with Body**: `sendRequest`에서 DELETE도 body 포함 메서드로 처리 — Body가 있는 DELETE API(OPA2_009, OPA2_020, OPA2_051 등) 정상 전송
+- **가이드 문서 Authorization 오기재**: OPA2_050~052처럼 가이드에 `api_key base64 인코딩`으로 잘못 기재된 경우가 있음 — 실제로는 Bearer Access Token을 사용하므로 `requiresAuth: true`로 설정할 것
 - **URL 표시 인코딩**: `,` `@` `:` `/`는 인코딩하지 않고 그대로 표시 (`encodeForDisplay` 함수, `ui.js` `updateUrlPreview`)
 - **OPA2_001 SaaS 전용 URL**: `saasBaseUrl` 필드로 op_saas 환경에서만 `https://api.eformsign.com` 사용
 - **모바일 사이드바 드로어**: `@media (max-width: 640px)`에서 사이드바가 고정 위치 슬라이드 드로어로 전환

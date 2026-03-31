@@ -145,7 +145,11 @@
 
 ### 결과 카드
 
-- 기존 `#result`, `#deleteResult`, `#updateResult`, `#tokenResult` 같은 결과 영역은 dark result panel 스타일로 통일
+- 아래 결과 영역을 모두 dark result panel 스타일로 통일
+  - 멤버: `#result`, `#deleteResult`, `#updateResult`, `#tokenResult`
+  - 멤버 엑셀: `#excelResult`, `#excelDeleteResult`, `#excelUpdateResult`
+  - 그룹: `#groupResult`, `#groupDeleteResult`, `#groupUpdateResult`
+  - 그룹 엑셀: `#excelGroupResult`, `#excelGroupDeleteResult`, `#excelGroupUpdateResult`
 - JSON, 에러 텍스트, 검증 요약 모두 동일한 결과 카드 안에서 표시
 - 성공/실패 상태는 카드 헤더 배지로 보강 가능
 
@@ -188,10 +192,25 @@
 ## 이번 적용에서 특히 조심할 점
 
 - `display:none`로 숨겨지는 섹션 구조를 바꾸더라도 `showSection()`이 찾는 ID는 그대로 있어야 한다
-- jQuery `slideToggle()` 대상 ID는 유지해야 한다
-- 엑셀 실행 영역의 `style.display`를 직접 제어하는 코드가 많으므로 해당 컨테이너 ID를 절대 바꾸면 안 된다
-- 목록 테이블의 `tbody`를 JS가 직접 채우므로 테이블 ID와 tbody 구조는 유지해야 한다
+- jQuery `slideToggle()` 대상 ID는 유지해야 한다. 대상 전체 목록:
+  - `#optionalFields`
+  - `#excelUploadSection`
+  - `#excelDeleteUploadSection`
+  - `#excelUpdateUploadSection`
+  - `#excelGroupUploadSection`
+- `style.display`를 JS가 직접 제어하는 Execute 섹션 ID는 절대 바꾸면 안 된다. 변경 시 검증 후 실행 버튼이 나타나지 않는다:
+  - `#excelExecuteSection`
+  - `#excelDeleteExecuteSection`
+  - `#excelUpdateExecuteSection`
+  - `#excelGroupExecuteSection`
+- 목록 테이블의 `tbody`를 JS가 직접 채우므로 아래 테이블 ID와 tbody 구조는 유지해야 한다:
+  - `#listResultTable` (멤버 목록), `#listResultJson` (JSON 모드)
+  - `#groupListResultTable` (그룹 목록), `#groupListResultJson` (JSON 모드)
 - 결과 출력은 `innerText`, `text()`, `val()` 혼용이 있으므로 결과 요소를 `input`으로 바꾸면 안 된다
+- 그룹 섹션도 멤버 섹션과 대칭 구조로 결과 요소 ID가 존재한다. JS가 직접 참조하므로 유지해야 한다:
+  - `#groupResult`, `#excelGroupResult`
+  - `#groupDeleteResult`, `#excelGroupDeleteResult`
+  - `#groupUpdateResult`, `#excelGroupUpdateResult`
 
 ## 결론
 

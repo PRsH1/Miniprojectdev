@@ -2155,4 +2155,125 @@ const API_LIST = [
             ]
         }
     },
+    {
+        id: 'doc_manager_add',
+        group: '회사',
+        groupIcon: 'fa-building',
+        opaCode: 'OPA2_050',
+        name: '문서 관리자 추가',
+        method: 'POST',
+        path: '/v2.0/api/document_manager',
+        description: '문서 관리자를 추가합니다. 한 번에 여러 명을 추가할 수 있습니다.',
+        requiresAuth: true,
+        pathParams: [],
+        queryParams: [],
+        defaultBody: {
+            managers: [
+                { type: '', id: '' }
+            ]
+        },
+        exampleResponse: {
+            success: {
+                "result": [
+                    {
+                        "type": "string",
+                        "id": "string",
+                        "account_id": "string"
+                    }
+                ],
+                "code": "string",
+                "message": "string",
+                "status": "string"
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '유효하지 않은 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } }
+            ]
+        }
+    },
+    {
+        id: 'doc_manager_delete',
+        group: '회사',
+        groupIcon: 'fa-building',
+        opaCode: 'OPA2_051',
+        name: '문서 관리자 삭제',
+        method: 'DELETE',
+        path: '/v2.0/api/document_manager',
+        description: '문서 관리자를 삭제합니다. 한 번에 여러 명을 삭제할 수 있습니다.',
+        requiresAuth: true,
+        pathParams: [],
+        queryParams: [],
+        defaultBody: {
+            managers: [
+                { type: '', id: '' }
+            ]
+        },
+        exampleResponse: {
+            success: {
+                "result": [
+                    {
+                        "type": "string",
+                        "id": "string",
+                        "account_id": "string"
+                    }
+                ],
+                "code": "string",
+                "message": "string",
+                "status": "string"
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '유효하지 않은 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } }
+            ]
+        }
+    },
+    {
+        id: 'doc_manager_roles_set',
+        group: '회사',
+        groupIcon: 'fa-building',
+        opaCode: 'OPA2_052',
+        name: '문서 관리자 관리 문서 설정',
+        method: 'POST',
+        path: '/v2.0/api/document_manager_roles',
+        description: '문서 관리자의 관리 문서 조건을 설정합니다.',
+        requiresAuth: true,
+        pathParams: [],
+        queryParams: [],
+        defaultBody: {
+            manager_type: '',
+            manager_id: '',
+            document_roles: [
+                {
+                    deletable: null,
+                    revokable: null,
+                    document_creators: [
+                        { creator_type: '', creator_id: '' }
+                    ],
+                    document_types: [
+                        { form_type: '', form_id: '' }
+                    ],
+                    detail_creators: [
+                        { field_name: '', search_type: '', value: '' }
+                    ],
+                    detail_form_datas: [
+                        { field_name: '', search_type: '', value: '', start_value: '', end_value: '' }
+                    ]
+                }
+            ]
+        },
+        exampleResponse: {
+            success: {
+                "code": "string",
+                "message": "string",
+                "status": "string"
+            },
+            errors: [
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
+                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
+                { title: '유효하지 않은 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } }
+            ]
+        }
+    },
 ];

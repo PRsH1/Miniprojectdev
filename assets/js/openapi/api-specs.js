@@ -1227,4 +1227,96 @@ const API_SPECS = {
             { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
         ],
     },
+
+    'OPA2_050': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer {access_token}' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'managers', type: 'array', required: true, description: '추가할 문서 관리자 목록', note: '한 번에 여러 명 추가 가능' },
+            { key: 'managers[].type', type: 'string', required: true, description: '문서 관리자 타입', note: 'member(멤버), group(그룹)' },
+            { key: 'managers[].id', type: 'string', required: true, description: '문서 관리자 ID', note: '멤버는 account_id, 그룹은 _id 입력' },
+        ],
+        responseFields: [
+            { key: 'result', type: 'array', description: '처리된 문서 관리자 목록' },
+            { key: 'result[].type', type: 'string', description: '문서 관리자 타입', note: 'member(멤버), group(그룹)' },
+            { key: 'result[].id', type: 'string', description: '요청한 문서 관리자 ID' },
+            { key: 'result[].account_id', type: 'string', description: '멤버의 account_id', note: '그룹이거나 멤버를 찾지 못한 경우 null' },
+            { key: 'code', type: 'string', description: '응답 코드', note: '-1: 정상' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드', note: '200: 정상' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4030001', message: 'invalid api key', description: '유효하지 않은 API Key' },
+        ],
+    },
+
+    'OPA2_051': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer {access_token}' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'managers', type: 'array', required: true, description: '삭제할 문서 관리자 목록', note: '한 번에 여러 명 삭제 가능' },
+            { key: 'managers[].type', type: 'string', required: true, description: '문서 관리자 타입', note: 'member(멤버), group(그룹)' },
+            { key: 'managers[].id', type: 'string', required: true, description: '문서 관리자 ID', note: '멤버는 account_id, 그룹은 _id 입력' },
+        ],
+        responseFields: [
+            { key: 'result', type: 'array', description: '처리된 문서 관리자 목록' },
+            { key: 'result[].type', type: 'string', description: '문서 관리자 타입', note: 'member(멤버), group(그룹)' },
+            { key: 'result[].id', type: 'string', description: '요청한 문서 관리자 ID' },
+            { key: 'result[].account_id', type: 'string', description: '멤버의 account_id', note: '그룹이거나 멤버를 찾지 못한 경우 null' },
+            { key: 'code', type: 'string', description: '응답 코드', note: '-1: 정상' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드', note: '200: 정상' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4030001', message: 'invalid api key', description: '유효하지 않은 API Key' },
+        ],
+    },
+
+    'OPA2_052': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer {access_token}' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'manager_type', type: 'string', required: true, description: '문서 관리자 타입', note: 'member(멤버), group(그룹)' },
+            { key: 'manager_id', type: 'string', required: true, description: '문서 관리자 ID', note: '멤버는 account_id, 그룹은 _id 입력' },
+            { key: 'document_roles', type: 'array', required: true, description: '관리 문서 조건 목록', note: '여러 관리 문서 설정 가능' },
+            { key: 'document_roles[].deletable', type: 'boolean', required: false, description: '제거 관리 권한 여부' },
+            { key: 'document_roles[].revokable', type: 'boolean', required: false, description: '취소 관리 권한 여부' },
+            { key: 'document_roles[].document_creators', type: 'array', required: false, description: '문서 작성자 목록', note: '여러 작성자 설정 가능' },
+            { key: 'document_roles[].document_creators[].creator_type', type: 'string', required: false, description: '작성자 타입', note: 'everyone(전체 멤버), member(멤버), group(그룹)' },
+            { key: 'document_roles[].document_creators[].creator_id', type: 'string', required: false, description: '작성자 ID', note: '멤버/그룹일 경우에만 입력. everyone이면 빈 값' },
+            { key: 'document_roles[].document_types', type: 'array', required: false, description: '문서 종류 목록', note: '여러 문서 종류 설정 가능' },
+            { key: 'document_roles[].document_types[].form_type', type: 'string', required: false, description: '문서 타입', note: 'all_document(전체 문서), all_form(전체 템플릿), unstructured_form(내 파일), form(템플릿)' },
+            { key: 'document_roles[].document_types[].form_id', type: 'string', required: false, description: '템플릿 ID', note: '문서 타입이 form(템플릿)일 때만 입력' },
+            { key: 'document_roles[].detail_creators', type: 'array', required: false, description: '작성자 상세 조건 목록', note: '여러 작성자 조건 설정 가능' },
+            { key: 'document_roles[].detail_creators[].field_name', type: 'string', required: false, description: '필드 이름', note: 'id, email, name, department, position, mobile, phone, 멤버필드_c' },
+            { key: 'document_roles[].detail_creators[].search_type', type: 'string', required: false, description: '검색 타입', note: 'keyword(키워드 포함), match(키워드 일치)' },
+            { key: 'document_roles[].detail_creators[].value', type: 'string', required: false, description: '키워드 값' },
+            { key: 'document_roles[].detail_form_datas', type: 'array', required: false, description: '문서 입력 항목 상세 조건 목록', note: '여러 조건 설정 가능' },
+            { key: 'document_roles[].detail_form_datas[].field_name', type: 'string', required: false, description: '입력 필드 이름' },
+            { key: 'document_roles[].detail_form_datas[].search_type', type: 'string', required: false, description: '검색 타입', note: 'keyword(키워드 포함), match(키워드 일치), range(범위), term(기간)' },
+            { key: 'document_roles[].detail_form_datas[].value', type: 'string', required: false, description: '키워드 값' },
+            { key: 'document_roles[].detail_form_datas[].start_value', type: 'string', required: false, description: '시작 값', note: '검색 타입이 range/term인 경우 사용. term은 unix timestamp' },
+            { key: 'document_roles[].detail_form_datas[].end_value', type: 'string', required: false, description: '종료 값', note: '검색 타입이 range/term인 경우 사용. term은 unix timestamp' },
+        ],
+        responseFields: [
+            { key: 'code', type: 'string', description: '응답 코드', note: '-1: 정상' },
+            { key: 'message', type: 'string', description: '응답 메시지' },
+            { key: 'status', type: 'string', description: 'HTTP 응답 코드', note: '200: 정상' },
+        ],
+        errorCodes: [
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4030001', message: 'invalid api key', description: '유효하지 않은 API Key' },
+        ],
+    },
 };
