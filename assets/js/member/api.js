@@ -4,6 +4,9 @@
 
 'use strict';
 
+// ─── 멤버 목록 캐시 ─────────────────────────────────────
+let _membersCache = [];
+
 // ─── 상수 ───────────────────────────────────────────────
 const tokenUrlMap = {
   op_saas: 'https://kr-api.eformsign.com/v2.0/api_auth/access_token',
@@ -260,6 +263,7 @@ function listMembers(viewType, button) {
     .then(res => res.json())
     .then(data => {
       data.members.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+      _membersCache = data.members;
       if (viewType === 'json') {
         $('#jsonContainer').show();
         $('#tableContainer').hide();
@@ -267,22 +271,41 @@ function listMembers(viewType, button) {
       } else {
         $('#jsonContainer').hide();
         $('#tableContainer').show();
-        $('#listResultTable tbody').empty();
-        const tbody = document.querySelector('#listResultTable tbody');
-        data.members.forEach(m => {
-          const date = new Date(m.create_date).toLocaleString();
-          const tr = document.createElement('tr');
-          [m.id, m.name, m.department || '-', m.position || '-', date, String(m.enabled)].forEach(val => {
-            const td = document.createElement('td');
-            td.textContent = val;
-            tr.appendChild(td);
-          });
-          tbody.appendChild(tr);
-        });
+        filterAndRenderMembers();
       }
     })
     .catch(err => { $('#listResultJson').text('조회 실패: ' + err); })
     .finally(() => hideLoading(button));
+}
+
+// ─── 멤버 테이블 렌더링 / 검색 필터 ────────────────────
+function renderMemberTable(members) {
+  const tbody = document.querySelector('#listResultTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  members.forEach(m => {
+    const date = new Date(m.create_date).toLocaleString();
+    const phone = (m.contact && m.contact.number) ? m.contact.number : '-';
+    const roles = Array.isArray(m.role) && m.role.length ? m.role.join(', ') : '-';
+    const tr = document.createElement('tr');
+    [m.id, m.name || '-', m.department || '-', m.position || '-', phone, roles, date, String(m.enabled)].forEach(val => {
+      const td = document.createElement('td');
+      td.textContent = val;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+function filterAndRenderMembers() {
+  const nameQ = ($('#searchMemberName').val() || '').trim().toLowerCase();
+  const idQ   = ($('#searchMemberId').val()   || '').trim().toLowerCase();
+  const filtered = _membersCache.filter(m => {
+    const nameMatch = !nameQ || (m.name || '').toLowerCase().includes(nameQ);
+    const idMatch   = !idQ   || (m.id   || '').toLowerCase().includes(idQ);
+    return nameMatch && idMatch;
+  });
+  renderMemberTable(filtered);
 }
 
 // ─── 그룹 추가 ───────────────────────────────────────────
