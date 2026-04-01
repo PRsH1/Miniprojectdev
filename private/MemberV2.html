@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>멤버 관리 — eformsign</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=SUIT:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    /* ─── 리셋 & 변수 ──────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar-bg:      #111827;
+      --sidebar-surface: #182131;
+      --sidebar-hover:   #1a2740;
+      --sidebar-active:  #1a2f50;
+      --accent:          #00c2a8;
+      --page-bg:         #f0f4f8;
+      --card-bg:         #ffffff;
+      --border:          #d7dfea;
+      --primary:         #1a73e8;
+      --danger:          #dc3545;
+      --success:         #1f9d68;
+      --result-bg:       #1a2332;
+      --text-main:       #1e2a3a;
+      --text-sub:        #64748b;
+      --text-muted:      #94a3b8;
+      --font-ui:         'SUIT', sans-serif;
+      --font-heading:    'Sora', sans-serif;
+      --font-mono:       'JetBrains Mono', monospace;
+      --radius-card:     14px;
+      --shadow-card:     0 1px 4px rgba(0,0,0,.08);
+      --shadow-card-h:   0 4px 16px rgba(0,0,0,.12);
+    }
+
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font-ui);
+      background: var(--page-bg);
+      color: var(--text-main);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ─── 앱 셸 ─────────────────────────────────────────── */
+    .app-shell {
+      display: flex;
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    /* ─── 사이드바 ──────────────────────────────────────── */
+    .sidebar {
+      width: 230px;
+      min-width: 230px;
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .sidebar-logo {
+      padding: 20px 18px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .sidebar-logo h1 {
+      font-family: var(--font-heading);
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -.3px;
+    }
+    .sidebar-logo p {
+      font-size: 11px;
+      color: #6b7ea0;
+      margin-top: 2px;
+    }
+
+    /* 토큰 상태 패널 */
+    .token-panel {
+      margin: 10px 10px 0;
+      background: var(--sidebar-surface);
+      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .token-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .token-panel-header span {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8fa3c4;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .token-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4b5563;
+      transition: background .3s;
+    }
+    .token-status-dot.status-ok  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .token-status-dot.status-none { background: #4b5563; }
+    #sbTokenStatus { /* alias for dot */ }
+
+    .token-panel-env {
+      font-size: 11px;
+      color: #6b7ea0;
+      margin-bottom: 4px;
+    }
+    .token-panel-preview {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: #94a3b8;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+    .token-panel-btn {
+      margin-top: 10px;
+      width: 100%;
+      background: rgba(0,194,168,.15);
+      border: 1px solid rgba(0,194,168,.3);
+      color: var(--accent);
+      border-radius: 7px;
+      padding: 7px 0;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .token-panel-btn:hover { background: rgba(0,194,168,.25); }
+
+    /* 사이드바 메뉴 */
+    .sidebar-nav { padding: 12px 0 20px; flex: 1; }
+    .nav-group { margin-bottom: 6px; }
+    .nav-group-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #4b5a72;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      padding: 10px 18px 4px;
+    }
+    .sidebar-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 18px;
+      cursor: pointer;
+      color: #8fa3c4;
+      font-size: 13px;
+      font-weight: 500;
+      border-left: 3px solid transparent;
+      transition: background .12s, color .12s, border-color .12s;
+      user-select: none;
+    }
+    .sidebar-menu-item:hover {
+      background: var(--sidebar-hover);
+      color: #c8d8f0;
+    }
+    .sidebar-menu-item.active {
+      background: var(--sidebar-active);
+      color: #fff;
+      border-left-color: var(--accent);
+    }
+    .sidebar-menu-item.danger { color: #f87171; }
+    .sidebar-menu-item.danger:hover { background: rgba(220,53,69,.12); color: #fca5a5; }
+    .sidebar-menu-item.danger.active { background: rgba(220,53,69,.18); border-left-color: var(--danger); color: #fca5a5; }
+    .sidebar-menu-item i { width: 16px; text-align: center; font-size: 12px; flex-shrink: 0; }
+
+    /* ─── 메인 패널 ─────────────────────────────────────── */
+    .main-panel {
+      flex: 1;
+      min-width: 0;
+      padding: 28px 32px;
+      overflow-y: auto;
+    }
+
+    /* 섹션 헤더 */
+    .section-header {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .section-header-text h2 {
+      font-family: var(--font-heading);
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.3;
+    }
+    .section-header-text p {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-top: 3px;
+    }
+    .opa-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      background: rgba(26,115,232,.1);
+      color: var(--primary);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      margin-top: 4px;
+    }
+
+    /* ─── 카드 ───────────────────────────────────────────── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 20px 22px;
+      box-shadow: var(--shadow-card);
+      margin-bottom: 16px;
+      transition: box-shadow .15s;
+    }
+    .card:hover { box-shadow: var(--shadow-card-h); }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title i { color: var(--primary); }
+
+    /* ─── 폼 ─────────────────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .form-grid.cols-1 { grid-template-columns: 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    select {
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: var(--font-ui);
+      color: var(--text-main);
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+      width: 100%;
+    }
+    input[readonly] { background: #f8fafc; color: var(--text-sub); }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,194,168,.15);
+    }
+
+    /* ─── 라디오 그룹 ────────────────────────────────────── */
+    .radio-group {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 400;
+      font-size: 13px;
+      color: var(--text-main);
+      cursor: pointer;
+      min-height: 32px;
+    }
+    .radio-group input[type="radio"] { width: auto; height: auto; margin: 0; }
+
+    /* ─── 버튼 ───────────────────────────────────────────── */
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--font-ui);
+      font-weight: 600;
+      font-size: 13px;
+      transition: opacity .15s, background .15s, box-shadow .15s;
+    }
+    button:hover:not(:disabled) { opacity: .88; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      height: 40px;
+      padding: 0 20px;
+    }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+      height: 40px;
+      padding: 0 20px;
+    }
+    .btn-secondary {
+      background: var(--page-bg);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      height: 38px;
+      padding: 0 16px;
+    }
+    .btn-teal {
+      background: rgba(0,194,168,.12);
+      color: var(--accent);
+      border: 1px solid rgba(0,194,168,.3);
+      height: 38px;
+      padding: 0 16px;
+    }
+    .btn-toggle {
+      background: rgba(26,115,232,.08);
+      color: var(--primary);
+      border: 1px solid rgba(26,115,232,.2);
+      height: 36px;
+      padding: 0 14px;
+      font-size: 12px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .btn-row.right { justify-content: flex-end; }
+
+    /* 토글 small 버튼 */
+    .toggle-small {
+      display: inline-block;
+      width: 44px;
+      padding: 3px 0;
+      font-size: 11px;
+      text-align: center;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+    }
+    .toggle-small.on  { background: var(--success); color: #fff; }
+    .toggle-small.off { background: #6c757d; color: #fff; }
+
+    /* 스피너 */
+    @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    button.loading { cursor: not-allowed; pointer-events: none; }
+
+    /* ─── 결과 패널 ──────────────────────────────────────── */
+    .result-panel {
+      background: var(--result-bg);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 12px;
+      overflow-x: auto;
+    }
+    .result-panel pre,
+    .result-panel div {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #c8d8f0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+    /* 결과 요소 ID — JS가 직접 .html() / .text() / innerText로 채움 */
+    #tokenResult, #result, #deleteResult, #updateResult,
+    #excelResult, #excelDeleteResult, #excelUpdateResult,
+    #groupResult, #groupDeleteResult, #groupUpdateResult,
+    #excelGroupResult, #excelGroupDeleteResult, #excelGroupUpdateResult {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #c8d8f0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+      min-height: 20px;
+    }
+    /* pre 태그 결과 요소 (그룹 섹션 일부) */
+    pre#groupResult, pre#groupDeleteResult, pre#groupUpdateResult,
+    pre#excelGroupResult, pre#excelGroupDeleteResult, pre#excelGroupUpdateResult {
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    /* ─── 목록 뷰 전환 버튼 ─────────────────────────────── */
+    .view-toggle {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .view-toggle button {
+      height: 32px;
+      padding: 0 14px;
+      font-size: 12px;
+      background: var(--page-bg);
+      border: 1px solid var(--border);
+      color: var(--text-sub);
+    }
+    .view-toggle button.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* ─── 테이블 ─────────────────────────────────────────── */
+    #tableContainer, #groupTableContainer { overflow-x: auto; }
+    #listResultTable, #groupListResultTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    #listResultTable th, #groupListResultTable th {
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    #listResultTable td, #groupListResultTable td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-main);
+    }
+    #listResultTable tbody tr:hover,
+    #groupListResultTable tbody tr:hover { background: #f8fafc; }
+
+    /* ─── 접기 패널 ──────────────────────────────────────── */
+    .collapse-section { display: none; }
+    .collapse-panel {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-top: 10px;
+    }
+    .collapse-panel p { font-size: 12px; color: var(--text-sub); margin-bottom: 10px; line-height: 1.6; }
+    .collapse-panel strong { color: var(--text-main); }
+
+    /* 엑셀 실행 섹션 */
+    #excelExecuteSection,
+    #excelDeleteExecuteSection,
+    #excelUpdateExecuteSection,
+    #excelGroupExecuteSection,
+    #excelGroupDeleteExecuteSection,
+    #excelGroupUpdateExecuteSection { margin-top: 10px; }
+
+    /* ─── 경고 배너 ──────────────────────────────────────── */
+    .alert-warning {
+      background: #fff8e1;
+      border: 1px solid #ffc107;
+      border-left: 4px solid #ffc107;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: #856404;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ─── 섹션 숨김 ──────────────────────────────────────── */
+    #memberAddSection,
+    #memberDeleteSection,
+    #memberUpdateSection,
+    #memberListSection,
+    #groupAddSection,
+    #groupUpdateSection,
+    #groupDeleteSection,
+    #groupListSection { display: none; }
+
+    /* 토큰 섹션은 처음에 display:none (init.js에서 showSection으로 전환) */
+    #tokenSection { display: none; }
+
+    /* 숨김 */
+    #optionalFields,
+    #excelUploadSection { display: none; }
+    #excelDeleteUploadSection { display: none; }
+    #excelUpdateUploadSection { display: none; }
+    #excelGroupUploadSection { display: none; }
+    #excelGroupDeleteSection { display: none; }
+    #excelGroupUpdateSection { display: none; }
+    #customEnvUrlField { display: none; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ─── 사이드바 ───────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>멤버 관리</h1>
+      <p>eformsign Admin Tool</p>
+    </div>
+
+    <!-- 토큰 상태 패널 -->
+    <div class="token-panel">
+      <div class="token-panel-header">
+        <span>Access Token</span>
+        <div class="token-status-dot status-none" id="sbTokenStatus"></div>
+      </div>
+      <div class="token-panel-env" id="sbTokenEnv">—</div>
+      <div class="token-panel-preview" id="sbTokenPreview">미발급</div>
+      <button class="token-panel-btn" id="sbTokenBtn">
+        <i class="fa-solid fa-key"></i> 토큰 발급
+      </button>
+    </div>
+
+    <!-- 네비게이션 -->
+    <nav class="sidebar-nav">
+      <div class="nav-group">
+        <div class="nav-group-label">멤버</div>
+        <div class="sidebar-menu-item" data-section="memberAddSection">
+          <i class="fa-solid fa-user-plus"></i> 멤버 추가
+        </div>
+        <div class="sidebar-menu-item danger" data-section="memberDeleteSection">
+          <i class="fa-solid fa-user-minus"></i> 멤버 삭제
+        </div>
+        <div class="sidebar-menu-item" data-section="memberUpdateSection">
+          <i class="fa-solid fa-user-pen"></i> 멤버 수정
+        </div>
+        <div class="sidebar-menu-item" data-section="memberListSection">
+          <i class="fa-solid fa-users"></i> 구성원 목록
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">그룹</div>
+        <div class="sidebar-menu-item" data-section="groupAddSection">
+          <i class="fa-solid fa-folder-plus"></i> 그룹 추가
+        </div>
+        <div class="sidebar-menu-item" data-section="groupUpdateSection">
+          <i class="fa-solid fa-folder-open"></i> 그룹 수정
+        </div>
+        <div class="sidebar-menu-item danger" data-section="groupDeleteSection">
+          <i class="fa-solid fa-folder-minus"></i> 그룹 삭제
+        </div>
+        <div class="sidebar-menu-item" data-section="groupListSection">
+          <i class="fa-solid fa-layer-group"></i> 그룹 목록
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- ─── 메인 패널 ──────────────────────────────────── -->
+  <main class="main-panel">
+
+    <!-- 경고 배너 -->
+    <div class="alert-warning">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      멤버 삭제 시 해당 멤버에게 이메일이 발송됩니다. (Postman에서는 발송 안 됨)
+    </div>
+
+    <!-- ══ tokenSection ══════════════════════════════ -->
+    <section id="tokenSection">
+      <div class="section-header">
+        <div class="section-header-text">
+          <h2>Access Token 발급</h2>
+          <p>ECDSA 서명 또는 Bearer 토큰 방식으로 발급합니다.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-sliders"></i> 환경 설정</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="envSelection">환경 선택</label>
+            <select id="envSelection">
+              <option value="op_saas">운영 (SaaS)</option>
+              <option value="csap">공공 (CSAP)</option>
+              <option value="custom">사용자 지정 환경</option>
+            </select>
+          </div>
+          <div class="form-group" id="customEnvUrlField">
+            <label for="customEnvUrl">사용자 지정 Base URL</label>
+            <input type="text" id="customEnvUrl" placeholder="예: https://eform.cbe.go.kr/Service">
+          </div>
+        </div>
+        <div id="urlDisplay" style="font-size:12px;color:var(--text-sub);margin-top:10px;line-height:1.7;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-key"></i> 인증 정보</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="apiKey">API-KEY</label>
+            <input type="text" id="apiKey" placeholder="API-KEY 입력">
+          </div>
+          <div class="form-group">
+            <label for="user_id_token">User ID</label>
+            <input type="text" id="user_id_token" placeholder="User ID 입력">
+          </div>
+          <div class="form-group full">
+            <label>비밀 키 입력 방식</label>
+            <div class="radio-group">
+              <label><input type="radio" name="secretKeyMethod" value="signature" checked> Signature 방식</label>
+              <label><input type="radio" name="secretKeyMethod" value="bearer"> Bearer token 방식</label>
+            </div>
+          </div>
+          <div class="form-group full">
+            <label id="secretKeyLabel" for="privateKeyHex">비밀 키 (Secret key, Hex)</label>
+            <input type="text" id="privateKeyHex" placeholder="예: 30... (Signature 방식)">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="getAccessToken(this)">
+            <i class="fa-solid fa-bolt"></i> Access Token 발급
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-circle-check"></i> 발급 결과</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="accessToken">Access Token</label>
+            <input type="text" id="accessToken" readonly placeholder="발급 후 자동 입력">
+          </div>
+          <div class="form-group">
+            <label for="refreshToken">Refresh Token</label>
+            <input type="text" id="refreshToken" readonly placeholder="발급 후 자동 입력">
+          </div>
+          <div class="form-group">
+            <label for="companyId">Company ID</label>
+            <input type="text" id="companyId" readonly placeholder="발급 후 자동 입력">
+          </div>
+        </div>
+        <div class="result-panel" style="margin-top:14px;">
+          <div id="tokenResult"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ memberAddSection ══════════════════════════ -->
+    <section id="memberAddSection">
+      <div class="section-header">
+        <div class="section-header-text">
+          <h2>멤버 추가</h2>
+          <p>수동 입력 또는 엑셀 일괄 추가</p>
+          <span class="opa-badge">OPA2_011</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-user-plus"></i> 기본 정보 (필수)</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="accountId">계정 이메일 / ID</label>
+            <input type="text" id="accountId" placeholder="예: test98@forcs.com">
+          </div>
+          <div class="form-group">
+            <label for="accountPassword">비밀번호</label>
+            <input type="password" id="accountPassword" placeholder="비밀번호 입력">
+          </div>
+          <div class="form-group">
+            <label for="accountFirstName">사용자 이름</label>
+            <input type="text" id="accountFirstName" placeholder="예: test98">
+          </div>
+          <div class="form-group">
+            <label>이메일 전송 옵션</label>
+            <div class="radio-group">
+              <label><input type="radio" name="mailOption" value="true" checked> 발송</label>
+              <label><input type="radio" name="mailOption" value="false"> 발송 안 함</label>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-toggle" id="toggleOptionalBtn">추가 옵션 보기</button>
+        </div>
+
+        <!-- 추가 옵션 -->
+        <div id="optionalFields">
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+            <div class="card-title" style="margin-bottom:12px;"><i class="fa-solid fa-address-card"></i> 연락처 정보</div>
+            <div class="form-grid cols-3">
+              <div class="form-group">
+                <label for="contactTel">전화번호</label>
+                <input type="text" id="contactTel" placeholder="예: 010-1234-5678">
+              </div>
+              <div class="form-group">
+                <label for="contactNumber">휴대폰 번호</label>
+                <input type="text" id="contactNumber" placeholder="예: 010-2345-6789">
+              </div>
+              <div class="form-group">
+                <label for="contactCountryNumber">국가 번호</label>
+                <input type="text" id="contactCountryNumber" placeholder="예: +82">
+              </div>
+              <div class="form-group">
+                <label for="department">부서</label>
+                <input type="text" id="department" placeholder="예: 연구소">
+              </div>
+              <div class="form-group">
+                <label for="position">직책</label>
+                <input type="text" id="position" placeholder="예: 연구원">
+              </div>
+              <div class="form-group" style="justify-content:flex-end;">
+                <label>&nbsp;</label>
+                <label style="font-weight:400;font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer;">
+                  <input type="checkbox" id="agreementMarketing"> 마케팅 정보 수신 동의
+                </label>
+              </div>
+              <div class="form-group full">
+                <label for="role">사용자 권한 (콤마 구분)</label>
+                <input type="text" id="role" placeholder="예: company_manager, template_manager">
+              </div>
+            </div>
+            <div class="card-title" style="margin:14px 0 12px;"><i class="fa-solid fa-link"></i> external_sso_info</div>
+            <div class="form-grid cols-3">
+              <div class="form-group">
+                <label for="externalUuid">uuid</label>
+                <input type="text" id="externalUuid" placeholder="예: 123456789">
+              </div>
+              <div class="form-group">
+                <label for="externalIdpName">idp_name</label>
+                <input type="text" id="externalIdpName" placeholder="예: google">
+              </div>
+              <div class="form-group">
+                <label for="externalAccountId">account_id</label>
+                <input type="text" id="externalAccountId" placeholder="예: pks2111@naver.com">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-primary" onclick="addMember(this)">
+            <i class="fa-solid fa-plus"></i> 멤버 추가
+          </button>
+        </div>
+        <div class="result-panel" style="margin-top:12px;">
+          <div id="result"></div>
+        </div>
+      </div>
+
+      <!-- 엑셀 추가 카드 -->
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-file-excel"></i> 엑셀 일괄 추가</div>
+        <div class="btn-row" style="margin-top:0;">
+          <button type="button" class="btn-toggle" id="toggleExcelUploadBtn">엑셀 파일 업로드 보기</button>
+        </div>
+        <div id="excelUploadSection" class="collapse-section">
+          <div class="collapse-panel">
+            <p>필요 헤더:<br>
+              <strong>id, password, first_name, contact_tel, contact_number, contact_country_number, department, position, agreement_marketing, role, external_uuid, external_idp_name, external_account_id</strong>
+            </p>
+            <div class="btn-row" style="margin-top:0;margin-bottom:12px;">
+              <button type="button" class="btn-teal" onclick="downloadTemplate()">
+                <i class="fa-solid fa-download"></i> 템플릿 다운로드
+              </button>
+            </div>
+            <div class="form-group">
+              <label>파일 선택</label>
+              <input type="file" id="excelFileInput" accept=".xlsx,.xls" style="height:auto;padding:6px;">
+            </div>
+            <div class="btn-row">
+              <button class="btn-secondary" onclick="validateExcelFile(this)">파일 검증</button>
+            </div>
+            <div class="result-panel" style="margin-top:10px;">
+              <div id="excelResult"></div>
+            </div>
+            <div id="excelExecuteSection" style="display:none;margin-top:10px;">
+              <button class="btn-primary" onclick="executeExcelMemberAddition(this)">
+                <i class="fa-solid fa-play"></i> 멤버 추가 실행
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ memberDeleteSection ═══════════════════════ -->
+    <section id="memberDeleteSection">
+      <div class="section-header">
+        <div class="section-header-text">
+          <h2>멤버 삭제</h2>
+          <p>삭제 시 해당 멤버에게 이메일이 발송됩니다.</p>
+          <span class="opa-badge">OPA2_013</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-user-minus"></i> 수동 삭제</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="deleteMemberId">삭제할 member_id</label>
+            <input type="text" id="deleteMemberId" placeholder="예: test98@forcs.com">
+          </div>
+          <div class="form-group">
+            <label>이메일 전송 옵션</label>
+            <div class="radio-group">
+              <label><input type="radio" name="mailOptionDelete" value="true" checked> 발송</label>
+              <label><input type="radio" name="mailOptionDelete" value="false"> 발송 안 함</label>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-danger" onclick="deleteMember(this)">
+            <i class="fa-solid fa-trash"></i> 멤버 삭제
+          </button>
+        </div>
+        <div class="result-panel" style="margin-top:12px;">
+          <div id="deleteResult"></div>
+        </div>
+      </div>
+
+      <!-- 엑셀 삭제 카드 -->
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-file-excel"></i> 엑셀 일괄 삭제</div>
+        <div class="btn-row" style="margin-top:0;">
+          <button type="button" class="btn-toggle" id="toggleExcelDeleteUploadBtn">엑셀 파일 업로드 보기 (삭제)</button>
+        </div>
+        <div id="excelDeleteUploadSection" class="collapse-section">
+          <div class="collapse-panel">
+            <p>필요 헤더: <strong>id</strong></p>
+            <div class="btn-row" style="margin-top:0;margin-bottom:12px;">
+              <button type="button" class="btn-teal" onclick="downloadDeleteTemplate()">
+                <i class="fa-solid fa-download"></i> 템플릿 다운로드
+              </button>
+            </div>
+            <div class="form-group">
+              <label>파일 선택</label>
+              <input type="file" id="excelFileDeleteInput" accept=".xlsx,.xls" style="height:auto;padding:6px;">
+            </div>
+            <div class="btn-row">
+              <button class="btn-secondary" onclick="validateExcelFileForDeletion(this)">파일 검증 (삭제)</button>
+            </div>
+            <div class="result-panel" style="margin-top:10px;">
+              <div id="excelDeleteResult"></div>
+            </div>
+            <div id="excelDeleteExecuteSection" style="display:none;margin-top:10px;">
+              <div class="form-group" style="margin-bottom:10px;">
+                <label>이메일 전송 옵션 (엑셀 삭제)</label>
+                <div class="radio-group">
+                  <label><input type="radio" name="mailOptionDeleteExcel" value="true" checked> 발송</label>
+                  <label><input type="radio" name="mailOptionDeleteExcel" value="false"> 발송 안 함</label>
+                </div>
+              </div>
+              <button class="btn-danger" onclick="executeExcelMemberDeletion(this)">
+                <i class="fa-solid fa-play"></i> 멤버 삭제 실행
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ memberUpdateSection ═══════════════════════ -->
+    <section id="memberUpdateSection">
+      <div class="section-header">
+        <div class="section-header-text">
+          <h2>멤버 수정</h2>
+          <p>계정 정보, 연락처, 권한을 수정합니다.</p>
+          <span class="opa-badge">OPA2_012</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-user-pen"></i> 수정 정보 입력</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="updateMemberId">수정할 member_id</label>
+            <input type="text" id="updateMemberId" placeholder="예: test1@forcs.com">
+          </div>
+          <div class="form-group">
+            <label for="updateAccountId">계정 이메일 / ID (자동 복사)</label>
+            <input type="text" id="updateAccountId" readonly>
+          </div>
+          <div class="form-group">
+            <label for="updateName">사용자 이름</label>
+            <input type="text" id="updateName" placeholder="예: 홍길동">
+          </div>
+          <div class="form-group">
+            <label for="updateEnabled">account.enabled</label>
+            <select id="updateEnabled">
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="updateContactNumber">휴대폰 번호</label>
+            <input type="text" id="updateContactNumber" placeholder="예: 010-2345-6789">
+          </div>
+          <div class="form-group">
+            <label for="updateContactTel">전화번호</label>
+            <input type="text" id="updateContactTel" placeholder="예: 010-1234-5678">
+          </div>
+          <div class="form-group">
+            <label for="updateDepartment">부서</label>
+            <input type="text" id="updateDepartment" placeholder="예: 연구소">
+          </div>
+          <div class="form-group">
+            <label for="updatePosition">직책</label>
+            <input type="text" id="updatePosition" placeholder="예: 연구원">
+          </div>
+          <div class="form-group full">
+            <label for="updateRole">사용자 권한 (콤마 구분)</label>
+            <input type="text" id="updateRole" placeholder="예: company_manager, template_manager">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="updateMember(this)">
+            <i class="fa-solid fa-floppy-disk"></i> 멤버 수정
+          </button>
+        </div>
+        <div class="result-panel" style="margin-top:12px;">
+          <div id="updateResult"></div>
+        </div>
+      </div>
+
+      <!-- 엑셀 수정 카드 -->
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-file-excel"></i> 엑셀 일괄 수정</div>
+        <div class="btn-row" style="margin-top:0;">
+          <button type="button" class="btn-toggle" id="toggleExcelUpdateUploadBtn">엑셀 파일 업로드 보기 (수정)</button>
+        </div>
+        <div id="excelUpdateUploadSection" class="collapse-section">
+          <div class="collapse-panel">
+            <p>필요 헤더: <strong>id, name, enabled, contact_number, contact_tel, department, position, role</strong></p>
+            <div class="btn-row" style="margin-top:0;margin-bottom:12px;">
+              <button type="button" class="btn-teal" onclick="downloadUpdateTemplate()">
+                <i class="fa-solid fa-download"></i> 템플릿 다운로드
+              </button>
+            </div>
+            <div class="form-group">
+              <label>파일 선택</label>
+              <input type="file" id="excelFileUpdateInput" accept=".xlsx,.xls" style="height:auto;padding:6px;">
+            </div>
+            <div class="btn-row">
+              <button class="btn-secondary" onclick="validateExcelFileForUpdate(this)">파일 검증 (수정)</button>
+            </div>
+            <div class="result-panel" style="margin-top:10px;">
+              <div id="excelUpdateResult"></div>
+            </div>
+            <div id="excelUpdateExecuteSection" style="display:none;margin-top:10px;">
+              <button class="btn-primary" onclick="executeExcelMemberUpdate(this)">
+                <i class="fa-solid fa-play"></i> 멤버 수정 실행
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ memberListSection ═════════════════════════ -->
+    <section id="memberListSection">
+      <div class="section-header">
+        <div class="section-header-text">
+          <h2>구성원 목록 조회</h2>
+          <p>이름 가-나-다 순으로 정렬됩니다.</p>
+          <span class="opa-badge">OPA2_010</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-users"></i> 목록 조회</div>
+        <div class="view-toggle">
+          <button onclick="listMembers('json', this)" id="btnListJson">JSON</button>
+          <button onclick="listMembers('table', this)" id="btnListTable">TABLE</button>
+        </div>
+        <div id="jsonContainer" style="display:none;">
+          <div class="result-panel">
+            <pre id="listResultJson"></pre>
+          </div>
+        </div>
+        <div id="tableContainer" style="display:none;">
+          <table id="listResultTable">
+            <thead>
+              <tr>
+                <th>id</th><th>이름</th><th>부서</th><th>직책</th><th>생성일</th><th>enabled</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ groupAddSection ═══════════════════════════ -->
+    <section id="groupAddSection">
+      <div class="section-header">
+        <div class="section-header-text">
+          <h2>그룹 추가</h2>
+          <p>그룹 이름, 설명, 멤버를 입력하여 그룹을 생성합니다.</p>
+          <span class="opa-badge">OPA2_018</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-folder-plus"></i> 수동 추가</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="groupName">그룹 이름</label>
+            <input type="text" id="groupName" placeholder="예: 테스트그룹">
+          </div>
+          <div class="form-group">
+            <label for="groupDescription">그룹 설명</label>
+            <input type="text" id="groupDescription" placeholder="예: 클라우드팀">
+          </div>
+          <div class="form-group full">
+            <label for="groupMembers">그룹 멤버 ID 리스트 (콤마 구분)</label>
+            <input type="text" id="groupMembers" placeholder="예: user1@forcs.com,user2@forcs.com">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="addGroup(this)">
+            <i class="fa-solid fa-plus"></i> 그룹 추가
+          </button>
+        </div>
+        <div class="result-panel" style="margin-top:12px;">
+          <pre id="groupResult"></pre>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-file-excel"></i> 엑셀 일괄 추가</div>
+        <div class="btn-row" style="margin-top:0;">
+          <button type="button" class="btn-toggle" id="toggleGroupExcelBtn">엑셀 업로드 보기</button>
+        </div>
+        <div id="excelGroupUploadSection" class="collapse-section">
+          <div class="collapse-panel">
+            <p>필요 헤더: <strong>name, description, members</strong> (members는 콤마 구분)</p>
+            <div class="btn-row" style="margin-top:0;margin-bottom:12px;">
+              <button type="button" class="btn-teal" onclick="downloadGroupTemplate()">
+                <i class="fa-solid fa-download"></i> 템플릿 다운로드
+              </button>
+            </div>
+            <div class="form-group">
+              <label>파일 선택</label>
+              <input type="file" id="excelGroupFileInput" accept=".xlsx,.xls" style="height:auto;padding:6px;">
+            </div>
+            <div class="btn-row">
+              <button class="btn-secondary" onclick="validateExcelGroupFile(this)">엑셀 검증</button>
+            </div>
+            <div class="result-panel" style="margin-top:10px;">
+              <pre id="excelGroupResult"></pre>
+            </div>
+            <div id="excelGroupExecuteSection" style="display:none;margin-top:10px;">
+              <button class="btn-primary" onclick="executeExcelGroupAddition(this)">
+                <i class="fa-solid fa-play"></i> 실행
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ groupUpdateSection ════════════════════════ -->
+    <section id="groupUpdateSection">
+      <div class="section-header">
+        <div class="section-header-text">
+          <h2>그룹 수정</h2>
+          <p>그룹 ID로 이름, 설명, 멤버를 수정합니다.</p>
+          <span class="opa-badge">OPA2_019</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-folder-open"></i> 수동 수정</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="updGroupId">수정할 그룹 ID</label>
+            <input type="text" id="updGroupId" placeholder="예: a1b1f52d896044f6a651624f0f5114ab">
+          </div>
+          <div class="form-group">
+            <label for="updGroupName">그룹 이름</label>
+            <input type="text" id="updGroupName" placeholder="예: 테스트그룹2">
+          </div>
+          <div class="form-group">
+            <label for="updGroupDescription">그룹 설명</label>
+            <input type="text" id="updGroupDescription" placeholder="예: 클라우드2팀">
+          </div>
+          <div class="form-group">
+            <label for="updGroupMembers">그룹 멤버 ID 리스트 (콤마 구분)</label>
+            <input type="text" id="updGroupMembers" placeholder="예: test1@forcs.com,test2@forcs.com">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="updateGroup(this)">
+            <i class="fa-solid fa-floppy-disk"></i> 그룹 수정
+          </button>
+        </div>
+        <div class="result-panel" style="margin-top:12px;">
+          <pre id="groupUpdateResult"></pre>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-file-excel"></i> 엑셀 일괄 수정</div>
+        <div class="btn-row" style="margin-top:0;">
+          <button type="button" class="btn-toggle" id="toggleGroupUpdateExcelBtn">엑셀 업로드 보기 (수정)</button>
+        </div>
+        <div id="excelGroupUpdateSection" class="collapse-section">
+          <div class="collapse-panel">
+            <p>필요 헤더: <strong>group_id, name, description, members</strong> (members는 콤마 구분)</p>
+            <div class="btn-row" style="margin-top:0;margin-bottom:12px;">
+              <button type="button" class="btn-teal" onclick="downloadGroupUpdateTemplate()">
+                <i class="fa-solid fa-download"></i> 템플릿 다운로드
+              </button>
+            </div>
+            <div class="form-group">
+              <label>파일 선택</label>
+              <input type="file" id="excelGroupUpdateFileInput" accept=".xlsx,.xls" style="height:auto;padding:6px;">
+            </div>
+            <div class="btn-row">
+              <button class="btn-secondary" onclick="validateExcelGroupUpdateFile(this)">엑셀 검증 (수정)</button>
+            </div>
+            <div class="result-panel" style="margin-top:10px;">
+              <pre id="excelGroupUpdateResult"></pre>
+            </div>
+            <div id="excelGroupUpdateExecuteSection" style="display:none;margin-top:10px;">
+              <button class="btn-primary" onclick="executeExcelGroupUpdate(this)">
+                <i class="fa-solid fa-play"></i> 수정 실행
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ groupDeleteSection ════════════════════════ -->
+    <section id="groupDeleteSection">
+      <div class="section-header">
+        <div class="section-header-text">
+          <h2>그룹 삭제</h2>
+          <p>그룹 ID를 콤마로 구분하여 복수 삭제할 수 있습니다.</p>
+          <span class="opa-badge">OPA2_020</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-folder-minus"></i> 수동 삭제</div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label for="delGroupIds">삭제할 그룹 ID (콤마 구분)</label>
+            <input type="text" id="delGroupIds" placeholder="예: a1b1f52d896044f6a651624f0f5114ab, b2c2d63e...">
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-danger" onclick="deleteGroups(this)">
+            <i class="fa-solid fa-trash"></i> 그룹 삭제
+          </button>
+        </div>
+        <div class="result-panel" style="margin-top:12px;">
+          <pre id="groupDeleteResult"></pre>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-file-excel"></i> 엑셀 일괄 삭제</div>
+        <div class="btn-row" style="margin-top:0;">
+          <button type="button" class="btn-toggle" id="toggleGroupExcelDeleteBtn">엑셀 업로드 보기</button>
+        </div>
+        <div id="excelGroupDeleteSection" class="collapse-section">
+          <div class="collapse-panel">
+            <p>필요 헤더: <strong>group_ids</strong> (콤마로 묶인 문자열)</p>
+            <div class="btn-row" style="margin-top:0;margin-bottom:12px;">
+              <button type="button" class="btn-teal" onclick="downloadGroupDeleteTemplate()">
+                <i class="fa-solid fa-download"></i> 템플릿 다운로드
+              </button>
+            </div>
+            <div class="form-group">
+              <label>파일 선택</label>
+              <input type="file" id="excelGroupDeleteFileInput" accept=".xlsx,.xls" style="height:auto;padding:6px;">
+            </div>
+            <div class="btn-row">
+              <button class="btn-secondary" onclick="validateExcelGroupDeleteFile(this)">엑셀 검증</button>
+            </div>
+            <div class="result-panel" style="margin-top:10px;">
+              <pre id="excelGroupDeleteResult"></pre>
+            </div>
+            <div id="excelGroupDeleteExecuteSection" style="display:none;margin-top:10px;">
+              <button class="btn-danger" onclick="executeExcelGroupDeletion(this)">
+                <i class="fa-solid fa-play"></i> 삭제 실행
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ groupListSection ══════════════════════════ -->
+    <section id="groupListSection">
+      <div class="section-header">
+        <div class="section-header-text">
+          <h2>그룹 목록 조회</h2>
+          <p>이름 가-나-다 순으로 정렬됩니다.</p>
+          <span class="opa-badge">OPA2_017</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fa-solid fa-layer-group"></i> 목록 조회</div>
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-main);font-weight:400;cursor:pointer;">
+            멤버 정보 포함
+            <button type="button" id="toggleIncludeMember" class="toggle-small off">OFF</button>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-main);font-weight:400;cursor:pointer;">
+            필드 정보 포함
+            <button type="button" id="toggleIncludeField" class="toggle-small off">OFF</button>
+          </label>
+        </div>
+        <div class="view-toggle">
+          <button onclick="listGroups('json', this)">JSON</button>
+          <button onclick="listGroups('table', this)">TABLE</button>
+        </div>
+        <div id="groupJsonContainer" style="display:none;">
+          <div class="result-panel">
+            <pre id="groupListResultJson"></pre>
+          </div>
+        </div>
+        <div id="groupTableContainer" style="display:none;">
+          <table id="groupListResultTable">
+            <thead>
+              <tr>
+                <th>id</th><th>이름</th><th>설명</th><th>멤버 수</th><th>생성일</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- CDN -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- 모듈: 로드 순서 중요 -->
+<script src="/assets/js/member/api.js"></script>
+<script src="/assets/js/member/ui.js"></script>
+<script src="/assets/js/member/init.js"></script>
+</body>
+</html>

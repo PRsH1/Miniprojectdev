@@ -1,4 +1,11 @@
 const PROTECTED_PAGES = {
+  memberV2: {
+    passwordEnv: 'MEMBER_PAGE_PASSWORD',
+    cookieName: 'vercel-auth-member',
+    defaultNext: '/memberV2',
+    filePath: 'private/MemberV2.html',
+    errorLabel: 'MemberV2',
+  },
   member: {
     passwordEnv: 'MEMBER_PAGE_PASSWORD',
     cookieName: 'vercel-auth-member',

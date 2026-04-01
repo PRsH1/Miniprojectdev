@@ -10,6 +10,7 @@ const controllers = {
   'idp-initiated-login': () => require('../controllers/idp-initiated-login'),
   'login': () => require('../controllers/login'),
   'memberPage': () => require('../controllers/memberPage'),
+  'memberV2Page': () => require('../controllers/memberV2Page'),
   'metadata': () => require('../controllers/metadata'),
   'send': () => require('../controllers/send'),
   'sso-login': () => require('../controllers/sso-login'),
@@ -35,6 +36,8 @@ module.exports = async (req, res) => {
     controllerKey = 'ApiAutoTest';
   } else if (path === '/OpenAPIAutoTest') {
     controllerKey = 'OpenAPIAutoTest';
+  } else if (path === '/memberV2') {
+    controllerKey = 'memberV2Page';
   } else if (path === '/templatecopy') {
     controllerKey = 'templatecopy';
   } else if (path === '/idptestauth') {
