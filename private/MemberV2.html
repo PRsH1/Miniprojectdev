@@ -398,6 +398,11 @@
       margin-top: 12px;
       overflow-x: auto;
     }
+    /* 자식 요소가 비어있으면 패널 숨김 */
+    .result-panel:has(> div:empty),
+    .result-panel:has(> pre:empty) {
+      display: none;
+    }
     .result-panel pre,
     .result-panel div {
       font-family: var(--font-mono);
