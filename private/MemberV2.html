@@ -180,6 +180,10 @@
     .sidebar-menu-item.danger:hover { background: rgba(220,53,69,.12); color: #fca5a5; }
     .sidebar-menu-item.danger.active { background: rgba(220,53,69,.18); border-left-color: var(--danger); color: #fca5a5; }
     .sidebar-menu-item i { width: 16px; text-align: center; font-size: 12px; flex-shrink: 0; }
+    .sidebar-menu-item:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: -2px;
+    }
 
     /* ─── 메인 패널 ─────────────────────────────────────── */
     .main-panel {
@@ -566,31 +570,31 @@
     <nav class="sidebar-nav">
       <div class="nav-group">
         <div class="nav-group-label">멤버</div>
-        <div class="sidebar-menu-item" data-section="memberAddSection">
+        <div class="sidebar-menu-item" data-section="memberAddSection" role="button" tabindex="0">
           <i class="fa-solid fa-user-plus"></i> 멤버 추가
         </div>
-        <div class="sidebar-menu-item danger" data-section="memberDeleteSection">
+        <div class="sidebar-menu-item danger" data-section="memberDeleteSection" role="button" tabindex="0">
           <i class="fa-solid fa-user-minus"></i> 멤버 삭제
         </div>
-        <div class="sidebar-menu-item" data-section="memberUpdateSection">
+        <div class="sidebar-menu-item" data-section="memberUpdateSection" role="button" tabindex="0">
           <i class="fa-solid fa-user-pen"></i> 멤버 수정
         </div>
-        <div class="sidebar-menu-item" data-section="memberListSection">
+        <div class="sidebar-menu-item" data-section="memberListSection" role="button" tabindex="0">
           <i class="fa-solid fa-users"></i> 구성원 목록
         </div>
       </div>
       <div class="nav-group">
         <div class="nav-group-label">그룹</div>
-        <div class="sidebar-menu-item" data-section="groupAddSection">
+        <div class="sidebar-menu-item" data-section="groupAddSection" role="button" tabindex="0">
           <i class="fa-solid fa-folder-plus"></i> 그룹 추가
         </div>
-        <div class="sidebar-menu-item" data-section="groupUpdateSection">
+        <div class="sidebar-menu-item" data-section="groupUpdateSection" role="button" tabindex="0">
           <i class="fa-solid fa-folder-open"></i> 그룹 수정
         </div>
-        <div class="sidebar-menu-item danger" data-section="groupDeleteSection">
+        <div class="sidebar-menu-item danger" data-section="groupDeleteSection" role="button" tabindex="0">
           <i class="fa-solid fa-folder-minus"></i> 그룹 삭제
         </div>
-        <div class="sidebar-menu-item" data-section="groupListSection">
+        <div class="sidebar-menu-item" data-section="groupListSection" role="button" tabindex="0">
           <i class="fa-solid fa-layer-group"></i> 그룹 목록
         </div>
       </div>
