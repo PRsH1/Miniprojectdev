@@ -723,7 +723,7 @@
             const r = new FileReader();
             r.onload = ev => {
                 const base64Data = ev.target.result.split(',')[1];
-                $('#template_file_data').val(mimeType + ';base64;' + base64Data);
+                $('#template_file_data').val(base64Data);
                 $('#template_file_mime').val(mimeType);
                 $('#template_file_name').val(f.name);
             };
