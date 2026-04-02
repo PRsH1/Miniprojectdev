@@ -80,7 +80,7 @@ eformsign.open();
 
 ---
 
-## 4. `sendAction` 응답이 -1로 돌아오는 원인
+## 4. `sendAction` 이 동작하지 않는 경우 
 
 | 원인 | 설명 |
 |---|---|

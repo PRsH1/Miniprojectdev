@@ -239,6 +239,7 @@
             <label for="templateFileInput">파일 첨부:</label>
             <input type="file" id="templateFileInput" onchange="handleFileSelect(event)" />
             <textarea id="template_file_data" style="display:none"></textarea>
+            <input type="hidden" id="template_file_mime" value="" />
             <label for="template_name">Template Name:</label>
             <input type="text" id="template_name" placeholder="템플릿 이름" />
 
@@ -682,7 +683,7 @@
                 },
                 prefill: prefillObj,
                 template_file: {
-                    mime: 'application/octet-stream',
+                    mime: $('#template_file_mime').val() || 'application/octet-stream',
                     name: $('#template_file_name').val(),
                     data: $('#template_file_data').val()
                 }
@@ -718,9 +719,12 @@
         function handleFileSelect(e){
             const f = e.target.files[0];
             if(!f) return;
+            const mimeType = f.type || 'application/octet-stream';
             const r = new FileReader();
             r.onload = ev => {
-                $('#template_file_data').val(ev.target.result.split(',')[1]);
+                const base64Data = ev.target.result.split(',')[1];
+                $('#template_file_data').val(mimeType + ';base64;' + base64Data);
+                $('#template_file_mime').val(mimeType);
                 $('#template_file_name').val(f.name);
             };
             r.readAsDataURL(f);
