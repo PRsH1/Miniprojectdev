@@ -43,6 +43,7 @@ ProjectImprove/
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
+│   └── error-codes.html        # OPA2 에러 코드 모음 (43개 엔드포인트 전체, 검색 가능)
 │
 ├── assets/js/
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)

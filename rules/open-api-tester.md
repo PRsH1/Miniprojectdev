@@ -45,7 +45,9 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
         success: { ... },        // 값 대신 "string"/"number"/"boolean" 타입 표현
         successEmpty: { ... },   // 선택적 — 조회 결과 없는 성공 응답
         errors: [
-            { title: '에러명 (코드)', body: { code, ErrorMessage } }
+            { title: '한글 설명 (코드)', body: { code, ErrorMessage } }
+            // title 형식: '유효하지 않은 서명 (4030004)' — 항상 한글로 작성
+            // 소스 기준: utils/error-codes.html (43개 엔드포인트 전체 에러 코드 레퍼런스)
         ]
     }
 }
@@ -82,6 +84,7 @@ const API_SPECS = {
 ```
 
 - **정합성 원칙**: `API_SPECS`의 queryParams/requestBody/responseFields는 `API_LIST`의 실제 데이터와 일치해야 함. 신규 명세 추가 시 반드시 `api-list.js` 실제 구조를 기준으로 작성
+- **errorCodes 정합성**: `API_SPECS`의 `errorCodes`는 `API_LIST`의 `exampleResponse.errors`와 동기화 상태여야 함. 에러 추가/수정 시 두 파일 모두 수정할 것 (소스 레퍼런스: `utils/error-codes.html`)
 - `note` 필드가 하나라도 있으면 해당 테이블에 비고 컬럼 자동 표시
 
 ### 특수 인증 처리 API

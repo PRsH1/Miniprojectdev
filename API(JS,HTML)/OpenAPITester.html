@@ -562,7 +562,7 @@
             border: 1px solid rgba(255,255,255,0.12);
             padding: 6px 12px; border-radius: 6px; font-size: 0.82rem;
             cursor: pointer; display: flex; align-items: center; gap: 6px;
-            transition: all 0.15s; white-space: nowrap;
+            transition: all 0.15s; white-space: nowrap; text-decoration: none;
         }
         .btn-guide:hover { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.25); }
 
@@ -822,6 +822,9 @@
             <input type="text" id="customDomainInput" placeholder="https://api.example.com">
         </div>
         <div class="base-url-badge" id="baseUrlBadge"></div>
+        <a class="btn-guide" href="/utils/error-codes.html" target="_blank">
+            <i class="fa-solid fa-triangle-exclamation fa-sm"></i><span class="btn-guide-label"> 에러 코드</span>
+        </a>
         <button class="btn-guide" onclick="openGuide()">
             <i class="fa-solid fa-circle-question fa-sm"></i><span class="btn-guide-label"> 사용 가이드</span>
         </button>

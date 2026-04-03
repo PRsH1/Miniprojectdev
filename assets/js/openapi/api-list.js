@@ -63,26 +63,72 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: '유효 시간 만료 (4000002)',
-                    body: {
-                        "code": "4000002",
-                        "ErrorMessage": "The validation time has expired.",
-                        "execution_time": "number"
-                    }
+                    title: "유효하지 않은 서명 (4030004)",
+                    body: {"code":"4030004","ErrorMessage":"The signature is invalid."}
                 },
                 {
-                    title: '서명 오류 (4030004)',
-                    body: {
-                        "code": "4030004",
-                        "ErrorMessage": "The signature is invalid."
-                    }
+                    title: "유효하지 않은 Body 데이터 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"The body data is invalid."}
                 },
                 {
-                    title: '유효하지 않은 API Key (4030001)',
-                    body: {
-                        "code": "4030001",
-                        "ErrorMessage": "invalid api key"
-                    }
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "execution_time 형식 오류 (long 타입 아님) (40000171)",
+                    body: {"code":"40000171","ErrorMessage":"The execution_time is not of a long type."}
+                },
+                {
+                    title: "execution_time 필수 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Execution time(Request time) required."}
+                },
+                {
+                    title: "서명 유효 시간 만료 (4000002)",
+                    body: {"code":"4000002","ErrorMessage":"The validation time has expired."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "Base64 디코딩 실패 (API Key 오류) (4030039)",
+                    body: {"code":"4030039","ErrorMessage":"The apiKey encoded has an error."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "존재하지 않는 계정 (4000150)",
+                    body: {"code":"4000150","ErrorMessage":"The account does not exist."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "유효하지 않은 Refresh Token (4010002)",
+                    body: {"code":"4010002","ErrorMessage":"The refresh_token is invalid."}
                 }
             ]
         }
@@ -114,33 +160,72 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: '유효하지 않거나 만료된 토큰 (4010001)',
-                    body: {
-                        "code": "4010001",
-                        "ErrorMessage": "Invalid or expired token."
-                    }
+                    title: "Refresh Token 필수 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Refresh token required."}
                 },
                 {
-                    title: 'Access Token 클레임 오류 401 Unauthorized (4010001)',
-                    body: {
-                        "code": "4010001",
-                        "ErrorMessage": "The access_token claim is invalid."
-                    }
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
                 },
                 {
-                    title: 'Refresh Token 오류 400 Bad Request (4010002)',
-                    body: {
-                        "code": "4010002",
-                        "ErrorMessage": "The refresh_token is invalid."
-                    }
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
                 },
                 {
-                    title: '유효하지 않거나 만료된 토큰 (4010001)',
-                    body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
                 },
                 {
-                    title: 'Refresh Token 만료 (4010006)',
-                    body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." }
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "유효하지 않은 Refresh Token (4010002)",
+                    body: {"code":"4010002","ErrorMessage":"The refresh_token is invalid."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
                 }
             ]
         }
@@ -238,24 +323,92 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: '유효하지 않은 API Key (4030001)',
-                    body: { "code": "4030001", "ErrorMessage": "invalid api key" }
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
                 },
                 {
-                    title: '삭제된 문서 (4000006)',
-                    body: { "code": "4000006", "ErrorMessage": "The document has been deleted." }
+                    title: "삭제된 문서 (4000006)",
+                    body: {"code":"4000006","ErrorMessage":"The document has been deleted."}
                 },
                 {
-                    title: '유효하지 않거나 만료된 토큰 (4010001)',
-                    body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }
+                    title: "문서 이력 없음 (4000066)",
+                    body: {"code":"4000066","ErrorMessage":"No document history exists."}
                 },
                 {
-                    title: '문서 접근 권한 없음 (4000034)',
-                    body: { "code": "4000034", "ErrorMessage": "You have no access authority to the requested document." }
+                    title: "요청 문서 접근 권한 없음 (4000034)",
+                    body: {"code":"4000034","ErrorMessage":"You have no access authority to the requested document."}
                 },
                 {
-                    title: 'Refresh Token 만료 (4010006)',
-                    body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." }
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
                 }
             ]
         }
@@ -280,20 +433,100 @@ const API_LIST = [
         exampleResponse: {
             errors: [
                 {
-                    title: '존재하지 않는 문서 (4000004)',
-                    body: { "code": "4000004", "ErrorMessage": "The document does not exist." }
+                    title: "문서 접근 권한 없음 (4030029)",
+                    body: {"code":"4030029","ErrorMessage":"You do not have access to the document"}
                 },
                 {
-                    title: '감사추적 미생성 — 문서 미완료 (2020001)',
-                    body: { "code": "2020001", "ErrorMessage": "The audit trail will be generated when the document is completed." }
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
                 },
                 {
-                    title: '유효하지 않거나 만료된 토큰 (4010001)',
-                    body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }
+                    title: "삭제된 문서 (4000006)",
+                    body: {"code":"4000006","ErrorMessage":"The document has been deleted."}
                 },
                 {
-                    title: 'Refresh Token 만료 (4010006)',
-                    body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." }
+                    title: "문서 또는 감사증명서 중 하나 선택 필요 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Either the document or audit_trail must be selected."}
+                },
+                {
+                    title: "PDF 아직 생성 중 — 잠시 후 재시도 (2020001)",
+                    body: {"code":"2020001","ErrorMessage":"The PDF is being generated. Please again try later."}
+                },
+                {
+                    title: "감사 PDF 미생성 — 문서 미완료 (2020001)",
+                    body: {"code":"2020001","ErrorMessage":"The audit trail will be generated when the document is completed."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
                 }
             ]
         }
@@ -403,27 +636,144 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: '워크플로우 설정 불일치 (4000012)',
-                    body: {
-                        "code": "4000012",
-                        "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings."
-                    }
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
                 },
                 {
-                    title: '필수 입력값 누락 (4000001)',
-                    body: { "code": "4000001", "ErrorMessage": "Required input value not found. " }
+                    title: "템플릿 없음 (4000046)",
+                    body: {"code":"4000046","ErrorMessage":"There is no template."}
                 },
                 {
-                    title: '유효하지 않은 회사 (4000005)',
-                    body: { "code": "4000005", "ErrorMessage": "Invalid company." }
+                    title: "정형 문서 유형 아님 (4000310)",
+                    body: {"code":"4000310","ErrorMessage":"The document is not a structured type."}
                 },
                 {
-                    title: '유효하지 않거나 만료된 토큰 (4010001)',
-                    body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }
+                    title: "만료된 템플릿 (4000008)",
+                    body: {"code":"4000008","ErrorMessage":"The template has expired."}
                 },
                 {
-                    title: 'Refresh Token 만료 (4010006)',
-                    body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." }
+                    title: "대면 서명 설정으로 문서 생성 불가 (4000241)",
+                    body: {"code":"4000241","ErrorMessage":"No document can be created because the In-person signer option is set in the Start step of this template."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "파일 없음 (4000087)",
+                    body: {"code":"4000087","ErrorMessage":"No file exists."}
+                },
+                {
+                    title: "접근 불가 도메인 (URL 문서 작성 미설정) (4000115)",
+                    body: {"code":"4000115","ErrorMessage":"This domain cannot be accessed."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "워크플로우 다음 단계 설정 불일치 (4000012)",
+                    body: {"code":"4000012","ErrorMessage":"The next_steps set by the user is inconsistent with the template's workflow settings."}
+                },
+                {
+                    title: "대면 서명 단계에는 멤버만 지정 가능 (400242)",
+                    body: {"code":"400242","ErrorMessage":"You can only select members in a step with in-person signing."}
+                },
+                {
+                    title: "잘못된 이메일 형식 (4000137)",
+                    body: {"code":"4000137","ErrorMessage":"This is an invalid email format."}
+                },
+                {
+                    title: "존재하지 않는 그룹 (4000011)",
+                    body: {"code":"4000011","ErrorMessage":"The group does not exist."}
+                },
+                {
+                    title: "이메일 또는 SMS 중 하나 선택 필요 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Either one of the Email or SMS options must be selected."}
+                },
+                {
+                    title: "참조자(CC) JSON 형식 오류 (4000190)",
+                    body: {"code":"4000190","ErrorMessage":"The input value for the CC is in an invalid JSON format."}
+                },
+                {
+                    title: "문서 제목 변경 불가 템플릿 (4000010)",
+                    body: {"code":"4000010","ErrorMessage":"This document's title cannot be changed."}
+                },
+                {
+                    title: "파일 IO 오류 (5000038)",
+                    body: {"code":"5000038","ErrorMessage":"File IO error."}
+                },
+                {
+                    title: "문서 생성 실패 (5000004)",
+                    body: {"code":"5000004","ErrorMessage":"Failed to create the document."}
+                },
+                {
+                    title: "선불 문서 소진 (4000201)",
+                    body: {"code":"4000201","ErrorMessage":"You have exhausted all purchased documents"}
+                },
+                {
+                    title: "선불 크레딧 소진 (4000308)",
+                    body: {"code":"4000308","ErrorMessage":"You have exhausted all purchased credits."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
                 }
             ]
         }
@@ -446,24 +796,72 @@ const API_LIST = [
         exampleResponse: {
             errors: [
                 {
-                    title: '존재하지 않는 문서 (4000004)',
-                    body: { "code": "4000004", "ErrorMessage": "The document does not exist." }
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
                 },
                 {
-                    title: '템플릿 없음 (4000046)',
-                    body: { "code": "4000046", "ErrorMessage": "There is no template." }
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
                 },
                 {
-                    title: '첨부 파일 없음 (4000065)',
-                    body: { "code": "4000065", "ErrorMessage": "Failed to get the resource." }
+                    title: "템플릿 없음 (4000046)",
+                    body: {"code":"4000046","ErrorMessage":"There is no template."}
                 },
                 {
-                    title: '유효하지 않거나 만료된 토큰 (4010001)',
-                    body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }
+                    title: "다운로드 리소스 없음 (4000065)",
+                    body: {"code":"4000065","ErrorMessage":"Failed to get the resource."}
                 },
                 {
-                    title: 'Refresh Token 만료 (4010006)',
-                    body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." }
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
                 }
             ]
         }
@@ -552,24 +950,48 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: '유효하지 않은 회사 (4000005)',
-                    body: { "code": "4000005", "ErrorMessage": "Invalid company." }
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
                 },
                 {
-                    title: '필수 입력값 누락 (4000001)',
-                    body: { "code": "4000001", "ErrorMessage": "Required input value not found. " }
+                    title: "템플릿 없음 (4000046)",
+                    body: {"code":"4000046","ErrorMessage":"There is no template."}
                 },
                 {
-                    title: '템플릿 없음 (4000046)',
-                    body: { "code": "4000046", "ErrorMessage": "There is no template." }
+                    title: "정형 문서 유형 아님 (4000310)",
+                    body: {"code":"4000310","ErrorMessage":"The document is not a structured type."}
                 },
                 {
-                    title: 'URL로 문서작성이 체크되어 있지 않은 템플릿 (4000115)',
-                    body: { "code": "4000115", "ErrorMessage": "This domain cannot be accessed." }
+                    title: "만료된 템플릿 (4000008)",
+                    body: {"code":"4000008","ErrorMessage":"The template has expired."}
                 },
                 {
-                    title: '워크플로우 설정 불일치 (4000012)',
-                    body: { "code": "4000012", "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings." }
+                    title: "대면 서명 설정으로 문서 생성 불가 (4000241)",
+                    body: {"code":"4000241","ErrorMessage":"No document can be created because the In-person signer option is set in the Start step of this template."}
+                },
+                {
+                    title: "파일 없음 (4000087)",
+                    body: {"code":"4000087","ErrorMessage":"No file exists."}
+                },
+                {
+                    title: "접근 불가 도메인 (URL 문서 작성 미설정) (4000115)",
+                    body: {"code":"4000115","ErrorMessage":"This domain cannot be accessed."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "워크플로우 다음 단계 설정 불일치 (4000012)",
+                    body: {"code":"4000012","ErrorMessage":"The next_steps set by the user is inconsistent with the template's workflow settings."}
+                },
+                {
+                    title: "대면 서명 단계에는 멤버만 지정 가능 (400242)",
+                    body: {"code":"400242","ErrorMessage":"You can only select members in a step with in-person signing."}
+                },
+                {
+                    title: "잘못된 이메일 형식 (4000137)",
+                    body: {"code":"4000137","ErrorMessage":"This is an invalid email format."}
                 }
             ]
         }
@@ -713,9 +1135,94 @@ const API_LIST = [
                 "skip": "number"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '접근 권한 없음 (4030009) — 권한 없는 계정이 type:04 (문서 관리) 메뉴 조회 시 발생', body: { "code": "4030009", "ErrorMessage": "You do not have access." } }
+                {
+                    title: "유효하지 않은 문서함 유형 (5000089)",
+                    body: {"code":"5000089","ErrorMessage":"Invalid document inbox type."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "검색 엔진 연결 실패 (5000091)",
+                    body: {"code":"5000091","ErrorMessage":"No search engine found."}
+                },
+                {
+                    title: "문서 이력 없음 (4000066)",
+                    body: {"code":"4000066","ErrorMessage":"No document history exists."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -745,11 +1252,90 @@ const API_LIST = [
                 "status": "200"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '요청 Body 없음 (400)', body: { "code": "400", "ErrorMessage": "Required request body is missing" } },
-                { title: '선택된 문서 없음 (4000004)', body: { "code": "4000004", "ErrorMessage": "No document selected." } },
-                { title: '문서 삭제 실패 — 존재하지 않는 문서 ID (HTTP 200, fail_result 포함)', body: { "result": { "success_result": [], "fail_result": [ { "document_id": "string", "code": "4000004", "message": "The document does not exist." } ] }, "code": "-1", "message": "Completed.", "status": "200" } }
+                {
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
+                },
+                {
+                    title: "템플릿 삭제 권한 없음 (4000164)",
+                    body: {"code":"4000164","ErrorMessage":"You have no permission to delete the document."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -810,10 +1396,110 @@ const API_LIST = [
                 ]
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '워크플로우 설정 불일치 (4000012)', body: { "code": "4000012", "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings." } },
-                { title: '필수 입력값 누락 (4000001)', body: { "code": "4000001", "ErrorMessage": "Required input value not found. " } }
+                {
+                    title: "잘못된 JSON 형식 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                },
+                {
+                    title: "워크플로우 다음 단계 설정 불일치 (4000012)",
+                    body: {"code":"4000012","ErrorMessage":"The next_steps set by the user is inconsistent with the template's workflow settings."}
+                },
+                {
+                    title: "잘못된 이메일 형식 (4000137)",
+                    body: {"code":"4000137","ErrorMessage":"This is an invalid email format."}
+                },
+                {
+                    title: "존재하지 않는 그룹 (4000011)",
+                    body: {"code":"4000011","ErrorMessage":"The group does not exist."}
+                },
+                {
+                    title: "대면 서명 단계에는 멤버만 지정 가능 (400242)",
+                    body: {"code":"400242","ErrorMessage":"You can only select members in a step with in-person signing."}
+                },
+                {
+                    title: "이메일 또는 SMS 중 하나 선택 필요 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Either one of the Email or SMS options must be selected."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -876,10 +1562,130 @@ const API_LIST = [
                 "status": "200"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '템플릿 없음 (4000046)', body: { "code": "4000046", "ErrorMessage": "There is no template." } },
-                { title: '필수 입력값 누락 (4000001)', body: { "code": "4000001", "ErrorMessage": "Required input value not found." } }
+                {
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                },
+                {
+                    title: "템플릿 없음 (4000046)",
+                    body: {"code":"4000046","ErrorMessage":"There is no template."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "만료된 템플릿 (4000008)",
+                    body: {"code":"4000008","ErrorMessage":"The template has expired."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "워크플로우 다음 단계 설정 불일치 (4000012)",
+                    body: {"code":"4000012","ErrorMessage":"The next_steps set by the user is inconsistent with the template's workflow settings."}
+                },
+                {
+                    title: "대면 서명 단계에는 멤버만 지정 가능 (400242)",
+                    body: {"code":"400242","ErrorMessage":"You can only select members in a step with in-person signing."}
+                },
+                {
+                    title: "잘못된 이메일 형식 (4000137)",
+                    body: {"code":"4000137","ErrorMessage":"This is an invalid email format."}
+                },
+                {
+                    title: "존재하지 않는 그룹 (4000011)",
+                    body: {"code":"4000011","ErrorMessage":"The group does not exist."}
+                },
+                {
+                    title: "이메일 또는 SMS 중 하나 선택 필요 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Either one of the Email or SMS options must be selected."}
+                },
+                {
+                    title: "참조자(CC) JSON 형식 오류 (4000190)",
+                    body: {"code":"4000190","ErrorMessage":"The input value for the CC is in an invalid JSON format."}
+                },
+                {
+                    title: "문서 제목 변경 불가 템플릿 (4000010)",
+                    body: {"code":"4000010","ErrorMessage":"This document's title cannot be changed."}
+                },
+                {
+                    title: "선불 크레딧 소진 (4000308)",
+                    body: {"code":"4000308","ErrorMessage":"You have exhausted all purchased credits."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -968,10 +1774,86 @@ const API_LIST = [
                 "document_id": "string"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '존재하지 않는 문서 (4000004)', body: { "code": "4000004", "ErrorMessage": "The document does not exist." } },
-                { title: '초안 상태가 아닌 문서 (4000180)', body: { "code": "4000180", "ErrorMessage": "The document status is not draft." } }
+                {
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
+                },
+                {
+                    title: "활성화된 API Key 멤버 없음 (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The member does not exist."}
+                },
+                {
+                    title: "삭제된 문서 (4000006)",
+                    body: {"code":"4000006","ErrorMessage":"The document has been deleted."}
+                },
+                {
+                    title: "비정형 문서 유형 아님 (4000179)",
+                    body: {"code":"4000179","ErrorMessage":"The document is not an unstructured type."}
+                },
+                {
+                    title: "임시 저장 상태 아님 — 다음 단계 처리 불가 (4000180)",
+                    body: {"code":"4000180","ErrorMessage":"The document status is not draft."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1023,11 +1905,98 @@ const API_LIST = [
                 "status": "string"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '설정 누락 (4000024)', body: { "code": "4000024", "ErrorMessage": "Setting is Missing" } },
-                { title: '존재하지 않는 문서 (4000004)', body: { "code": "4000004", "ErrorMessage": "The document does not exist." } },
-                { title: '유효하지 않은 문서 유형 (4000081)', body: { "code": "4000081", "ErrorMessage": "Invalid document type." } }
+                {
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
+                },
+                {
+                    title: "유효하지 않은 문서 유형 (4000081)",
+                    body: {"code":"4000081","ErrorMessage":"Invalid document type."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1057,10 +2026,70 @@ const API_LIST = [
                 }
             },
             errors: [
-                { title: '이미 취소된 문서 포함 시 (4000166, HTTP 200)', body: { "result": { "success_result": [], "fail_result": [ { "document_id": "string", "code": "4000166", "message": "This document has already been voided." } ] } } },
-                { title: '취소 권한 없는 문서 포함 시 (4000169, HTTP 200)', body: { "result": { "success_result": ["string"], "fail_result": [ { "document_id": "string", "code": "4000169", "message": "You have no permission to void the document." } ] } } },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "잘못된 JSON 형식 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1091,9 +2120,90 @@ const API_LIST = [
                 "document_id": "string"
             },
             errors: [
-                { title: '이미 승인된 문서 (4000029)', body: { "code": "4000029", "ErrorMessage": "This document has already proceeded." } },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
+                },
+                {
+                    title: "이미 처리된 문서 (4000029)",
+                    body: {"code":"4000029","ErrorMessage":"This document has already proceeded."}
+                },
+                {
+                    title: "문서 진행 정보 없음 (5000071)",
+                    body: {"code":"5000071","ErrorMessage":"Cannot get information about document progress."}
+                },
+                {
+                    title: "문서 이력 없음 (4000066)",
+                    body: {"code":"4000066","ErrorMessage":"No document history exists."}
+                },
+                {
+                    title: "템플릿 없음 (4000046)",
+                    body: {"code":"4000046","ErrorMessage":"There is no template."}
+                },
+                {
+                    title: "템플릿 단계 없음 (4000073)",
+                    body: {"code":"4000073","ErrorMessage":"No step settings information exists."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1122,9 +2232,82 @@ const API_LIST = [
                 "document_id": "string"
             },
             errors: [
-                { title: '이미 처리된 문서 (4000029)', body: { "code": "4000029", "ErrorMessage": "This document has already proceeded." } },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
+                },
+                {
+                    title: "이미 처리된 문서 (4000029)",
+                    body: {"code":"4000029","ErrorMessage":"This document has already proceeded."}
+                },
+                {
+                    title: "문서 진행 정보 없음 (5000071)",
+                    body: {"code":"5000071","ErrorMessage":"Cannot get information about document progress."}
+                },
+                {
+                    title: "문서 이력 없음 (4000066)",
+                    body: {"code":"4000066","ErrorMessage":"No document history exists."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1149,10 +2332,74 @@ const API_LIST = [
         },
         exampleResponse: {
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: 'API 키 오류 (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } },
-                { title: '존재하지 않는 문서 포함 시 (HTTP 200)', body: { "{document_id}": "The document does not exist." } }
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "다운로드 횟수 초과 (4000222)",
+                    body: {"code":"4000222","ErrorMessage":"Document download limit exceeded."}
+                },
+                {
+                    title: "문서 접근 권한 없음 (4030029)",
+                    body: {"code":"4030029","ErrorMessage":"You do not have access to the document"}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                }
             ]
         }
     },
@@ -1182,10 +2429,82 @@ const API_LIST = [
                 ]
             },
             errors: [
-                { title: '완료 상태가 아닌 문서 (4000036)', body: { "code": "4000036", "ErrorMessage": "this document is not completed." } },
-                { title: '문서 정보 조회 실패 (4000036)', body: { "code": "4000036", "ErrorMessage": "Failed to retrieve the document information before the deletion request." } },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
+                },
+                {
+                    title: "삭제된 문서 (4000006)",
+                    body: {"code":"4000006","ErrorMessage":"The document has been deleted."}
+                },
+                {
+                    title: "문서 미완료 — 완료 토큰 갱신 실패 (4000036)",
+                    body: {"code":"4000036","ErrorMessage":"This document is not completed."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1218,9 +2537,98 @@ const API_LIST = [
                 "status": "string"
             },
             errors: [
-                { title: '워크플로우 설정 불일치 (4000012)', body: { "code": "4000012", "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings." } },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
+                },
+                {
+                    title: "문서 진행 정보 없음 (5000071)",
+                    body: {"code":"5000071","ErrorMessage":"Cannot get information about document progress."}
+                },
+                {
+                    title: "요청 문서 접근 권한 없음 (4000034)",
+                    body: {"code":"4000034","ErrorMessage":"You have no access authority to the requested document."}
+                },
+                {
+                    title: "워크플로우 다음 단계 설정 불일치 (4000012)",
+                    body: {"code":"4000012","ErrorMessage":"The next_steps set by the user is inconsistent with the template's workflow settings."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1257,9 +2665,50 @@ const API_LIST = [
                 "status": "string"
             },
             errors: [
-                { title: 'API Key 인코딩 오류 (4030039)', body: { "code": "4030039", "ErrorMessage": "The apiKey encoded has an error." } },
-                { title: '이미 처리된 문서 (4000029)', body: { "code": "4000029", "ErrorMessage": "This document has already proceeded." } },
-                { title: '유효하지 않은 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } }
+                {
+                    title: "존재하지 않는 문서 (4000004)",
+                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
+                },
+                {
+                    title: "외부자 문서 요청 정보 없음 (5000076)",
+                    body: {"code":"5000076","ErrorMessage":"The non-member request info does not exist."}
+                },
+                {
+                    title: "이미 처리된 문서 (4000029)",
+                    body: {"code":"4000029","ErrorMessage":"This document has already proceeded."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "Base64 디코딩 실패 (API Key 오류) (4030039)",
+                    body: {"code":"4030039","ErrorMessage":"The apiKey encoded has an error."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1334,8 +2783,82 @@ const API_LIST = [
                 ]
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1361,10 +2884,94 @@ const API_LIST = [
                 "status": "200"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '템플릿 없음 (4000046)', body: { "code": "4000046", "ErrorMessage": "There is no template." } },
-                { title: '접근 권한 없음 (4030009)', body: { "code": "4030009", "ErrorMessage": "You do not have access." } }
+                {
+                    title: "템플릿 접근 권한 없음 (4000044)",
+                    body: {"code":"4000044","ErrorMessage":"You have no permission to access the form."}
+                },
+                {
+                    title: "템플릿 없음 (4000046)",
+                    body: {"code":"4000046","ErrorMessage":"There is no template."}
+                },
+                {
+                    title: "유효하지 않은 템플릿 요청 상태 (4000264)",
+                    body: {"code":"4000264","ErrorMessage":"The form request state is not valid."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1388,9 +2995,66 @@ const API_LIST = [
         defaultBody: null,
         exampleResponse: {
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '파일 없음 (4000087)', body: { "code": "4000087", "ErrorMessage": "No file exists." } }
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1461,8 +3125,82 @@ const API_LIST = [
                 }
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1512,10 +3250,102 @@ const API_LIST = [
                 }
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '이미 사용 중인 ID (4000135)', body: { "code": "4000135", "ErrorMessage": "This ID is already taken." } },
-                { title: '비밀번호 규칙 미충족 (4000255) — 대문자+소문자+숫자+특수문자 모두 포함 10자리 이상 필요', body: { "code": "4000255", "ErrorMessage": "Password validation failed." } }
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "멤버 수 초과로 초대 실패 (4000118)",
+                    body: {"code":"4000118","ErrorMessage":"Cannot send the invitation as the maximum number of members has been reached."}
+                },
+                {
+                    title: "잘못된 이메일 형식 (4000137)",
+                    body: {"code":"4000137","ErrorMessage":"This is an invalid email format."}
+                },
+                {
+                    title: "아이디 또는 비밀번호 오류 (4000139)",
+                    body: {"code":"4000139","ErrorMessage":"Invalid id or password."}
+                },
+                {
+                    title: "이미 존재하는 멤버 ID (4000135)",
+                    body: {"code":"4000135","ErrorMessage":"This ID is already taken."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1553,8 +3383,106 @@ const API_LIST = [
                 }
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "잘못된 JSON 형식 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "관리자 권한으로 멤버 비활성화 불가 (4000125)",
+                    body: {"code":"4000125","ErrorMessage":"Administrator accounts cannot be deactivated."}
+                },
+                {
+                    title: "플랜 제한으로 멤버 활성화 실패 (4000126)",
+                    body: {"code":"4000126","ErrorMessage":"Cannot activate the member as the maximum number of members allowed has been reached."}
+                },
+                {
+                    title: "잘못된 이메일 형식 (4000137)",
+                    body: {"code":"4000137","ErrorMessage":"This is an invalid email format."}
+                },
+                {
+                    title: "멤버 이메일 변경 실패 (4030041)",
+                    body: {"code":"4030041","ErrorMessage":"This email is already in use. Please enter another email."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1580,9 +3508,86 @@ const API_LIST = [
                 "status": "200"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '존재하지 않는 멤버 (4000149)', body: { "code": "4000149", "ErrorMessage": "No such member exists." } }
+                {
+                    title: "삭제된 멤버 (4000149)",
+                    body: {"code":"4000149","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1621,16 +3626,93 @@ const API_LIST = [
                 ]
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
                 {
-                    title: '멤버 추가 실패 — 중복 계정 또는 비밀번호 규칙 미충족 (HTTP 200, success: false)',
-                    body: {
-                        "company_id": "string",
-                        "members": [
-                            { "name": "string", "id": "string", "success": false }
-                        ]
-                    }
+                    title: "회사 ID와 토큰 불일치 (4030027)",
+                    body: {"code":"4030027","ErrorMessage":"The company does not have access."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 계정 (4000150)",
+                    body: {"code":"4000150","ErrorMessage":"The account does not exist."}
+                },
+                {
+                    title: "DB 연결 실패 (5000002)",
+                    body: {"code":"5000002","ErrorMessage":"Failed to connect to CouchDB."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
                 }
             ]
         }
@@ -1708,8 +3790,82 @@ const API_LIST = [
                 ]
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1740,8 +3896,94 @@ const API_LIST = [
                 }
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "이미 존재하는 그룹 이름 (4000122)",
+                    body: {"code":"4000122","ErrorMessage":"The group name is already in use."}
+                },
+                {
+                    title: "그룹 이름 비워둘 수 없음 (4000249)",
+                    body: {"code":"4000249","ErrorMessage":"The group name is cannot be empty"}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1774,9 +4016,98 @@ const API_LIST = [
                 }
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '존재하지 않는 그룹 (4000123)', body: { "code": "4000123", "ErrorMessage": "The group does not exist." } }
+                {
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 그룹 (4000123)",
+                    body: {"code":"4000123","ErrorMessage":"The group does not exist."}
+                },
+                {
+                    title: "이미 존재하는 그룹 이름 (4000122)",
+                    body: {"code":"4000122","ErrorMessage":"The group name is already in use."}
+                },
+                {
+                    title: "그룹 이름 비워둘 수 없음 (4000249)",
+                    body: {"code":"4000249","ErrorMessage":"The group name is cannot be empty"}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1800,10 +4131,90 @@ const API_LIST = [
                 "status": "200"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '요청 Body 없음 (400)', body: { "code": "400", "ErrorMessage": "Required request body is missing" } },
-                { title: '존재하지 않는 그룹 (4000011)', body: { "code": "4000011", "ErrorMessage": "The group does not exist." } }
+                {
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 그룹 (4000011)",
+                    body: {"code":"4000011","ErrorMessage":"The group does not exist."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1866,8 +4277,86 @@ const API_LIST = [
                 ]
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "존재하지 않는 회사 도장 (4000175)",
+                    body: {"code":"4000175","ErrorMessage":"No stamp found."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1909,9 +4398,86 @@ const API_LIST = [
                 }
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '도장 없음 (4000175)', body: { "code": "4000175", "ErrorMessage": "No stamp found." } }
+                {
+                    title: "존재하지 않는 회사 도장 (4000175)",
+                    body: {"code":"4000175","ErrorMessage":"No stamp found."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1949,10 +4515,110 @@ const API_LIST = [
                 }
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '중복된 도장 이름 (4000174)', body: { "code": "4000174", "ErrorMessage": "This name has already been used for another stamp." } },
-                { title: '접근 권한 없음 (4030009)', body: { "code": "4030009", "ErrorMessage": "You do not have access." } }
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "이미 존재하는 회사 도장 이름 (4000174)",
+                    body: {"code":"4000174","ErrorMessage":"This name has already been used for another stamp."}
+                },
+                {
+                    title: "회사 도장 최대 업로드 크기 초과 (4130002)",
+                    body: {"code":"4130002","ErrorMessage":"The file has exceeded the maximum size."}
+                },
+                {
+                    title: "유효하지 않은 회사 도장 이미지 (4000231)",
+                    body: {"code":"4000231","ErrorMessage":"Invalid company stamp image data."}
+                },
+                {
+                    title: "도장 데이터 생성 실패 (4000229)",
+                    body: {"code":"4000229","ErrorMessage":"Failed to create online data in the stamp."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -1992,11 +4658,114 @@ const API_LIST = [
                 }
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '접근 권한 없음 (4030009)', body: { "code": "4030009", "ErrorMessage": "You do not have access." } },
-                { title: '도장 없음 (4000175)', body: { "code": "4000175", "ErrorMessage": "No stamp found." } },
-                { title: '요청 Body 없음 (400)', body: { "code": "400", "ErrorMessage": "Required request body is missing" } }
+                {
+                    title: "잘못된 JSON 형식 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "필수 입력값 누락 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                },
+                {
+                    title: "존재하지 않는 회사 도장 (4000175)",
+                    body: {"code":"4000175","ErrorMessage":"No stamp found."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "잘못된 JSON 형식 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}
+                },
+                {
+                    title: "이미 존재하는 회사 도장 이름 (4000174)",
+                    body: {"code":"4000174","ErrorMessage":"This name has already been used for another stamp."}
+                },
+                {
+                    title: "회사 도장 최대 업로드 크기 초과 (4130002)",
+                    body: {"code":"4130002","ErrorMessage":"The file has exceeded the maximum size."}
+                },
+                {
+                    title: "유효하지 않은 회사 도장 이미지 (4000231)",
+                    body: {"code":"4000231","ErrorMessage":"Invalid company stamp image data."}
+                },
+                {
+                    title: "도장 데이터 생성 실패 (4000229)",
+                    body: {"code":"4000229","ErrorMessage":"Failed to create online data in the stamp."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -2022,10 +4791,86 @@ const API_LIST = [
                 "status": "200"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '도장 없음 (4000175)', body: { "code": "4000175", "ErrorMessage": "No stamp found." } },
-                { title: '접근 권한 없음 (4030009)', body: { "code": "4030009", "ErrorMessage": "You do not have access." } }
+                {
+                    title: "존재하지 않는 회사 도장 (4000175)",
+                    body: {"code":"4000175","ErrorMessage":"No stamp found."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -2072,8 +4917,74 @@ const API_LIST = [
                 ]
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "접근 불가 도메인 (URL 문서 작성 미설정) (4000115)",
+                    body: {"code":"4000115","ErrorMessage":"This domain cannot be accessed."}
+                },
+                {
+                    title: "잘못된 날짜 형식 (4000013)",
+                    body: {"code":"4000013","ErrorMessage":"The date format is invalid."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -2150,8 +5061,70 @@ const API_LIST = [
                 "status": "string"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } }
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -2186,9 +5159,70 @@ const API_LIST = [
                 "status": "string"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '유효하지 않은 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } }
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -2223,9 +5257,70 @@ const API_LIST = [
                 "status": "string"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '유효하지 않은 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } }
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
@@ -2270,9 +5365,70 @@ const API_LIST = [
                 "status": "string"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
-                { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
-                { title: '유효하지 않은 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "invalid api key" } }
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
             ]
         }
     },
