@@ -552,10 +552,6 @@ const API_LIST = [
                 recipients: [
                     {
                         step_type: "",
-                        id: "",
-                        name: "",
-                        email: "",
-                        sms: { country_code: "", phone_number: "" },
                         auth: {
                             password: "",
                             password_hint: "",
