@@ -5432,4 +5432,172 @@ const API_LIST = [
             ]
         }
     },
+
+    // ──────────────────────────────────────────────────────────────────────
+    // OPA2_061
+    // ──────────────────────────────────────────────────────────────────────
+    {
+        id: 'template_single_info',
+        group: '템플릿',
+        groupIcon: 'fa-file-invoice',
+        opaCode: 'OPA2_061',
+        name: '단일 템플릿 정보 조회',
+        method: 'GET',
+        path: '/v2.0/api/forms/{form_id}',
+        description: '내부 멤버의 작성 가능한 단일 템플릿 정보를 조회합니다.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'form_id', description: '조회할 템플릿 ID', required: true, default: '' }
+        ],
+        queryParams: [
+            { key: 'is_include_config', description: 'config 정보 포함 여부', required: false, default: '' }
+        ],
+        defaultBody: null,
+        exampleResponse: {
+            success: {
+                "form_id": "string",
+                "name": "string",
+                "version": "string",
+                "abbreviation": "string",
+                "start_write_date": "number",
+                "end_write_date": "number",
+                "unlimited": "boolean",
+                "create_id": "string",
+                "create_name": "string",
+                "create_date": "number",
+                "update_id": "string",
+                "update_name": "string",
+                "update_date": "number",
+                "owner_id": "string",
+                "owner_name": "string",
+                "category": "string",
+                "keyword": "string",
+                "desc": "string",
+                "favorite": "boolean",
+                "use_document_numbering": "boolean",
+                "document_numbering_rule_id": "string",
+                "use_ai": "boolean",
+                "is_release": "boolean",
+                "is_update": "boolean",
+                "is_sample": "boolean",
+                "market": null,
+                "file": {
+                    "form_image_id": "string",
+                    "form_files": [
+                        {
+                            "type": "string",
+                            "ozr_id": "string",
+                            "ext": "string",
+                            "alias": "string",
+                            "file_id": "string"
+                        }
+                    ]
+                },
+                "enabled": "boolean",
+                "form_modify_auth": "boolean",
+                "title_change": "boolean",
+                "quick_processing": "boolean",
+                "form_doc_retention_period": {
+                    "usePeriod": "boolean",
+                    "periodType": "string",
+                    "period": "number"
+                },
+                "availableDeleteDraft": "boolean"
+            },
+            errors: [
+                {
+                    title: "템플릿 없음 (4000046)",
+                    body: {"code":"4000046","ErrorMessage":"There is no template."}
+                },
+                {
+                    title: "템플릿 접근 권한 없음 (4000044)",
+                    body: {"code":"4000044","ErrorMessage":"You have no permission to access the form."}
+                },
+                {
+                    title: "비활성화된 템플릿 (4000008)",
+                    body: {"code":"4000008","ErrorMessage":"Cannot create a document because the template has been deactivated."}
+                },
+                {
+                    title: "만료된 템플릿 (4000008)",
+                    body: {"code":"4000008","ErrorMessage":"The template has expired."}
+                },
+                {
+                    title: "유효하지 않은 API Key (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "존재하지 않는 멤버 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}
+                },
+                {
+                    title: "국가 정보 조회 실패 (4000038)",
+                    body: {"code":"4000038","ErrorMessage":"Failed to get the country list."}
+                },
+                {
+                    title: "접근 권한이 없음 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
+                },
+                {
+                    title: "Access Token 클레임 오류 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}
+                },
+                {
+                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                },
+                {
+                    title: "유효하지 않은 토큰 정보 (4010007)",
+                    body: {"code":"4010007","ErrorMessage":"Invalid token information."}
+                },
+                {
+                    title: "Access Token 만료 (4010004)",
+                    body: {"code":"4010004","ErrorMessage":"The token has expired."}
+                },
+                {
+                    title: "Refresh Token 만료 (4010006)",
+                    body: {"code":"4010006","ErrorMessage":"The refresh token has expired."}
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                }
+            ]
+        }
+    },
 ];
