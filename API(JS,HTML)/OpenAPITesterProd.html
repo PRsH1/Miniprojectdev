@@ -1216,8 +1216,14 @@
 <!-- OpenAPITester 분할 모듈 (로드 순서 중요) -->
 <script src="/assets/js/openapi/api-list.js"></script>
 <script>
-// Prod 버전: 멤버 관련 API 비공개
-API_LIST = API_LIST.filter(ep => ep.group !== '멤버');
+// Prod 버전: 멤버 관련 API 비공개 (const 재할당 불가 → splice로 원본 배열 변경)
+var _memberIndices = [];
+for (var _i = 0; _i < API_LIST.length; _i++) {
+  if (API_LIST[_i].group === '멤버') _memberIndices.push(_i);
+}
+for (var _j = _memberIndices.length - 1; _j >= 0; _j--) {
+  API_LIST.splice(_memberIndices[_j], 1);
+}
 </script>
 <script src="/assets/js/openapi/api-specs.js"></script>
 <script src="/assets/js/openapi/state.js"></script>
