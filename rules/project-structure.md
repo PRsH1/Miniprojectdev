@@ -18,7 +18,8 @@ ProjectImprove/
 │   ├── downloadDocument.js     # 문서 파일 프록시 다운로드
 │   ├── getDocumentInfo.js      # 문서 메타데이터 조회
 │   ├── webhook-receiver.js     # Webhook 수신 → Pusher 브로드캐스트
-│   ├── memberPage.js           # 멤버 관리 페이지 (인증 보호)
+│   ├── memberV2Page.js         # 멤버/그룹 관리 V2 페이지 (인증 보호, 현행)
+│   ├── memberPage.js           # (deprecated) 구 멤버 관리 페이지 (인증 보호)
 │   ├── OpenAPIAutoTest.js      # OPA 번호 기준 자동 테스트 페이지 (인증 보호)
 │   ├── templatecopy.js         # 템플릿 복제 도구 (인증 보호)
 │   ├── idptestauth.js          # IdP 테스트 페이지 (인증 보호)
@@ -36,10 +37,11 @@ ProjectImprove/
 │   └── login.html              # 인증 보호 페이지용 로그인 UI
 │
 ├── private/                    # 비밀번호 보호 콘텐츠 (컨트롤러에서 서빙)
-│   └── OpenAPIAutoTest.html / Member.html / templatecopy.html / idp-test.html
+│   └── OpenAPIAutoTest.html / MemberV2.html / Member.html / templatecopy.html / idp-test.html
 │
 ├── API(JS,HTML)/
-│   └── OpenAPITester.html      # Postman 스타일 API 테스터 (Beta) — HTML/CSS만 포함
+│   ├── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버 API 비공개)
+│   └── OpenAPITester.html      # Postman 스타일 API 테스터 — 전체 버전 (멤버 API 포함)
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
@@ -48,6 +50,10 @@ ProjectImprove/
 ├── assets/js/
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── OpenAPITester.js        # 원본 보존용 (롤백 시 참고) — 직접 편집 금지
+│   ├── member/                 # MemberV2 분할 모듈 (로드 순서 중요)
+│   │   ├── api.js              #   API 호출, 엑셀 처리 (전역 함수)
+│   │   ├── ui.js               #   렌더링 전담 (섹션 전환, 사이드바, URL 표시)
+│   │   └── init.js             #   이벤트 바인딩, 초기화
 │   └── openapi/                # OpenAPITester 분할 모듈 (로드 순서 중요)
 │       ├── api-list.js         #   API_LIST 데이터
 │       ├── api-specs.js        #   API_SPECS 데이터
