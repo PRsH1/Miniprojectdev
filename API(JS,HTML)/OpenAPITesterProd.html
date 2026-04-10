@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eformsign Open API Tester</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --sidebar-w: 280px;
+            --sidebar-bg: #1e2a38;
+            --sidebar-hover: #2a3a4f;
+            --sidebar-selected: #2d7be0;
+            --sidebar-text: #c9d4df;
+            --sidebar-muted: #7a8fa6;
+            --header-h: 52px;
+            --auth-bg: #f9fafb;
+            --border: #e2e8f0;
+            --bg: #f1f5f9;
+            --white: #ffffff;
+            --blue: #2d7be0;
+            --blue-dark: #1a5fb4;
+            --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body { font-family: var(--font); background: var(--bg); color: #1a202c; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* ========== HEADER ========== */
+        .app-header {
+            height: var(--header-h);
+            background: var(--sidebar-bg);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 12px;
+            flex-shrink: 0;
+            border-bottom: 1px solid #0d1820;
+        }
+        .app-header .logo { color: #fff; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
+        .app-header .logo span { color: #4fa8ff; }
+        .app-header .env-select-wrap { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+        .app-header label { color: var(--sidebar-muted); font-size: 0.82rem; }
+        .app-header select {
+            background: #2a3a4f; color: #fff; border: 1px solid #3a4f6a;
+            border-radius: 6px; padding: 5px 10px; font-size: 0.85rem; cursor: pointer;
+        }
+        .app-header select:focus { outline: none; border-color: var(--blue); }
+        #customDomainWrap { display: none; }
+        #customDomainInput {
+            background: #2a3a4f; color: #fff; border: 1px solid #e6a817;
+            border-radius: 6px; padding: 5px 10px; font-size: 0.85rem; width: 240px;
+        }
+        #customDomainInput:focus { outline: none; border-color: #ffcc55; }
+        .base-url-badge {
+            background: #0d1820; color: #4fa8ff; font-size: 0.78rem;
+            padding: 4px 10px; border-radius: 20px; border: 1px solid #1e3550; white-space: nowrap;
+            max-width: 320px; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* ========== BODY LAYOUT ========== */
+        .app-body { display: flex; flex: 1; overflow: hidden; }
+
+        /* ========== SIDEBAR ========== */
+        .sidebar {
+            width: var(--sidebar-w);
+            min-width: 160px;
+            max-width: 520px;
+            background: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .sidebar-resizer {
+            width: 4px;
+            background: #0d1820;
+            cursor: col-resize;
+            flex-shrink: 0;
+            transition: background 0.15s;
+            position: relative;
+        }
+        .sidebar-resizer:hover,
+        .sidebar-resizer.dragging { background: var(--blue); }
+        .sidebar-resizer::after {
+            content: '';
+            position: absolute;
+            inset: 0 -4px;
+        }
+        .sidebar-search {
+            padding: 12px;
+            border-bottom: 1px solid #0d1820;
+        }
+        .sidebar-search input {
+            width: 100%; background: #2a3a4f; border: 1px solid #3a4f6a;
+            border-radius: 6px; color: #fff; padding: 7px 10px; font-size: 0.84rem;
+        }
+        .sidebar-search input:focus { outline: none; border-color: var(--blue); }
+        .sidebar-search input::placeholder { color: var(--sidebar-muted); }
+        .sidebar-view-label {
+            padding: 8px 12px 0;
+            font-size: 0.72rem; font-weight: 700;
+            color: var(--sidebar-muted);
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .sidebar-view-toggle {
+            display: flex; gap: 4px; padding: 8px 10px;
+            border-bottom: 1px solid #0d1820;
+        }
+        .view-btn {
+            flex: 1; padding: 5px 4px;
+            background: #2a3a4f; border: 1px solid #3a4f6a; border-radius: 5px;
+            color: var(--sidebar-muted); cursor: pointer; font-size: 0.75rem;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+            transition: all 0.15s; white-space: nowrap;
+        }
+        .view-btn:hover { color: #fff; border-color: var(--blue); }
+        .view-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+        .endpoint-item--flat { padding-left: 14px; }
+        .sidebar-list { overflow-y: auto; flex: 1; padding: 6px 0; }
+        .sidebar-list::-webkit-scrollbar { width: 4px; }
+        .sidebar-list::-webkit-scrollbar-thumb { background: #3a4f6a; border-radius: 4px; }
+
+        .api-group { }
+        .api-group-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px; cursor: pointer;
+            color: var(--sidebar-muted); font-size: 0.78rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.6px;
+            user-select: none;
+        }
+        .api-group-header:hover { color: #fff; }
+        .api-group-header .chevron { margin-left: auto; transition: transform 0.2s; font-size: 0.7rem; }
+        .api-group-header.collapsed .chevron { transform: rotate(-90deg); }
+        .api-group-endpoints { }
+        .api-group-endpoints.hidden { display: none; }
+
+        .endpoint-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 7px 14px 7px 20px; cursor: pointer;
+            color: var(--sidebar-text); font-size: 0.84rem;
+            border-left: 3px solid transparent;
+            transition: background 0.15s;
+        }
+        .endpoint-item:hover { background: var(--sidebar-hover); }
+        .endpoint-item.active { background: rgba(45, 123, 224, 0.15); border-left-color: var(--sidebar-selected); color: #fff; }
+        .endpoint-item .ep-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* ========== MAIN PANEL ========== */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* ========== AUTH PANEL ========== */
+        .auth-panel {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .auth-panel-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 20px; cursor: pointer;
+            font-size: 0.88rem; font-weight: 600; color: #4a5568;
+            user-select: none;
+        }
+        .auth-panel-header:hover { color: #1a202c; }
+        .auth-panel-header .auth-title { flex: 1; }
+        .auth-panel-header .auth-status { font-size: 0.8rem; font-weight: 400; }
+        .auth-panel-header .auth-status.has-token { color: #27ae60; }
+        .auth-panel-header .auth-status.no-token { color: #e74c3c; }
+        .auth-panel-body { padding: 0 20px 16px; display: none; }
+        .auth-panel-body.open { display: block; }
+
+        .auth-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; margin-bottom: 12px;
+        }
+        .auth-grid .span2 { grid-column: span 2; }
+        .auth-field label { display: block; font-size: 0.78rem; font-weight: 600; color: #718096; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
+        .auth-field input, .auth-field select {
+            width: 100%; padding: 7px 10px; border: 1px solid var(--border);
+            border-radius: 6px; font-size: 0.85rem; background: #fff; color: #1a202c;
+        }
+        .auth-field input:focus, .auth-field select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,123,224,0.1); }
+        .auth-method-tabs { display: flex; gap: 8px; }
+        .auth-method-tab {
+            flex: 1; padding: 7px; border: 1px solid var(--border); border-radius: 6px;
+            background: #fff; font-size: 0.84rem; cursor: pointer; text-align: center;
+            color: #718096; transition: all 0.15s;
+        }
+        .auth-method-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+        .auth-actions { display: flex; align-items: center; gap: 10px; }
+        .btn-primary {
+            background: var(--blue); color: #fff; border: none;
+            padding: 8px 18px; border-radius: 6px; font-size: 0.88rem; font-weight: 600;
+            cursor: pointer; transition: background 0.15s; white-space: nowrap;
+        }
+        .btn-primary:hover { background: var(--blue-dark); }
+        .btn-primary:disabled { background: #a0aec0; cursor: not-allowed; }
+        .btn-secondary {
+            background: #fff; color: #4a5568; border: 1px solid var(--border);
+            padding: 8px 14px; border-radius: 6px; font-size: 0.84rem;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .btn-secondary:hover { border-color: #a0aec0; background: #f7fafc; }
+        .token-display {
+            flex: 1; font-size: 0.78rem; color: #718096; background: #f7fafc;
+            border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font-family: monospace; cursor: pointer;
+        }
+        .token-display:hover { border-color: #a0aec0; }
+        .token-display.has-token { color: #27ae60; }
+
+        /* ========== REQUEST BUILDER ========== */
+        .request-section {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 20px;
+            flex-shrink: 0;
+        }
+        .request-desc { font-size: 0.82rem; color: #718096; margin-bottom: 10px; font-style: italic; }
+        .request-url-bar { display: flex; gap: 8px; align-items: center; }
+        .method-badge-select {
+            padding: 8px 12px; border-radius: 6px; border: 2px solid;
+            font-size: 0.85rem; font-weight: 700; cursor: pointer; min-width: 90px;
+            text-align: center; appearance: none; -webkit-appearance: none; background: transparent;
+        }
+        .method-get    { color: #27ae60; border-color: #27ae60; background: #f0fff4; }
+        .method-post   { color: #2980b9; border-color: #2980b9; background: #ebf5fb; }
+        .method-put    { color: #e67e22; border-color: #e67e22; background: #fef9ed; }
+        .method-delete { color: #e74c3c; border-color: #e74c3c; background: #fdedec; }
+        .method-patch  { color: #8e44ad; border-color: #8e44ad; background: #f5eef8; }
+        .url-input {
+            flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 0.9rem; font-family: 'SFMono-Regular', Consolas, monospace;
+            color: #1a202c; background: #fff;
+        }
+        .url-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,123,224,0.1); }
+        /* ========== CODE BUTTON ========== */
+        .btn-code {
+            background: #fff; color: #4a5568; border: 1px solid var(--border);
+            padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+        }
+        .btn-code:hover { border-color: var(--blue); color: var(--blue); background: #f0f7ff; }
+
+        /* ========== CODE MODAL ========== */
+        .code-modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+            z-index: 500; align-items: center; justify-content: center;
+        }
+        .code-modal-overlay.open { display: flex; }
+        .code-modal {
+            background: #fff; border-radius: 10px; width: 680px; max-width: 95vw;
+            max-height: 80vh; display: flex; flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+        }
+        .code-modal-header {
+            display: flex; align-items: center; padding: 14px 20px;
+            border-bottom: 1px solid var(--border); flex-shrink: 0;
+        }
+        .code-modal-header span { font-weight: 700; font-size: 0.95rem; color: #1a202c; flex: 1; }
+        .code-modal-header .modal-close {
+            background: none; border: none; cursor: pointer; color: #a0aec0;
+            font-size: 1.1rem; padding: 2px 6px; border-radius: 4px;
+        }
+        .code-modal-header .modal-close:hover { color: #1a202c; background: #f7fafc; }
+        .code-modal-lang-tabs {
+            display: flex; gap: 0; padding: 0 20px; border-bottom: 1px solid var(--border);
+            flex-shrink: 0; overflow-x: auto;
+        }
+        .lang-tab {
+            padding: 10px 16px; font-size: 0.84rem; color: #718096; cursor: pointer;
+            border: none; background: none; border-bottom: 2px solid transparent;
+            margin-bottom: -1px; white-space: nowrap; transition: all 0.15s;
+        }
+        .lang-tab:hover { color: #1a202c; }
+        .lang-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+        .code-modal-body {
+            flex: 1; overflow-y: auto; background: #1e2a38; border-radius: 0;
+            position: relative;
+        }
+        .code-snippet-pre {
+            margin: 0; padding: 20px; font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.82rem; line-height: 1.65; white-space: pre; color: #c9d4df;
+            overflow-x: auto;
+        }
+        .code-modal-footer {
+            display: flex; align-items: center; justify-content: flex-end;
+            padding: 10px 20px; border-top: 1px solid var(--border); flex-shrink: 0; gap: 8px;
+        }
+
+        .btn-send-wrap { position: relative; display: flex; flex-shrink: 0; }
+        .btn-send {
+            background: #ff6b35; color: #fff; border: none;
+            padding: 8px 18px; border-radius: 6px 0 0 6px; font-size: 0.9rem; font-weight: 700;
+            cursor: pointer; transition: background 0.15s; white-space: nowrap;
+        }
+        .btn-send:hover { background: #e55a26; }
+        .btn-send-arrow {
+            background: #e55a26; color: #fff; border: none; border-left: 1px solid rgba(255,255,255,0.25);
+            padding: 8px 10px; border-radius: 0 6px 6px 0; font-size: 0.8rem;
+            cursor: pointer; transition: background 0.15s;
+        }
+        .btn-send-arrow:hover { background: #cc4d1f; }
+        .send-dropdown-menu {
+            display: none; position: absolute; top: calc(100% + 4px); right: 0;
+            background: #fff; border: 1px solid var(--border); border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12); z-index: 100; min-width: 180px;
+        }
+        .send-dropdown-menu.open { display: block; }
+        .send-dropdown-menu button {
+            display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 14px;
+            background: none; border: none; font-size: 0.85rem; color: #1a202c;
+            cursor: pointer; text-align: left;
+        }
+        .send-dropdown-menu button:hover { background: #f7fafc; }
+        .send-dropdown-menu button:first-child { border-radius: 6px 6px 0 0; }
+        .send-dropdown-menu button:last-child { border-radius: 0 0 6px 6px; }
+
+        /* ========== TABS ========== */
+        .tabs-container { background: var(--white); flex-shrink: 0; border-bottom: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; }
+        .h-resizer {
+            height: 5px; background: var(--border); cursor: row-resize;
+            flex-shrink: 0; transition: background 0.15s; position: relative;
+        }
+        .h-resizer:hover, .h-resizer.dragging { background: var(--blue); }
+        .h-resizer::after { content: ''; position: absolute; inset: -4px 0; }
+        .tabs-nav { display: flex; padding: 0 20px; gap: 0; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .tab-btn {
+            padding: 10px 16px; font-size: 0.85rem; color: #718096; cursor: pointer;
+            border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; border-top: none;
+            border-left: none; border-right: none; transition: all 0.15s; white-space: nowrap;
+        }
+        .tab-btn:hover { color: #1a202c; }
+        .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+        .tab-btn .tab-badge {
+            display: inline-block; background: #e2e8f0; color: #4a5568;
+            font-size: 0.7rem; padding: 1px 6px; border-radius: 10px; margin-left: 5px;
+        }
+        .tab-btn.active .tab-badge { background: rgba(45,123,224,0.15); color: var(--blue); }
+        .tab-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+        .tab-pane { display: none; }
+        .tab-pane.active { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; min-height: 0; }
+        .tab-pane.active::-webkit-scrollbar { width: 6px; }
+        .tab-pane.active::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+        .tab-pane.active::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+
+        /* ========== PARAMS / HEADERS TABLE ========== */
+        .kv-table { width: 100%; border-collapse: collapse; }
+        .kv-table th { font-size: 0.75rem; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 0.4px; padding: 0 8px 8px; text-align: left; }
+        .kv-table td { padding: 4px; vertical-align: middle; }
+        .kv-table .col-check { width: 30px; }
+        .kv-table .col-type  { width: 70px; }
+        .kv-table .col-key   { width: 30%; }
+        .kv-table .col-value { width: auto; }
+        .kv-table .col-action { width: 32px; }
+        .kv-input {
+            width: 100%; padding: 5px 8px; border: 1px solid var(--border);
+            border-radius: 4px; font-size: 0.84rem; background: #fff;
+        }
+        .kv-input:focus { outline: none; border-color: var(--blue); }
+        .kv-input[readonly] { background: #f7fafc; color: #718096; }
+        .type-badge {
+            display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 2px 6px;
+            border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        .type-path  { background: #fef9ed; color: #e67e22; border: 1px solid #fad7a0; }
+        .type-query { background: #ebf5fb; color: #2980b9; border: 1px solid #aed6f1; }
+        .type-header-badge { background: #f5eef8; color: #8e44ad; border: 1px solid #d7bde2; }
+        .btn-icon { background: none; border: none; cursor: pointer; color: #a0aec0; padding: 4px 6px; border-radius: 4px; font-size: 0.85rem; }
+        .btn-icon:hover { color: #e74c3c; background: #fee; }
+        .btn-add-row { background: none; border: 1px dashed var(--border); color: #718096; font-size: 0.82rem; padding: 5px 12px; border-radius: 4px; cursor: pointer; margin-top: 6px; }
+        .btn-add-row:hover { border-color: var(--blue); color: var(--blue); }
+        .required-star { color: #e74c3c; margin-left: 2px; }
+        .param-desc { font-size: 0.75rem; color: #a0aec0; margin-top: 1px; }
+
+        /* ========== BODY EDITOR ========== */
+        .body-editor {
+            flex: 1; width: 100%; min-height: 60px; font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.84rem; border: 1px solid var(--border); border-radius: 6px;
+            padding: 10px; resize: none; color: #1a202c; line-height: 1.5; box-sizing: border-box;
+        }
+        .body-editor:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,123,224,0.1); }
+        .body-toolbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-shrink: 0; }
+        .body-toolbar span { font-size: 0.8rem; color: #718096; flex: 1; }
+
+        /* ========== RESPONSE PANEL ========== */
+        .response-section {
+            flex: 1; display: flex; flex-direction: column; overflow: hidden;
+            background: var(--white);
+        }
+        .response-header {
+            padding: 10px 20px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+        }
+        .response-title { font-size: 0.85rem; font-weight: 600; color: #4a5568; }
+        .status-badge {
+            padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 700;
+        }
+        .status-2xx { background: #d5f5e3; color: #1e8449; }
+        .status-3xx { background: #fef9e7; color: #d4ac0d; }
+        .status-4xx { background: #fadbd8; color: #c0392b; }
+        .status-5xx { background: #fadbd8; color: #c0392b; }
+        .response-meta { font-size: 0.78rem; color: #a0aec0; display: flex; gap: 12px; }
+        .response-meta span { display: flex; align-items: center; gap: 4px; }
+        .response-actions { margin-left: auto; display: flex; gap: 6px; }
+        .response-body-wrap { flex: 1; overflow-y: auto; position: relative; min-height: 0; }
+        .response-body-wrap::-webkit-scrollbar { width: 6px; }
+        .response-body-wrap::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
+        .response-body-wrap::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+        .response-pre {
+            margin: 0; padding: 16px 20px;
+            font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.83rem;
+            line-height: 1.6; white-space: pre-wrap; word-break: break-all;
+            background: #fff;
+        }
+        .response-placeholder {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; color: #a0aec0; gap: 10px;
+        }
+        .response-placeholder i { font-size: 2.5rem; }
+        .response-placeholder p { font-size: 0.9rem; }
+
+        /* JSON syntax coloring */
+        .json-key    { color: #c0392b; }
+        .json-string { color: #27ae60; }
+        .json-number { color: #2980b9; }
+        .json-bool   { color: #8e44ad; font-weight: bold; }
+        .json-null   { color: #95a5a6; font-style: italic; }
+
+        /* OPA badge */
+        .opa-code {
+            font-size: 0.68rem; font-weight: 700; font-family: 'SFMono-Regular', Consolas, monospace;
+            color: #c9d4df; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+            padding: 1px 5px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
+        }
+        .endpoint-item.active .opa-code { color: #fff; background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.25); }
+
+        /* ========== METHOD BADGE (inline) ========== */
+        .m-badge {
+            display: inline-block; font-size: 0.68rem; font-weight: 800; padding: 2px 6px;
+            border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; width: 52px; text-align: center;
+        }
+        .m-get    { background: #f0fff4; color: #27ae60; border: 1px solid #a9dfbf; }
+        .m-post   { background: #ebf5fb; color: #2980b9; border: 1px solid #aed6f1; }
+        .m-put    { background: #fef9ed; color: #e67e22; border: 1px solid #fad7a0; }
+        .m-delete { background: #fdedec; color: #e74c3c; border: 1px solid #fadbd8; }
+        .m-patch  { background: #f5eef8; color: #8e44ad; border: 1px solid #d7bde2; }
+
+        /* ========== MISC ========== */
+        .empty-select { padding: 40px; text-align: center; color: #a0aec0; }
+        .empty-select i { font-size: 2rem; margin-bottom: 10px; display: block; }
+        .empty-select p { font-size: 0.9rem; }
+
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+            background: #1e2a38; color: #fff; padding: 10px 18px; border-radius: 8px;
+            font-size: 0.85rem; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+
+        /* ========== GUIDE MODAL ========== */
+        .guide-overlay {
+            display: none; position: fixed; inset: 0; z-index: 2000;
+            background: rgba(10, 18, 28, 0.72); backdrop-filter: blur(3px);
+            align-items: center; justify-content: center;
+        }
+        .guide-overlay.open { display: flex; }
+
+        .guide-modal {
+            background: #fff; border-radius: 16px; width: 90%; max-width: 860px;
+            max-height: 90vh; overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.28);
+            display: flex; flex-direction: column;
+        }
+        .guide-header {
+            background: var(--sidebar-bg); padding: 20px 28px;
+            display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+        }
+        .guide-header-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: rgba(79,168,255,0.15); border: 1px solid rgba(79,168,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            color: #4fa8ff; font-size: 1rem;
+        }
+        .guide-header-text h2 {
+            color: #fff; font-size: 1rem; font-weight: 700; margin-bottom: 2px;
+        }
+        .guide-header-text p { color: var(--sidebar-muted); font-size: 0.82rem; }
+        .guide-close {
+            margin-left: auto; width: 32px; height: 32px; border-radius: 8px;
+            background: transparent; border: none; color: var(--sidebar-muted);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; transition: all 0.15s;
+        }
+        .guide-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .guide-body { padding: 28px; overflow-y: auto; }
+
+        .guide-steps {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+            margin-bottom: 24px;
+        }
+        .guide-step {
+            border: 1.5px solid var(--border); border-radius: 12px;
+            padding: 18px; background: #fff;
+            transition: box-shadow 0.2s, border-color 0.2s;
+            position: relative; overflow: hidden;
+        }
+        .guide-step:hover { border-color: #93c5fd; box-shadow: 0 4px 16px rgba(45,123,224,0.1); }
+        .guide-step::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0;
+            height: 3px; border-radius: 12px 12px 0 0;
+        }
+        .guide-step:nth-child(1)::before { background: linear-gradient(90deg, #4fa8ff, #2d7be0); }
+        .guide-step:nth-child(2)::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .guide-step:nth-child(3)::before { background: linear-gradient(90deg, #10b981, #059669); }
+        .guide-step:nth-child(4)::before { background: linear-gradient(90deg, #8b5cf6, #7c3aed); }
+        .guide-step:nth-child(5)::before { background: linear-gradient(90deg, #ec4899, #db2777); }
+
+        .guide-step-num {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 26px; height: 26px; border-radius: 50%;
+            font-size: 0.75rem; font-weight: 800;
+            margin-bottom: 12px;
+        }
+        .guide-step:nth-child(1) .guide-step-num { background: #dbeafe; color: #1d4ed8; }
+        .guide-step:nth-child(2) .guide-step-num { background: #fef3c7; color: #92400e; }
+        .guide-step:nth-child(3) .guide-step-num { background: #d1fae5; color: #065f46; }
+        .guide-step:nth-child(4) .guide-step-num { background: #ede9fe; color: #5b21b6; }
+        .guide-step:nth-child(5) .guide-step-num { background: #fce7f3; color: #9d174d; }
+
+        .guide-step-icon {
+            font-size: 1.5rem; margin-bottom: 10px; display: block;
+        }
+        .guide-step:nth-child(1) .guide-step-icon { color: #2d7be0; }
+        .guide-step:nth-child(2) .guide-step-icon { color: #d97706; }
+        .guide-step:nth-child(3) .guide-step-icon { color: #059669; }
+        .guide-step:nth-child(4) .guide-step-icon { color: #7c3aed; }
+        .guide-step:nth-child(5) .guide-step-icon { color: #db2777; }
+
+        .guide-step h3 { font-size: 0.9rem; font-weight: 700; color: #1a202c; margin-bottom: 8px; }
+        .guide-step p  { font-size: 0.8rem; color: #64748b; line-height: 1.6; }
+        .guide-step ul { padding-left: 16px; margin-top: 6px; }
+        .guide-step ul li { font-size: 0.8rem; color: #64748b; line-height: 1.8; }
+
+        .guide-tip {
+            background: #f0f7ff; border: 1px solid #bfdbfe; border-radius: 10px;
+            padding: 14px 18px; display: flex; gap: 12px; align-items: flex-start;
+        }
+        .guide-tip i { color: #2d7be0; margin-top: 1px; flex-shrink: 0; }
+        .guide-tip p { font-size: 0.82rem; color: #1e3a5f; line-height: 1.7; }
+        .guide-tip strong { font-weight: 700; }
+
+        /* 가이드 버튼 */
+        .btn-guide {
+            background: rgba(255,255,255,0.08); color: var(--sidebar-muted);
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 6px 12px; border-radius: 6px; font-size: 0.82rem;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            transition: all 0.15s; white-space: nowrap; text-decoration: none;
+        }
+        .btn-guide:hover { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.25); }
+
+        /* ========== API 명세 버튼 ========== */
+        .btn-spec {
+            background: #fff; color: #4a5568; border: 1px solid var(--border);
+            padding: 7px 13px; border-radius: 6px; font-size: 0.84rem; font-weight: 600;
+            cursor: pointer; display: flex; align-items: center; gap: 6px;
+            transition: all 0.15s; white-space: nowrap; flex-shrink: 0;
+        }
+        .btn-spec:hover { border-color: #10b981; color: #059669; background: #f0fdf4; }
+
+        /* ========== API 명세 모달 ========== */
+        .spec-overlay {
+            display: none; position: fixed; inset: 0; z-index: 2000;
+            background: rgba(10, 18, 28, 0.72); backdrop-filter: blur(3px);
+            align-items: center; justify-content: center;
+        }
+        .spec-overlay.open { display: flex; }
+
+        .spec-modal {
+            background: #fff; border-radius: 16px; width: 92%; max-width: 820px;
+            max-height: 90vh; overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.28);
+            display: flex; flex-direction: column;
+        }
+        .spec-modal-header {
+            background: var(--sidebar-bg); padding: 18px 24px;
+            display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0;
+        }
+        .spec-modal-header-icon {
+            width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+            background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);
+            display: flex; align-items: center; justify-content: center;
+            color: #34d399; font-size: 1rem;
+        }
+        .spec-modal-header-text { flex: 1; }
+        .spec-modal-header-text h2 { color: #fff; font-size: 0.98rem; font-weight: 700; margin-bottom: 4px; }
+        .spec-modal-header-text .spec-path-line {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .spec-modal-header-text .spec-path {
+            color: #94a3b8; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.8rem;
+        }
+        .spec-modal-header-text .spec-opa {
+            font-size: 0.72rem; font-weight: 700; font-family: 'SFMono-Regular', Consolas, monospace;
+            color: #34d399; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);
+            padding: 1px 6px; border-radius: 3px;
+        }
+        .spec-close {
+            margin-left: auto; width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+            background: transparent; border: none; color: var(--sidebar-muted);
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; transition: all 0.15s;
+        }
+        .spec-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .spec-tabs {
+            display: flex; gap: 0; border-bottom: 1px solid var(--border);
+            background: #f8fafc; flex-shrink: 0;
+        }
+        .spec-tab-btn {
+            padding: 10px 20px; border: none; background: none; cursor: pointer;
+            font-size: 0.85rem; font-weight: 600; color: #718096;
+            border-bottom: 2px solid transparent; margin-bottom: -1px;
+            transition: all 0.15s;
+        }
+        .spec-tab-btn:hover { color: #1a202c; }
+        .spec-tab-btn.active { color: #10b981; border-bottom-color: #10b981; }
+
+        .spec-modal-body { overflow-y: auto; flex: 1; padding: 20px 24px; }
+
+        .spec-section { margin-bottom: 24px; }
+        .spec-section:last-child { margin-bottom: 0; }
+        .spec-section-title {
+            font-size: 0.8rem; font-weight: 700; color: #4a5568; text-transform: uppercase;
+            letter-spacing: 0.6px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+        }
+        .spec-section-title i { color: #10b981; }
+
+        .spec-table {
+            width: 100%; border-collapse: collapse; font-size: 0.83rem;
+        }
+        .spec-table th {
+            background: #f1f5f9; padding: 7px 10px; text-align: left;
+            font-size: 0.75rem; font-weight: 700; color: #718096; text-transform: uppercase;
+            letter-spacing: 0.4px; border-bottom: 1px solid var(--border);
+        }
+        .spec-table td {
+            padding: 7px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top;
+        }
+        .spec-table tr:last-child td { border-bottom: none; }
+        .spec-table .spec-field-key {
+            font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.8rem; color: #c0392b; white-space: nowrap;
+        }
+        .spec-table .spec-type-badge {
+            display: inline-block; font-size: 0.7rem; font-weight: 700;
+            padding: 1px 6px; border-radius: 3px; white-space: nowrap;
+        }
+        .spec-type-string  { background: #f0fff4; color: #27ae60; border: 1px solid #a9dfbf; }
+        .spec-type-number  { background: #ebf5fb; color: #2980b9; border: 1px solid #aed6f1; }
+        .spec-type-boolean { background: #f5eef8; color: #8e44ad; border: 1px solid #d7bde2; }
+        .spec-type-array   { background: #fef9ed; color: #e67e22; border: 1px solid #fad7a0; }
+        .spec-type-object  { background: #fdf2f8; color: #c0392b; border: 1px solid #f1948a; }
+        .spec-type-binary  { background: #eaf4fb; color: #1a5276; border: 1px solid #aed6f1; }
+        .spec-required-badge {
+            display: inline-block; font-size: 0.68rem; font-weight: 700;
+            padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+        }
+        .spec-required-y { background: #fef2f2; color: #e74c3c; border: 1px solid #fadbd8; }
+        .spec-required-n { background: #f1f5f9; color: #a0aec0; border: 1px solid #e2e8f0; }
+        .spec-desc { color: #4a5568; line-height: 1.5; }
+        .spec-note { color: #718096; font-size: 0.8rem; line-height: 1.4; font-style: italic; }
+
+        .spec-error-code {
+            font-family: 'SFMono-Regular', Consolas, monospace; font-size: 0.8rem;
+            color: #e74c3c; background: #fef2f2; border: 1px solid #fadbd8;
+            padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+        }
+        .spec-error-msg { color: #e74c3c; font-size: 0.8rem; }
+        .spec-empty { color: #a0aec0; font-size: 0.84rem; padding: 10px 0; }
+
+        /* ========== MOBILE RESPONSIVE ========== */
+        .btn-menu { display: none; }
+
+        @media (max-width: 640px) {
+            body { height: 100vh; height: 100dvh; }
+
+            /* Header */
+            .app-header { padding: 0 10px; gap: 6px; }
+            .btn-menu {
+                display: flex !important;
+                align-items: center; justify-content: center;
+                background: none; border: none; color: #fff;
+                font-size: 1.1rem; cursor: pointer;
+                min-width: 44px; min-height: 44px;
+                padding: 0 10px; border-radius: 6px; flex-shrink: 0;
+                transition: background 0.15s;
+            }
+            .btn-menu:hover { background: rgba(255,255,255,0.12); }
+            .app-header .logo { font-size: 0.92rem; }
+            .base-url-badge { display: none; }
+            .btn-guide { padding: 0 10px; min-height: 44px; }
+            .btn-guide .btn-guide-label { display: none; }
+            #customDomainInput { width: 130px; }
+
+            /* Sidebar → 슬라이드 드로어 */
+            .sidebar {
+                position: fixed;
+                left: -320px;
+                top: var(--header-h);
+                height: calc(100dvh - var(--header-h));
+                height: calc(100vh - var(--header-h));
+                width: 300px !important;
+                max-width: 85vw;
+                z-index: 200;
+                transition: left 0.28s cubic-bezier(.4, 0, .2, 1);
+            }
+            .sidebar.mobile-open {
+                left: 0;
+                box-shadow: 6px 0 28px rgba(0,0,0,0.45);
+            }
+            .sidebar-resizer { display: none; }
+
+            /* 사이드바 백드롭 */
+            .sidebar-backdrop {
+                position: fixed;
+                inset: 0;
+                top: var(--header-h);
+                background: rgba(0,0,0,0.5);
+                z-index: 199;
+                display: none;
+            }
+            .sidebar-backdrop.open { display: block; }
+
+            /* Auth 패널 */
+            .auth-grid { grid-template-columns: 1fr; }
+            .auth-grid .span2 { grid-column: span 1; }
+            .auth-panel-body { padding: 0 14px 14px; }
+            .auth-actions { flex-wrap: wrap; gap: 8px; }
+            .token-display { width: 100%; flex: none; }
+
+            /* Request URL 바 */
+            .request-section { padding: 12px 14px; }
+            .request-url-bar { flex-wrap: wrap; gap: 6px; }
+            .method-badge-select { order: 1; flex-shrink: 0; min-height: 44px; }
+            .url-input { order: 2; flex: 1 1 calc(100% - 110px); min-width: 0; min-height: 44px; }
+            .btn-code { order: 3; flex-shrink: 0; min-height: 44px; padding: 0 14px; }
+            .btn-spec { order: 3; flex-shrink: 0; min-height: 44px; padding: 0 13px; }
+            .btn-send-wrap { order: 3; flex-shrink: 0; margin-left: auto; }
+            .btn-send { min-height: 44px; padding: 0 18px; }
+            .btn-send-arrow { min-height: 44px; }
+
+            /* 탭 컨테이너 */
+            #tabsContainer { height: auto !important; max-height: 42vh; overflow: hidden; }
+            .h-resizer { display: none; }
+            .tabs-nav { padding: 0 10px; }
+            .tab-btn { min-height: 44px; padding: 0 12px; }
+            .tab-pane.active { padding: 10px 12px; }
+
+            /* KV 테이블 */
+            .kv-table .col-key { width: 38%; }
+            .kv-table .param-desc { display: none; }
+
+            /* Body toolbar 버튼 */
+            .body-toolbar .btn-secondary { min-height: 36px; padding: 0 10px; }
+
+            /* 응답 영역 */
+            .response-header { padding: 8px 14px; flex-wrap: wrap; gap: 6px; }
+            .response-actions { margin-left: 0; }
+            .response-pre { padding: 12px 14px; font-size: 0.78rem; }
+
+            /* Empty state */
+            #emptyState { padding: 30px 16px; }
+            #emptyStateArrow { display: none; }
+            #emptyStateHint { display: inline-flex !important; }
+
+            /* 로고 줄바꿈 방지 */
+            .app-header .logo { white-space: nowrap; font-size: 0.88rem; }
+
+            /* Body 탭 최소 높이 */
+            #tab-body { min-height: 120px; }
+
+            /* 토스트 */
+            .toast { bottom: 12px; right: 12px; left: 12px; text-align: center; }
+
+            /* 가이드 모달 */
+            .guide-steps { grid-template-columns: 1fr; }
+            .guide-modal { width: 95%; }
+            .guide-body { padding: 16px; }
+
+            /* 명세 모달 */
+            .spec-modal { width: 95%; }
+            .spec-modal-body { padding: 14px 16px; }
+
+            /* 코드 모달 */
+            .code-modal { width: 95%; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+    <button class="btn-menu" id="btnMenu" aria-label="메뉴 열기" onclick="toggleMobileSidebar()">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <div class="logo">eformsign <span>API Tester</span></div>
+    <div class="env-select-wrap">
+        <label for="envSelect">환경:</label>
+        <select id="envSelect">
+            <option value="op_saas">운영 (SaaS)</option>
+            <option value="csap">공공 (CSAP)</option>
+            <option value="custom">직접 입력</option>
+        </select>
+        <div id="customDomainWrap">
+            <input type="text" id="customDomainInput" placeholder="https://api.example.com">
+        </div>
+        <div class="base-url-badge" id="baseUrlBadge"></div>
+        <a class="btn-guide" href="/utils/error-codes.html" target="_blank">
+            <i class="fa-solid fa-triangle-exclamation fa-sm"></i><span class="btn-guide-label"> 에러 코드</span>
+        </a>
+        <button class="btn-guide" onclick="openGuide()">
+            <i class="fa-solid fa-circle-question fa-sm"></i><span class="btn-guide-label"> 사용 가이드</span>
+        </button>
+    </div>
+</header>
+
+<div class="app-body">
+
+    <!-- 모바일 사이드바 백드롭 -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-search">
+            <input type="text" id="sidebarSearch" placeholder="&#xf002; API 검색...">
+        </div>
+        <div class="sidebar-view-label">정렬 방식</div>
+        <div class="sidebar-view-toggle" id="sidebarViewToggle">
+            <button class="view-btn active" data-view="group" title="그룹별 보기">
+                <i class="fa-solid fa-layer-group fa-xs"></i> 그룹
+            </button>
+            <button class="view-btn" data-view="code" title="OPA2 코드순 보기">
+                <i class="fa-solid fa-list-ol fa-xs"></i> 코드순
+            </button>
+            <button class="view-btn" data-view="method" title="HTTP Method별 보기">
+                <i class="fa-solid fa-code fa-xs"></i> Method
+            </button>
+        </div>
+        <div class="sidebar-list" id="sidebarList"></div>
+    </aside>
+    <div class="sidebar-resizer" id="sidebarResizer"></div>
+
+    <!-- MAIN -->
+    <main class="main">
+
+        <!-- AUTH PANEL -->
+        <div class="auth-panel">
+            <div class="auth-panel-header" id="authPanelToggle">
+                <i class="fa-solid fa-key fa-sm" style="color:#e6a817"></i>
+                <span class="auth-title">인증 설정 (Access Token)</span>
+                <span class="auth-status no-token" id="authStatusBadge">토큰 없음</span>
+                <i class="fa-solid fa-chevron-down fa-xs" id="authChevron" style="color:#a0aec0;transition:transform 0.2s"></i>
+            </div>
+            <div class="auth-panel-body" id="authPanelBody">
+                <div class="auth-grid">
+                    <div class="auth-field">
+                        <label>API Key</label>
+                        <input type="text" id="apiKey" placeholder="API Key 입력">
+                    </div>
+                    <div class="auth-field">
+                        <label>User ID (member_id)</label>
+                        <input type="text" id="userId" placeholder="User ID 입력">
+                    </div>
+                    <div class="auth-field span2">
+                        <label>인증 방식</label>
+                        <div class="auth-method-tabs">
+                            <button class="auth-method-tab active" data-method="signature">Signature 방식 (비밀키 Hex)</button>
+                            <button class="auth-method-tab" data-method="bearer">Bearer Token 방식</button>
+                        </div>
+                    </div>
+                    <div class="auth-field span2">
+                        <label id="secretKeyLabel">비밀 키 (Secret Key, Hex)</label>
+                        <input type="password" id="secretKey" placeholder="비밀 키 입력 (Hex 형식)">
+                    </div>
+                </div>
+                <div class="auth-actions">
+                    <button class="btn-primary" id="btnGetToken"><i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급</button>
+                    <button class="btn-secondary" id="btnClearToken"><i class="fa-solid fa-xmark fa-sm"></i> 초기화</button>
+                    <div class="token-display" id="tokenDisplay" title="클릭하여 복사">토큰을 발급받아 주세요</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REQUEST SECTION -->
+        <div id="emptyState" class="empty-select">
+            <i class="fa-solid fa-arrow-left-long" id="emptyStateArrow"></i>
+            <p>왼쪽 목록에서 API를 선택하세요</p>
+            <button class="btn-primary" id="emptyStateHint" onclick="toggleMobileSidebar()" style="display:none; margin-top:16px; font-size:0.85rem; align-items:center; gap:8px;">
+                <i class="fa-solid fa-list fa-sm"></i> API 목록 열기
+            </button>
+        </div>
+
+        <div id="requestArea" style="display:none; flex:1; display:none; flex-direction:column; overflow:hidden;">
+
+            <div class="request-section">
+                <div class="request-desc" id="requestDesc"></div>
+                <div class="request-url-bar">
+                    <select class="method-badge-select" id="methodSelect" onchange="updateMethodStyle()">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="PATCH">PATCH</option>
+                        <option value="DELETE">DELETE</option>
+                    </select>
+                    <input type="text" class="url-input" id="urlInput" placeholder="URL" readonly>
+                    <button class="btn-code" id="btnCode" onclick="showCodeModal()">
+                        <i class="fa-solid fa-code fa-xs"></i> Code
+                    </button>
+                    <button class="btn-spec" id="btnSpec" onclick="showSpecModal()">
+                        <i class="fa-solid fa-book-open fa-xs"></i> API 명세
+                    </button>
+                    <div class="btn-send-wrap">
+                        <button class="btn-send" id="btnSend" onclick="sendRequest()">
+                            <i class="fa-solid fa-paper-plane fa-sm"></i> Send
+                        </button>
+                        <button class="btn-send-arrow" id="btnSendArrow">
+                            <i class="fa-solid fa-chevron-down fa-xs"></i>
+                        </button>
+                        <div class="send-dropdown-menu" id="sendDropdownMenu">
+                            <button onclick="sendRequest(true)">
+                                <i class="fa-solid fa-download fa-xs"></i> Send and Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REQUEST TABS -->
+            <div class="tabs-container" id="tabsContainer" style="height:260px">
+                <div class="tabs-nav">
+                    <button class="tab-btn active" data-tab="path">
+                        Path <span class="tab-badge" id="pathBadge">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="query">
+                        Query <span class="tab-badge" id="queryBadge">0</span>
+                    </button>
+                    <button class="tab-btn" data-tab="headers">
+                        Headers <span class="tab-badge" id="headersBadge">1</span>
+                    </button>
+                    <button class="tab-btn" data-tab="body">
+                        Body
+                    </button>
+                </div>
+                <div class="tab-content">
+                    <!-- PATH -->
+                    <div class="tab-pane active" id="tab-path">
+                        <table class="kv-table" id="pathTable">
+                            <thead>
+                                <tr>
+                                    <th class="col-key">파라미터</th>
+                                    <th class="col-value">값</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pathBody"></tbody>
+                        </table>
+                        <p id="pathEmptyMsg" style="display:none; color:#a0aec0; font-size:0.85rem; padding:8px 0;">이 API는 Path 파라미터가 없습니다.</p>
+                    </div>
+                    <!-- QUERY -->
+                    <div class="tab-pane" id="tab-query">
+                        <table class="kv-table" id="queryTable">
+                            <thead>
+                                <tr>
+                                    <th class="col-check"></th>
+                                    <th class="col-key">키</th>
+                                    <th class="col-value">값</th>
+                                    <th class="col-action"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="queryBody"></tbody>
+                        </table>
+                        <button class="btn-add-row" onclick="addQueryRow()"><i class="fa-solid fa-plus fa-xs"></i> Query 파라미터 추가</button>
+                    </div>
+                    <!-- HEADERS -->
+                    <div class="tab-pane" id="tab-headers">
+                        <table class="kv-table" id="headersTable">
+                            <thead>
+                                <tr>
+                                    <th class="col-check"></th>
+                                    <th class="col-key">키</th>
+                                    <th class="col-value">값</th>
+                                    <th class="col-action"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="headersBody"></tbody>
+                        </table>
+                        <button class="btn-add-row" onclick="addHeaderRow()"><i class="fa-solid fa-plus fa-xs"></i> 헤더 추가</button>
+                    </div>
+                    <!-- BODY -->
+                    <div class="tab-pane" id="tab-body">
+                        <div class="body-toolbar">
+                            <span>Content-Type: application/json</span>
+                            <button class="btn-secondary" onclick="formatBody()" style="padding:4px 10px;font-size:0.8rem">
+                                <i class="fa-solid fa-wand-magic-sparkles fa-xs"></i> 정렬
+                            </button>
+                            <button class="btn-secondary" onclick="clearBody()" style="padding:4px 10px;font-size:0.8rem">
+                                <i class="fa-solid fa-eraser fa-xs"></i> 초기화
+                            </button>
+                        </div>
+                        <textarea class="body-editor" id="bodyEditor" placeholder='{"key": "value"}'></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HORIZONTAL RESIZER -->
+            <div class="h-resizer" id="hResizer"></div>
+
+            <!-- RESPONSE SECTION -->
+            <div class="response-section">
+                <div class="response-header">
+                    <span class="response-title">응답</span>
+                    <span id="statusBadge" style="display:none" class="status-badge"></span>
+                    <div class="response-meta" id="responseMeta" style="display:none">
+                        <span><i class="fa-regular fa-clock fa-xs"></i> <span id="responseTime">-</span></span>
+                        <span><i class="fa-solid fa-weight-hanging fa-xs"></i> <span id="responseSize">-</span></span>
+                    </div>
+                    <div class="response-actions">
+                        <button class="btn-secondary" id="btnExampleResponse" onclick="toggleExampleResponse()" style="display:none;padding:5px 10px;font-size:0.8rem">
+                            <i class="fa-regular fa-file-code fa-xs"></i> 예시 응답
+                        </button>
+                        <button class="btn-secondary" id="btnCopyResponse" onclick="copyResponse()" style="display:none;padding:5px 10px;font-size:0.8rem">
+                            <i class="fa-regular fa-copy fa-xs"></i> 복사
+                        </button>
+                        <button class="btn-secondary" id="btnClearResponse" onclick="clearResponse()" style="display:none;padding:5px 10px;font-size:0.8rem">
+                            <i class="fa-solid fa-trash fa-xs"></i> 지우기
+                        </button>
+                    </div>
+                </div>
+                <div class="response-body-wrap">
+                    <div class="response-placeholder" id="responsePlaceholder">
+                        <i class="fa-solid fa-satellite-dish"></i>
+                        <p>요청을 보내면 응답이 여기에 표시됩니다</p>
+                    </div>
+                    <pre class="response-pre" id="responseBody" style="display:none"></pre>
+                    <div id="exampleResponsePanel" style="display:none">
+                        <div style="padding:8px 20px;background:#f0f7ff;border-bottom:1px solid #bfdbfe;font-size:0.78rem;color:#1d4ed8;display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                            <i class="fa-regular fa-file-code fa-xs"></i> 예시 응답 (실제 요청 결과가 아닙니다)
+                            <button class="btn-icon" onclick="toggleExampleResponse()" style="margin-left:auto;color:#6b7280"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div id="exampleResponseBody"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /#requestArea -->
+
+    </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- API 명세 MODAL -->
+<div class="spec-overlay" id="specModal" onclick="closeSpecOutside(event)">
+    <div class="spec-modal">
+        <div class="spec-modal-header">
+            <div class="spec-modal-header-icon">
+                <i class="fa-solid fa-book-open"></i>
+            </div>
+            <div class="spec-modal-header-text">
+                <h2 id="specModalTitle"></h2>
+                <div class="spec-path-line">
+                    <span class="spec-opa" id="specModalOpa"></span>
+                    <span class="spec-path" id="specModalPath"></span>
+                </div>
+            </div>
+            <button class="spec-close" onclick="closeSpecModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="spec-tabs">
+            <button class="spec-tab-btn active" data-spec-tab="request">Request</button>
+            <button class="spec-tab-btn" data-spec-tab="response">Response</button>
+        </div>
+        <div class="spec-modal-body" id="specModalBody"></div>
+    </div>
+</div>
+
+<!-- GUIDE MODAL -->
+<div class="guide-overlay" id="guideModal" onclick="closeGuideOutside(event)">
+    <div class="guide-modal">
+        <div class="guide-header">
+            <div class="guide-header-icon">
+                <i class="fa-solid fa-book-open"></i>
+            </div>
+            <div class="guide-header-text">
+                <h2>eformsign API Tester — 사용 가이드</h2>
+                <p>5단계로 빠르게 API를 테스트해 보세요</p>
+            </div>
+            <button class="guide-close" onclick="closeGuide()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="guide-body">
+            <div class="guide-steps">
+
+                <!-- STEP 1 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">1</div>
+                    <i class="fa-solid fa-globe guide-step-icon"></i>
+                    <h3>환경 선택</h3>
+                    <p>화면 우측 상단에서 호출할 서버 환경을 선택합니다.</p>
+                    <ul>
+                        <li><strong>운영 (SaaS)</strong> — 일반 eformsign 환경</li>
+                        <li><strong>공공 (CSAP)</strong> — 공공기관 전용 환경</li>
+                        <li><strong>직접 입력</strong> — 커스텀 도메인 지정</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 2 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">2</div>
+                    <i class="fa-solid fa-key guide-step-icon"></i>
+                    <h3>인증 설정 및 토큰 발급</h3>
+                    <p>상단 인증 패널을 열어 정보를 입력하고 Access Token을 발급받습니다.</p>
+                    <ul>
+                        <li><strong>Signature 방식</strong> — API Key + User ID + 비밀 키(Hex) 입력</li>
+                        <li><strong>Bearer 방식</strong> — 기발급된 Access Token 직접 입력</li>
+                        <li>발급 후 토큰은 자동으로 Authorization 헤더에 삽입됩니다</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 3 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">3</div>
+                    <i class="fa-solid fa-list guide-step-icon"></i>
+                    <h3>API 선택</h3>
+                    <p>왼쪽 사이드바에서 호출할 API를 선택합니다.</p>
+                    <ul>
+                        <li>그룹, OPA 코드, HTTP Method 별로 묶여 있으며 클릭하여 접고 펼칠 수 있습니다</li>
+                        <li>상단 검색창에서 API 이름 또는 OPA 코드로 검색 가능합니다</li>
+                        <li>사이드바 너비는 경계선을 드래그해 조절할 수 있습니다</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 4 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">4</div>
+                    <i class="fa-solid fa-pen-to-square guide-step-icon"></i>
+                    <h3>요청 구성</h3>
+                    <p>Path / Query / Headers / Body 탭에서 요청 내용을 설정합니다.</p>
+                    <ul>
+                        <li><strong>Path</strong> — URL 경로에 포함되는 파라미터 입력 (예: {document_id})</li>
+                        <li><strong>Query</strong> — URL 뒤에 붙는 Query String 입력</li>
+                        <li><strong>Headers</strong> — 요청 헤더 추가 및 수정</li>
+                        <li><strong>Body</strong> — JSON 요청 본문 입력 (정렬/초기화 지원)</li>
+                        <li><strong>예시 응답</strong> 버튼으로 성공/실패 응답 구조 미리 확인 가능</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 5 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">5</div>
+                    <i class="fa-solid fa-paper-plane guide-step-icon"></i>
+                    <h3>요청 전송 및 응답 확인</h3>
+                    <p>Send 버튼을 눌러 API를 호출하고 응답을 확인합니다.</p>
+                    <ul>
+                        <li>상태 코드 · 응답 시간 · 응답 크기가 표시됩니다</li>
+                        <li>응답이 PDF/ZIP 파일이면 자동으로 다운로드됩니다</li>
+                        <li><strong>Send and Download</strong> — 응답을 파일로 저장</li>
+                        <li><strong>Code</strong> 버튼으로 현재 요청의 코드 스니펫을 확인할 수 있습니다</li>
+                        <li><strong>API 명세</strong> 버튼으로 요청/응답 명세를 모달로 확인할 수 있습니다</li>
+                    </ul>
+                </div>
+
+            </div>
+
+            <div class="guide-tip">
+                <i class="fa-solid fa-lightbulb fa-sm"></i>
+                <p>
+                    <strong>Tip.</strong>
+                    <strong>OPA2_007 (새 문서 작성 - 외부)</strong>, <strong>OPA2_048 (외부자 반려)</strong>는 Access Token 대신 <strong>Company API Key를 Base64 인코딩</strong>하여 Bearer 토큰으로 사용합니다.
+                    인증 패널에서 토큰을 발급하지 않고, Headers 탭의 Authorization 값을 직접 수정하세요.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CODE SNIPPET MODAL -->
+<div class="code-modal-overlay" id="codeModal">
+    <div class="code-modal">
+        <div class="code-modal-header">
+            <span><i class="fa-solid fa-code" style="color:var(--blue);margin-right:8px"></i>Code Snippet</span>
+            <button class="modal-close" onclick="closeCodeModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="code-modal-lang-tabs" id="langTabs">
+            <button class="lang-tab active" data-lang="curl">cURL</button>
+            <button class="lang-tab" data-lang="fetch">JavaScript (fetch)</button>
+            <button class="lang-tab" data-lang="jquery">JavaScript (jQuery)</button>
+            <button class="lang-tab" data-lang="python">Python</button>
+            <button class="lang-tab" data-lang="java">Java</button>
+        </div>
+        <div class="code-modal-body">
+            <pre class="code-snippet-pre" id="codeSnippetPre"></pre>
+        </div>
+        <div class="code-modal-footer">
+            <button class="btn-secondary" onclick="copyCodeSnippet()" style="padding:6px 14px;font-size:0.84rem">
+                <i class="fa-regular fa-copy fa-xs"></i> 복사
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- OpenAPITester 분할 모듈 (로드 순서 중요) -->
+<script src="/assets/js/openapi/api-list.js"></script>
+<script>
+// Prod 버전: 멤버 관련 API 비공개
+API_LIST = API_LIST.filter(ep => ep.group !== '멤버');
+</script>
+<script src="/assets/js/openapi/api-specs.js"></script>
+<script src="/assets/js/openapi/state.js"></script>
+<script src="/assets/js/openapi/ui.js"></script>
+<script src="/assets/js/openapi/init.js"></script>
+
+</body>
+</html>
