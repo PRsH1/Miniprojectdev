@@ -548,42 +548,59 @@ const API_LIST = [
         defaultBody: {
             document: {
                 document_name: "",
-                select_group_name: "",
-                fields: [
-                    { id: "", value: "" }
-                ],
+                comment: "",
                 recipients: [
                     {
                         step_type: "",
+                        id: "",
+                        name: "",
+                        email: "",
+                        sms: { country_code: "", phone_number: "" },
+                        auth: {
+                            password: "",
+                            password_hint: "",
+                            use_email_auth: null,
+                            use_mobile_auth: null,
+                            use_corporation_cert: null,
+                            valid: { day: null, hour: null }
+                        },
                         use_mail: null,
                         use_sms: null,
+                        is_noti_ignore: null,
                         member: {
                             name: "",
                             id: "",
                             sms: { country_code: "", phone_number: "" }
                         },
                         business_num: "",
+                        group: { id: "" },
+                        hidden_sections: []
+                    }
+                ],
+                referers: {
+                    groups: [],
+                    members: []
+                },
+                fields: [
+                    { id: "", value: "" }
+                ],
+                parameters: [
+                    { id: "", value: "" }
+                ],
+                select_group_name: "",
+                notification: [
+                    {
+                        name: "",
+                        email: "",
+                        sms: { country_code: "", phone_number: "" },
                         auth: {
                             password: "",
                             password_hint: "",
+                            mobile_verification: null,
                             valid: { day: null, hour: null }
                         }
                     }
-                ],
-                notification: [
-                    {
-                        email: "",
-                        sms: { country_code: "", phone_number: "" },
-                        name: "",
-                        auth: {
-                            valid: { day: null, hour: null },
-                            password: "",
-                            password_hint: "",
-                            mobile_verification: null
-                        }
-                    }
-                ],
-                comment: ""
+                ]
             }
         },
         exampleResponse: {
