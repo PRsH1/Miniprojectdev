@@ -7,6 +7,15 @@
 // ─── 멤버 목록 캐시 ─────────────────────────────────────
 let _membersCache = [];
 
+// ─── 결과 배지 표시 헬퍼 ─────────────────────────────────
+function setResultBadge(badgeId, isOk) {
+  const badge = document.getElementById(badgeId);
+  if (!badge) return;
+  badge.textContent = isOk ? '200 OK' : 'Error';
+  badge.className = 'result-status-badge ' + (isOk ? 'status-ok' : 'status-err');
+  badge.style.display = '';
+}
+
 // ─── 상수 ───────────────────────────────────────────────
 const tokenUrlMap = {
   op_saas: 'https://kr-api.eformsign.com/v2.0/api_auth/access_token',
@@ -112,6 +121,7 @@ function getAccessToken(button) {
       $('#refreshToken').val(data.oauth_token.refresh_token);
       $('#companyId').val(data.api_key.company.company_id);
       $('#tokenResult').html('Access Token 발급 성공.\n' + JSON.stringify(data, null, 2));
+      setResultBadge('tokenResultBadge', true);
       // 사이드바 토큰 상태 업데이트
       updateTokenStatus(data.oauth_token.access_token, env);
     },
@@ -122,6 +132,7 @@ function getAccessToken(button) {
       const msg = resp.ErrorMessage || jqXHR.statusText;
       alert(`발급 실패:\n코드: ${code}\n메시지: ${msg}`);
       $('#tokenResult').html(`Access Token 발급 실패.\n코드: ${code}\n응답:\n${JSON.stringify(resp, null, 2)}`);
+      setResultBadge('tokenResultBadge', false);
     },
     complete: () => hideLoading(button),
   });
@@ -176,8 +187,8 @@ function addMember(button) {
     body: JSON.stringify({ account }),
   })
     .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(`${res.status}: ${t}`); }); return res.json(); })
-    .then(data => { $('#result').html('멤버 추가 성공.\n' + JSON.stringify(data, null, 2)); })
-    .catch(err => { $('#result').html('Error: ' + err); })
+    .then(data => { $('#result').html('멤버 추가 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('addResultBadge', true); })
+    .catch(err => { $('#result').html('Error: ' + err); setResultBadge('addResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -204,8 +215,8 @@ function deleteMember(button) {
     body: JSON.stringify({}),
   })
     .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(`${res.status}: ${t}`); }); return res.text().then(t => t ? JSON.parse(t) : {}); })
-    .then(data => { $('#deleteResult').html('삭제 성공.\n' + JSON.stringify(data, null, 2)); })
-    .catch(err => { $('#deleteResult').html('Error: ' + err); })
+    .then(data => { $('#deleteResult').html('삭제 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('deleteResultBadge', true); })
+    .catch(err => { $('#deleteResult').html('Error: ' + err); setResultBadge('deleteResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -244,8 +255,8 @@ function updateMember(button) {
     body: JSON.stringify({ account }),
   })
     .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(`${res.status}: ${t}`); }); return res.json(); })
-    .then(data => { $('#updateResult').html('수정 성공.\n' + JSON.stringify(data, null, 2)); })
-    .catch(err => { $('#updateResult').html('Error: ' + err); })
+    .then(data => { $('#updateResult').html('수정 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('updateResultBadge', true); })
+    .catch(err => { $('#updateResult').html('Error: ' + err); setResultBadge('updateResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -330,8 +341,8 @@ function addGroup(button) {
     body: JSON.stringify({ group: { name, description, members } }),
   })
     .then(res => { if (!res.ok) return res.text().then(txt => { throw new Error(txt || `HTTP ${res.status}`); }); return res.json(); })
-    .then(json => { $('#groupResult').text(JSON.stringify({ message: '그룹 추가 성공', response: json }, null, 2)); })
-    .catch(err => { $('#groupResult').text(JSON.stringify({ message: '그룹 추가 실패', error: err.toString() }, null, 2)); })
+    .then(json => { $('#groupResult').text(JSON.stringify({ message: '그룹 추가 성공', response: json }, null, 2)); setResultBadge('groupAddResultBadge', true); })
+    .catch(err => { $('#groupResult').text(JSON.stringify({ message: '그룹 추가 실패', error: err.toString() }, null, 2)); setResultBadge('groupAddResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -355,8 +366,8 @@ function updateGroup(button) {
     body: JSON.stringify(body),
   })
     .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(t || `HTTP ${res.status}`); }); return res.json(); })
-    .then(json => { $('#groupUpdateResult').text(JSON.stringify({ message: '그룹 수정 성공', response: json }, null, 2)); })
-    .catch(err => { $('#groupUpdateResult').text(JSON.stringify({ message: '그룹 수정 실패', error: err.toString() }, null, 2)); })
+    .then(json => { $('#groupUpdateResult').text(JSON.stringify({ message: '그룹 수정 성공', response: json }, null, 2)); setResultBadge('groupUpdateResultBadge', true); })
+    .catch(err => { $('#groupUpdateResult').text(JSON.stringify({ message: '그룹 수정 실패', error: err.toString() }, null, 2)); setResultBadge('groupUpdateResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -380,8 +391,8 @@ function deleteGroups(button) {
     body: JSON.stringify({ group_ids: ids }),
   })
     .then(res => { if (!res.ok) return res.text().then(txt => { throw new Error(txt || `HTTP ${res.status}`); }); return res.json(); })
-    .then(json => { $('#groupDeleteResult').text(JSON.stringify({ message: '그룹 삭제 성공', response: json }, null, 2)); })
-    .catch(err => { $('#groupDeleteResult').text(JSON.stringify({ message: '그룹 삭제 실패', error: err.toString() }, null, 2)); })
+    .then(json => { $('#groupDeleteResult').text(JSON.stringify({ message: '그룹 삭제 성공', response: json }, null, 2)); setResultBadge('groupDeleteResultBadge', true); })
+    .catch(err => { $('#groupDeleteResult').text(JSON.stringify({ message: '그룹 삭제 실패', error: err.toString() }, null, 2)); setResultBadge('groupDeleteResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
