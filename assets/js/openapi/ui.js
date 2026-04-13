@@ -927,6 +927,7 @@ function buildHistoryPanel() {
             e.stopPropagation();
             historyDelete(entry.id);
             buildHistoryPanel();
+            buildSidebar($('#sidebarSearch').val());
         });
 
         $panel.append($item);
@@ -989,5 +990,7 @@ function loadHistoryEntry(entry) {
 function historyClearConfirm() {
     if (!confirm('저장된 요청을 모두 삭제할까요?')) return;
     historyClear();
+    expandedSaveEndpoints.clear();
     buildHistoryPanel();
+    buildSidebar($('#sidebarSearch').val());
 }
