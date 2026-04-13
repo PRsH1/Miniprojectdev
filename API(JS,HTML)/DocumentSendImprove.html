@@ -515,14 +515,14 @@
                     // [추가된 로직] 불러온 템플릿 정보에 is_noti_ignore가 있다면 반영
                     it.querySelector('[name=is_noti_ignore]').checked = !!r.is_noti_ignore;
 
-                    it.querySelector('[name=member_id]').value     = r.member.id || '';
-                    it.querySelector('[name=member_name]').value   = r.member.name || '';
-                    it.querySelector('[name=country_code]').value  = r.member.sms.country_code || '';
-                    it.querySelector('[name=phone_number]').value  = r.member.sms.phone_number || '';
-                    it.querySelector('[name=auth_pwd]').value      = r.auth.password || '';
-                    it.querySelector('[name=auth_pwd_hint]').value = r.auth.password_hint || '';
-                    it.querySelector('[name=valid_day]').value     = r.auth.valid.day;
-                    it.querySelector('[name=valid_hour]').value    = r.auth.valid.hour;
+                    it.querySelector('[name=member_id]').value     = r.member?.id || '';
+                    it.querySelector('[name=member_name]').value   = r.member?.name || '';
+                    it.querySelector('[name=country_code]').value  = r.member?.sms?.country_code || '';
+                    it.querySelector('[name=phone_number]').value  = r.member?.sms?.phone_number || '';
+                    it.querySelector('[name=auth_pwd]').value      = r.auth?.password || '';
+                    it.querySelector('[name=auth_pwd_hint]').value = r.auth?.password_hint || '';
+                    it.querySelector('[name=valid_day]').value     = r.auth?.valid?.day ?? 0;
+                    it.querySelector('[name=valid_hour]').value    = r.auth?.valid?.hour ?? 0;
                     setupRemove(it);
                     recEl.appendChild(it);
                     requestAnimationFrame(() => it.classList.add('visible'));
