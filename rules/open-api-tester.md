@@ -19,9 +19,9 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 |------|-----------|-----------|
 | `api-list.js` | 높음 | API 추가/수정/삭제 |
 | `api-specs.js` | 높음 | API 명세 추가/수정 |
-| `ui.js` | 중간 | UI 동작·요청·응답 로직 변경 |
-| `init.js` | 낮음 | 초기화·모달·리사이즈 변경 |
-| `state.js` | 낮음 | 상수·헬퍼 함수 변경 |
+| `ui.js` | 중간 | UI 동작·요청·응답·Save/History 로직 변경 |
+| `init.js` | 낮음 | 초기화·모달·리사이즈·사이드바 탭 이벤트 변경 |
+| `state.js` | 낮음 | 상수·헬퍼 함수·localStorage 히스토리 함수 변경 |
 
 ### API 데이터 구조 (`API_LIST`)
 
@@ -93,6 +93,47 @@ const API_SPECS = {
 - Access Token 대신 Company API Key를 Base64 인코딩하여 Bearer 토큰으로 사용
 - `defaultHeaders`에 `Authorization: Bearer {base64_encoded_api_key}` 플레이스홀더 제공
 
+### 요청 저장 및 히스토리 (Save & History)
+
+**저장소:** `localStorage` 키 `openapi_tester_history`, JSON 배열, 최대 100개 (초과 시 오래된 항목 자동 제거)
+
+**두 파일 공유:** `OpenAPITesterProd.html`과 `OpenAPITester.html`이 동일한 localStorage 키를 사용하므로 한 쪽에서 저장한 내역이 다른 쪽에서도 보인다. 의도된 동작.
+
+**사이드바 구조:**
+- `sidebar-tabs`: API 탭 / 저장됨 탭 전환 (`init.js` 내 `.sidebar-tab` 클릭 핸들러)
+- `#sidebarApiPanel`: 기존 API 목록 + 정렬 토글을 감싸는 래퍼
+- `#sidebarHistoryPanel`: flat 히스토리 목록 (저장됨 탭에서 표시)
+
+**인라인 저장 항목 (API 탭):**
+- `_makeEndpointWrap(ep)`: API 항목을 `.endpoint-wrap`으로 감싸고, 저장 항목이 있으면 `.endpoint-saves` 하위 영역 추가
+- `.saves-toggle` 버튼: 카운트 배지 + chevron. 클릭 시 `slideToggle(150)` 애니메이션
+- `expandedSaveEndpoints` Set: 펼침 상태를 기억 — `buildSidebar()` 재호출 후에도 `.toggle(isExpanded)`로 즉시 복원. 페이지 새로고침 시 초기화됨 (의도된 동작)
+
+**주요 함수 (state.js):**
+
+| 함수 | 역할 |
+|---|---|
+| `historyLoad()` | localStorage에서 배열 파싱 |
+| `historySave(entries)` | localStorage에 저장 |
+| `historyCaptureAndSave(name)` | 현재 요청 상태 캡처 후 저장 |
+| `historyDelete(id)` | 단건 삭제 |
+| `historyClear()` | 전체 삭제 |
+| `historyByEndpoint(endpointId)` | 특정 엔드포인트의 저장 항목만 필터링 |
+
+**주요 함수 (ui.js):**
+
+| 함수 | 역할 |
+|---|---|
+| `openSaveModal()` / `closeSaveModal()` | Save 모달 열기/닫기 |
+| `confirmSave()` | 저장 실행 → 해당 엔드포인트 자동 펼침 → `buildSidebar()` 재호출 |
+| `buildHistoryPanel()` | 저장됨 탭 flat 목록 렌더링 |
+| `loadHistoryEntry(entry)` | 저장 항목 불러오기: `selectEndpoint()` → 50ms 후 파라미터/Body/Authorization 복원 |
+| `historyClearConfirm()` | 전체 삭제 확인 → `expandedSaveEndpoints.clear()` → 재빌드 |
+
+**`state.currentHistoryId`:** 현재 불러온 히스토리 항목 ID. `loadHistoryEntry()` 시 설정, `selectEndpoint()` 직접 클릭 시 `null` 초기화.
+
+---
+
 ### 비(非)자명한 동작 — 수정 시 주의
 
 - **사이드바 정렬 모드**: `ui.js`의 `currentViewMode` 변수로 관리 (`'group'` | `'code'` | `'method'`)
@@ -105,3 +146,6 @@ const API_SPECS = {
   - `#btnMenu` 햄버거 버튼으로 열기/닫기, `#sidebarBackdrop` 클릭 시 닫힘
   - `init.js`의 `toggleMobileSidebar()` / `closeMobileSidebar()` 함수로 제어
   - `selectEndpoint` 호출 시 모바일 폭(`window.innerWidth <= 768`)이면 사이드바 자동으로 닫힘
+- **히스토리 삭제 후 사이드바 갱신**: `buildHistoryPanel()` 호출만으로는 API 탭의 인라인 배지가 갱신되지 않음. 히스토리 항목 삭제 시 반드시 `buildSidebar($('#sidebarSearch').val())`도 함께 호출할 것
+- **전체 삭제 시 펼침 상태 초기화**: `historyClearConfirm()`에서 `expandedSaveEndpoints.clear()` → `buildSidebar()` 순서를 유지해야 토글 버튼이 완전히 사라짐
+- **`saves-toggle` 클릭 시 `e.stopPropagation()` 필수**: `.endpoint-item` 클릭(→ `selectEndpoint`) 이벤트와 독립되어야 하므로 반드시 전파 차단
