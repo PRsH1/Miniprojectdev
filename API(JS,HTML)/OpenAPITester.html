@@ -521,6 +521,7 @@
         .guide-step:nth-child(3)::before { background: linear-gradient(90deg, #10b981, #059669); }
         .guide-step:nth-child(4)::before { background: linear-gradient(90deg, #8b5cf6, #7c3aed); }
         .guide-step:nth-child(5)::before { background: linear-gradient(90deg, #ec4899, #db2777); }
+        .guide-step:nth-child(6)::before { background: linear-gradient(90deg, #06b6d4, #0891b2); }
 
         .guide-step-num {
             display: inline-flex; align-items: center; justify-content: center;
@@ -533,6 +534,7 @@
         .guide-step:nth-child(3) .guide-step-num { background: #d1fae5; color: #065f46; }
         .guide-step:nth-child(4) .guide-step-num { background: #ede9fe; color: #5b21b6; }
         .guide-step:nth-child(5) .guide-step-num { background: #fce7f3; color: #9d174d; }
+        .guide-step:nth-child(6) .guide-step-num { background: #cffafe; color: #164e63; }
 
         .guide-step-icon {
             font-size: 1.5rem; margin-bottom: 10px; display: block;
@@ -542,6 +544,7 @@
         .guide-step:nth-child(3) .guide-step-icon { color: #059669; }
         .guide-step:nth-child(4) .guide-step-icon { color: #7c3aed; }
         .guide-step:nth-child(5) .guide-step-icon { color: #db2777; }
+        .guide-step:nth-child(6) .guide-step-icon { color: #0891b2; }
 
         .guide-step h3 { font-size: 0.9rem; font-weight: 700; color: #1a202c; margin-bottom: 8px; }
         .guide-step p  { font-size: 0.8rem; color: #64748b; line-height: 1.6; }
@@ -1379,7 +1382,7 @@
             </div>
             <div class="guide-header-text">
                 <h2>eformsign API Tester — 사용 가이드</h2>
-                <p>5단계로 빠르게 API를 테스트해 보세요</p>
+                <p>6단계로 빠르게 API를 테스트해 보세요</p>
             </div>
             <button class="guide-close" onclick="closeGuide()"><i class="fa-solid fa-xmark"></i></button>
         </div>
@@ -1409,6 +1412,7 @@
                         <li><strong>Signature 방식</strong> — API Key + User ID + 비밀 키(Hex) 입력</li>
                         <li><strong>Bearer 방식</strong> — 기발급된 Access Token 직접 입력</li>
                         <li>발급 후 토큰은 자동으로 Authorization 헤더에 삽입됩니다</li>
+                        <li>토큰 표시 영역을 클릭하면 클립보드에 복사됩니다</li>
                     </ul>
                 </div>
 
@@ -1422,6 +1426,7 @@
                         <li>그룹, OPA 코드, HTTP Method 별로 묶여 있으며 클릭하여 접고 펼칠 수 있습니다</li>
                         <li>상단 검색창에서 API 이름 또는 OPA 코드로 검색 가능합니다</li>
                         <li>사이드바 너비는 경계선을 드래그해 조절할 수 있습니다</li>
+                        <li>요청 영역과 응답 영역 사이의 경계선을 드래그하면 각 영역의 높이를 조절할 수 있습니다</li>
                     </ul>
                 </div>
 
@@ -1450,8 +1455,23 @@
                         <li>상태 코드 · 응답 시간 · 응답 크기가 표시됩니다</li>
                         <li>응답이 PDF/ZIP 파일이면 자동으로 다운로드됩니다</li>
                         <li><strong>Send and Download</strong> — 응답을 파일로 저장</li>
-                        <li><strong>Code</strong> 버튼으로 현재 요청의 코드 스니펫을 확인할 수 있습니다</li>
+                        <li><strong>Code</strong> 버튼으로 현재 요청의 코드 스니펫을 확인할 수 있습니다 (cURL · JS fetch · JS jQuery · Python · Java 5개 언어 지원)</li>
                         <li><strong>API 명세</strong> 버튼으로 요청/응답 명세를 모달로 확인할 수 있습니다</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 6 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">6</div>
+                    <i class="fa-solid fa-bookmark guide-step-icon"></i>
+                    <h3>요청 저장 및 히스토리</h3>
+                    <p>자주 쓰는 요청을 저장하고 언제든 불러올 수 있습니다.</p>
+                    <ul>
+                        <li><strong>Save</strong> 버튼으로 현재 환경·파라미터·헤더·Body를 통째로 저장</li>
+                        <li>저장 시 이름을 직접 입력하거나 기본값(API 이름)을 그대로 사용 가능</li>
+                        <li>저장된 API 항목에 카운트 배지가 생기고, 클릭하면 저장 목록이 펼쳐짐</li>
+                        <li>사이드바 <strong>저장됨</strong> 탭에서 전체 이력을 최신순으로 확인, 개별·전체 삭제 지원</li>
+                        <li>localStorage에 저장되므로 새로고침 후에도 유지됩니다 (최대 100개)</li>
                     </ul>
                 </div>
 
