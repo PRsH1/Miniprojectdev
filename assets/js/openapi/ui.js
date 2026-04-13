@@ -3,6 +3,9 @@
 // ──────────────────────────────────────────────────────────────────────────
 let currentViewMode = 'group';
 
+// 펼쳐진 엔드포인트 ID를 기억 — buildSidebar 재호출 후에도 상태 유지
+const expandedSaveEndpoints = new Set();
+
 function buildSidebar(filter = '') {
     const $list = $('#sidebarList').empty();
     const q = filter.toLowerCase();
@@ -27,15 +30,9 @@ function buildSidebar(filter = '') {
             return na - nb;
         });
         sorted.forEach(ep => {
-            const opaBadge = ep.opaCode ? `<span class="opa-code">${ep.opaCode}</span>` : '';
-            const $item = $(`
-                <div class="endpoint-item endpoint-item--flat" data-id="${ep.id}">
-                    ${methodBadge(ep.method)}
-                    ${opaBadge}
-                    <span class="ep-name">${ep.name}</span>
-                </div>`);
-            $item.on('click', () => selectEndpoint(ep.id));
-            $list.append($item);
+            const $wrap = _makeEndpointWrap(ep);
+            $wrap.find('.endpoint-item').addClass('endpoint-item--flat');
+            $list.append($wrap);
         });
 
     } else if (currentViewMode === 'method') {
@@ -56,6 +53,9 @@ function buildSidebar(filter = '') {
     if (state.currentEndpoint) {
         $(`.endpoint-item[data-id="${state.currentEndpoint.id}"]`).addClass('active');
     }
+    if (state.currentHistoryId) {
+        $(`.save-item[data-history-id="${state.currentHistoryId}"]`).addClass('active');
+    }
 }
 
 function _appendGroup($list, groupName, icon, items) {
@@ -69,15 +69,7 @@ function _appendGroup($list, groupName, icon, items) {
         </div>`);
     const $endpoints = $(`<div class="api-group-endpoints" id="${groupId}">`);
     items.forEach(ep => {
-        const opaBadge = ep.opaCode ? `<span class="opa-code">${ep.opaCode}</span>` : '';
-        const $item = $(`
-            <div class="endpoint-item" data-id="${ep.id}">
-                ${methodBadge(ep.method)}
-                ${opaBadge}
-                <span class="ep-name">${ep.name}</span>
-            </div>`);
-        $item.on('click', () => selectEndpoint(ep.id));
-        $endpoints.append($item);
+        $endpoints.append(_makeEndpointWrap(ep));
     });
     $header.on('click', function() {
         $(this).toggleClass('collapsed');
@@ -85,6 +77,84 @@ function _appendGroup($list, groupName, icon, items) {
     });
     $group.append($header, $endpoints);
     $list.append($group);
+}
+
+function _makeEndpointWrap(ep) {
+    const opaBadge = ep.opaCode ? `<span class="opa-code">${ep.opaCode}</span>` : '';
+    const saves = historyByEndpoint(ep.id);
+    const hasSaves = saves.length > 0;
+    const isExpanded = expandedSaveEndpoints.has(ep.id);
+
+    const $wrap = $('<div class="endpoint-wrap">');
+
+    // 저장 항목이 있을 때만 토글 버튼 추가
+    const toggleHtml = hasSaves ? `
+        <button class="saves-toggle ${isExpanded ? 'expanded' : ''}" data-ep-id="${ep.id}"
+            title="저장된 요청 ${isExpanded ? '접기' : '펼치기'}">
+            <span class="saves-count">${saves.length}</span>
+            <i class="fa-solid fa-chevron-right fa-xs saves-chevron"></i>
+        </button>` : '';
+
+    const $item = $(`
+        <div class="endpoint-item" data-id="${ep.id}">
+            ${methodBadge(ep.method)}
+            ${opaBadge}
+            <span class="ep-name">${ep.name}</span>
+            ${toggleHtml}
+        </div>`);
+    $item.on('click', () => selectEndpoint(ep.id));
+
+    // 토글 버튼 클릭은 selectEndpoint와 독립 동작
+    if (hasSaves) {
+        $item.find('.saves-toggle').on('click', function(e) {
+            e.stopPropagation();
+            const epId = $(this).data('ep-id');
+            if (expandedSaveEndpoints.has(epId)) {
+                expandedSaveEndpoints.delete(epId);
+            } else {
+                expandedSaveEndpoints.add(epId);
+            }
+            $(this).toggleClass('expanded');
+            $wrap.find('.endpoint-saves').slideToggle(150);
+        });
+    }
+
+    $wrap.append($item);
+
+    // 저장된 요청 하위 항목 (기본 숨김, 펼침 상태면 표시)
+    if (hasSaves) {
+        const $saves = $('<div class="endpoint-saves">').toggle(isExpanded);
+        saves.forEach(entry => {
+            const $saveItem = $(`
+                <div class="save-item" data-history-id="${entry.id}">
+                    <i class="fa-solid fa-floppy-disk fa-xs save-item-icon"></i>
+                    <span class="save-item-name">${entry.name}</span>
+                    <button class="save-item-delete" data-id="${entry.id}" title="삭제">
+                        <i class="fa-solid fa-xmark fa-xs"></i>
+                    </button>
+                </div>`);
+
+            $saveItem.on('click', function(e) {
+                if ($(e.target).closest('.save-item-delete').length) return;
+                loadHistoryEntry(entry);
+            });
+
+            $saveItem.find('.save-item-delete').on('click', function(e) {
+                e.stopPropagation();
+                historyDelete(entry.id);
+                if (historyByEndpoint(ep.id).length === 0) {
+                    expandedSaveEndpoints.delete(ep.id);
+                }
+                buildSidebar($('#sidebarSearch').val());
+                if ($('#sidebarHistoryPanel').is(':visible')) buildHistoryPanel();
+            });
+
+            $saves.append($saveItem);
+        });
+        $wrap.append($saves);
+    }
+
+    return $wrap;
 }
 
 function selectEndpoint(id) {
@@ -97,10 +167,12 @@ function selectEndpoint(id) {
     }
 
     state.currentEndpoint = ep;
+    state.currentHistoryId = null;
 
     // Sidebar highlight
     $('.endpoint-item').removeClass('active');
     $(`.endpoint-item[data-id="${id}"]`).addClass('active');
+    $('.save-item').removeClass('active');
 
     // 모바일: API 선택 후 사이드바 자동 닫기
     if (window.innerWidth <= 768) {
@@ -781,3 +853,141 @@ $(document).on('click', '.lang-tab', function() {
 $(document).on('click', '#codeModal', function(e) {
     if ($(e.target).is('#codeModal')) closeCodeModal();
 });
+
+// ──────────────────────────────────────────────────────────────────────────
+// SAVE MODAL
+// ──────────────────────────────────────────────────────────────────────────
+function openSaveModal() {
+    const ep = state.currentEndpoint;
+    if (!ep) { showToast('API를 먼저 선택해주세요'); return; }
+    $('#saveNameInput').val(ep.name);
+    $('#saveModal').addClass('open');
+    setTimeout(() => $('#saveNameInput').select(), 50);
+}
+
+function closeSaveModal() {
+    $('#saveModal').removeClass('open');
+}
+
+function confirmSave() {
+    const name = $('#saveNameInput').val().trim() || state.currentEndpoint?.name;
+    historyCaptureAndSave(name);
+    closeSaveModal();
+    showToast(`"${name}" 저장됨`);
+    // 저장 후 해당 엔드포인트 자동 펼침
+    if (state.currentEndpoint) {
+        expandedSaveEndpoints.add(state.currentEndpoint.id);
+    }
+    buildSidebar($('#sidebarSearch').val());
+    if ($('#sidebarHistoryPanel').is(':visible')) buildHistoryPanel();
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// HISTORY PANEL
+// ──────────────────────────────────────────────────────────────────────────
+function buildHistoryPanel() {
+    const list = historyLoad();
+    const $panel = $('#historyList').empty();
+
+    if (!list.length) {
+        $panel.html('<div class="history-empty"><i class="fa-solid fa-clock-rotate-left"></i><p>저장된 요청이 없습니다</p></div>');
+        return;
+    }
+
+    list.forEach(entry => {
+        const date = new Date(entry.savedAt);
+        const timeStr = date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
+            + ' ' + date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+
+        const statusHtml = entry.response
+            ? `<span class="history-status ${entry.response.statusClass.includes('2xx') ? 'ok' : 'err'}">${entry.response.statusText}</span>`
+            : '';
+
+        const $item = $(`
+            <div class="history-item" data-history-id="${entry.id}">
+                <div class="history-item-top">
+                    ${methodBadge(entry.method)}
+                    <span class="history-item-name">${entry.name}</span>
+                    <button class="history-delete-btn" data-id="${entry.id}" title="삭제">
+                        <i class="fa-solid fa-xmark fa-xs"></i>
+                    </button>
+                </div>
+                <div class="history-item-meta">
+                    <span class="history-time">${timeStr}</span>
+                    ${statusHtml}
+                </div>
+            </div>`);
+
+        $item.on('click', function(e) {
+            if ($(e.target).closest('.history-delete-btn').length) return;
+            loadHistoryEntry(entry);
+        });
+
+        $item.find('.history-delete-btn').on('click', function(e) {
+            e.stopPropagation();
+            historyDelete(entry.id);
+            buildHistoryPanel();
+        });
+
+        $panel.append($item);
+    });
+}
+
+function loadHistoryEntry(entry) {
+    const ep = API_LIST.find(e => e.id === entry.endpointId);
+    if (!ep) { showToast('해당 API를 찾을 수 없습니다'); return; }
+
+    selectEndpoint(ep.id);
+    state.currentHistoryId = entry.id;
+    $('.save-item').removeClass('active');
+    $(`.save-item[data-history-id="${entry.id}"]`).addClass('active');
+
+    setTimeout(() => {
+        if (entry.environment) {
+            $('#envSelect').val(entry.environment).trigger('change');
+        }
+
+        if (entry.pathParams?.length) {
+            $('#pathBody tr').each(function(i) {
+                const saved = entry.pathParams[i];
+                if (saved) $(this).find('.param-val').val(saved.value);
+            });
+        }
+
+        if (entry.queryParams?.length) {
+            $('#queryBody tr').each(function(i) {
+                const saved = entry.queryParams[i];
+                if (saved && !$(this).data('user-added')) {
+                    $(this).find('.param-enabled').prop('checked', saved.enabled);
+                    $(this).find('.param-val').val(saved.value);
+                }
+            });
+        }
+
+        if (entry.headers?.length) {
+            const authHeader = entry.headers.find(h => h.key === 'Authorization');
+            if (authHeader) {
+                $('#headersBody tr').each(function() {
+                    if ($(this).find('.header-key').val() === 'Authorization') {
+                        $(this).find('.header-val').val(authHeader.value);
+                    }
+                });
+            }
+        }
+
+        if (entry.body) {
+            $('#bodyEditor').val(entry.body);
+        }
+
+        updateUrlPreview();
+        updateParamsBadge();
+        updateHeadersBadge();
+        showToast(`"${entry.name}" 불러옴`);
+    }, 50);
+}
+
+function historyClearConfirm() {
+    if (!confirm('저장된 요청을 모두 삭제할까요?')) return;
+    historyClear();
+    buildHistoryPanel();
+}

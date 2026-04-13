@@ -13,6 +13,7 @@ let state = {
     accessToken: '',
     authMethod: 'signature',   // 'signature' | 'bearer'
     currentEndpoint: null,
+    currentHistoryId: null,
 };
 
 // 엔드포인트별 응답 캐시 { [endpointId]: { statusText, statusClass, time, size, bodyHtml } }
@@ -79,4 +80,85 @@ function formatJsonSyntax(json) {
         .replace(/:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?)/g, ': <span class="json-number">$1</span>')
         .replace(/:\s*(true|false)/g, ': <span class="json-bool">$1</span>')
         .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// HISTORY (localStorage)
+// ──────────────────────────────────────────────────────────────────────────
+const HISTORY_KEY = 'openapi_tester_history';
+const HISTORY_MAX = 100;
+
+function historyLoad() {
+    try {
+        return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    } catch { return []; }
+}
+
+function historySave(entries) {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
+}
+
+function historyCaptureAndSave(customName) {
+    const ep = state.currentEndpoint;
+    if (!ep) return;
+
+    const pathParams = [];
+    $('#pathBody tr').each(function() {
+        pathParams.push({ key: $(this).find('.param-key').val(), value: $(this).find('.param-val').val() });
+    });
+
+    const queryParams = [];
+    $('#queryBody tr').each(function() {
+        queryParams.push({ enabled: $(this).find('.param-enabled').is(':checked'), key: $(this).find('.param-key').val(), value: $(this).find('.param-val').val() });
+    });
+
+    const headers = [];
+    $('#headersBody tr').each(function() {
+        headers.push({ enabled: $(this).find('.header-enabled').is(':checked'), key: $(this).find('.header-key').val(), value: $(this).find('.header-val').val() });
+    });
+
+    let response = null;
+    if ($('#statusBadge').is(':visible')) {
+        response = {
+            statusText: $('#statusBadge').text(),
+            statusClass: $('#statusBadge').attr('class'),
+            time: $('#responseTime').text(),
+            size: $('#responseSize').text()
+        };
+    }
+
+    const entry = {
+        id: Date.now().toString(),
+        savedAt: Date.now(),
+        name: customName || ep.name,
+        endpointId: ep.id,
+        method: ep.method,
+        environment: $('#envSelect').val(),
+        url: $('#urlInput').val(),
+        pathParams,
+        queryParams,
+        headers,
+        body: $('#bodyEditor').val(),
+        response
+    };
+
+    const list = historyLoad();
+    list.unshift(entry);
+    if (list.length > HISTORY_MAX) list.splice(HISTORY_MAX);
+    historySave(list);
+    return entry;
+}
+
+function historyDelete(id) {
+    const list = historyLoad().filter(e => e.id !== id);
+    historySave(list);
+}
+
+function historyClear() {
+    localStorage.removeItem(HISTORY_KEY);
+}
+
+// 특정 엔드포인트에 저장된 히스토리 항목 반환 (최신순)
+function historyByEndpoint(endpointId) {
+    return historyLoad().filter(e => e.endpointId === endpointId);
 }

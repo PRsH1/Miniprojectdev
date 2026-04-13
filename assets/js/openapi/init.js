@@ -94,6 +94,21 @@ $(document).ready(function() {
 
     // 모바일 사이드바 백드롭 클릭 시 닫기
     $('#sidebarBackdrop').on('click', closeMobileSidebar);
+
+    // 사이드바 탭 전환
+    $(document).on('click', '.sidebar-tab', function() {
+        const tab = $(this).data('sidebar-tab');
+        $('.sidebar-tab').removeClass('active');
+        $(this).addClass('active');
+        if (tab === 'api') {
+            $('#sidebarApiPanel').show();
+            $('#sidebarHistoryPanel').hide();
+        } else {
+            $('#sidebarApiPanel').hide();
+            $('#sidebarHistoryPanel').show();
+            buildHistoryPanel();
+        }
+    });
 });
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -800,6 +800,265 @@
 
             /* 코드 모달 */
             .code-modal { width: 95%; }
+
+            /* Save 버튼 모바일 */
+            .btn-save { order: 3; flex-shrink: 0; min-height: 44px; padding: 0 12px; }
+        }
+
+        /* ========== SIDEBAR TABS ========== */
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid #0d1820;
+            flex-shrink: 0;
+        }
+        .sidebar-tab {
+            flex: 1;
+            padding: 9px 0;
+            background: none;
+            border: none;
+            color: var(--sidebar-muted);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            border-bottom: 2px solid transparent;
+        }
+        .sidebar-tab:hover { color: #fff; }
+        .sidebar-tab.active {
+            color: #fff;
+            border-bottom-color: var(--blue);
+        }
+
+        /* ========== SAVE BUTTON ========== */
+        .btn-save {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            background: #1a4a8a;
+            color: #7ab8f5;
+            border: 1px solid #2d5fa0;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .btn-save:hover {
+            background: var(--blue);
+            color: #fff;
+            border-color: var(--blue);
+        }
+
+        /* ========== HISTORY PANEL ========== */
+        .history-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid #0d1820;
+            font-size: 0.8rem;
+            color: var(--sidebar-muted);
+        }
+        .history-clear-btn {
+            background: none;
+            border: none;
+            color: var(--sidebar-muted);
+            font-size: 0.75rem;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.15s;
+        }
+        .history-clear-btn:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+
+        .history-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid #0d1820;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .history-item:hover { background: var(--sidebar-hover); }
+
+        .history-item-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 4px;
+        }
+        .history-item-name {
+            flex: 1;
+            font-size: 0.82rem;
+            color: var(--sidebar-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .history-delete-btn {
+            background: none;
+            border: none;
+            color: var(--sidebar-muted);
+            cursor: pointer;
+            padding: 2px 4px;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+        .history-item:hover .history-delete-btn { opacity: 1; }
+        .history-delete-btn:hover { color: #f87171; }
+
+        .history-item-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .history-time {
+            font-size: 0.73rem;
+            color: var(--sidebar-muted);
+        }
+        .history-status {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+        .history-status.ok { background: rgba(34,197,94,0.15); color: #4ade80; }
+        .history-status.err { background: rgba(248,113,113,0.15); color: #f87171; }
+
+        .history-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--sidebar-muted);
+        }
+        .history-empty i {
+            font-size: 1.8rem;
+            display: block;
+            margin-bottom: 10px;
+            opacity: 0.4;
+        }
+        .history-empty p { font-size: 0.82rem; }
+
+        /* ========== SAVE MODAL ========== */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45); z-index: 500;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: #fff; border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .modal-header {
+            display: flex; align-items: center; padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            font-weight: 700; font-size: 0.95rem; color: #1a202c;
+        }
+        .modal-header span { flex: 1; }
+        .modal-close {
+            background: none; border: none; cursor: pointer;
+            color: #a0aec0; font-size: 1.1rem; padding: 2px 6px; border-radius: 4px;
+        }
+        .modal-close:hover { color: #1a202c; background: #f7fafc; }
+        .btn-ghost {
+            background: #fff; color: #4a5568; border: 1px solid var(--border);
+            padding: 8px 16px; border-radius: 6px; font-size: 0.88rem;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .btn-ghost:hover { border-color: #a0aec0; background: #f7fafc; }
+
+        /* ========== ENDPOINT WRAP & SAVE ITEMS ========== */
+        .endpoint-wrap {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .endpoint-saves {
+            background: rgba(0, 0, 0, 0.15);
+            border-left: 2px solid #2d5fa0;
+            margin-left: 12px;
+        }
+
+        .save-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: background 0.1s;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .save-item:last-child { border-bottom: none; }
+        .save-item:hover { background: var(--sidebar-hover); }
+        .save-item.active { background: rgba(45,123,224,0.2); }
+
+        .save-item-icon {
+            color: #4fa8ff;
+            opacity: 0.7;
+            flex-shrink: 0;
+            font-size: 0.7rem;
+        }
+
+        .save-item-name {
+            flex: 1;
+            font-size: 0.78rem;
+            color: var(--sidebar-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .save-item:hover .save-item-name { color: var(--sidebar-text); }
+
+        .save-item-delete {
+            background: none;
+            border: none;
+            color: var(--sidebar-muted);
+            cursor: pointer;
+            padding: 1px 3px;
+            opacity: 0;
+            flex-shrink: 0;
+            transition: opacity 0.15s;
+            line-height: 1;
+        }
+        .save-item:hover .save-item-delete { opacity: 1; }
+        .save-item-delete:hover { color: #f87171; }
+
+        /* ========== SAVES TOGGLE BUTTON ========== */
+        .saves-toggle {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: var(--sidebar-muted);
+            flex-shrink: 0;
+            transition: color 0.15s, background 0.15s;
+            position: relative;
+            z-index: 1;
+        }
+        .saves-toggle:hover {
+            color: #4fa8ff;
+            background: rgba(79,168,255,0.1);
+        }
+        .saves-count {
+            font-size: 0.68rem;
+            font-weight: 700;
+            background: rgba(79,168,255,0.15);
+            color: #4fa8ff;
+            padding: 1px 5px;
+            border-radius: 8px;
+            line-height: 1.4;
+        }
+        .saves-chevron {
+            transition: transform 0.2s ease;
+            font-size: 0.65rem;
+        }
+        .saves-toggle.expanded .saves-chevron {
+            transform: rotate(90deg);
         }
     </style>
 </head>
@@ -841,19 +1100,38 @@
         <div class="sidebar-search">
             <input type="text" id="sidebarSearch" placeholder="&#xf002; API 검색...">
         </div>
-        <div class="sidebar-view-label">정렬 방식</div>
-        <div class="sidebar-view-toggle" id="sidebarViewToggle">
-            <button class="view-btn active" data-view="group" title="그룹별 보기">
-                <i class="fa-solid fa-layer-group fa-xs"></i> 그룹
+        <div class="sidebar-tabs">
+            <button class="sidebar-tab active" data-sidebar-tab="api">
+                <i class="fa-solid fa-plug fa-xs"></i> API
             </button>
-            <button class="view-btn" data-view="code" title="OPA2 코드순 보기">
-                <i class="fa-solid fa-list-ol fa-xs"></i> 코드순
-            </button>
-            <button class="view-btn" data-view="method" title="HTTP Method별 보기">
-                <i class="fa-solid fa-code fa-xs"></i> Method
+            <button class="sidebar-tab" data-sidebar-tab="history">
+                <i class="fa-solid fa-clock-rotate-left fa-xs"></i> 저장됨
             </button>
         </div>
-        <div class="sidebar-list" id="sidebarList"></div>
+        <div id="sidebarApiPanel" style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+            <div class="sidebar-view-label">정렬 방식</div>
+            <div class="sidebar-view-toggle" id="sidebarViewToggle">
+                <button class="view-btn active" data-view="group" title="그룹별 보기">
+                    <i class="fa-solid fa-layer-group fa-xs"></i> 그룹
+                </button>
+                <button class="view-btn" data-view="code" title="OPA2 코드순 보기">
+                    <i class="fa-solid fa-list-ol fa-xs"></i> 코드순
+                </button>
+                <button class="view-btn" data-view="method" title="HTTP Method별 보기">
+                    <i class="fa-solid fa-code fa-xs"></i> Method
+                </button>
+            </div>
+            <div class="sidebar-list" id="sidebarList"></div>
+        </div>
+        <div id="sidebarHistoryPanel" style="display:none; flex:1; overflow-y:auto; flex-direction:column;">
+            <div class="history-panel-header">
+                <span>저장된 요청</span>
+                <button class="history-clear-btn" onclick="historyClearConfirm()">
+                    <i class="fa-solid fa-trash-can fa-xs"></i> 전체 삭제
+                </button>
+            </div>
+            <div id="historyList"></div>
+        </div>
     </aside>
     <div class="sidebar-resizer" id="sidebarResizer"></div>
 
@@ -922,6 +1200,9 @@
                     <input type="text" class="url-input" id="urlInput" placeholder="URL" readonly>
                     <button class="btn-code" id="btnCode" onclick="showCodeModal()">
                         <i class="fa-solid fa-code fa-xs"></i> Code
+                    </button>
+                    <button class="btn-save" onclick="openSaveModal()" title="현재 요청 저장">
+                        <i class="fa-solid fa-floppy-disk fa-xs"></i> Save
                     </button>
                     <button class="btn-spec" id="btnSpec" onclick="showSpecModal()">
                         <i class="fa-solid fa-book-open fa-xs"></i> API 명세
@@ -1208,6 +1489,31 @@
         <div class="code-modal-footer">
             <button class="btn-secondary" onclick="copyCodeSnippet()" style="padding:6px 14px;font-size:0.84rem">
                 <i class="fa-regular fa-copy fa-xs"></i> 복사
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- SAVE MODAL -->
+<div id="saveModal" class="modal-overlay" onclick="if(event.target===this)closeSaveModal()">
+    <div class="modal-box" style="width:380px">
+        <div class="modal-header">
+            <span>요청 저장</span>
+            <button class="modal-close" onclick="closeSaveModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div style="padding:20px">
+            <label style="font-size:0.85rem;color:#555;display:block;margin-bottom:6px;">저장 이름</label>
+            <input id="saveNameInput" type="text"
+                style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:0.9rem;outline:none;"
+                placeholder="요청 이름 입력"
+                onkeydown="if(event.key==='Enter')confirmSave()">
+        </div>
+        <div style="padding:12px 20px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #eee;">
+            <button class="btn-ghost" onclick="closeSaveModal()">취소</button>
+            <button class="btn-primary" onclick="confirmSave()">
+                <i class="fa-solid fa-floppy-disk fa-xs"></i> 저장
             </button>
         </div>
     </div>
