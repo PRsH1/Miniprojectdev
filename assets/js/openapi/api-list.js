@@ -601,51 +601,23 @@ const API_LIST = [
         },
         exampleResponse: {
             success: {
+                template_id: "string",
                 document: {
+                    id: "string",
                     document_name: "string",
-                    select_group_name: "string",
-                    fields: [
-                        { id: "string", value: "string" }
-                    ],
-                    recipients: [
-                        {
-                            step_type: "string",
-                            use_mail: "boolean",
-                            use_sms: "boolean",
-                            member: {
-                                name: "string",
-                                id: "string",
-                                sms: { country_code: "string", phone_number: "string" }
-                            },
-                            business_num: "string",
-                            auth: {
-                                password: "string",
-                                password_hint: "string",
-                                valid: { day: "number", hour: "number" }
-                            }
-                        },
-                        {
-                            step_type: "string",
-                            use_mail: "boolean",
-                            use_sms: "boolean",
-                            group: { id: "string" }
-                        }
-                    ],
-                    notification: [
-                        {
-                            email: "string",
-                            sms: { country_code: "string", phone_number: "string" },
+                    document_status: "string"
+                },
+                recipients: [
+                    {
+                        member: {
                             name: "string",
-                            auth: {
-                                valid: { day: "number", hour: "number" },
-                                password: "string",
-                                password_hint: "string",
-                                mobile_verification: "boolean"
-                            }
+                            id: "string",
+                            sms: { country_code: "string", phone_number: "string" },
+                            token_id: "string",
+                            sms_template_index: "number"
                         }
-                    ],
-                    comment: "string"
-                }
+                    }
+                ]
             },
             errors: [
                 {
