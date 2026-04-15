@@ -5478,14 +5478,77 @@ const API_LIST = [
                         }
                     ]
                 },
+                "config": {
+                    "parameters": {
+                        "inputs": [],
+                        "outputs": [
+                            {
+                                "name": "string",
+                                "type": "string",
+                                "desc": "string",
+                                "form_index": "number"
+                            }
+                        ],
+                        "default_input_controls": [
+                            {
+                                "name": "string",
+                                "input_type": "string",
+                                "accessible": "boolean",
+                                "required": "boolean",
+                                "used": "boolean",
+                                "section": "string",
+                                "data_type": "string"
+                            }
+                        ],
+                        "dataset_list": [],
+                        "sections": ["string"]
+                    },
+                    "display_settings": [
+                        {
+                            "seq": "number",
+                            "name": "string",
+                            "display_name": "string",
+                            "displayable": "boolean",
+                            "form_index": "number"
+                        }
+                    ],
+                    "step_settings": [
+                        {
+                            "seq": "number",
+                            "step_group": "number",
+                            "name": "string",
+                            "type": "string",
+                            "numbering": "boolean",
+                            "inperson": "boolean",
+                            "inperson_monitor": "boolean",
+                            "option": {},
+                            "alert_option": {},
+                            "input_control_option": [],
+                            "_internal_only": "boolean"
+                        }
+                    ],
+                    "input_form_parameters": [],
+                    "input_component_parameters": [],
+                    "external_access": {
+                        "is_external_access": "boolean",
+                        "access_datas": [],
+                        "search_conditions": []
+                    },
+                    "notification": {
+                        "internal_recipient": {},
+                        "external_recipient": {},
+                        "processing_status": {},
+                        "processing_request": {}
+                    }
+                },
                 "enabled": "boolean",
                 "form_modify_auth": "boolean",
                 "title_change": "boolean",
                 "quick_processing": "boolean",
                 "form_doc_retention_period": {
-                    "usePeriod": "boolean",
-                    "periodType": "string",
-                    "period": "number"
+                    "period": "number",
+                    "use_period": "boolean",
+                    "period_type": "string"
                 },
                 "availableDeleteDraft": "boolean"
             },
