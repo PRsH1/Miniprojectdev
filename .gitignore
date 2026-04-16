@@ -49,3 +49,7 @@ tmp-*.json
 .claude/settings.local.json
 .env*.local
 .gstack/
+
+#docs
+
+/docs

@@ -480,17 +480,23 @@
     }
 
     async function issueTokenFromPanel(apiKey, memberId, secretKey) {
+        const execTime = Date.now();
+        const keyObj = KEYUTIL.getKeyFromPlainPrivatePKCS8Hex(secretKey);
+        const sig = new KJUR.crypto.Signature({ alg: 'SHA256withECDSA' });
+        sig.init(keyObj);
+        sig.updateString(execTime.toString());
+        const signature = sig.sign();
+
         const response = await fetch("/api/getToken", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ domain: baseUrl(), apiKey, memberId, secretKey })
+            body: JSON.stringify({ domain: baseUrl(), apiKey, memberId, signature, execTime })
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.message || payload.ErrorMessage || "Access Token 발급에 실패했습니다.");
-        state.token = must(payload && payload.oauth_token && payload.oauth_token.access_token, "응답에서 access_token을 찾지 못했습니다.");
-        // company_id 자동 추출
-        const cid = payload.api_key && payload.api_key.company && payload.api_key.company.company_id;
-        if (cid) { state.companyId = cid; }
+        state.token = must(payload?.oauth_token?.access_token, "응답에서 access_token을 찾지 못했습니다.");
+        const cid = payload?.api_key?.company?.company_id;
+        if (cid) state.companyId = cid;
         updateAuthPanelUI();
         return state.token;
     }

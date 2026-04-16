@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { serialize } = require('cookie');
 const { PROTECTED_PAGES } = require('./_shared/protected-pages-config');
 
@@ -17,21 +18,9 @@ module.exports = async function handler(req, res) {
   const normalizedInput = password.trim();
   const normalizedExpected = typeof expectedPassword === 'string' ? expectedPassword.trim() : '';
 
-  console.log('[login debug]', {
-    requestedScope: scope,
-    resolvedScope: PROTECTED_PAGES[scope] ? scope : 'member',
-    passwordEnv: cfg.passwordEnv,
-    hasExpectedPassword: Boolean(expectedPassword),
-    inputLength: password.length,
-    expectedLength: typeof expectedPassword === 'string' ? expectedPassword.length : 0,
-    trimmedInputLength: normalizedInput.length,
-    trimmedExpectedLength: normalizedExpected.length,
-    exactMatch: Boolean(expectedPassword) && password === expectedPassword,
-    trimmedMatch: Boolean(expectedPassword) && normalizedInput === normalizedExpected,
-    next: next || cfg.defaultNext,
-  });
-
-  if (expectedPassword && password === expectedPassword) {
+  const expected = Buffer.from(expectedPassword || '');
+  const actual = Buffer.from(password || '');
+  if (expected.length > 0 && expected.length === actual.length && crypto.timingSafeEqual(expected, actual)) {
     const cookie = serialize(cfg.cookieName, process.env.AUTH_COOKIE_VALUE, {
       httpOnly: true,
       secure: process.env.NODE_ENV !== 'development',
@@ -48,20 +37,6 @@ module.exports = async function handler(req, res) {
   params.set('error', '1');
   if (next) params.set('next', next);
   params.set('scope', scope);
-
-  if (expectedPassword && password !== expectedPassword && normalizedInput === normalizedExpected) {
-    console.warn('[login debug] Password mismatch caused by surrounding whitespace', {
-      scope,
-      passwordEnv: cfg.passwordEnv,
-    });
-  }
-
-  if (!expectedPassword) {
-    console.warn('[login debug] Missing expected password environment variable', {
-      scope,
-      passwordEnv: cfg.passwordEnv,
-    });
-  }
 
   return res.redirect(302, `/auth/login.html?${params.toString()}`);
 };

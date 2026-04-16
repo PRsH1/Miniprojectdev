@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { promises: fs } = require('fs');
 const path = require('path');
 const { parse } = require('cookie');
@@ -11,7 +12,9 @@ module.exports = function createProtectedPageHandler(config) {
     const cookies = parse(req.headers.cookie || '');
     const authCookie = cookies[config.cookieName];
 
-    if (authCookie === process.env.AUTH_COOKIE_VALUE) {
+    const expected = Buffer.from(process.env.AUTH_COOKIE_VALUE || '');
+    const actual = Buffer.from(authCookie || '');
+    if (expected.length > 0 && expected.length === actual.length && crypto.timingSafeEqual(expected, actual)) {
       try {
         const fullPath = path.join(process.cwd(), config.filePath);
         const html = await fs.readFile(fullPath, 'utf8');
