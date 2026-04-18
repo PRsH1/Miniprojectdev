@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>관리자 — eformsign</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=SUIT:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --sidebar-bg: #111827; --sidebar-surface: #182131; --sidebar-hover: #1a2740;
+      --sidebar-active: #1a2f50; --accent: #f59e0b;
+      --page-bg: #f0f4f8; --card-bg: #ffffff; --border: #d7dfea;
+      --primary: #1a73e8; --danger: #dc3545; --success: #1f9d68; --warning: #d97706;
+      --result-bg: #1a2332; --text-main: #1e2a3a; --text-sub: #64748b; --text-muted: #94a3b8;
+      --font-ui: 'SUIT', sans-serif; --font-heading: 'Sora', sans-serif; --font-mono: 'JetBrains Mono', monospace;
+      --radius-card: 14px; --radius-sm: 6px; --radius-md: 10px;
+      --shadow-card: 0 1px 4px rgba(0,0,0,.08); --shadow-card-h: 0 4px 16px rgba(0,0,0,.12);
+      --primary-hover: #155bc0;
+    }
+    html, body { height: 100%; }
+    body { font-family: var(--font-ui); background: var(--page-bg); color: var(--text-main); display: flex; min-height: 100vh; }
+
+    /* ─── 앱 셸 ─────────────────────────────────────────── */
+    .app-shell { display: flex; width: 100%; min-height: 100vh; }
+
+    /* ─── 사이드바 ──────────────────────────────────────── */
+    .sidebar {
+      width: 220px; min-width: 220px; background: var(--sidebar-bg);
+      border-right: 1px solid rgba(255,255,255,.06);
+      display: flex; flex-direction: column; position: sticky; top: 0;
+      height: 100vh; overflow-y: auto; flex-shrink: 0;
+    }
+    .sidebar-logo { padding: 20px 18px 14px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .sidebar-logo h1 { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: #fff; }
+    .sidebar-logo p { font-size: 11px; color: #6b7ea0; margin-top: 2px; }
+    .sidebar-nav { padding: 12px 0 20px; flex: 1; }
+    .nav-group-label { font-size: 10px; font-weight: 700; color: #4b5a72; text-transform: uppercase; letter-spacing: .8px; padding: 10px 18px 4px; }
+    .sidebar-menu-item {
+      display: flex; align-items: center; gap: 9px; padding: 9px 18px;
+      cursor: pointer; color: #8fa3c4; font-size: 13px; font-weight: 500;
+      border-left: 3px solid transparent; transition: background .12s, color .12s, border-color .12s; user-select: none;
+    }
+    .sidebar-menu-item:hover { background: var(--sidebar-hover); color: #c9d8ef; }
+    .sidebar-menu-item.active { background: var(--sidebar-active); color: #e2ecff; border-left-color: var(--accent); }
+    .sidebar-menu-item .fa { width: 16px; text-align: center; }
+    .sidebar-menu-item .badge { margin-left: auto; background: var(--danger); color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+    .sidebar-footer { padding: 14px 18px; border-top: 1px solid rgba(255,255,255,.06); }
+    .btn-logout { width: 100%; padding: 8px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: transparent; color: #8fa3c4; font-size: 12px; cursor: pointer; transition: background .12s; }
+    .btn-logout:hover { background: rgba(255,255,255,.06); color: #c9d8ef; }
+
+    /* ─── 메인 패널 ─────────────────────────────────────── */
+    .main-panel { flex: 1; padding: 24px; overflow-y: auto; max-width: 1100px; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .section-title { font-family: var(--font-heading); font-size: 18px; font-weight: 700; margin-bottom: 18px; color: var(--text-main); }
+
+    /* ─── 카드 ──────────────────────────────────────────── */
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); margin-bottom: 18px; }
+    .card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .card-title { font-weight: 700; font-size: 14px; color: var(--text-main); flex: 1; }
+    .card-badge { font-size: 11px; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; border-radius: 20px; padding: 2px 10px; font-weight: 600; }
+    .card-body { padding: 18px; }
+
+    /* ─── 테이블 ────────────────────────────────────────── */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f8fafc; color: var(--text-sub); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; color: var(--text-main); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+    .empty-row td { text-align: center; color: var(--text-muted); padding: 24px; }
+
+    /* ─── 뱃지 ──────────────────────────────────────────── */
+    .badge-role { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+    .badge-role.admin { background: #fef3c7; color: #92400e; }
+    .badge-role.manager { background: #e0f2fe; color: #0369a1; }
+    .badge-role.user { background: #f0fdf4; color: #166534; }
+    .badge-status { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+    .badge-status.active { background: #f0fdf4; color: #166534; }
+    .badge-status.inactive { background: #fef2f2; color: #991b1b; }
+    .badge-status.locked { background: #fff7ed; color: #c2410c; }
+    .badge-result { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+    .badge-result.success { background: #f0fdf4; color: #166534; }
+    .badge-result.failure { background: #fef2f2; color: #991b1b; }
+    .badge-result.denied { background: #fff7ed; color: #c2410c; }
+
+    /* ─── 버튼 ──────────────────────────────────────────── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: filter .12s, transform .04s; border: 1px solid transparent; }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary-hover); }
+    .btn-primary:hover { filter: brightness(.95); }
+    .btn-danger { background: var(--danger); color: #fff; border-color: #b91c1c; }
+    .btn-danger:hover { filter: brightness(.9); }
+    .btn-success { background: var(--success); color: #fff; border-color: #166534; }
+    .btn-success:hover { filter: brightness(.9); }
+    .btn-ghost { background: transparent; color: var(--text-sub); border-color: var(--border); }
+    .btn-ghost:hover { background: #f1f5f9; }
+    .btn-warning { background: var(--warning); color: #fff; border-color: #b45309; }
+    .btn-warning:hover { filter: brightness(.9); }
+    .action-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    /* ─── 폼 공통 ───────────────────────────────────────── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-label { font-size: 12px; color: var(--text-sub); font-weight: 600; }
+    .form-input { padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; transition: border-color .15s, box-shadow .15s; }
+    .form-input:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,.3); }
+    select.form-input { background: #fff; }
+    .form-msg { font-size: 12px; margin-top: 4px; min-height: 1.2em; }
+    .form-msg.ok { color: var(--success); }
+    .form-msg.err { color: var(--danger); }
+
+    /* ─── 알림 배너 ─────────────────────────────────────── */
+    .alert { border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
+    .alert.warning { background: #fff7ed; border: 1px solid #fde68a; color: #92400e; }
+    .alert.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .alert-count { font-weight: 700; font-size: 20px; }
+
+    /* ─── 모달 ──────────────────────────────────────────── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; place-items: center; padding: 24px; }
+    .modal-overlay.open { display: grid; }
+    .modal { background: #fff; border-radius: 14px; padding: 24px; width: min(480px, 90vw); box-shadow: 0 20px 50px rgba(0,0,0,.2); }
+    .modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+    .modal .form-grid { margin-bottom: 14px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .temp-pw-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; font-family: var(--font-mono); font-size: 18px; text-align: center; letter-spacing: 2px; color: var(--primary); font-weight: 700; margin: 12px 0; }
+
+    /* ─── 필터 ──────────────────────────────────────────── */
+    .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .filter-row .form-input { flex: 1; min-width: 140px; }
+
+    /* ─── 페이지네이션 ──────────────────────────────────── */
+    .pagination { display: flex; justify-content: center; gap: 6px; margin-top: 16px; }
+    .page-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: #fff; cursor: pointer; font-size: 12px; color: var(--text-sub); }
+    .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .page-btn:hover:not(.active) { background: #f1f5f9; }
+    .page-info { font-size: 12px; color: var(--text-muted); align-self: center; }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+
+  <!-- ─── 사이드바 ─────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <h1>⚙️ 관리자</h1>
+      <p>eformsign API Hub</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-group-label">관리</div>
+      <div class="sidebar-menu-item active" data-tab="signup">
+        <i class="fa fa-user-plus"></i> 회원가입 요청
+        <span class="badge" id="signupPendingBadge" style="display:none">0</span>
+      </div>
+      <div class="sidebar-menu-item" data-tab="users">
+        <i class="fa fa-users"></i> 사용자
+        <span class="badge" id="pendingBadge" style="display:none">0</span>
+      </div>
+      <div class="sidebar-menu-item" data-tab="pages">
+        <i class="fa fa-shield-halved"></i> 보호 페이지
+      </div>
+      <div class="sidebar-menu-item" data-tab="audit">
+        <i class="fa fa-scroll"></i> 감사 로그
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" id="btnLogout">로그아웃</button>
+    </div>
+  </aside>
+
+  <!-- ─── 메인 패널 ─────────────────────────────────────── -->
+  <main class="main-panel">
+
+    <!-- ══════════ 회원가입 요청 탭 ══════════ -->
+    <div class="tab-content active" id="tab-signup">
+      <div class="section-title">회원가입 요청 관리</div>
+
+      <!-- 상태 필터 버튼 -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="btn btn-primary signup-filter-btn" data-status="pending">대기 중</button>
+        <button class="btn btn-ghost signup-filter-btn" data-status="approved">승인됨</button>
+        <button class="btn btn-ghost signup-filter-btn" data-status="rejected">거절됨</button>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title" id="signupTabTitle">대기 중인 요청</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap">
+            <table id="signupTable">
+              <thead id="signupTableHead">
+                <tr><th>아이디</th><th>이메일</th><th>요청 일시</th><th>상태</th><th>액션</th></tr>
+              </thead>
+              <tbody id="signupBody">
+                <tr class="empty-row"><td colspan="5">로딩 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 사용자 탭 ══════════ -->
+    <div class="tab-content" id="tab-users">
+      <div class="section-title">사용자 관리</div>
+
+      <!-- 비밀번호 재설정 요청 -->
+      <div id="resetRequestSection" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">비밀번호 재설정 요청</span>
+            <span class="card-badge" id="reqCountBadge">0건 미처리</span>
+          </div>
+          <div class="card-body">
+            <div class="tbl-wrap">
+              <table id="resetReqTable">
+                <thead>
+                  <tr><th>아이디</th><th>요청 시각</th><th>액션</th></tr>
+                </thead>
+                <tbody id="resetReqBody">
+                  <tr class="empty-row"><td colspan="3">요청 없음</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사용자 목록 -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">사용자 목록</span>
+          <button class="btn btn-primary" id="btnCreateUser"><i class="fa fa-plus"></i> 사용자 생성</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap">
+            <table id="usersTable">
+              <thead>
+                <tr>
+                  <th>아이디</th><th>이메일</th><th>역할</th><th>상태</th>
+                  <th>마지막 로그인</th><th>액션</th>
+                </tr>
+              </thead>
+              <tbody id="usersBody">
+                <tr class="empty-row"><td colspan="6">로딩 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 보호 페이지 탭 ══════════ -->
+    <div class="tab-content" id="tab-pages">
+      <div class="section-title">보호 페이지 관리</div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">페이지 목록</span>
+          <button class="btn btn-primary" id="btnCreatePage"><i class="fa fa-plus"></i> 페이지 등록</button>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="tbl-wrap">
+            <table id="pagesTable">
+              <thead>
+                <tr><th>경로</th><th>이름</th><th>필요 역할</th><th>파일</th><th>상태</th><th>액션</th></tr>
+              </thead>
+              <tbody id="pagesBody">
+                <tr class="empty-row"><td colspan="6">로딩 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ 감사 로그 탭 ══════════ -->
+    <div class="tab-content" id="tab-audit">
+      <div class="section-title">감사 로그</div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">로그 조회</span></div>
+        <div class="card-body">
+          <div class="filter-row">
+            <input type="text" class="form-input" id="filterUsername" placeholder="아이디 검색">
+            <select class="form-input" id="filterAction" style="max-width:200px">
+              <option value="">전체 액션</option>
+              <option value="login">login</option>
+              <option value="logout">logout</option>
+              <option value="login_failed">login_failed</option>
+              <option value="account_locked">account_locked</option>
+              <option value="account_unlocked">account_unlocked</option>
+              <option value="page_access">page_access</option>
+              <option value="access_denied">access_denied</option>
+              <option value="password_reset_request_created">password_reset_request_created</option>
+              <option value="admin_password_reset">admin_password_reset</option>
+              <option value="password_changed">password_changed</option>
+              <option value="user_created">user_created</option>
+              <option value="user_updated">user_updated</option>
+              <option value="user_deactivated">user_deactivated</option>
+            </select>
+            <input type="date" class="form-input" id="filterFrom" style="max-width:150px">
+            <input type="date" class="form-input" id="filterTo" style="max-width:150px">
+            <button class="btn btn-primary" id="btnSearchLog"><i class="fa fa-search"></i> 검색</button>
+          </div>
+          <div class="tbl-wrap">
+            <table id="auditTable">
+              <thead>
+                <tr><th>시각</th><th>아이디</th><th>액션</th><th>대상</th><th>결과</th><th>IP</th></tr>
+              </thead>
+              <tbody id="auditBody">
+                <tr class="empty-row"><td colspan="6">로딩 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="auditPagination"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ─── 사용자 생성 모달 ──────────────────────────────────── -->
+<div class="modal-overlay" id="createUserModal">
+  <div class="modal">
+    <h2>신규 사용자 생성</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">아이디 *</label>
+        <input type="text" class="form-input" id="newUsername" placeholder="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">이메일 *</label>
+        <input type="email" class="form-input" id="newEmail" placeholder="user@example.com">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">역할 *</label>
+        <select class="form-input" id="newRole">
+          <option value="user">user</option>
+          <option value="manager">manager</option>
+          <option value="admin">admin</option>
+        </select>
+      </div>
+    </div>
+    <p class="form-msg" id="createUserMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelCreateUser">취소</button>
+      <button class="btn btn-primary" id="confirmCreateUser">생성</button>
+    </div>
+  </div>
+</div>
+
+<!-- 임시 비밀번호 표시 모달 -->
+<div class="modal-overlay" id="tempPwModal">
+  <div class="modal" style="text-align:center">
+    <h2>사용자 생성 완료</h2>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:4px">임시 비밀번호 (최초 로그인 후 변경 필요)</p>
+    <div class="temp-pw-box" id="tempPwDisplay"></div>
+    <p style="color:var(--danger);font-size:12px;margin-bottom:16px">이 창을 닫으면 비밀번호를 다시 볼 수 없습니다.</p>
+    <div class="modal-actions" style="justify-content:center">
+      <button class="btn btn-primary" id="closeTempPw">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 역할 변경 모달 -->
+<div class="modal-overlay" id="changeRoleModal">
+  <div class="modal">
+    <h2>역할 변경</h2>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:14px">
+      사용자: <strong id="roleModalUsername"></strong>
+      &nbsp;현재 역할: <span id="roleModalCurrentBadge"></span>
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer">
+        <input type="radio" name="newRole" value="admin" id="roleRadioAdmin"> admin
+        <span class="badge-role admin" style="margin-left:4px">admin</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer">
+        <input type="radio" name="newRole" value="manager" id="roleRadioManager"> manager
+        <span class="badge-role manager" style="margin-left:4px">manager</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer">
+        <input type="radio" name="newRole" value="user" id="roleRadioUser"> user
+        <span class="badge-role user" style="margin-left:4px">user</span>
+      </label>
+    </div>
+    <p class="form-msg" id="roleModalMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelChangeRole">취소</button>
+      <button class="btn btn-primary" id="confirmChangeRole">변경</button>
+    </div>
+  </div>
+</div>
+
+<!-- 회원가입 승인 모달 -->
+<div class="modal-overlay" id="approveModal">
+  <div class="modal">
+    <h2>회원가입 승인</h2>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:4px">아이디: <strong id="approveUsername"></strong></p>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:14px">이메일: <span id="approveEmail"></span></p>
+    <p style="font-size:13px;font-weight:600;margin-bottom:8px">부여할 역할</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer">
+        <input type="radio" name="approveRole" value="user" checked> user
+        <span class="badge-role user" style="margin-left:4px">user</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer">
+        <input type="radio" name="approveRole" value="manager"> manager
+        <span class="badge-role manager" style="margin-left:4px">manager</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer">
+        <input type="radio" name="approveRole" value="admin"> admin
+        <span class="badge-role admin" style="margin-left:4px">admin</span>
+      </label>
+    </div>
+    <p class="form-msg" id="approveModalMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelApprove">취소</button>
+      <button class="btn btn-success" id="confirmApprove">승인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 회원가입 거절 모달 -->
+<div class="modal-overlay" id="rejectModal">
+  <div class="modal">
+    <h2>회원가입 거절</h2>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:14px">아이디: <strong id="rejectUsername"></strong></p>
+    <div class="form-group full" style="margin-bottom:12px">
+      <label class="form-label">거절 사유 (선택)</label>
+      <textarea id="rejectReason" class="form-input" rows="3" placeholder="거절 사유를 입력하세요..." style="resize:vertical"></textarea>
+    </div>
+    <p class="form-msg" id="rejectModalMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelReject">취소</button>
+      <button class="btn btn-danger" id="confirmReject">거절</button>
+    </div>
+  </div>
+</div>
+
+<!-- 페이지 권한 변경 모달 -->
+<div class="modal-overlay" id="changePageRoleModal">
+  <div class="modal">
+    <h2>접근 권한 변경</h2>
+    <div style="margin-bottom:12px">
+      <p style="font-size:12px;color:var(--text-sub);margin-bottom:3px">페이지 이름</p>
+      <p style="font-size:14px;font-weight:600" id="pageRoleModalName"></p>
+    </div>
+    <div style="margin-bottom:12px">
+      <p style="font-size:12px;color:var(--text-sub);margin-bottom:3px">경로</p>
+      <code style="font-size:13px;color:var(--text-main)" id="pageRoleModalPath"></code>
+    </div>
+    <div style="margin-bottom:14px">
+      <p style="font-size:12px;color:var(--text-sub);margin-bottom:3px">현재 필요 권한</p>
+      <span id="pageRoleModalCurrentBadge"></span>
+    </div>
+    <p style="font-size:13px;font-weight:600;margin-bottom:8px">변경할 권한</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer">
+        <input type="radio" name="newPageRole" value="admin" id="pageRoleRadioAdmin">
+        <span class="badge-role admin">admin</span>
+        <span style="font-size:11px;color:var(--text-muted)">(관리자 전용)</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer">
+        <input type="radio" name="newPageRole" value="manager" id="pageRoleRadioManager">
+        <span class="badge-role manager">manager</span>
+        <span style="font-size:11px;color:var(--text-muted)">(매니저 이상)</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;font-size:13px;cursor:pointer">
+        <input type="radio" name="newPageRole" value="user" id="pageRoleRadioUser">
+        <span class="badge-role user">user</span>
+        <span style="font-size:11px;color:var(--text-muted)">(전체 로그인 사용자)</span>
+      </label>
+    </div>
+    <p class="form-msg" id="pageRoleModalMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelChangePageRole">취소</button>
+      <button class="btn btn-primary" id="confirmChangePageRole">변경</button>
+    </div>
+  </div>
+</div>
+
+<!-- 페이지 등록 모달 -->
+<div class="modal-overlay" id="createPageModal">
+  <div class="modal">
+    <h2>보호 페이지 등록</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">경로 * (예: /app/newPage)</label>
+        <input type="text" class="form-input" id="newPagePath" placeholder="/app/example">
+      </div>
+      <div class="form-group">
+        <label class="form-label">이름 *</label>
+        <input type="text" class="form-input" id="newPageName" placeholder="페이지 이름">
+      </div>
+      <div class="form-group">
+        <label class="form-label">필요 역할 *</label>
+        <select class="form-input" id="newPageRole">
+          <option value="user">user</option>
+          <option value="manager">manager</option>
+          <option value="admin">admin</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">HTML 파일 경로 * (예: private/Example.html)</label>
+        <input type="text" class="form-input" id="newPageFile" placeholder="private/Example.html">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">설명 (선택)</label>
+        <input type="text" class="form-input" id="newPageDesc" placeholder="페이지 설명">
+      </div>
+    </div>
+    <p class="form-msg" id="createPageMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelCreatePage">취소</button>
+      <button class="btn btn-primary" id="confirmCreatePage">등록</button>
+    </div>
+  </div>
+</div>
+
+<script>
+$(function () {
+  // ─── 탭 전환 ──────────────────────────────────────────────
+  $('.sidebar-menu-item').on('click', function () {
+    const tab = $(this).data('tab');
+    $('.sidebar-menu-item').removeClass('active');
+    $(this).addClass('active');
+    $('.tab-content').removeClass('active');
+    $('#tab-' + tab).addClass('active');
+    if (tab === 'signup') loadSignupRequests('pending');
+    if (tab === 'users') loadUsers();
+    if (tab === 'pages') loadPages();
+    if (tab === 'audit') loadAuditLogs(1);
+  });
+
+  // ─── 로그아웃 ─────────────────────────────────────────────
+  $('#btnLogout').on('click', function () {
+    if (!confirm('로그아웃 하시겠습니까?')) return;
+    $.post('/api/logout').always(function () { location.href = '/auth/login.html'; });
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // 사용자 관리
+  // ═══════════════════════════════════════════════════════════
+
+  function loadUsers() {
+    $.getJSON('/api/admin/users', function (data) {
+      renderUsers(data.users || []);
+    }).fail(function (xhr) {
+      if (xhr.status === 401) location.href = '/auth/login.html';
+    });
+    loadResetRequests();
+  }
+
+  function renderUsers(users) {
+    const $tbody = $('#usersBody').empty();
+    if (!users.length) {
+      $tbody.append('<tr class="empty-row"><td colspan="6">사용자 없음</td></tr>');
+      return;
+    }
+    users.forEach(function (u) {
+      const isLocked = u.locked_until && new Date(u.locked_until) > new Date();
+      let statusBadge;
+      if (!u.is_active) statusBadge = '<span class="badge-status inactive">비활성</span>';
+      else if (isLocked) statusBadge = '<span class="badge-status locked">잠금</span>';
+      else statusBadge = '<span class="badge-status active">활성</span>';
+
+      const lastLogin = u.last_login_at ? new Date(u.last_login_at).toLocaleString('ko-KR') : '-';
+
+      const $tr = $('<tr>').html(`
+        <td><strong>${esc(u.username)}</strong>${u.must_change_password ? ' <span style="color:#f59e0b;font-size:11px">비번변경필요</span>' : ''}</td>
+        <td>${esc(u.email)}</td>
+        <td><span class="badge-role ${u.role}">${u.role}</span></td>
+        <td>${statusBadge}</td>
+        <td style="font-size:12px;color:var(--text-sub)">${lastLogin}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-ghost btn-change-role" data-id="${u.id}" data-role="${u.role}" data-username="${esc(u.username)}">역할변경</button>
+            <button class="btn ${u.is_active ? 'btn-danger' : 'btn-success'} btn-toggle-active" data-id="${u.id}" data-active="${u.is_active}">${u.is_active ? '비활성화' : '활성화'}</button>
+            ${isLocked ? `<button class="btn btn-warning btn-unlock" data-id="${u.id}">잠금해제</button>` : ''}
+            <button class="btn btn-ghost btn-reset-pw" data-id="${u.id}" data-username="${esc(u.username)}">비번초기화</button>
+          </div>
+        </td>
+      `);
+      $tbody.append($tr);
+    });
+
+    // 역할 변경 → 모달 오픈
+    $tbody.find('.btn-change-role').on('click', function () {
+      const id = $(this).data('id');
+      const cur = $(this).data('role');
+      const username = $(this).data('username');
+      openChangeRoleModal(id, cur, username);
+    });
+
+    // 활성/비활성 토글
+    $tbody.find('.btn-toggle-active').on('click', function () {
+      const id = $(this).data('id');
+      const newActive = !$(this).data('active');
+      if (!confirm(`계정을 ${newActive ? '활성화' : '비활성화'} 하시겠습니까?`)) return;
+      $.ajax({ url: `/api/admin/users/${id}`, method: 'PUT', contentType: 'application/json', data: JSON.stringify({ is_active: newActive }) })
+        .done(function () { loadUsers(); })
+        .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+    });
+
+    // 잠금 해제
+    $tbody.find('.btn-unlock').on('click', function () {
+      const id = $(this).data('id');
+      $.post(`/api/admin/users/${id}/unlock`)
+        .done(function () { loadUsers(); })
+        .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+    });
+
+    // 비밀번호 초기화
+    $tbody.find('.btn-reset-pw').on('click', function () {
+      const id = $(this).data('id');
+      const username = $(this).data('username');
+      if (!confirm(`"${username}" 의 비밀번호를 초기화하시겠습니까?`)) return;
+      $.post(`/api/admin/users/${id}/reset-password`)
+        .done(function (data) {
+          $('#tempPwDisplay').text(data.temporaryPassword);
+          $('#tempPwModal').addClass('open');
+          loadUsers();
+        })
+        .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+    });
+  }
+
+  // 비밀번호 재설정 요청 목록
+  function loadResetRequests() {
+    $.getJSON('/api/admin/password-reset-requests', function (data) {
+      const reqs = data.requests || [];
+      const $section = $('#resetRequestSection');
+      const $badge = $('#pendingBadge');
+      if (reqs.length > 0) {
+        $section.show();
+        $badge.text(reqs.length).show();
+        $('#reqCountBadge').text(reqs.length + '건 미처리');
+      } else {
+        $section.hide();
+        $badge.hide();
+      }
+      const $tbody = $('#resetReqBody').empty();
+      if (!reqs.length) {
+        $tbody.append('<tr class="empty-row"><td colspan="3">미처리 요청 없음</td></tr>');
+        return;
+      }
+      reqs.forEach(function (r) {
+        const createdAt = new Date(r.created_at).toLocaleString('ko-KR');
+        $tbody.append(`<tr>
+          <td><strong>${esc(r.username)}</strong></td>
+          <td style="font-size:12px;color:var(--text-sub)">${createdAt}</td>
+          <td>
+            <div class="action-btns">
+              <button class="btn btn-primary btn-req-reset" data-req-id="${r.id}" data-user-id="${r.user_id}" data-username="${esc(r.username)}">비밀번호 초기화</button>
+              <button class="btn btn-ghost btn-req-ignore" data-req-id="${r.id}">무시</button>
+            </div>
+          </td>
+        </tr>`);
+      });
+
+      $tbody.find('.btn-req-reset').on('click', function () {
+        const reqId = $(this).data('req-id');
+        const userId = $(this).data('user-id');
+        const username = $(this).data('username');
+        if (!confirm(`"${username}" 의 비밀번호를 초기화하시겠습니까?`)) return;
+        $.post(`/api/admin/users/${userId}/reset-password`)
+          .done(function (data) {
+            $('#tempPwDisplay').text(data.temporaryPassword);
+            $('#tempPwModal').addClass('open');
+            loadUsers();
+          })
+          .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+      });
+
+      $tbody.find('.btn-req-ignore').on('click', function () {
+        const reqId = $(this).data('req-id');
+        if (!confirm('요청을 무시(닫기) 하시겠습니까?')) return;
+        $.post(`/api/admin/password-reset-requests/${reqId}/resolve`)
+          .done(function () { loadUsers(); })
+          .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+      });
+    });
+  }
+
+  // 사용자 생성 모달
+  $('#btnCreateUser').on('click', function () {
+    $('#newUsername,#newEmail').val('');
+    $('#newRole').val('user');
+    $('#createUserMsg').text('').removeClass('ok err');
+    $('#createUserModal').addClass('open');
+  });
+  $('#cancelCreateUser').on('click', function () { $('#createUserModal').removeClass('open'); });
+  $('#confirmCreateUser').on('click', function () {
+    const username = $('#newUsername').val().trim();
+    const email = $('#newEmail').val().trim();
+    const role = $('#newRole').val();
+    const $msg = $('#createUserMsg');
+    $msg.text('').removeClass('ok err');
+    if (!username || !email) { $msg.text('아이디와 이메일은 필수입니다.').addClass('err'); return; }
+    $.ajax({
+      url: '/api/admin/users', method: 'POST', contentType: 'application/json',
+      data: JSON.stringify({ username, email, role }),
+    }).done(function (data) {
+      $('#createUserModal').removeClass('open');
+      $('#tempPwDisplay').text(data.temporaryPassword);
+      $('#tempPwModal').addClass('open');
+      loadUsers();
+    }).fail(function (xhr) {
+      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+    });
+  });
+  $('#closeTempPw').on('click', function () { $('#tempPwModal').removeClass('open'); });
+
+  // ═══════════════════════════════════════════════════════════
+  // 보호 페이지 관리
+  // ═══════════════════════════════════════════════════════════
+
+  function loadPages() {
+    $.getJSON('/api/admin/pages', function (data) {
+      const pages = data.pages || [];
+      const $tbody = $('#pagesBody').empty();
+      if (!pages.length) {
+        $tbody.append('<tr class="empty-row"><td colspan="6">등록된 페이지 없음</td></tr>');
+        return;
+      }
+      pages.forEach(function (p) {
+        $tbody.append(`<tr>
+          <td><code style="font-size:12px">${esc(p.path)}</code></td>
+          <td>${esc(p.name)}</td>
+          <td><span class="badge-role ${p.required_role}">${p.required_role}</span></td>
+          <td style="font-size:11px;color:var(--text-muted)">${esc(p.file_path)}</td>
+          <td>${p.is_active ? '<span class="badge-status active">활성</span>' : '<span class="badge-status inactive">비활성</span>'}</td>
+          <td>
+            <div class="action-btns">
+              <button class="btn btn-ghost btn-page-role" data-id="${p.id}" data-role="${p.required_role}" data-name="${esc(p.name)}" data-path="${esc(p.path)}">권한 변경</button>
+              <button class="btn ${p.is_active ? 'btn-danger' : 'btn-success'} btn-page-toggle" data-id="${p.id}" data-active="${p.is_active}">${p.is_active ? '비활성화' : '활성화'}</button>
+            </div>
+          </td>
+        </tr>`);
+      });
+
+      $tbody.find('.btn-page-role').on('click', function () {
+        const id = $(this).data('id');
+        const cur = $(this).data('role');
+        const name = $(this).data('name');
+        const path = $(this).data('path');
+        openChangePageRoleModal(id, cur, name, path);
+      });
+
+      $tbody.find('.btn-page-toggle').on('click', function () {
+        const id = $(this).data('id');
+        const newActive = !$(this).data('active');
+        if (!confirm(`페이지를 ${newActive ? '활성화' : '비활성화'} 하시겠습니까?`)) return;
+        $.ajax({ url: `/api/admin/pages/${id}`, method: 'PUT', contentType: 'application/json', data: JSON.stringify({ is_active: newActive }) })
+          .done(function () { loadPages(); })
+          .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+      });
+    }).fail(function (xhr) {
+      if (xhr.status === 401) location.href = '/auth/login.html';
+    });
+  }
+
+  // 페이지 등록 모달
+  $('#btnCreatePage').on('click', function () {
+    $('#newPagePath,#newPageName,#newPageFile,#newPageDesc').val('');
+    $('#newPageRole').val('user');
+    $('#createPageMsg').text('').removeClass('ok err');
+    $('#createPageModal').addClass('open');
+  });
+  $('#cancelCreatePage').on('click', function () { $('#createPageModal').removeClass('open'); });
+  $('#confirmCreatePage').on('click', function () {
+    const pagePath = $('#newPagePath').val().trim();
+    const name = $('#newPageName').val().trim();
+    const required_role = $('#newPageRole').val();
+    const file_path = $('#newPageFile').val().trim();
+    const description = $('#newPageDesc').val().trim();
+    const $msg = $('#createPageMsg');
+    $msg.text('').removeClass('ok err');
+    if (!pagePath || !name || !file_path) { $msg.text('필수 항목을 입력해주세요.').addClass('err'); return; }
+    $.ajax({
+      url: '/api/admin/pages', method: 'POST', contentType: 'application/json',
+      data: JSON.stringify({ path: pagePath, name, required_role, file_path, description: description || undefined }),
+    }).done(function () {
+      $('#createPageModal').removeClass('open');
+      loadPages();
+    }).fail(function (xhr) {
+      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // 감사 로그
+  // ═══════════════════════════════════════════════════════════
+
+  let currentAuditPage = 1;
+
+  function loadAuditLogs(page) {
+    currentAuditPage = page;
+    const params = new URLSearchParams({ page });
+    const username = $('#filterUsername').val().trim();
+    const action = $('#filterAction').val();
+    const from = $('#filterFrom').val();
+    const to = $('#filterTo').val();
+    if (username) params.set('username', username);
+    if (action) params.set('action', action);
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+
+    $.getJSON('/api/admin/audit-logs?' + params.toString(), function (data) {
+      renderAuditLogs(data.logs || []);
+      renderPagination(data.page, data.totalPages, data.total);
+    }).fail(function (xhr) {
+      if (xhr.status === 401) location.href = '/auth/login.html';
+    });
+  }
+
+  function renderAuditLogs(logs) {
+    const $tbody = $('#auditBody').empty();
+    if (!logs.length) {
+      $tbody.append('<tr class="empty-row"><td colspan="6">로그 없음</td></tr>');
+      return;
+    }
+    logs.forEach(function (l) {
+      const t = new Date(l.created_at).toLocaleString('ko-KR');
+      const resultBadge = l.result ? `<span class="badge-result ${l.result}">${l.result}</span>` : '-';
+      $tbody.append(`<tr>
+        <td style="font-size:11px;color:var(--text-sub);white-space:nowrap">${t}</td>
+        <td>${esc(l.username || '-')}</td>
+        <td><code style="font-size:11px">${esc(l.action)}</code></td>
+        <td style="font-size:12px;color:var(--text-muted)">${esc(l.target || '-')}</td>
+        <td>${resultBadge}</td>
+        <td style="font-size:11px;color:var(--text-muted)">${esc(l.ip_address || '-')}</td>
+      </tr>`);
+    });
+  }
+
+  function renderPagination(page, totalPages, total) {
+    const $pag = $('#auditPagination').empty();
+    if (totalPages <= 1) return;
+    const start = Math.max(1, page - 2);
+    const end = Math.min(totalPages, page + 2);
+    if (page > 1) $pag.append(`<button class="page-btn" data-page="${page - 1}">‹</button>`);
+    for (let i = start; i <= end; i++) {
+      $pag.append(`<button class="page-btn${i === page ? ' active' : ''}" data-page="${i}">${i}</button>`);
+    }
+    if (page < totalPages) $pag.append(`<button class="page-btn" data-page="${page + 1}">›</button>`);
+    $pag.append(`<span class="page-info">총 ${total}건</span>`);
+    $pag.find('.page-btn').on('click', function () { loadAuditLogs(+$(this).data('page')); });
+  }
+
+  $('#btnSearchLog').on('click', function () { loadAuditLogs(1); });
+
+  // ═══════════════════════════════════════════════════════════
+  // 역할 변경 모달
+  // ═══════════════════════════════════════════════════════════
+
+  let _roleChangeId = null;
+  let _roleChangeCurrent = null;
+
+  function openChangeRoleModal(userId, currentRole, username) {
+    _roleChangeId = userId;
+    _roleChangeCurrent = currentRole;
+    $('#roleModalUsername').text(username);
+    $('#roleModalCurrentBadge').html(`<span class="badge-role ${currentRole}">${currentRole}</span>`);
+    $('#roleModalMsg').text('').removeClass('ok err');
+    // 현재 역할 radio disabled 처리, 다른 것 선택 가능
+    $('input[name="newRole"]').prop('disabled', false).prop('checked', false);
+    $(`input[name="newRole"][value="${currentRole}"]`).prop('disabled', true);
+    // 기본으로 첫 번째 non-disabled 선택
+    $('input[name="newRole"]:not(:disabled)').first().prop('checked', true);
+    $('#changeRoleModal').addClass('open');
+  }
+
+  $('#cancelChangeRole').on('click', function () { $('#changeRoleModal').removeClass('open'); });
+
+  $('#confirmChangeRole').on('click', function () {
+    const newRole = $('input[name="newRole"]:checked').val();
+    const $msg = $('#roleModalMsg');
+    $msg.text('').removeClass('ok err');
+    if (!newRole || newRole === _roleChangeCurrent) {
+      $msg.text('변경할 역할을 선택해주세요.').addClass('err');
+      return;
+    }
+    $.ajax({
+      url: `/api/admin/users/${_roleChangeId}`,
+      method: 'PATCH',
+      contentType: 'application/json',
+      data: JSON.stringify({ role: newRole }),
+    }).done(function () {
+      $('#changeRoleModal').removeClass('open');
+      loadUsers();
+    }).fail(function (xhr) {
+      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // 보호 페이지 권한 변경 모달
+  // ═══════════════════════════════════════════════════════════
+
+  let _pageRoleChangeId = null;
+  let _pageRoleChangeCurrent = null;
+
+  function openChangePageRoleModal(pageId, currentRole, name, path) {
+    _pageRoleChangeId = pageId;
+    _pageRoleChangeCurrent = currentRole;
+    $('#pageRoleModalName').text(name);
+    $('#pageRoleModalPath').text(path);
+    $('#pageRoleModalCurrentBadge').html(`<span class="badge-role ${currentRole}">${currentRole}</span>`);
+    $('#pageRoleModalMsg').text('').removeClass('ok err');
+    // 현재 권한 disabled 처리, 첫 번째 선택 가능한 항목 기본 선택
+    $('input[name="newPageRole"]').prop('disabled', false).prop('checked', false);
+    $(`input[name="newPageRole"][value="${currentRole}"]`).prop('disabled', true);
+    $('input[name="newPageRole"]:not(:disabled)').first().prop('checked', true);
+    $('#changePageRoleModal').addClass('open');
+  }
+
+  $('#cancelChangePageRole').on('click', function () { $('#changePageRoleModal').removeClass('open'); });
+
+  $('#confirmChangePageRole').on('click', function () {
+    const newRole = $('input[name="newPageRole"]:checked').val();
+    const $msg = $('#pageRoleModalMsg');
+    $msg.text('').removeClass('ok err');
+    if (!newRole || newRole === _pageRoleChangeCurrent) {
+      $msg.text('변경할 권한을 선택해주세요.').addClass('err');
+      return;
+    }
+    $.ajax({
+      url: `/api/admin/pages/${_pageRoleChangeId}`,
+      method: 'PUT',
+      contentType: 'application/json',
+      data: JSON.stringify({ required_role: newRole }),
+    }).done(function () {
+      $('#changePageRoleModal').removeClass('open');
+      loadPages();
+    }).fail(function (xhr) {
+      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // 회원가입 요청 관리
+  // ═══════════════════════════════════════════════════════════
+
+  let _currentSignupStatus = 'pending';
+  let _approveRequestId = null;
+  let _rejectRequestId = null;
+
+  // 상태 필터 버튼
+  $('.signup-filter-btn').on('click', function () {
+    const status = $(this).data('status');
+    _currentSignupStatus = status;
+    $('.signup-filter-btn').removeClass('btn-primary').addClass('btn-ghost');
+    $(this).removeClass('btn-ghost').addClass('btn-primary');
+    const titles = { pending: '대기 중인 요청', approved: '승인된 요청', rejected: '거절된 요청' };
+    $('#signupTabTitle').text(titles[status] || '요청 목록');
+    loadSignupRequests(status);
+  });
+
+  function loadSignupRequests(status) {
+    status = status || _currentSignupStatus;
+    $.getJSON('/api/admin/signup-requests?status=' + status, function (data) {
+      const reqs = data.requests || [];
+      // 사이드바 배지 갱신 (pending만)
+      if (status === 'pending') {
+        if (reqs.length > 0) $('#signupPendingBadge').text(reqs.length).show();
+        else $('#signupPendingBadge').hide();
+      }
+      renderSignupRequests(reqs, status);
+    }).fail(function (xhr) {
+      if (xhr.status === 401) location.href = '/auth/login.html';
+    });
+  }
+
+  function renderSignupRequests(reqs, status) {
+    const $tbody = $('#signupBody').empty();
+    if (!reqs.length) {
+      $tbody.append('<tr class="empty-row"><td colspan="5">요청 없음</td></tr>');
+      return;
+    }
+    reqs.forEach(function (r) {
+      const createdAt = r.created_at ? new Date(r.created_at).toLocaleString('ko-KR') : '-';
+      const reviewedAt = r.reviewed_at ? new Date(r.reviewed_at).toLocaleString('ko-KR') : '-';
+      let statusBadge = '';
+      if (r.status === 'pending') statusBadge = '<span class="badge-status active">대기 중</span>';
+      else if (r.status === 'approved') statusBadge = `<span class="badge-status active">승인됨</span> <span class="badge-role ${r.approved_role}">${r.approved_role || ''}</span>`;
+      else if (r.status === 'rejected') statusBadge = '<span class="badge-status inactive">거절됨</span>';
+
+      let actionHtml = '-';
+      if (r.status === 'pending') {
+        actionHtml = `<div class="action-btns">
+          <button class="btn btn-success btn-approve" data-id="${r.id}" data-username="${esc(r.username)}" data-email="${esc(r.email)}">승인</button>
+          <button class="btn btn-danger btn-reject" data-id="${r.id}" data-username="${esc(r.username)}">거절</button>
+        </div>`;
+      } else if (r.status === 'rejected' && r.reject_reason) {
+        actionHtml = `<span style="font-size:12px;color:var(--text-muted)">${esc(r.reject_reason)}</span>`;
+      }
+
+      $tbody.append(`<tr>
+        <td><strong>${esc(r.username)}</strong></td>
+        <td style="font-size:12px;color:var(--text-sub)">${esc(r.email)}</td>
+        <td style="font-size:12px;color:var(--text-sub)">${status === 'pending' ? createdAt : reviewedAt}</td>
+        <td>${statusBadge}</td>
+        <td>${actionHtml}</td>
+      </tr>`);
+    });
+
+    // 승인 버튼
+    $tbody.find('.btn-approve').on('click', function () {
+      _approveRequestId = $(this).data('id');
+      $('#approveUsername').text($(this).data('username'));
+      $('#approveEmail').text($(this).data('email'));
+      $('input[name="approveRole"][value="user"]').prop('checked', true);
+      $('#approveModalMsg').text('').removeClass('ok err');
+      $('#approveModal').addClass('open');
+    });
+
+    // 거절 버튼
+    $tbody.find('.btn-reject').on('click', function () {
+      _rejectRequestId = $(this).data('id');
+      $('#rejectUsername').text($(this).data('username'));
+      $('#rejectReason').val('');
+      $('#rejectModalMsg').text('').removeClass('ok err');
+      $('#rejectModal').addClass('open');
+    });
+  }
+
+  // 승인 확정
+  $('#cancelApprove').on('click', function () { $('#approveModal').removeClass('open'); });
+  $('#confirmApprove').on('click', function () {
+    const role = $('input[name="approveRole"]:checked').val();
+    const $msg = $('#approveModalMsg');
+    $msg.text('').removeClass('ok err');
+    $.ajax({
+      url: `/api/admin/signup-requests/${_approveRequestId}/approve`,
+      method: 'POST', contentType: 'application/json',
+      data: JSON.stringify({ role }),
+    }).done(function () {
+      $('#approveModal').removeClass('open');
+      loadSignupRequests('pending');
+    }).fail(function (xhr) {
+      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+    });
+  });
+
+  // 거절 확정
+  $('#cancelReject').on('click', function () { $('#rejectModal').removeClass('open'); });
+  $('#confirmReject').on('click', function () {
+    const rejectReason = $('#rejectReason').val().trim();
+    const $msg = $('#rejectModalMsg');
+    $msg.text('').removeClass('ok err');
+    $.ajax({
+      url: `/api/admin/signup-requests/${_rejectRequestId}/reject`,
+      method: 'POST', contentType: 'application/json',
+      data: JSON.stringify({ reject_reason: rejectReason }),
+    }).done(function () {
+      $('#rejectModal').removeClass('open');
+      loadSignupRequests('pending');
+    }).fail(function (xhr) {
+      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+    });
+  });
+
+  // ─── 모달 배경 클릭 닫기 ─────────────────────────────────
+  $('.modal-overlay').on('click', function (e) {
+    if (e.target === this) $(this).removeClass('open');
+  });
+
+  // ─── HTML 이스케이프 ──────────────────────────────────────
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // ─── 초기 로드 ────────────────────────────────────────────
+  loadSignupRequests('pending');
+});
+</script>
+</body>
+</html>

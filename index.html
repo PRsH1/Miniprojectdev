@@ -294,6 +294,46 @@
             font-size: 0.95em;
         }
 
+        /* 헤더 사용자 영역 */
+        .header-top {
+            display: flex;
+            justify-content: flex-end;
+            padding: 0 0 12px;
+        }
+        .header-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        .header-user .username {
+            color: rgba(255,255,255,.9);
+            font-weight: 600;
+        }
+        .badge-role-header {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .badge-role-header.admin   { background: rgba(239,68,68,.25);  color: #fca5a5; }
+        .badge-role-header.manager { background: rgba(59,130,246,.25); color: #93c5fd; }
+        .badge-role-header.user    { background: rgba(255,255,255,.15); color: rgba(255,255,255,.8); }
+        .btn-header {
+            padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: 600;
+            cursor: pointer; border: 1px solid rgba(255,255,255,.35);
+            background: rgba(255,255,255,.15); color: #fff;
+            text-decoration: none; transition: background .12s;
+        }
+        .btn-header:hover { background: rgba(255,255,255,.25); }
+        .btn-header.primary { background: rgba(255,255,255,.9); color: #1a73e8; border-color: transparent; }
+        .btn-header.primary:hover { background: #fff; }
+        .btn-header.admin { background: #dc2626; color: #fff; border-color: #b91c1c; }
+        .btn-header.admin:hover { background: #b91c1c; }
+
+        /* 카드 초기 숨김 (FOUC 방지 — JS에서 role 확인 후 표시) */
+        .card[data-min-role] { display: none; }
+
         /* 반응형 */
         @media (max-width: 640px) {
             .header {
@@ -321,6 +361,12 @@
 <body>
 
     <div class="header">
+        <!-- 헤더 우측 사용자 영역 -->
+        <div class="header-top">
+            <div class="header-user" id="headerUser">
+                <!-- JS에서 /api/me 결과에 따라 렌더링 -->
+            </div>
+        </div>
         <h1>프로젝트 허브</h1>
         <p>각 도구를 선택하여 기능 페이지로 이동할 수 있습니다</p>
     </div>
@@ -342,7 +388,7 @@
                 <h2>API <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/API(JS,HTML)/OpenAPITesterProd.html" class="card" data-card>
+                <a href="/API(JS,HTML)/OpenAPITesterProd.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-flask"></i></div>
                     <div class="card-content">
                         <div class="card-title">Open API Tester<span class="badge badge-new">New</span></div>
@@ -350,7 +396,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/error-codes.html" class="card" data-card>
+                <a href="/utils/error-codes.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                     <div class="card-content">
                         <div class="card-title">에러 코드 모음</div>
@@ -358,7 +404,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/DocumentSendImprove.html" class="card" data-card>
+                <a href="/API(JS,HTML)/DocumentSendImprove.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-file-signature"></i></div>
                     <div class="card-content">
                         <div class="card-title">새 문서 작성</div>
@@ -366,7 +412,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/DocumentInfo.html" class="card" data-card>
+                <a href="/API(JS,HTML)/DocumentInfo.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 정보 조회</div>
@@ -374,7 +420,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/listdocuments.html" class="card" data-card>
+                <a href="/API(JS,HTML)/listdocuments.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-list-ul"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 목록 조회</div>
@@ -382,7 +428,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/DocumentDownload.html" class="card" data-card>
+                <a href="/API(JS,HTML)/DocumentDownload.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-file-arrow-down"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 다운로드</div>
@@ -390,7 +436,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/memberV2" class="card" data-card>
+                <a href="/app/memberV2" class="card" data-card data-min-role="manager">
                     <div class="card-icon"><i class="fa-solid fa-users-gear"></i></div>
                     <div class="card-content">
                         <div class="card-title">멤버/그룹 관리 API</div>
@@ -408,7 +454,7 @@
                 <h2>Embedding <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/Embedding/embedding_doc_Integration.html" class="card" data-card>
+                <a href="/Embedding/embedding_doc_Integration.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-puzzle-piece"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 임베딩 <span class="badge badge-new">New</span></div>
@@ -416,7 +462,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/Embedding/embedding_template_intergration.html" class="card" data-card>
+                <a href="/Embedding/embedding_template_intergration.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-file-invoice"></i></div>
                     <div class="card-content">
                         <div class="card-title">템플릿 임베딩 <span class="badge badge-new">New</span></div>
@@ -434,7 +480,7 @@
                 <h2>Webhook <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/utils/webhook.html" class="card" data-card>
+                <a href="/utils/webhook.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-satellite-dish"></i></div>
                     <div class="card-content">
                         <div class="card-title">Webhook 수신 모니터링</div>
@@ -452,7 +498,7 @@
                 <h2>SAML SSO <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/idptestauth" class="card" data-card>
+                <a href="/app/idptestauth" class="card" data-card data-min-role="admin">
                     <div class="card-icon"><i class="fa-solid fa-shield"></i></div>
                     <div class="card-content">
                         <div class="card-title">SAML SSO 연동 테스트 <span class="badge badge-new">New</span></div>
@@ -470,7 +516,7 @@
                 <h2>유틸리티 <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/utils/smtp.html" class="card" data-card>
+                <a href="/utils/smtp.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-paper-plane"></i></div>
                     <div class="card-content">
                         <div class="card-title">SMTP 발송 테스트</div>
@@ -478,7 +524,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/CorsTest.html" class="card" data-card>
+                <a href="/utils/CorsTest.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-shield-halved"></i></div>
                     <div class="card-content">
                         <div class="card-title">CORS 차단 테스트</div>
@@ -486,7 +532,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/RsaTestSample.html" class="card" data-card>
+                <a href="/utils/RsaTestSample.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-key"></i></div>
                     <div class="card-content">
                         <div class="card-title">RSA 로그인 테스트</div>
@@ -494,7 +540,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/timestamp.html" class="card" data-card>
+                <a href="/utils/timestamp.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-clock"></i></div>
                     <div class="card-content">
                         <div class="card-title">Unix 시간 변환</div>
@@ -502,7 +548,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/base64.html" class="card" data-card>
+                <a href="/utils/base64.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-right-left"></i></div>
                     <div class="card-content">
                         <div class="card-title">Base64 인코딩/디코딩</div>
@@ -510,7 +556,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/OpenAPIAutoTest" class="card" data-card>
+                <a href="/app/OpenAPIAutoTest" class="card" data-card data-min-role="manager">
                     <div class="card-icon"><i class="fa-solid fa-flask-vial"></i></div>
                     <div class="card-content">
                         <div class="card-title">Open API 자동 테스트 <span class="badge badge-new">New</span></div>
@@ -518,7 +564,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/templatecopy" class="card" data-card>
+                <a href="/app/templatecopy" class="card" data-card data-min-role="manager">
                     <div class="card-icon"><i class="fa-solid fa-clone"></i></div>
                     <div class="card-content">
                         <div class="card-title">템플릿 복제</div>
@@ -526,7 +572,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/DocumentDelete.html" class="card" data-card>
+                <a href="/utils/DocumentDelete.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-trash"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 일괄 삭제</div>
@@ -534,7 +580,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/MassDocumentDowmload.html" class="card" data-card>
+                <a href="/utils/MassDocumentDowmload.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-download"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 일괄 다운로드</div>
@@ -542,7 +588,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/templateDeletetool.html" class="card" data-card>
+                <a href="/utils/templateDeletetool.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-folder-minus"></i></div>
                     <div class="card-content">
                         <div class="card-title">템플릿 삭제</div>
@@ -550,7 +596,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/JsonToPretty.html" class="card" data-card>
+                <a href="/utils/JsonToPretty.html" class="card" data-card data-min-role="public">
                     <div class="card-icon"><i class="fa-solid fa-code"></i></div>
                     <div class="card-content">
                         <div class="card-title">JSON/XML 포맷 정리 <span class="badge badge-new">New</span></div>
@@ -569,29 +615,84 @@
     </div>
 
     <script>
-        // 섹션별 카드 수 표시
-        document.querySelectorAll('[data-section]').forEach(function(section) {
-            var count = section.querySelectorAll('[data-card]').length;
-            var span = section.querySelector('.section-count');
-            if (span) span.textContent = '(' + count + ')';
-        });
+        // role 접근 허용 여부
+        function canSeeRole(userRole, minRole) {
+            if (minRole === 'public') return true;
+            if (!userRole) return false;
+            if (minRole === 'user') return true; // user 이상 전체 허용
+            if (minRole === 'manager') return userRole === 'admin' || userRole === 'manager';
+            if (minRole === 'admin') return userRole === 'admin';
+            return false;
+        }
 
-        // 검색 기능
+        // 카드 role 필터링 적용 (data-role-visible 속성으로 상태 관리)
+        function applyRoleFilter(userRole) {
+            document.querySelectorAll('[data-min-role]').forEach(function(card) {
+                var minRole = card.getAttribute('data-min-role');
+                var visible = canSeeRole(userRole, minRole);
+                card.dataset.roleVisible = visible ? '1' : '0';
+                if (!visible) card.remove(); // DOM에서 완전 제거
+                else card.style.display = 'flex';
+            });
+            updateSectionCounts();
+        }
+
+        // 섹션별 카드 수 갱신
+        function updateSectionCounts() {
+            document.querySelectorAll('[data-section]').forEach(function(section) {
+                var count = section.querySelectorAll('[data-card]').length;
+                var span = section.querySelector('.section-count');
+                if (span) span.textContent = '(' + count + ')';
+                // 섹션에 카드가 없으면 섹션 자체 숨김
+                section.style.display = count > 0 ? '' : 'none';
+            });
+        }
+
+        // 헤더 사용자 영역 렌더링
+        function renderHeaderUser(meData) {
+            var el = document.getElementById('headerUser');
+            if (!meData) {
+                el.innerHTML =
+                    '<a href="/auth/login.html" class="btn-header primary">로그인</a>' +
+                    '<a href="/auth/signup.html" class="btn-header">회원가입</a>';
+            } else {
+                var roleBadge = '<span class="badge-role-header ' + meData.role + '">' + meData.role + '</span>';
+                var adminBtn = meData.role === 'admin'
+                    ? '<a href="/app/admin" class="btn-header admin">관리자 콘솔</a>'
+                    : '';
+                el.innerHTML =
+                    '<span class="username">' + escHtml(meData.username) + '</span>' +
+                    roleBadge +
+                    adminBtn +
+                    '<button class="btn-header" id="btnLogout">로그아웃</button>';
+                document.getElementById('btnLogout').addEventListener('click', function() {
+                    fetch('/api/logout', { method: 'POST' })
+                        .finally(function() { location.reload(); });
+                });
+            }
+        }
+
+        function escHtml(str) {
+            return String(str)
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+
+        // 검색 기능 (role 필터 이후 남은 카드에만 적용)
         var searchInput = document.getElementById('searchInput');
         var searchClear = document.getElementById('searchClear');
         var noResults = document.getElementById('noResults');
 
-        searchInput.addEventListener('input', function() {
-            var query = this.value.toLowerCase().trim();
+        function runSearch() {
+            var query = searchInput.value.toLowerCase().trim();
             searchClear.style.display = query ? 'block' : 'none';
-
             var sections = document.querySelectorAll('[data-section]');
             var totalVisible = 0;
 
             sections.forEach(function(section) {
+                if (section.style.display === 'none') return;
                 var cards = section.querySelectorAll('[data-card]');
                 var visibleInSection = 0;
-
                 cards.forEach(function(card) {
                     var title = card.querySelector('.card-title').textContent.toLowerCase();
                     var desc = card.querySelector('.card-desc').textContent.toLowerCase();
@@ -599,19 +700,31 @@
                     card.style.display = match ? '' : 'none';
                     if (match) visibleInSection++;
                 });
-
                 section.style.display = visibleInSection > 0 ? '' : 'none';
                 totalVisible += visibleInSection;
             });
 
-            noResults.style.display = totalVisible === 0 ? 'block' : 'none';
-        });
+            noResults.style.display = totalVisible === 0 && query ? 'block' : 'none';
+        }
 
+        searchInput.addEventListener('input', runSearch);
         searchClear.addEventListener('click', function() {
             searchInput.value = '';
-            searchInput.dispatchEvent(new Event('input'));
+            runSearch();
             searchInput.focus();
         });
+
+        // ─── 초기화: /api/me → 헤더 렌더링 + 카드 필터링 ─────────
+        fetch('/api/me')
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(meData) {
+                renderHeaderUser(meData);
+                applyRoleFilter(meData ? meData.role : null);
+            })
+            .catch(function() {
+                renderHeaderUser(null);
+                applyRoleFilter(null);
+            });
     </script>
 
 </body>

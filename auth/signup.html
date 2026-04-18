@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>회원가입 요청</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#ffffff; --text:#111827; --muted:#6b7280;
+      --brand:#0070f3; --brand-weak:#e6f0ff; --danger:#dc2626; --success:#1f9d68;
+      --border:#e5e7eb; --shadow:0 10px 25px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(1100px 700px at 20% 0%, #eef3ff, var(--bg) 60%);
+      color:var(--text); display:grid; place-items:center; padding:24px;
+    }
+    .card{
+      width:min(420px, 92vw); background:var(--card); border:1px solid var(--border);
+      border-radius:16px; box-shadow:var(--shadow); padding:28px 26px;
+    }
+    .header{ text-align:center; margin-bottom:18px; }
+    .icon{
+      width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
+      margin:0 auto 10px; background:var(--brand-weak); color:var(--brand); font-size:22px;
+      border:1px solid #dbeafe;
+    }
+    h1{font-size:20px; margin:6px 0 4px}
+    .sub{color:var(--muted); font-size:13px; margin:0}
+    label{display:block; font-size:12px; color:var(--muted); margin:10px 2px 6px}
+    .input-wrap{ position:relative; }
+    input[type="text"], input[type="email"], input[type="password"]{
+      width:100%; padding:12px 44px 12px 12px; border:1px solid var(--border); border-radius:10px;
+      background:#fff; outline:none; font-size:14px;
+      transition: box-shadow .15s ease, border-color .15s ease;
+    }
+    input[type="text"].plain, input[type="email"].plain{ padding-right:12px; }
+    input:focus{ border-color:#93c5fd; box-shadow:0 0 0 4px rgba(147,197,253,.35) }
+    .toggle{
+      position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      border:0; background:transparent; cursor:pointer; padding:6px 8px; color:#6b7280;
+    }
+    .msg{ margin:10px 0 0; font-size:12px; min-height:1.25em; }
+    .msg.err{ color:var(--danger); }
+    .actions{ margin-top:16px }
+    button[type="submit"]{
+      width:100%; padding:12px; border-radius:10px; border:1px solid #1570ef;
+      background:linear-gradient(90deg, #1a7bf7, #0070f3); color:#fff; font-weight:600;
+      cursor:pointer; transition: filter .15s ease;
+    }
+    button[type="submit"]:hover{ filter:brightness(.98) }
+    button[type="submit"]:disabled{ opacity:.6; cursor:not-allowed; }
+    .foot{ margin-top:12px; color:var(--muted); font-size:12px; text-align:center; }
+    .foot a{ color:var(--brand); text-decoration:none; }
+    .foot a:hover{ text-decoration:underline; }
+
+    /* 성공 패널 */
+    .success-panel{ display:none; }
+    .success-panel.show{ display:block; }
+    .success-box{
+      background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px;
+      padding:16px; margin-bottom:14px;
+    }
+    .success-box p{ color:#166534; font-size:13px; line-height:1.7; margin:0; }
+    .url-box{
+      background:#f8fafc; border:1px solid var(--border); border-radius:8px;
+      padding:10px 12px; font-size:12px; word-break:break-all;
+      color:var(--brand); font-family:monospace; margin:10px 0;
+    }
+    .btn-copy{
+      width:100%; padding:10px; border-radius:10px; border:1px solid var(--border);
+      background:#fff; cursor:pointer; font-size:13px; color:var(--text);
+      transition: background .12s;
+    }
+    .btn-copy:hover{ background:#f1f5f9; }
+    .copy-ok{ color:var(--success); font-size:12px; text-align:center; margin-top:6px; min-height:1.2em; }
+    .warn-text{ color:var(--danger); font-size:11px; margin-top:8px; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- 폼 영역 -->
+    <div id="formArea">
+      <div class="header">
+        <div class="icon">✍️</div>
+        <h1>회원가입 요청</h1>
+        <p class="sub">관리자 승인 후 로그인 가능합니다</p>
+      </div>
+
+      <form id="signupForm">
+        <label for="username">아이디</label>
+        <div class="input-wrap">
+          <input type="text" id="username" class="plain" placeholder="사용자 아이디" required autocomplete="username" />
+        </div>
+
+        <label for="email">이메일</label>
+        <div class="input-wrap">
+          <input type="email" id="email" class="plain" placeholder="example@email.com" required autocomplete="email" />
+        </div>
+
+        <label for="password">비밀번호 <small>(8자 이상)</small></label>
+        <div class="input-wrap">
+          <input type="password" id="password" placeholder="비밀번호 입력" required minlength="8" autocomplete="new-password" />
+          <button class="toggle" type="button" data-target="password">👁️</button>
+        </div>
+
+        <label for="passwordConfirm">비밀번호 확인</label>
+        <div class="input-wrap">
+          <input type="password" id="passwordConfirm" placeholder="비밀번호 재입력" required minlength="8" autocomplete="new-password" />
+          <button class="toggle" type="button" data-target="passwordConfirm">👁️</button>
+        </div>
+
+        <p class="msg err" id="errMsg"></p>
+
+        <div class="actions">
+          <button type="submit" id="submitBtn">가입 요청</button>
+        </div>
+        <p class="foot">이미 계정이 있으신가요? <a href="/auth/login.html">로그인</a></p>
+      </form>
+    </div>
+
+    <!-- 성공 패널 -->
+    <div class="success-panel" id="successArea">
+      <div class="header">
+        <div class="icon">✅</div>
+        <h1>요청 완료</h1>
+      </div>
+      <div class="success-box">
+        <p>가입 요청이 접수되었습니다.<br>관리자 승인 후 로그인 가능합니다.</p>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:4px">상태 조회 URL</p>
+      <div class="url-box" id="statusUrl"></div>
+      <button class="btn-copy" id="btnCopy">🔗 URL 복사</button>
+      <p class="copy-ok" id="copyOk"></p>
+      <p class="warn-text">이 URL을 저장해두세요. 다시 확인할 수 없습니다.</p>
+    </div>
+  </div>
+
+  <script>
+    // 비밀번호 보기 토글
+    document.querySelectorAll('.toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const inp = document.getElementById(btn.dataset.target);
+        const isPw = inp.type === 'password';
+        inp.type = isPw ? 'text' : 'password';
+        btn.textContent = isPw ? '🙈' : '👁️';
+        inp.focus();
+      });
+    });
+
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('errMsg');
+      errEl.textContent = '';
+
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const passwordConfirm = document.getElementById('passwordConfirm').value;
+      const submitBtn = document.getElementById('submitBtn');
+
+      if (password !== passwordConfirm) {
+        errEl.textContent = '비밀번호 확인이 일치하지 않습니다.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = '요청 중...';
+
+      try {
+        const r = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password }),
+        });
+        const data = await r.json();
+
+        if (r.ok) {
+          const statusUrl = `${location.origin}/auth/signup-status.html?id=${data.requestId}`;
+          document.getElementById('statusUrl').textContent = statusUrl;
+          document.getElementById('formArea').style.display = 'none';
+          document.getElementById('successArea').classList.add('show');
+        } else {
+          if (data.error === 'username_taken') errEl.textContent = '이미 사용 중인 아이디입니다.';
+          else if (data.error === 'email_taken') errEl.textContent = '이미 사용 중인 이메일입니다.';
+          else errEl.textContent = data.error || '요청 처리 중 오류가 발생했습니다.';
+          submitBtn.disabled = false;
+          submitBtn.textContent = '가입 요청';
+        }
+      } catch {
+        errEl.textContent = '서버 오류가 발생했습니다.';
+        submitBtn.disabled = false;
+        submitBtn.textContent = '가입 요청';
+      }
+    });
+
+    document.getElementById('btnCopy').addEventListener('click', async () => {
+      const url = document.getElementById('statusUrl').textContent;
+      try {
+        await navigator.clipboard.writeText(url);
+        document.getElementById('copyOk').textContent = '✅ 복사되었습니다.';
+      } catch {
+        document.getElementById('copyOk').textContent = '복사에 실패했습니다. 직접 복사해주세요.';
+      }
+    });
+  </script>
+</body>
+</html>

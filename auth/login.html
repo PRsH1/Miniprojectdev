@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>로그인</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
@@ -20,12 +20,9 @@
     }
     .card{
       width:min(420px, 92vw); background:var(--card); border:1px solid var(--border);
-      border-radius:16px; box-shadow:var(--shadow);
-      padding:28px 26px;
+      border-radius:16px; box-shadow:var(--shadow); padding:28px 26px;
     }
-    .header{
-      text-align:center; margin-bottom:18px;
-    }
+    .header{ text-align:center; margin-bottom:18px; }
     .lock{
       width:44px; height:44px; border-radius:12px; display:grid; place-items:center;
       margin:0 auto 10px; background:var(--brand-weak); color:var(--brand); font-weight:700;
@@ -35,22 +32,20 @@
     .sub{color:var(--muted); font-size:13px; margin:0}
     form{margin-top:12px}
     label{display:block; font-size:12px; color:var(--muted); margin:10px 2px 6px}
-    .input-wrap{
-      position:relative;
-    }
+    .input-wrap{ position:relative; }
     input[type="password"], input[type="text"]{
       width:100%; padding:12px 44px 12px 12px; border:1px solid var(--border); border-radius:10px;
       background:#fff; outline:none; font-size:14px;
       transition: box-shadow .15s ease, border-color .15s ease;
     }
+    input[type="text"].plain{ padding-right:12px; }
     input:focus{ border-color:#93c5fd; box-shadow:0 0 0 4px rgba(147,197,253,.35) }
     .toggle{
       position:absolute; right:8px; top:50%; transform:translateY(-50%);
       border:0; background:transparent; cursor:pointer; padding:6px 8px; color:#6b7280;
     }
     .error{
-      margin:10px 0 0; color:var(--danger); font-size:12px; min-height:1.25em;
-      text-align:left;
+      margin:10px 0 0; color:var(--danger); font-size:12px; min-height:1.25em; text-align:left;
     }
     .actions{ margin-top:16px }
     button[type="submit"]{
@@ -60,60 +55,106 @@
     }
     button[type="submit"]:hover{ filter:brightness(.98) }
     button[type="submit"]:active{ transform:translateY(1px) }
-    .foot{
-      margin-top:12px; color:var(--muted); font-size:12px; text-align:center;
+    .foot{ margin-top:12px; color:var(--muted); font-size:12px; text-align:center; }
+    .foot a{ color:var(--brand); text-decoration:none; cursor:pointer; }
+    .foot a:hover{ text-decoration:underline; }
+
+    /* 비밀번호 분실 모달 */
+    .modal-overlay{
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100;
+      place-items:center; padding:24px;
     }
+    .modal-overlay.open{ display:grid; }
+    .modal{
+      background:#fff; border-radius:14px; padding:24px 22px; width:min(360px, 90vw);
+      box-shadow:0 20px 50px rgba(0,0,0,.18);
+    }
+    .modal h2{ font-size:16px; margin:0 0 6px; }
+    .modal p{ font-size:13px; color:var(--muted); margin:0 0 14px; }
+    .modal input[type="text"]{ padding:10px 12px; margin-bottom:10px; }
+    .modal-actions{ display:flex; gap:8px; margin-top:4px; }
+    .btn-cancel{
+      flex:1; padding:10px; border:1px solid var(--border); border-radius:8px;
+      background:#fff; cursor:pointer; font-size:13px; color:var(--muted);
+    }
+    .btn-submit-modal{
+      flex:2; padding:10px; border:1px solid #1570ef; border-radius:8px;
+      background:linear-gradient(90deg, #1a7bf7, #0070f3); color:#fff; font-weight:600;
+      cursor:pointer; font-size:13px;
+    }
+    .modal-msg{ font-size:12px; margin:8px 0 0; min-height:1.4em; }
+    .modal-msg.ok{ color:#1f9d68; }
+    .modal-msg.err{ color:var(--danger); }
   </style>
 </head>
 <body>
-  <div class="card" role="dialog" aria-labelledby="title" aria-describedby="subtitle">
+  <div class="card" role="dialog" aria-labelledby="title">
     <div class="header">
       <div class="lock" aria-hidden="true">🔒</div>
-      <h1 id="title">보호 페이지 접근</h1>
-      <p id="subtitle" class="sub">이 페이지는 인증된 사용자만 접근할 수 있습니다.</p>
+      <h1 id="title">로그인</h1>
+      <p class="sub">eformsign API 도구 허브</p>
     </div>
 
-    <form action="/api/login" method="POST">
+    <form action="/api/login" method="POST" id="loginForm">
+      <label for="username">아이디</label>
+      <div class="input-wrap">
+        <input id="username" name="username" type="text" class="plain" placeholder="사용자 아이디" required autocomplete="username" />
+      </div>
+
       <label for="password">비밀번호</label>
       <div class="input-wrap">
-        <input id="password" name="password" type="password" placeholder="암호를 입력하세요" required />
+        <input id="password" name="password" type="password" placeholder="비밀번호" required autocomplete="current-password" />
         <button class="toggle" type="button" aria-label="비밀번호 보기" id="toggleBtn">👁️</button>
       </div>
 
       <input type="hidden" name="next" id="next" />
-      <!-- scope: member | templatecopy | apiautotest -->
-      <input type="hidden" name="scope" id="scope" />
 
       <p id="errorMessage" class="error"></p>
 
       <div class="actions">
         <button type="submit">로그인</button>
       </div>
-      <p class="foot">암호 발급은 관리자에게 문의하세요.</p>
+      <p class="foot">
+        <a id="forgotLink">비밀번호를 잊으셨나요?</a>
+      </p>
     </form>
+  </div>
+
+  <!-- 비밀번호 분실 모달 -->
+  <div class="modal-overlay" id="forgotOverlay" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+    <div class="modal">
+      <h2 id="forgotTitle">비밀번호 재설정 요청</h2>
+      <p>아이디를 입력하면 관리자에게 알림이 전달됩니다.</p>
+      <input type="text" id="forgotUsername" placeholder="사용자 아이디" />
+      <div class="modal-actions">
+        <button class="btn-cancel" id="forgotCancel">취소</button>
+        <button class="btn-submit-modal" id="forgotSubmit">요청 전송</button>
+      </div>
+      <p class="modal-msg" id="forgotMsg"></p>
+    </div>
   </div>
 
   <script>
     const params = new URLSearchParams(window.location.search);
-
-    const next = params.get('next') || '/';
-    const scope = params.get('scope') || 'member';
-
+    const next = params.get('next') || '';
     document.getElementById('next').value = next;
-    document.getElementById('scope').value = scope;
 
-    if (params.has('error')) {
-      document.getElementById('errorMessage').textContent = '암호가 올바르지 않습니다.';
+    // 에러 메시지 처리
+    const errMsg = document.getElementById('errorMessage');
+    const errCode = params.get('error');
+    if (errCode === 'invalid') {
+      errMsg.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+    } else if (errCode === 'inactive') {
+      errMsg.textContent = '비활성화된 계정입니다. 관리자에게 문의하세요.';
+    } else if (errCode === 'locked') {
+      const until = params.get('until');
+      let msg = '로그인 시도 초과로 계정이 잠겼습니다.';
+      if (until) {
+        const d = new Date(until);
+        msg += ` (${d.toLocaleString('ko-KR')}까지)`;
+      }
+      errMsg.textContent = msg;
     }
-
-    const prettyNameByScope = (s) => {
-      if (s === 'templatecopy') return '템플릿 복제 페이지 접근';
-      if (s === 'apiautotest') return 'API 자동 테스트 페이지 접근';
-      if (s === 'member') return '멤버 페이지 접근';
-      if (s === 'idptestauth') return 'IDP 테스트 페이지 접근';
-      return '보호 페이지 접근';
-    };
-    document.getElementById('title').textContent = prettyNameByScope(scope);
 
     // 비밀번호 보기 토글
     const pwd = document.getElementById('password');
@@ -126,9 +167,46 @@
       pwd.focus();
     });
 
-    // 엔터키 UX 향상: 입력에서 Enter 누르면 제출
-    pwd.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') e.target.form?.requestSubmit();
+    // 비밀번호 분실 모달
+    const overlay = document.getElementById('forgotOverlay');
+    document.getElementById('forgotLink').addEventListener('click', () => {
+      overlay.classList.add('open');
+      document.getElementById('forgotUsername').focus();
+    });
+    document.getElementById('forgotCancel').addEventListener('click', () => {
+      overlay.classList.remove('open');
+      document.getElementById('forgotMsg').textContent = '';
+      document.getElementById('forgotUsername').value = '';
+    });
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+
+    document.getElementById('forgotSubmit').addEventListener('click', async () => {
+      const username = document.getElementById('forgotUsername').value.trim();
+      const msgEl = document.getElementById('forgotMsg');
+      msgEl.textContent = '';
+      msgEl.className = 'modal-msg';
+
+      if (!username) {
+        msgEl.textContent = '아이디를 입력해주세요.';
+        msgEl.classList.add('err');
+        return;
+      }
+
+      try {
+        const r = await fetch('/api/password-reset-request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username }),
+        });
+        const data = await r.json();
+        msgEl.textContent = data.message || '관리자에게 요청이 전달되었습니다.';
+        msgEl.classList.add('ok');
+      } catch {
+        msgEl.textContent = '요청 중 오류가 발생했습니다.';
+        msgEl.classList.add('err');
+      }
     });
   </script>
 </body>

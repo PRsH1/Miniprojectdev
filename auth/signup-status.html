@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>가입 요청 상태</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#ffffff; --text:#111827; --muted:#6b7280;
+      --brand:#0070f3; --brand-weak:#e6f0ff; --danger:#dc2626; --success:#1f9d68;
+      --border:#e5e7eb; --shadow:0 10px 25px rgba(0,0,0,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(1100px 700px at 20% 0%, #eef3ff, var(--bg) 60%);
+      color:var(--text); display:grid; place-items:center; padding:24px;
+    }
+    .card{
+      width:min(420px, 92vw); background:var(--card); border:1px solid var(--border);
+      border-radius:16px; box-shadow:var(--shadow); padding:28px 26px; text-align:center;
+    }
+    .icon{ font-size:48px; margin-bottom:12px; }
+    h1{ font-size:20px; margin:0 0 8px; }
+    .sub{ color:var(--muted); font-size:13px; line-height:1.6; margin:0 0 16px; }
+    .date{ font-size:12px; color:var(--muted); margin-top:8px; }
+    .reason-box{
+      background:#fef2f2; border:1px solid #fecaca; border-radius:8px;
+      padding:10px 14px; font-size:13px; color:#991b1b; margin-top:10px; text-align:left;
+    }
+    .btn{
+      display:inline-block; padding:10px 24px; border-radius:10px;
+      background:linear-gradient(90deg,#1a7bf7,#0070f3); color:#fff;
+      text-decoration:none; font-weight:600; font-size:14px;
+      border:1px solid #1570ef; margin-top:16px;
+    }
+    .btn:hover{ filter:brightness(.95) }
+    .spinner{
+      width:32px; height:32px; border:3px solid #e5e7eb; border-top-color:var(--brand);
+      border-radius:50%; animation:spin .7s linear infinite; margin:0 auto 16px;
+    }
+    @keyframes spin{ to{ transform:rotate(360deg) } }
+  </style>
+</head>
+<body>
+  <div class="card" id="statusCard">
+    <div class="spinner"></div>
+    <p style="color:var(--muted);font-size:13px">조회 중...</p>
+  </div>
+
+  <script>
+    const id = new URLSearchParams(location.search).get('id');
+
+    function renderError(msg) {
+      document.getElementById('statusCard').innerHTML = `
+        <div class="icon">❌</div>
+        <h1>오류</h1>
+        <p class="sub">${msg}</p>
+        <a href="/auth/login.html" class="btn">로그인 페이지로</a>
+      `;
+    }
+
+    if (!id) {
+      renderError('유효하지 않은 접근입니다.');
+    } else {
+      fetch('/api/signup-status?id=' + encodeURIComponent(id))
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) { renderError('유효하지 않은 요청입니다.'); return; }
+
+          const createdAt = data.created_at
+            ? new Date(data.created_at).toLocaleString('ko-KR')
+            : '';
+
+          let html = '';
+          if (data.status === 'pending') {
+            html = `
+              <div class="icon">⏳</div>
+              <h1>검토 중</h1>
+              <p class="sub">관리자 검토 중입니다.<br>승인 후 로그인 가능합니다.</p>
+              <p class="date">요청 일시: ${createdAt}</p>
+            `;
+          } else if (data.status === 'approved') {
+            html = `
+              <div class="icon">✅</div>
+              <h1>가입 승인됨</h1>
+              <p class="sub">가입이 승인되었습니다.<br>아래 버튼을 눌러 로그인하세요.</p>
+              <a href="/auth/login.html" class="btn">로그인하기</a>
+            `;
+          } else if (data.status === 'rejected') {
+            html = `
+              <div class="icon">🚫</div>
+              <h1>가입 거절됨</h1>
+              <p class="sub">가입 요청이 거절되었습니다.</p>
+              ${data.reject_reason ? `<div class="reason-box">사유: ${escHtml(data.reject_reason)}</div>` : ''}
+              <a href="/auth/signup.html" class="btn" style="background:linear-gradient(90deg,#64748b,#475569);border-color:#334155">다시 요청하기</a>
+            `;
+          } else {
+            renderError('유효하지 않은 요청입니다.');
+            return;
+          }
+
+          document.getElementById('statusCard').innerHTML = html;
+        })
+        .catch(() => renderError('조회 중 오류가 발생했습니다.'));
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>

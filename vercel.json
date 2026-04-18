@@ -4,12 +4,15 @@
       "includeFiles": "private/**/*.html"
     }
   },
+  "redirects": [
+    { "source": "/memberV2",        "destination": "/app/memberV2",        "permanent": true },
+    { "source": "/templatecopy",    "destination": "/app/templatecopy",    "permanent": true },
+    { "source": "/OpenAPIAutoTest", "destination": "/app/OpenAPIAutoTest", "permanent": true },
+    { "source": "/ApiAutoTest",     "destination": "/app/ApiAutoTest",     "permanent": true },
+    { "source": "/idptestauth",     "destination": "/app/idptestauth",     "permanent": true }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" },
-    { "source": "/memberV2", "destination": "/api/index.js" },
-    { "source": "/ApiAutoTest", "destination": "/api/index.js" },
-    { "source": "/OpenAPIAutoTest", "destination": "/api/index.js" },
-    { "source": "/templatecopy", "destination": "/api/index.js" },
-    { "source": "/idptestauth", "destination": "/api/index.js" }
+    { "source": "/app/(.*)", "destination": "/api/index.js" }
   ]
 }
