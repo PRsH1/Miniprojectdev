@@ -14,5 +14,11 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/app/(.*)", "destination": "/api/index.js" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/cleanup-audit",
+      "schedule": "0 0 * * *"
+    }
   ]
 }

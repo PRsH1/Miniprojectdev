@@ -41,6 +41,15 @@ module.exports = async (req, res) => {
     return authMiddleware(req, res);
   }
 
+  // ─── /api/cron/* → Cron Job 컨트롤러 ──────────────────────
+  if (path.startsWith('/api/cron/')) {
+    if (path === '/api/cron/cleanup-audit') {
+      const cleanupAudit = require('../controllers/cron/cleanup-audit');
+      return cleanupAudit(req, res);
+    }
+    return res.status(404).send('Not Found');
+  }
+
   // ─── /api/admin/* → 관리자 API 컨트롤러 ────────────────────
   if (path.startsWith('/api/admin/')) {
     if (path.startsWith('/api/admin/users') || path.startsWith('/api/admin/password-reset-requests')) {
