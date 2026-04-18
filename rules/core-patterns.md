@@ -68,6 +68,29 @@ user    → required_role이 'user'인 페이지만
    (path: /app/pageName, file_path: private/pageName.html, required_role 선택)
 ```
 
+### Vercel Cron Job 패턴
+
+정기 실행 작업은 `vercel.json`의 `crons` 배열 + 전용 컨트롤러로 구현한다.
+
+```json
+// vercel.json
+"crons": [
+  { "path": "/api/cron/cleanup-audit", "schedule": "0 0 * * *" }
+]
+```
+
+```javascript
+// controllers/cron/cleanup-audit.js (GET 메서드)
+// 1. Authorization: Bearer <CRON_SECRET> 헤더 검증
+// 2. DELETE 쿼리 실행
+// 3. { success: true, deleted: N } 반환
+```
+
+- Cron 엔드포인트는 반드시 `CRON_SECRET` 검증 — 미설정(`undefined`) 시 모든 요청 차단
+- `crons` 스케줄은 **Production 환경에서만** 자동 실행 (로컬·Preview는 수동 curl로 테스트)
+- 로컬 테스트: `curl -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/cleanup-audit`
+- Hobby 플랜: 일 1회 제한 / Pro 플랜: 분 단위 설정 가능
+
 ### 새 API 엔드포인트 추가
 
 1. `/controllers/`에 컨트롤러 파일 생성

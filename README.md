@@ -59,6 +59,8 @@ ProjectImprove/
 │   ├── adminPages.js             # 보호 페이지 동적 설정 CRUD
 │   ├── adminAuditLogs.js         # 감사 로그 조회
 │   ├── adminSignupRequests.js    # 회원가입 요청 승인/거절
+│   ├── cron/
+│   │   └── cleanup-audit.js      # 7일 초과 감사 로그 자동 삭제 (Vercel Cron)
 │   ├── auth.js                   # SAML 응답 생성
 │   ├── getToken.js               # ECDSA 서명 기반 액세스 토큰 생성
 │   ├── downloadDocument.js       # 문서 파일 프록시 다운로드
@@ -152,6 +154,12 @@ ProjectImprove/
 | `GET /api/admin/audit-logs` | GET | 감사 로그 조회 |
 | `GET /api/admin/password-reset-requests` | GET | 비밀번호 재설정 요청 목록 |
 
+### Cron
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `GET /api/cron/cleanup-audit` | GET | 7일 초과 감사 로그 자동 삭제 (매일 UTC 00:00 실행) |
+
 ### 보호 페이지 (/app/*)
 
 | 경로 | 필요 역할 | 설명 |
@@ -230,6 +238,9 @@ JWT_SECRET=              # openssl rand -base64 64 으로 생성
 # ─── SAML 인증 ────────────────────────────────────────────
 SAML_PRIVATE_KEY=        # base64 인코딩된 개인 키
 SAML_PUBLIC_CERT=        # base64 인코딩된 공개 인증서
+
+# ─── Cron ─────────────────────────────────────────────────
+CRON_SECRET=             # Cron 엔드포인트 인증 시크릿 (임의 문자열)
 
 # ─── Pusher (웹훅) ────────────────────────────────────────
 PUSHER_APP_ID=
@@ -499,6 +510,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 - 비밀번호 초기화 후 다음 로그인 시 강제 변경 (`must_change_password`)
 - 모든 주요 액션 감사 로그 기록
 - 회원가입 요청 → 관리자 승인 후 계정 활성화
+- 감사 로그 7일 보존 정책 — Vercel Cron Job(`/api/cron/cleanup-audit`)이 매일 UTC 00:00에 7일 초과 레코드 자동 삭제
 
 #### index.html 변경
 

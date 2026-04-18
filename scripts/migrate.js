@@ -125,8 +125,9 @@ async function migrate() {
     { path: '/app/templatecopy',    name: '템플릿 복제',            required_role: 'manager', file_path: 'private/templatecopy.html' },
     { path: '/app/OpenAPIAutoTest', name: 'API 자동 테스트',        required_role: 'manager', file_path: 'private/OpenAPIAutoTest.html' },
     { path: '/app/ApiAutoTest',     name: 'API 자동 테스트 구버전', required_role: 'admin',   file_path: 'private/ApiAutoTest.html' },
-    { path: '/app/idptestauth',     name: 'IdP 테스트',            required_role: 'admin',   file_path: 'private/idp-test.html' },
-    { path: '/app/admin',           name: '관리자',                 required_role: 'admin',   file_path: 'private/Admin.html' },
+    { path: '/app/idptestauth',          name: 'IdP 테스트',            required_role: 'admin',   file_path: 'private/idp-test.html' },
+    { path: '/app/admin',                name: '관리자',                 required_role: 'admin',   file_path: 'private/Admin.html' },
+    { path: '/app/massDocumentDownload', name: '문서 일괄 다운로드',     required_role: 'manager', file_path: 'private/MassDocumentDowmload.html' },
   ];
 
   for (const p of pages) {

@@ -333,6 +333,7 @@
 
         /* 카드 초기 숨김 (FOUC 방지 — JS에서 role 확인 후 표시) */
         .card[data-min-role] { display: none; }
+        .card[data-protected-path] { display: none; }
 
         /* 반응형 */
         @media (max-width: 640px) {
@@ -388,7 +389,7 @@
                 <h2>API <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/API(JS,HTML)/OpenAPITesterProd.html" class="card" data-card data-min-role="public">
+                <a href="/API(JS,HTML)/OpenAPITesterProd.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/OpenAPITesterProd.html">
                     <div class="card-icon"><i class="fa-solid fa-flask"></i></div>
                     <div class="card-content">
                         <div class="card-title">Open API Tester<span class="badge badge-new">New</span></div>
@@ -396,7 +397,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/error-codes.html" class="card" data-card data-min-role="public">
+                <a href="/utils/error-codes.html" class="card" data-card data-min-role="public" data-original-url="/utils/error-codes.html">
                     <div class="card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                     <div class="card-content">
                         <div class="card-title">에러 코드 모음</div>
@@ -404,7 +405,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/DocumentSendImprove.html" class="card" data-card data-min-role="public">
+                <a href="/API(JS,HTML)/DocumentSendImprove.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/DocumentSendImprove.html">
                     <div class="card-icon"><i class="fa-solid fa-file-signature"></i></div>
                     <div class="card-content">
                         <div class="card-title">새 문서 작성</div>
@@ -412,7 +413,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/DocumentInfo.html" class="card" data-card data-min-role="public">
+                <a href="/API(JS,HTML)/DocumentInfo.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/DocumentInfo.html">
                     <div class="card-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 정보 조회</div>
@@ -420,7 +421,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/listdocuments.html" class="card" data-card data-min-role="public">
+                <a href="/API(JS,HTML)/listdocuments.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/listdocuments.html">
                     <div class="card-icon"><i class="fa-solid fa-list-ul"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 목록 조회</div>
@@ -428,7 +429,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/DocumentDownload.html" class="card" data-card data-min-role="public">
+                <a href="/API(JS,HTML)/DocumentDownload.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/DocumentDownload.html">
                     <div class="card-icon"><i class="fa-solid fa-file-arrow-down"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 다운로드</div>
@@ -436,7 +437,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/app/memberV2" class="card" data-card data-min-role="manager">
+                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card data-protected-path="/app/memberV2">
                     <div class="card-icon"><i class="fa-solid fa-users-gear"></i></div>
                     <div class="card-content">
                         <div class="card-title">멤버/그룹 관리 API</div>
@@ -454,7 +455,7 @@
                 <h2>Embedding <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/Embedding/embedding_doc_Integration.html" class="card" data-card data-min-role="public">
+                <a href="/Embedding/embedding_doc_Integration.html" class="card" data-card data-min-role="public" data-original-url="/Embedding/embedding_doc_Integration.html">
                     <div class="card-icon"><i class="fa-solid fa-puzzle-piece"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 임베딩 <span class="badge badge-new">New</span></div>
@@ -462,7 +463,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/Embedding/embedding_template_intergration.html" class="card" data-card data-min-role="public">
+                <a href="/Embedding/embedding_template_intergration.html" class="card" data-card data-min-role="public" data-original-url="/Embedding/embedding_template_intergration.html">
                     <div class="card-icon"><i class="fa-solid fa-file-invoice"></i></div>
                     <div class="card-content">
                         <div class="card-title">템플릿 임베딩 <span class="badge badge-new">New</span></div>
@@ -480,7 +481,7 @@
                 <h2>Webhook <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/utils/webhook.html" class="card" data-card data-min-role="public">
+                <a href="/utils/webhook.html" class="card" data-card data-min-role="public" data-original-url="/utils/webhook.html">
                     <div class="card-icon"><i class="fa-solid fa-satellite-dish"></i></div>
                     <div class="card-content">
                         <div class="card-title">Webhook 수신 모니터링</div>
@@ -498,7 +499,7 @@
                 <h2>SAML SSO <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/app/idptestauth" class="card" data-card data-min-role="admin">
+                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card data-protected-path="/app/idptestauth">
                     <div class="card-icon"><i class="fa-solid fa-shield"></i></div>
                     <div class="card-content">
                         <div class="card-title">SAML SSO 연동 테스트 <span class="badge badge-new">New</span></div>
@@ -516,7 +517,7 @@
                 <h2>유틸리티 <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/utils/smtp.html" class="card" data-card data-min-role="public">
+                <a href="/utils/smtp.html" class="card" data-card data-min-role="public" data-original-url="/utils/smtp.html">
                     <div class="card-icon"><i class="fa-solid fa-paper-plane"></i></div>
                     <div class="card-content">
                         <div class="card-title">SMTP 발송 테스트</div>
@@ -524,7 +525,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/CorsTest.html" class="card" data-card data-min-role="public">
+                <a href="/utils/CorsTest.html" class="card" data-card data-min-role="public" data-original-url="/utils/CorsTest.html">
                     <div class="card-icon"><i class="fa-solid fa-shield-halved"></i></div>
                     <div class="card-content">
                         <div class="card-title">CORS 차단 테스트</div>
@@ -532,7 +533,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/RsaTestSample.html" class="card" data-card data-min-role="public">
+                <a href="/utils/RsaTestSample.html" class="card" data-card data-min-role="public" data-original-url="/utils/RsaTestSample.html">
                     <div class="card-icon"><i class="fa-solid fa-key"></i></div>
                     <div class="card-content">
                         <div class="card-title">RSA 로그인 테스트</div>
@@ -540,7 +541,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/timestamp.html" class="card" data-card data-min-role="public">
+                <a href="/utils/timestamp.html" class="card" data-card data-min-role="public" data-original-url="/utils/timestamp.html">
                     <div class="card-icon"><i class="fa-solid fa-clock"></i></div>
                     <div class="card-content">
                         <div class="card-title">Unix 시간 변환</div>
@@ -548,7 +549,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/base64.html" class="card" data-card data-min-role="public">
+                <a href="/utils/base64.html" class="card" data-card data-min-role="public" data-original-url="/utils/base64.html">
                     <div class="card-icon"><i class="fa-solid fa-right-left"></i></div>
                     <div class="card-content">
                         <div class="card-title">Base64 인코딩/디코딩</div>
@@ -556,7 +557,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/app/OpenAPIAutoTest" class="card" data-card data-min-role="manager">
+                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card data-protected-path="/app/OpenAPIAutoTest">
                     <div class="card-icon"><i class="fa-solid fa-flask-vial"></i></div>
                     <div class="card-content">
                         <div class="card-title">Open API 자동 테스트 <span class="badge badge-new">New</span></div>
@@ -564,7 +565,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/app/templatecopy" class="card" data-card data-min-role="manager">
+                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card data-protected-path="/app/templatecopy">
                     <div class="card-icon"><i class="fa-solid fa-clone"></i></div>
                     <div class="card-content">
                         <div class="card-title">템플릿 복제</div>
@@ -572,7 +573,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/DocumentDelete.html" class="card" data-card data-min-role="public">
+                <a href="/utils/DocumentDelete.html" class="card" data-card data-min-role="public" data-original-url="/utils/DocumentDelete.html">
                     <div class="card-icon"><i class="fa-solid fa-trash"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 일괄 삭제</div>
@@ -580,7 +581,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/MassDocumentDowmload.html" class="card" data-card data-min-role="public">
+                <a href="/utils/MassDocumentDowmload.html" class="card" data-card data-min-role="public" data-original-url="utils/MassDocumentDowmload.html">
                     <div class="card-icon"><i class="fa-solid fa-download"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 일괄 다운로드</div>
@@ -588,7 +589,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/templateDeletetool.html" class="card" data-card data-min-role="public">
+                <a href="/utils/templateDeletetool.html" class="card" data-card data-min-role="public" data-original-url="/utils/templateDeletetool.html">
                     <div class="card-icon"><i class="fa-solid fa-folder-minus"></i></div>
                     <div class="card-content">
                         <div class="card-title">템플릿 삭제</div>
@@ -596,7 +597,7 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/JsonToPretty.html" class="card" data-card data-min-role="public">
+                <a href="/utils/JsonToPretty.html" class="card" data-card data-min-role="public" data-original-url="/utils/JsonToPretty.html">
                     <div class="card-icon"><i class="fa-solid fa-code"></i></div>
                     <div class="card-content">
                         <div class="card-title">JSON/XML 포맷 정리 <span class="badge badge-new">New</span></div>
@@ -615,6 +616,26 @@
     </div>
 
     <script>
+        // protected_pages 배열 (스크립트 스코프 — navigateCard에서도 접근)
+        var protectedPages = [];
+
+        // data-protected-path 카드 클릭 시 URL 동적 결정
+        function navigateCard(card) {
+            var protectedPath = card.dataset.protectedPath;
+            if (!protectedPath) return;
+            var page = null;
+            for (var i = 0; i < protectedPages.length; i++) {
+                if (protectedPages[i].path === protectedPath) { page = protectedPages[i]; break; }
+            }
+            if (page) {
+                window.open(card.dataset.protectedPath);
+            } else if (card.dataset.originalUrl) {
+                // DB에서 삭제된 페이지 → 원래 공개 URL로 이동
+                window.open(card.dataset.originalUrl);
+            }
+            // data-original-url 없음 → 공개 복원 경로 없는 보호 페이지 → 이동하지 않음
+        }
+
         // role 접근 허용 여부
         function canSeeRole(userRole, minRole) {
             if (minRole === 'public') return true;
@@ -625,15 +646,67 @@
             return false;
         }
 
+        // file_path 정규화 (앞 슬래시 제거, 대소문자 유지)
+        function normalizeFilePath(url) {
+            return url ? String(url).replace(/^\//, '') : '';
+        }
+
         // 카드 role 필터링 적용 (data-role-visible 속성으로 상태 관리)
-        function applyRoleFilter(userRole) {
-            document.querySelectorAll('[data-min-role]').forEach(function(card) {
+        function applyRoleFilter(userRole, protectedPages) {
+            protectedPages = protectedPages || [];
+
+            // ── 1. 자동 매칭: data-original-url ↔ protected_pages.file_path ──
+            // data-protected-path 없고 data-original-url 있는 카드에 대해
+            // file_path 기준으로 보호 페이지를 동적 연결
+            document.querySelectorAll('[data-original-url]:not([data-protected-path])').forEach(function(card) {
+                var originalUrl = normalizeFilePath(card.dataset.originalUrl);
+                var matched = null;
+                for (var i = 0; i < protectedPages.length; i++) {
+                    if (normalizeFilePath(protectedPages[i].file_path) === originalUrl) {
+                        matched = protectedPages[i];
+                        break;
+                    }
+                }
+                if (matched) {
+                    // data-protected-path 동적 주입 → 이후 처리는 data-protected-path 블록에서 통합
+                    card.dataset.protectedPath = matched.path;
+                    // 기존 인라인 onclick 제거 후 navigateCard로 위임
+                    card.removeAttribute('onclick');
+                    card.href = 'javascript:void(0)';
+                    card.onclick = function(e) { e.preventDefault(); navigateCard(this); };
+                }
+            });
+
+            // ── 2. data-protected-path 카드: DB의 required_role 기준으로 가시성 결정 ──
+            // (1번 블록에서 동적 주입된 카드 포함)
+            document.querySelectorAll('[data-protected-path]').forEach(function(card) {
+                var path = card.getAttribute('data-protected-path');
+                var pageInfo = null;
+                for (var i = 0; i < protectedPages.length; i++) {
+                    if (protectedPages[i].path === path) { pageInfo = protectedPages[i]; break; }
+                }
+                // DB에서 해당 path를 찾지 못한 경우:
+                // - data-original-url 있음 → 공개 복원 가능 → public
+                // - data-original-url 없음 → 공개 복원 경로 없는 보호 페이지 → admin (최고 제한 유지)
+                var requiredRole = pageInfo
+                    ? pageInfo.required_role
+                    : (card.hasAttribute('data-original-url') ? 'public' : 'admin');
+                var visible = canSeeRole(userRole, requiredRole);
+                card.dataset.roleVisible = visible ? '1' : '0';
+                if (!visible) card.remove(); // DOM에서 완전 제거
+                else card.style.display = 'flex';
+            });
+
+            // ── 3. data-min-role 카드: data-protected-path가 주입된 카드는 제외 ──
+            // (1번에서 매칭된 카드는 이미 2번에서 처리됨)
+            document.querySelectorAll('[data-min-role]:not([data-protected-path])').forEach(function(card) {
                 var minRole = card.getAttribute('data-min-role');
                 var visible = canSeeRole(userRole, minRole);
                 card.dataset.roleVisible = visible ? '1' : '0';
                 if (!visible) card.remove(); // DOM에서 완전 제거
                 else card.style.display = 'flex';
             });
+
             updateSectionCounts();
         }
 
@@ -651,7 +724,7 @@
         // 헤더 사용자 영역 렌더링
         function renderHeaderUser(meData) {
             var el = document.getElementById('headerUser');
-            if (!meData) {
+            if (!meData || meData.authenticated === false) {
                 el.innerHTML =
                     '<a href="/auth/login.html" class="btn-header primary">로그인</a>' +
                     '<a href="/auth/signup.html" class="btn-header">회원가입</a>';
@@ -716,14 +789,17 @@
 
         // ─── 초기화: /api/me → 헤더 렌더링 + 카드 필터링 ─────────
         fetch('/api/me')
-            .then(function(r) { return r.ok ? r.json() : null; })
-            .then(function(meData) {
-                renderHeaderUser(meData);
-                applyRoleFilter(meData ? meData.role : null);
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                // me.js는 인증 여부와 무관하게 항상 200 반환
+                var isAuth = data && data.authenticated !== false && data.username;
+                renderHeaderUser(isAuth ? data : null);
+                protectedPages = (data && data.protected_pages) || [];
+                applyRoleFilter(isAuth ? data.role : null, protectedPages);
             })
             .catch(function() {
                 renderHeaderUser(null);
-                applyRoleFilter(null);
+                applyRoleFilter(null, []);
             });
     </script>
 

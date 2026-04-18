@@ -72,6 +72,24 @@ module.exports = async function handler(req, res) {
     return res.status(201).json({ page: newPage });
   }
 
+  // DELETE /api/admin/pages/:id
+  const deleteMatch = rawPath.match(/^\/api\/admin\/pages\/([^/]+)$/);
+  if (req.method === 'DELETE' && deleteMatch) {
+    const pageId = deleteMatch[1];
+    const rows = await sql`
+      DELETE FROM protected_pages WHERE id = ${pageId}
+      RETURNING path, file_path
+    `;
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: '페이지를 찾을 수 없습니다.' });
+    }
+    await insertAuditLog({
+      userId: decoded.sub, action: 'page_deleted', target: rows[0].path,
+      ipAddress: ip, result: 'success', metadata: { file_path: rows[0].file_path },
+    });
+    return res.status(200).json({ ok: true });
+  }
+
   // PUT /api/admin/pages/:id
   const match = rawPath.match(/^\/api\/admin\/pages\/([^/]+)$/);
   if (req.method === 'PUT' && match) {

@@ -188,6 +188,37 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
     return res.status(200).json({ temporaryPassword: tempPassword });
   }
 
+  // DELETE /api/admin/users/:id — 사용자 삭제
+  if (req.method === 'DELETE' && subAction === '') {
+    // 안전 장치 1: 본인 계정 삭제 방지
+    if (userId === decoded.sub) {
+      return res.status(400).json({ error: '본인 계정은 삭제할 수 없습니다.' });
+    }
+
+    // 안전 장치 2: 마지막 활성 admin 삭제 방지
+    const targetRows = await sql`SELECT role FROM users WHERE id = ${userId} LIMIT 1`;
+    if (!targetRows || targetRows.length === 0) {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+    if (targetRows[0].role === 'admin') {
+      const adminCount = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = 'admin' AND is_active = true`;
+      if (parseInt(adminCount[0].cnt, 10) <= 1) {
+        return res.status(400).json({ error: '마지막 관리자 계정은 삭제할 수 없습니다.' });
+      }
+    }
+
+    // 감사 로그 기록 (삭제 전 — 삭제 후에는 user_id 참조 불가)
+    await insertAuditLog({ userId: decoded.sub, action: 'user_deleted', target: userId, ipAddress: ip, result: 'success', metadata: { targetRole: targetRows[0].role } });
+
+    // DB 정리 (순서 중요)
+    await sql`DELETE FROM refresh_tokens WHERE user_id = ${userId}`;
+    await sql`UPDATE audit_logs SET user_id = NULL WHERE user_id = ${userId}`;
+    await sql`UPDATE signup_requests SET reviewed_by = NULL WHERE reviewed_by = ${userId}`;
+    await sql`DELETE FROM users WHERE id = ${userId}`;
+
+    return res.status(200).json({ ok: true });
+  }
+
   // PUT/PATCH /api/admin/users/:id — 역할/활성여부 변경
   if ((req.method === 'PUT' || req.method === 'PATCH') && subAction === '') {
     const body = req.body || {};
