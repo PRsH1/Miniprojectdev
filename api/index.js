@@ -50,6 +50,12 @@ module.exports = async (req, res) => {
     return res.status(404).send('Not Found');
   }
 
+  // ─── /api/credentials/* → 크리덴셜 CRUD ────────────────────
+  if (path.startsWith('/api/credentials')) {
+    const credentials = require('../controllers/credentials');
+    return credentials(req, res);
+  }
+
   // ─── /api/admin/* → 관리자 API 컨트롤러 ────────────────────
   if (path.startsWith('/api/admin/')) {
     if (path.startsWith('/api/admin/users') || path.startsWith('/api/admin/password-reset-requests')) {

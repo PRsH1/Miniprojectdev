@@ -15,6 +15,7 @@ $(document).on('click', '.tab-btn', function() {
 $(document).ready(function() {
     buildSidebar();
     updateBaseUrlBadge();
+    loadCredentialList();
 
     // Auth panel toggle
     $('#authPanelToggle').on('click', function() {

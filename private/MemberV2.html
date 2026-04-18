@@ -858,6 +858,11 @@
           <span class="card-title">인증 정보</span>
         </div>
         <div class="card-body">
+          <!-- 저장된 크리덴셜 목록 -->
+          <div id="credentialListWrap" style="margin-bottom:16px;display:none;">
+            <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:8px;">저장된 인증 정보</div>
+            <div id="credentialList" style="display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
           <div class="form-grid">
             <div class="form-group">
               <label for="apiKey">API-KEY <span class="required">*</span></label>
@@ -883,6 +888,14 @@
             <button class="btn-primary" onclick="getAccessToken(this)">
               <i class="fa-solid fa-bolt"></i> Access Token 발급
             </button>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;">
+            <button type="button" class="btn-secondary" onclick="saveCredential()">현재 인증 저장</button>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" id="saveSecretKey">
+              <span>비밀 키도 함께 저장</span>
+              <span title="비밀 키(개인키/Bearer 토큰)를 서버에 저장합니다. 보안에 주의하세요." style="color:var(--text-muted);cursor:help;">⚠️</span>
+            </label>
           </div>
         </div>
       </div>
@@ -1651,5 +1664,6 @@
 <script src="/assets/js/member/api.js"></script>
 <script src="/assets/js/member/ui.js"></script>
 <script src="/assets/js/member/init.js"></script>
+<script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

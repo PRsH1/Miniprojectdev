@@ -1150,6 +1150,11 @@
                 <i class="fa-solid fa-chevron-down fa-xs" id="authChevron" style="color:#a0aec0;transition:transform 0.2s"></i>
             </div>
             <div class="auth-panel-body" id="authPanelBody">
+                <!-- 저장된 크리덴셜 -->
+                <div id="credentialListWrap" style="margin-bottom:14px;display:none;">
+                    <div style="font-size:12px;font-weight:600;color:var(--text-muted,#888);margin-bottom:6px;">저장된 인증 정보</div>
+                    <div id="credentialList" style="display:flex;flex-direction:column;gap:5px;"></div>
+                </div>
                 <div class="auth-grid">
                     <div class="auth-field">
                         <label>API Key</label>
@@ -1174,6 +1179,12 @@
                 <div class="auth-actions">
                     <button class="btn-primary" id="btnGetToken"><i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급</button>
                     <button class="btn-secondary" id="btnClearToken"><i class="fa-solid fa-xmark fa-sm"></i> 초기화</button>
+                    <button type="button" class="btn-secondary" onclick="saveCredential()">인증 저장</button>
+                    <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+                        <input type="checkbox" id="saveSecretKey">
+                        <span>비밀 키 저장</span>
+                        <span title="비밀 키를 서버에 저장합니다. 보안에 주의하세요." style="cursor:help;">⚠️</span>
+                    </label>
                     <div class="token-display" id="tokenDisplay" title="클릭하여 복사">토큰을 발급받아 주세요</div>
                 </div>
             </div>
@@ -1555,6 +1566,7 @@ for (var _j = _memberIndices.length - 1; _j >= 0; _j--) {
 <script src="/assets/js/openapi/state.js"></script>
 <script src="/assets/js/openapi/ui.js"></script>
 <script src="/assets/js/openapi/init.js"></script>
-
+<script>window.AUTH_STATUS_CORNER = true;</script>
+<script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

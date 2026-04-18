@@ -15,6 +15,9 @@ $(document).ready(function () {
   updateUrlDisplay();
   updateTokenStatus('', $('#envSelection').val());
 
+  // 저장된 크리덴셜 목록 로드
+  loadCredentialList();
+
   // 환경 선택 변경
   $('#envSelection').on('change', function () {
     if (this.value === 'custom') $('#customEnvUrlField').slideDown();

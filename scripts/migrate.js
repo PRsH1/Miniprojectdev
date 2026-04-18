@@ -108,6 +108,23 @@ async function migrate() {
   `;
   console.log('✅ signup_requests 테이블 생성 완료');
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS eformsign_credentials (
+      id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id        UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name           VARCHAR(100) NOT NULL,
+      environment    VARCHAR(20)  NOT NULL CHECK (environment IN ('op_saas','csap','custom')),
+      custom_url     VARCHAR(500),
+      api_key        VARCHAR(500) NOT NULL,
+      eform_user_id  VARCHAR(255) NOT NULL,
+      secret_method  VARCHAR(20)  NOT NULL CHECK (secret_method IN ('signature','bearer')),
+      secret_key     TEXT,
+      created_at     TIMESTAMPTZ DEFAULT now(),
+      updated_at     TIMESTAMPTZ DEFAULT now()
+    )
+  `;
+  console.log('✅ eformsign_credentials 테이블 생성 완료');
+
   // ─── 인덱스 생성 ────────────────────────────────────────────
 
   await sql`CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)`;
@@ -116,6 +133,7 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_password_reset_requests_status ON password_reset_requests(status)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_signup_requests_status ON signup_requests(status)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_eformsign_credentials_user_id ON eformsign_credentials(user_id)`;
   console.log('✅ 인덱스 생성 완료');
 
   // ─── 보호 페이지 시드 데이터 ────────────────────────────────

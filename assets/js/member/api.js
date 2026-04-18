@@ -819,6 +819,131 @@ function executeExcelGroupUpdate(button) {
   }).finally(() => hideLoading(button));
 }
 
+// ─── 크리덴셜 저장/불러오기 ───────────────────────────────
+
+async function loadCredentialList() {
+  try {
+    const res = await fetch('/api/credentials');
+    if (!res.ok) return; // 비로그인 상태 등 무시
+    const list = await res.json();
+    renderCredentialList(list);
+  } catch (e) {
+    console.warn('크리덴셜 목록 로드 실패:', e);
+  }
+}
+
+function renderCredentialList(list) {
+  const wrap = document.getElementById('credentialListWrap');
+  const container = document.getElementById('credentialList');
+  if (!wrap || !container) return;
+
+  if (!list.length) {
+    wrap.style.display = 'none';
+    return;
+  }
+
+  wrap.style.display = '';
+  container.innerHTML = list.map(c => {
+    const envLabel = c.environment === 'op_saas' ? '운영(SaaS)' : c.environment === 'csap' ? '공공(CSAP)' : '직접 입력';
+    const secretIcon = c.has_secret_key ? '🔑' : '🔓';
+    return `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-card,#fff);border:1px solid var(--border,#e0e0e0);border-radius:8px;">
+        <span style="flex:1;font-size:13px;">
+          <strong>${escHtml(c.name)}</strong>
+          <span style="color:var(--text-muted);margin-left:6px;">${envLabel}</span>
+          <span style="margin-left:4px;" title="${c.has_secret_key ? '비밀 키 저장됨' : '비밀 키 미저장'}">${secretIcon}</span>
+        </span>
+        <button class="btn-secondary" style="padding:4px 10px;font-size:12px;"
+                onclick="applyCredential('${c.id}')">불러오기</button>
+        <button class="btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--danger,#d32f2f);"
+                onclick="deleteCredential('${c.id}', this)">삭제</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function applyCredential(id) {
+  try {
+    const res = await fetch(`/api/credentials/${id}`);
+    if (!res.ok) return alert('불러오기 실패');
+    const c = await res.json();
+
+    // 환경 설정
+    $('#envSelection').val(c.environment).trigger('change');
+    if (c.environment === 'custom' && c.custom_url) {
+      $('#customEnvUrl').val(c.custom_url);
+    }
+    // 인증 필드 채우기
+    $('#apiKey').val(c.api_key);
+    $('#user_id_token').val(c.eform_user_id);
+    // 인증 방식
+    $(`input[name="secretKeyMethod"][value="${c.secret_method}"]`).prop('checked', true).trigger('change');
+    // 비밀 키
+    if (c.secret_key) {
+      $('#privateKeyHex').val(c.secret_key);
+    } else {
+      $('#privateKeyHex').val('');
+      alert(`"${c.name}" 인증 정보를 불러왔습니다.\n비밀 키는 저장되지 않았으므로 직접 입력해주세요.`);
+    }
+  } catch (e) {
+    alert('불러오기 중 오류가 발생했습니다.');
+  }
+}
+
+async function saveCredential() {
+  const name = prompt('저장할 이름을 입력하세요.\n예: 홍길동 - 운영환경');
+  if (!name || !name.trim()) return;
+
+  const env = $('#envSelection').val();
+  const apiKey = $('#apiKey').val().trim();
+  const eformUserId = $('#user_id_token').val().trim();
+  const secretMethod = $('input[name="secretKeyMethod"]:checked').val();
+  const saveSecret = document.getElementById('saveSecretKey').checked;
+  const secretKey = saveSecret ? $('#privateKeyHex').val().trim() : null;
+
+  if (!apiKey || !eformUserId) return alert('API Key와 User ID를 입력해주세요.');
+
+  const body = {
+    name: name.trim(),
+    environment: env,
+    custom_url: env === 'custom' ? $('#customEnvUrl').val().trim() : null,
+    api_key: apiKey,
+    eform_user_id: eformUserId,
+    secret_method: secretMethod || 'signature',
+    secret_key: secretKey || null,
+  };
+
+  try {
+    const res = await fetch('/api/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      return alert('저장 실패: ' + (err.error || res.status));
+    }
+    await loadCredentialList(); // 목록 갱신
+  } catch (e) {
+    alert('저장 중 오류가 발생했습니다.');
+  }
+}
+
+async function deleteCredential(id, btn) {
+  if (!confirm('이 인증 정보를 삭제하시겠습니까?')) return;
+  try {
+    const res = await fetch(`/api/credentials/${id}`, { method: 'DELETE' });
+    if (!res.ok) return alert('삭제 실패');
+    await loadCredentialList();
+  } catch (e) {
+    alert('삭제 중 오류가 발생했습니다.');
+  }
+}
+
 // ─── 사이드바 토큰 상태 업데이트 (ui.js에서도 호출 가능) ──
 function updateTokenStatus(token, env) {
   const preview = token ? token.substring(0, 20) + '...' : '미발급';
