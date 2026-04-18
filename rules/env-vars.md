@@ -6,6 +6,7 @@ Vercel 대시보드에서 관리한다.
 # ─── DB 기반 인증 시스템 ────────────────────────────────────
 POSTGRES_URL=               # Vercel Postgres (Neon) 연결 문자열 (자동 생성)
 JWT_SECRET=                 # JWT 서명 비밀키 (openssl rand -base64 64 로 생성)
+BASE_URL=                   # 배포 기본 주소 (예: https://eformproj.vercel.app)
 
 # ─── SAML ─────────────────────────────────────────────────
 SAML_PRIVATE_KEY=           # Base64 인코딩된 EC 개인키

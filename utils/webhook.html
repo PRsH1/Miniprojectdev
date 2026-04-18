@@ -93,7 +93,7 @@
             <button id="openTokenModalBtn">엑세스 토큰 발급</button>
             <h1>Webhook & API Tester</h1>
             <p>eformsign 웹훅 이벤트를 실시간으로 확인하고, 문서 정보를 바로 조회합니다.</p>
-            <p>eformsign 웹훅 설정 URL: <code>https://mini-project-improve.vercel.app/api/webhook-receiver</code> 엔드포인트를 사용하세요.</p>
+            <p>eformsign 웹훅 설정 URL: <code id="webhookReceiverUrl"></code> 엔드포인트를 사용하세요.</p>
         </div>
         
         <div class="user-connect-form">
@@ -188,6 +188,8 @@
 <script>
     const PUSHER_KEY = '0676069a295da819e2a5'; 
     const PUSHER_CLUSTER = 'ap3'; 
+
+    document.getElementById('webhookReceiverUrl').textContent = `${window.location.origin}/api/webhook-receiver`;
 
     $(document).ready(function() {
         let pusher;

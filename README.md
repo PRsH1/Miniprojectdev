@@ -226,7 +226,7 @@ ProjectImprove/
 
 ### 2. SAML 2.0 SSO
 - **라이브러리:** `samlify`
-- **SP Entity ID:** `https://mini-project-improve.vercel.app/api/metadata`
+- **SP Entity ID:** `${BASE_URL}/api/metadata`
 - **ACS Endpoint:** `https://test-kr-service.eformsign.com/v1.0/saml_redirect`
 - SP 시작 및 IDP 시작 플로우 모두 지원
 
@@ -245,6 +245,7 @@ ProjectImprove/
 # ─── DB 기반 인증 (필수) ──────────────────────────────────
 POSTGRES_URL=            # Vercel Postgres 생성 시 자동 등록
 JWT_SECRET=              # openssl rand -base64 64 으로 생성
+BASE_URL=                # 예: https://eformproj.vercel.app
 
 # ─── SAML 인증 ────────────────────────────────────────────
 SAML_PRIVATE_KEY=        # base64 인코딩된 개인 키
