@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/index.js": {
-      "includeFiles": "private/**/*.html,utils/**/*.html"
+      "includeFiles": "private/**,utils/**"
     }
   },
   "redirects": [
