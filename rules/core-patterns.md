@@ -108,6 +108,65 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 // - data-original-url 없음 → 이동하지 않음
 ```
 
+### 전 페이지 로그인 상태 바 패턴 (`assets/js/auth-status.js`)
+
+`auth-status.js`는 IIFE로 `/api/me`를 호출해 로그인 상태를 표시하는 공통 스크립트다.
+`</body>` 직전에 `<script src="/assets/js/auth-status.js"></script>` 한 줄로 모든 페이지에 적용한다.
+
+```
+적용 제외 페이지: auth/login.html, auth/signup.html, auth/change-password.html, auth/403.html, index.html
+```
+
+**3가지 모드:**
+
+| 모드 | 선언 방법 | 동작 |
+|---|---|---|
+| 기본 (상단 바) | 선언 없음 | `position:fixed; top:0` 파란 바 자동 삽입 + `body { padding-top: 40px }` 주입 |
+| 코너 | `window.AUTH_STATUS_CORNER = true` | `position:fixed; bottom:16px; right:16px` 플로팅 패널 — 기존 헤더 있는 페이지용 (OpenAPITester 등) |
+| 인라인 | `window.AUTH_STATUS_INLINE = true` | `#authStatusBar` 요소를 HTML에 미리 배치, 자동 삽입 없음 |
+
+```html
+<!-- 코너 모드 예시 (OpenAPITester.html) -->
+<script>window.AUTH_STATUS_CORNER = true;</script>
+<script src="/assets/js/auth-status.js"></script>
+```
+
+- 비로그인 시 코너 모드는 패널 미표시 (상단 바 모드는 로그인/회원가입 버튼 표시)
+- admin 로그인 시 모든 모드에서 "관리자 콘솔" 버튼 자동 표시
+- **주의:** 각 페이지에 `button { width: 100% }` 스타일이 있어도 `.asb-btn`에 `width: auto !important`가 적용되어 버튼이 늘어나지 않음
+
+---
+
+### eformsign 인증 정보 저장/불러오기 (크리덴셜 프로필)
+
+로그인한 사이트 사용자가 eformsign API 인증 정보를 이름을 붙여 DB에 저장하고 재사용하는 기능.
+
+**DB 테이블:** `eformsign_credentials`
+
+```
+컬럼: id, user_id(FK), name, environment, custom_url,
+      api_key, eform_user_id, secret_method, secret_key(nullable), created_at, updated_at
+```
+
+**API 엔드포인트:** `/api/credentials`
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/api/credentials` | 내 크리덴셜 목록 (비밀 키 제외, `has_secret_key` boolean만 반환) |
+| GET | `/api/credentials/:id` | 단건 상세 조회 (비밀 키 포함 — 불러오기 시 사용) |
+| POST | `/api/credentials` | 새 크리덴셜 저장 |
+| DELETE | `/api/credentials/:id` | 크리덴셜 삭제 |
+
+**보안 원칙:**
+- 목록 조회 시 `secret_key`는 반환하지 않고 `has_secret_key: boolean`만 반환
+- 비밀 키 저장은 사용자가 체크박스로 선택 (`secret_key` nullable)
+- 불러오기 시 비밀 키가 null이면 UI에서 직접 입력 안내 표시
+- 모든 엔드포인트는 JWT(`auth_token` 쿠키) 인증 필요, `WHERE user_id = decoded.sub`로 타 사용자 접근 차단
+
+**적용 페이지:** `private/MemberV2.html`, `API(JS,HTML)/OpenAPITester.html`
+
+---
+
 ### Vercel Cron Job 패턴
 
 정기 실행 작업은 `vercel.json`의 `crons` 배열 + 전용 컨트롤러로 구현한다.

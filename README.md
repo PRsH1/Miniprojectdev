@@ -59,6 +59,7 @@ ProjectImprove/
 │   ├── adminPages.js             # 보호 페이지 동적 설정 CRUD
 │   ├── adminAuditLogs.js         # 감사 로그 조회
 │   ├── adminSignupRequests.js    # 회원가입 요청 승인/거절
+│   ├── credentials.js            # ★ eformsign 인증 정보 CRUD (사용자별 크리덴셜)
 │   ├── cron/
 │   │   └── cleanup-audit.js      # 7일 초과 감사 로그 자동 삭제 (Vercel Cron)
 │   ├── auth.js                   # SAML 응답 생성
@@ -98,6 +99,7 @@ ProjectImprove/
 │   ├── templatecopy.html         # 템플릿 복제 UI
 │   └── Member.html               # (deprecated) 구 멤버 관리 UI
 ├── assets/js/
+│   ├── auth-status.js            # ★ 전 페이지 공통 로그인 상태 상단 바 (IIFE)
 │   ├── OpenAPIAutoTest.js        # ★ OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── OpenAPITester.js          # 원본 보존용 (롤백 시 참고) — 직접 편집 금지
 │   ├── member/                   # ★ 멤버/그룹 관리 V2 분할 모듈 (로드 순서 중요)
@@ -153,6 +155,15 @@ ProjectImprove/
 | `POST /api/admin/signup-requests/:id/reject` | POST | 회원가입 거절 |
 | `GET /api/admin/audit-logs` | GET | 감사 로그 조회 |
 | `GET /api/admin/password-reset-requests` | GET | 비밀번호 재설정 요청 목록 |
+
+### eformsign 크리덴셜 (로그인 필요)
+
+| 엔드포인트 | 메서드 | 설명 |
+|-----------|--------|------|
+| `GET /api/credentials` | GET | 내 크리덴셜 목록 조회 (비밀 키 제외) |
+| `GET /api/credentials/:id` | GET | 크리덴셜 단건 조회 (비밀 키 포함, 불러오기용) |
+| `POST /api/credentials` | POST | 새 크리덴셜 저장 |
+| `DELETE /api/credentials/:id` | DELETE | 크리덴셜 삭제 |
 
 ### Cron
 
@@ -478,6 +489,33 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `templateDeletetool.html` | 템플릿 일괄 삭제 |
 | `saml-guide.html` | SAML 연동 가이드 |
 | `error-codes.html` | OPA2 에러 코드 모음 (43개 엔드포인트, 에러 코드·Enum·메시지 검색) |
+
+---
+
+## 2026-04-19 Update
+
+### 전 페이지 로그인 상태 상단 바
+
+`assets/js/auth-status.js` 공통 스크립트를 신규 생성하여 `index.html`을 제외한 모든 도구 페이지에 로그인 상태 표시를 추가했습니다.
+
+- **적용 범위**: `utils/` 12개, `API(JS,HTML)/` 7개, `Embedding/` 8개, `private/` 보호 페이지 전체
+- **3가지 모드**:
+  - **기본 (상단 바)**: `position:fixed` 파란 바 자동 삽입 + `body { padding-top: 40px }` 주입
+  - **코너 모드** (`window.AUTH_STATUS_CORNER = true`): 우측 하단 플로팅 패널 — 기존 헤더가 있는 OpenAPITester 등에 사용
+  - **인라인 모드** (`window.AUTH_STATUS_INLINE = true`): `#authStatusBar` 요소를 HTML에 직접 배치
+- **표시 내용**: 사용자명 + 역할 배지 + (admin) 관리자 콘솔 버튼 + 로그아웃 버튼
+- **비로그인 시**: 로그인/회원가입 버튼 표시 (코너 모드는 미표시)
+- **제외**: `auth/` 페이지 전체 (로그인 플로우 페이지)
+
+### eformsign 인증 정보 저장/불러오기 (크리덴셜 프로필)
+
+로그인한 사이트 사용자가 eformsign API 인증 정보를 여러 개 이름을 붙여 DB에 저장하고 재사용할 수 있는 기능을 추가했습니다.
+
+- **신규 DB 테이블**: `eformsign_credentials` (user_id FK, name, environment, api_key, eform_user_id, secret_method, secret_key nullable)
+- **신규 API**: `GET/POST/DELETE /api/credentials` — JWT 인증 필수, 사용자별 완전 격리
+- **적용 도구**: `private/MemberV2.html` (인증 정보 카드 상단 목록), `API(JS,HTML)/OpenAPITester.html` (인증 패널 내 목록)
+- **비밀 키 저장**: 체크박스로 선택 저장 (`secret_key` nullable) — 미저장 시 불러오기 후 직접 입력 안내
+- **보안**: 목록 조회 시 비밀 키 미반환 (`has_secret_key: boolean`만), 단건 조회 시에만 비밀 키 포함 응답
 
 ---
 

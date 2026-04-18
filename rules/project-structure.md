@@ -14,6 +14,7 @@ ProjectImprove/
 │   ├── _shared/
 │   │   ├── protected-pages-config.js  # 보호 페이지 설정 공통화
 │   │   └── protectedPage.js           # 보호 페이지 공통 핸들러
+│   ├── credentials.js          # eformsign 인증 정보 저장/조회/수정/삭제 (사용자별 크리덴셜 CRUD)
 │   ├── getToken.js             # ECDSA 서명으로 Access Token 발급
 │   ├── downloadDocument.js     # 문서 파일 프록시 다운로드
 │   ├── getDocumentInfo.js      # 문서 메타데이터 조회
@@ -48,6 +49,7 @@ ProjectImprove/
 │   └── error-codes.html        # OPA2 에러 코드 모음 (43개 엔드포인트 전체, 검색 가능)
 │
 ├── assets/js/
+│   ├── auth-status.js          # 전 페이지 공통 로그인 상태 상단 바 (IIFE, /api/me 호출)
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── OpenAPITester.js        # 원본 보존용 (롤백 시 참고) — 직접 편집 금지
 │   ├── member/                 # MemberV2 분할 모듈 (로드 순서 중요)

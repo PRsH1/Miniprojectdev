@@ -115,7 +115,7 @@
             // 코너 모드는 비로그인 시 표시 안 함 (공간 낭비)
             if (CORNER) { el.style.display = 'none'; return; }
             el.innerHTML =
-                '<span class="asb-brand">eformsign Tools</span>' +
+                '<span class="asb-brand">eformsign Tools Hub</span>' +
                 '<span class="asb-spacer"></span>' +
                 '<a href="/auth/login.html" class="asb-btn primary">로그인</a>' +
                 '<a href="/auth/signup.html" class="asb-btn">회원가입</a>';
@@ -127,7 +127,7 @@
             : '';
 
         // 코너 모드: brand 없이 유저 정보만
-        var brandHtml = CORNER ? '' : '<span class="asb-brand">eformsign Tools</span>';
+        var brandHtml = CORNER ? '' : '<span class="asb-brand">eformsign Tools Hub</span>';
         var spacerHtml = CORNER ? '' : '<span class="asb-spacer"></span>';
 
         el.innerHTML =
