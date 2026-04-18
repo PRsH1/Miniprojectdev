@@ -515,7 +515,11 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 #### index.html 변경
 
 - `/api/me` 기반 로그인 상태 감지 (httpOnly 쿠키 → API 조회)
-- 역할별 도구 카드 숨김 (`data-min-role` 속성 기반)
+- 역할별 도구 카드 가시성 3단계 동적 처리:
+  - **자동 매칭**: 카드의 `data-original-url` ↔ `protected_pages.file_path` 비교 → Admin UI 등록만으로 권한 제어 자동 적용 (배포 불필요)
+  - **`data-protected-path`**: `/app/*` 경로 카드의 DB 기반 동적 제어
+  - **`data-min-role`**: 하드코딩 역할 제어 (정적, 위 두 방식에 해당 없는 카드)
+- 보호 페이지 삭제 시 해당 카드 자동 공개 복원 (`data-original-url` 기준)
 - 헤더에 로그인/회원가입 버튼, 로그인 시 사용자명 + 역할 배지 + 로그아웃
 - admin 로그인 시 헤더에 "관리자 콘솔" 버튼 추가
 

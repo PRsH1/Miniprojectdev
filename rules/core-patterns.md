@@ -64,8 +64,48 @@ user    → required_role이 'user'인 페이지만
 ```
 신규 보호 페이지 추가 절차:
 1. HTML 파일을 private/ 디렉토리에 추가 후 배포
+   (직접 URL 차단 필요 시. utils/ 등 정적 경로는 직접 URL로 접근 가능)
 2. Admin UI → 보호 페이지 탭 → 신규 등록
    (path: /app/pageName, file_path: private/pageName.html, required_role 선택)
+```
+
+**file_path 등록 시 주의:**
+- `private/`로 시작하면 직접 URL 차단 — Admin UI에서 초록 안내 표시
+- `utils/` 등 다른 경로는 직접 URL로도 접근 가능 — Admin UI에서 노란 경고 표시
+- 등록한 `file_path`가 `index.html` 카드의 `data-original-url`과 일치하면 해당 카드가 자동으로 권한 제어를 받음 (배포 불필요)
+
+### index.html 카드 가시성 시스템
+
+카드 가시성은 3단계로 처리된다. (`applyRoleFilter()` — `/api/me` 응답 수신 후 실행)
+
+```
+Step 1. 자동 매칭 (data-original-url ↔ protected_pages.file_path)
+  → data-protected-path 없고 data-original-url 있는 카드
+  → DB의 file_path와 비교 (앞 슬래시 정규화 후 대소문자 구분 비교)
+  → 매칭 성공 시: data-protected-path 동적 주입, onclick → navigateCard
+
+Step 2. data-protected-path 카드 처리 (Step 1 주입 카드 포함)
+  → DB에서 path 기준으로 required_role 조회
+  → DB에 없고 data-original-url 있음 → public (보호 해제, 공개 복원)
+  → DB에 없고 data-original-url 없음 → admin (공개 복원 경로 없음, 최고 제한 유지)
+
+Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
+  → 하드코딩된 역할로 가시성 결정
+```
+
+**카드 속성 규칙:**
+
+| 속성 | 용도 | 필수 여부 |
+|---|---|---|
+| `data-min-role` | 하드코딩 역할 제어 (정적) | `data-protected-path` 없는 카드에 필수 |
+| `data-protected-path` | DB 기반 역할 제어 (동적) | `/app/*` 경로 카드에 사용 |
+| `data-original-url` | 보호 해제 시 복원 경로 | 모든 카드에 설정 권장 |
+
+```javascript
+// navigateCard(card) 동작
+// - data-protected-path 있고 DB에 존재 → /app/{path} 이동
+// - data-protected-path 있고 DB에 없음 + data-original-url 있음 → 원래 URL 이동
+// - data-original-url 없음 → 이동하지 않음
 ```
 
 ### Vercel Cron Job 패턴
@@ -100,4 +140,13 @@ user    → required_role이 'user'인 페이지만
 ### 새 공개 도구 추가
 
 1. `/utils/`에 HTML 파일 생성
-2. `index.html`의 해당 섹션 카드에 `data-min-role="public"` 추가
+2. `index.html`의 해당 섹션 카드에 아래 속성 추가:
+
+```html
+<a href="/utils/pageName.html" class="card" data-card
+   data-min-role="public"
+   data-original-url="utils/pageName.html">
+```
+
+- `data-original-url`은 `href`의 앞 슬래시를 제거한 값 — Admin UI에서 `file_path`로 등록 시 자동 매칭에 사용됨
+- 나중에 보호 페이지로 전환하더라도 HTML 수정 없이 Admin UI 등록만으로 권한 제어 가능
