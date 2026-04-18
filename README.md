@@ -44,6 +44,7 @@ ProjectImprove/
 │   │   ├── jwt.js                     # JWT sign/verify 유틸
 │   │   ├── auth-middleware.js         # JWT 검증 + 리프레시 + role 체크 통합
 │   │   ├── audit.js                   # audit_logs INSERT 헬퍼
+│   │   ├── respond-error.js           # HTML/JSON 에러 응답 표준화
 │   │   ├── protected-pages-config.js  # (레거시) 구 보호 페이지 설정 — seed 참조용
 │   │   └── protectedPage.js           # 보호 페이지 공통 핸들러
 │   ├── login.js                  # DB 기반 로그인 (JWT 발급)
@@ -86,6 +87,11 @@ ProjectImprove/
 │   └── 403.html                  # 권한 없음 페이지
 ├── API(JS,HTML)/                 # eformsign API 연동 프론트엔드 도구
 │   └── OpenAPITester.html        # ★ Postman 스타일 Open API 테스터 (Beta) — HTML/CSS만 포함
+├── errors/                       # 공통 HTML 에러 페이지
+│   ├── 403.html
+│   ├── 404.html
+│   ├── 405.html
+│   └── 500.html
 ├── Embedding/                    # 문서/템플릿 임베딩 도구
 │   ├── embedding_doc_Integration.html       # 문서 임베딩 (환경 통합)
 │   ├── embedding_template_intergration.html # 템플릿 임베딩 (환경 통합)
@@ -199,6 +205,32 @@ ProjectImprove/
 |-----------|--------|------|
 | `POST /api/webhook-receiver` | POST | 웹훅 이벤트 수신 및 Pusher 브로드캐스팅 |
 | `POST /api/send` | POST | SMTP 이메일 테스트 발송 |
+
+---
+
+## 에러 응답 정책
+
+- `/api/*` 요청은 항상 JSON 에러를 반환합니다.
+- `/app/*` 요청은 HTML 에러 페이지를 반환합니다.
+- 인증이 필요한 페이지에서 인증이 없는 경우에는 기존 로그인 리다이렉트 흐름을 유지합니다.
+- 공통 유틸은 `controllers/_shared/respond-error.js`에 있으며, 상태 코드별 HTML 페이지는 `errors/*.html`을 사용합니다.
+- JSON 에러 응답은 `status`, `code`, `message`, `reason`, `action` 필드를 포함하며 내부 예외 세부는 숨깁니다.
+
+예시:
+
+```json
+{
+  "error": {
+    "status": 404,
+    "code": "RESOURCE_NOT_FOUND",
+    "message": "요청한 리소스를 찾을 수 없습니다.",
+    "reason": "대상 데이터가 없거나 이미 삭제되었을 수 있습니다.",
+    "action": "입력값을 다시 확인한 뒤 다시 시도하세요."
+  }
+}
+```
+
+상세 규칙과 에러 코드 표는 [docs/error-response-format.md](./docs/error-response-format.md) 문서를 참고하세요.
 
 ---
 

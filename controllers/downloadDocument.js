@@ -1,6 +1,8 @@
+const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+
 module.exports = async function handler(req, res) {
     if (req.method !== 'GET') {
-        return res.status(405).json({ message: 'Method Not Allowed' });
+        return methodNotAllowed(req, res, ['GET']);
     }
 
     try {
@@ -8,7 +10,12 @@ module.exports = async function handler(req, res) {
         const token = req.headers.authorization?.split(' ')[1];
 
         if (!domain || !documentId || !file_type || !token) {
-            return res.status(400).json({ message: 'Missing required parameters.' });
+            return respondError(req, res, 400, {
+                code: 'VALIDATION_FAILED',
+                message: '필수 요청값이 누락되었습니다.',
+                reason: 'domain, documentId, file_type, Authorization 토큰이 모두 필요합니다.',
+                action: '요청값을 확인한 뒤 다시 시도하세요.',
+            });
         }
 
         const params = new URLSearchParams({ file_type });
@@ -19,8 +26,20 @@ module.exports = async function handler(req, res) {
         });
 
         if (!fileResponse.ok) {
-            const errorJson = await fileResponse.json();
-            return res.status(fileResponse.status).json(errorJson);
+            let errorJson = null;
+            try {
+                errorJson = await fileResponse.json();
+            } catch {
+                errorJson = null;
+            }
+            return respondError(req, res, fileResponse.status >= 500 ? 502 : fileResponse.status, {
+                code: 'UPSTREAM_API_ERROR',
+                message: '문서 파일을 다운로드하지 못했습니다.',
+                reason: '외부 다운로드 API가 요청을 정상적으로 처리하지 못했습니다.',
+                action: '문서 상태와 다운로드 권한을 확인한 뒤 다시 시도하세요.',
+                error: errorJson,
+                logMessage: 'Document download upstream API returned non-ok response',
+            });
         }
         
         const contentType = fileResponse.headers.get('content-type');
@@ -49,6 +68,13 @@ module.exports = async function handler(req, res) {
 
     } catch (error) {
         console.error('File download proxy error:', error);
-        res.status(500).json({ message: 'Failed to download file', error: error.message });
+        return respondError(req, res, 502, {
+            code: 'UPSTREAM_API_ERROR',
+            message: '문서 파일을 다운로드하지 못했습니다.',
+            reason: '외부 파일 다운로드 처리 중 오류가 발생했습니다.',
+            action: '잠시 후 다시 시도하거나 요청 파라미터를 확인하세요.',
+            error,
+            logMessage: 'Document download request failed',
+        });
     }
 };

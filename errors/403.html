@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>403 접근 권한 없음</title>
+  <style>
+    :root{
+      --bg:#f6f7fb; --surface:#ffffff; --border:#e5e7eb; --text:#111827; --muted:#6b7280;
+      --accent:#dc2626; --accent-soft:#fee2e2; --primary:#0070f3; --shadow:0 16px 40px rgba(15,23,42,.08);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:radial-gradient(1100px 700px at 20% 0%, #fff1f2, var(--bg) 60%);color:var(--text)}
+    .card{width:min(520px,92vw);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:34px 30px;box-shadow:var(--shadow)}
+    .badge{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:20px;margin-bottom:18px}
+    h1{margin:0;font-size:42px;line-height:1}
+    h2{margin:10px 0 12px;font-size:22px}
+    p{margin:0 0 10px;color:var(--muted);line-height:1.7}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+    a{display:inline-flex;align-items:center;justify-content:center;padding:11px 18px;border-radius:10px;text-decoration:none;font-weight:600}
+    .primary{background:linear-gradient(90deg,#1a7bf7,#0070f3);color:#fff;border:1px solid #1570ef}
+    .secondary{background:#fff;color:var(--text);border:1px solid var(--border)}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="badge">403</div>
+    <h1>403</h1>
+    <h2>접근 권한이 없습니다</h2>
+    <p>현재 계정에는 이 페이지를 열 수 있는 권한이 없습니다.</p>
+    <p>권한이 필요한 페이지라면 관리자에게 접근 권한을 요청하거나 다른 계정으로 로그인해 주세요.</p>
+    <div class="actions">
+      <a class="primary" href="/">홈으로 이동</a>
+      <a class="secondary" href="/auth/login.html">로그인 페이지</a>
+      <a class="secondary" href="javascript:history.back()">이전 페이지</a>
+    </div>
+  </main>
+</body>
+</html>

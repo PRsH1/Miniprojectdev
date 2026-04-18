@@ -11,14 +11,15 @@ const { parse } = require('cookie');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
+const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 function requireAdmin(req, res) {
   const cookies = parse(req.headers.cookie || '');
   const authToken = cookies['auth_token'];
-  if (!authToken) { res.status(401).json({ error: '인증이 필요합니다.' }); return null; }
+  if (!authToken) { respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Admin signup API requires authentication' }); return null; }
   let decoded;
-  try { decoded = jwt.verify(authToken, process.env.JWT_SECRET); } catch { res.status(401).json({ error: '유효하지 않은 토큰입니다.' }); return null; }
-  if (decoded.role !== 'admin') { res.status(403).json({ error: '관리자 권한이 필요합니다.' }); return null; }
+  try { decoded = jwt.verify(authToken, process.env.JWT_SECRET); } catch (error) { respondError(req, res, 401, { code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', error, logMessage: 'Admin signup token verification failed' }); return null; }
+  if (decoded.role !== 'admin') { respondError(req, res, 403, { code: 'FORBIDDEN', message: '관리자 권한이 필요합니다.', reason: '현재 계정은 회원가입 요청 관리 API를 사용할 수 없습니다.', action: '관리자 계정으로 로그인하세요.', logMessage: 'Admin role required for signup admin API' }); return null; }
   return decoded;
 }
 
@@ -58,7 +59,7 @@ module.exports = async function handler(req, res) {
     const role = body.role || 'user';
 
     if (!['admin', 'manager', 'user'].includes(role)) {
-      return res.status(400).json({ error: '유효하지 않은 역할입니다.' });
+      return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 역할입니다.', reason: 'role은 admin, manager, user 중 하나여야 합니다.', action: '역할 값을 다시 선택하세요.' });
     }
 
     // signup_requests 조회
@@ -66,7 +67,7 @@ module.exports = async function handler(req, res) {
       SELECT * FROM signup_requests WHERE id = ${requestId} AND status = 'pending' LIMIT 1
     `;
     if (!reqRows || reqRows.length === 0) {
-      return res.status(404).json({ error: '대기 중인 요청을 찾을 수 없습니다.' });
+      return respondError(req, res, 404, { code: 'RESOURCE_NOT_FOUND', message: '대기 중인 요청을 찾을 수 없습니다.', reason: '승인할 회원가입 요청이 없거나 이미 처리되었습니다.', action: '목록을 새로고침한 뒤 다시 시도하세요.' });
     }
     const sr = reqRows[0];
 
@@ -81,7 +82,7 @@ module.exports = async function handler(req, res) {
       newUser = insertRows[0];
     } catch (err) {
       if (err.message && err.message.includes('unique')) {
-        return res.status(409).json({ error: '이미 존재하는 username 또는 email입니다.' });
+        return respondError(req, res, 409, { code: 'VALIDATION_FAILED', message: '이미 존재하는 username 또는 email입니다.', reason: '중복된 사용자 식별 정보는 승인 처리할 수 없습니다.', action: '중복 계정을 확인한 뒤 다시 시도하세요.' });
       }
       throw err;
     }
@@ -117,7 +118,7 @@ module.exports = async function handler(req, res) {
       SELECT username FROM signup_requests WHERE id = ${requestId} AND status = 'pending' LIMIT 1
     `;
     if (!reqRows || reqRows.length === 0) {
-      return res.status(404).json({ error: '대기 중인 요청을 찾을 수 없습니다.' });
+      return respondError(req, res, 404, { code: 'RESOURCE_NOT_FOUND', message: '대기 중인 요청을 찾을 수 없습니다.', reason: '거절할 회원가입 요청이 없거나 이미 처리되었습니다.', action: '목록을 새로고침한 뒤 다시 시도하세요.' });
     }
 
     await sql`
@@ -139,5 +140,9 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
-  return res.status(404).json({ error: 'Not Found' });
+  if (rawPath === '/api/admin/signup-requests' || approveMatch || rejectMatch) {
+    return methodNotAllowed(req, res, ['GET', 'POST']);
+  }
+
+  return respondError(req, res, 404, { code: 'RESOURCE_NOT_FOUND', message: '요청한 회원가입 관리 경로를 찾을 수 없습니다.', reason: '등록되지 않은 회원가입 관리 하위 경로입니다.', action: '관리자 콘솔에서 사용하는 경로인지 확인하세요.' });
 };

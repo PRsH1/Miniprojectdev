@@ -17,6 +17,7 @@ const { parse } = require('cookie');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
+const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -44,18 +45,31 @@ function requireAdmin(req, res) {
   const cookies = parse(req.headers.cookie || '');
   const authToken = cookies['auth_token'];
   if (!authToken) {
-    res.status(401).json({ error: '인증이 필요합니다.' });
+    respondError(req, res, 401, {
+      code: 'AUTH_REQUIRED',
+      logMessage: 'Admin API requires authentication',
+    });
     return null;
   }
   let decoded;
   try {
     decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch {
-    res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
+  } catch (error) {
+    respondError(req, res, 401, {
+      code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
+      error,
+      logMessage: 'Admin token verification failed',
+    });
     return null;
   }
   if (decoded.role !== 'admin') {
-    res.status(403).json({ error: '관리자 권한이 필요합니다.' });
+    respondError(req, res, 403, {
+      code: 'FORBIDDEN',
+      message: '관리자 권한이 필요합니다.',
+      reason: '현재 계정은 관리자 전용 API를 사용할 수 없습니다.',
+      action: '관리자 계정으로 로그인하거나 권한을 요청하세요.',
+      logMessage: 'Admin role required',
+    });
     return null;
   }
   return decoded;
@@ -104,10 +118,20 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
     const role = body.role || 'user';
 
     if (!username || !email) {
-      return res.status(400).json({ error: 'username과 email은 필수입니다.' });
+      return respondError(req, res, 400, {
+        code: 'VALIDATION_FAILED',
+        message: 'username과 email은 필수입니다.',
+        reason: '사용자 생성에 필요한 기본 정보가 누락되었습니다.',
+        action: 'username과 email을 입력한 뒤 다시 시도하세요.',
+      });
     }
     if (!['admin', 'manager', 'user'].includes(role)) {
-      return res.status(400).json({ error: '유효하지 않은 역할입니다.' });
+      return respondError(req, res, 400, {
+        code: 'VALIDATION_FAILED',
+        message: '유효하지 않은 역할입니다.',
+        reason: 'role은 admin, manager, user 중 하나여야 합니다.',
+        action: '역할 값을 다시 확인하세요.',
+      });
     }
 
     const tempPassword = generateTempPassword();
@@ -123,7 +147,12 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
       newUser = rows[0];
     } catch (err) {
       if (err.message && err.message.includes('unique')) {
-        return res.status(409).json({ error: '이미 존재하는 username 또는 email입니다.' });
+        return respondError(req, res, 409, {
+          code: 'VALIDATION_FAILED',
+          message: '이미 존재하는 username 또는 email입니다.',
+          reason: '중복된 사용자 식별 정보는 등록할 수 없습니다.',
+          action: '다른 username 또는 email을 사용하세요.',
+        });
       }
       throw err;
     }
@@ -143,7 +172,12 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
   // URL에서 사용자 ID 추출: /api/admin/users/:id[/action]
   const match = rawPath.match(/^\/api\/admin\/users\/([^/]+)(\/.*)?$/);
   if (!match) {
-    return res.status(404).json({ error: 'Not Found' });
+    return respondError(req, res, 404, {
+      code: 'RESOURCE_NOT_FOUND',
+      message: '요청한 사용자 관리 경로를 찾을 수 없습니다.',
+      reason: '등록되지 않은 사용자 관리 하위 경로입니다.',
+      action: '관리자 콘솔에서 사용하는 경로인지 확인하세요.',
+    });
   }
   const userId = match[1];
   const subAction = match[2] || '';
@@ -169,7 +203,12 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
       RETURNING username
     `;
     if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+      return respondError(req, res, 404, {
+        code: 'RESOURCE_NOT_FOUND',
+        message: '사용자를 찾을 수 없습니다.',
+        reason: '대상 사용자 ID가 없거나 이미 삭제되었습니다.',
+        action: '사용자 목록을 새로고침한 뒤 다시 시도하세요.',
+      });
     }
 
     // 해당 사용자의 모든 refresh_tokens revoke
@@ -192,18 +231,33 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
   if (req.method === 'DELETE' && subAction === '') {
     // 안전 장치 1: 본인 계정 삭제 방지
     if (userId === decoded.sub) {
-      return res.status(400).json({ error: '본인 계정은 삭제할 수 없습니다.' });
+      return respondError(req, res, 400, {
+        code: 'VALIDATION_FAILED',
+        message: '본인 계정은 삭제할 수 없습니다.',
+        reason: '현재 로그인한 관리자 본인을 삭제하면 세션과 관리 권한이 즉시 손실됩니다.',
+        action: '다른 관리자 계정에서 작업하거나 대상 사용자를 다시 확인하세요.',
+      });
     }
 
     // 안전 장치 2: 마지막 활성 admin 삭제 방지
     const targetRows = await sql`SELECT role FROM users WHERE id = ${userId} LIMIT 1`;
     if (!targetRows || targetRows.length === 0) {
-      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+      return respondError(req, res, 404, {
+        code: 'RESOURCE_NOT_FOUND',
+        message: '사용자를 찾을 수 없습니다.',
+        reason: '대상 사용자 ID가 없거나 이미 삭제되었습니다.',
+        action: '사용자 목록을 새로고침한 뒤 다시 시도하세요.',
+      });
     }
     if (targetRows[0].role === 'admin') {
       const adminCount = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = 'admin' AND is_active = true`;
       if (parseInt(adminCount[0].cnt, 10) <= 1) {
-        return res.status(400).json({ error: '마지막 관리자 계정은 삭제할 수 없습니다.' });
+        return respondError(req, res, 400, {
+          code: 'VALIDATION_FAILED',
+          message: '마지막 관리자 계정은 삭제할 수 없습니다.',
+          reason: '활성 관리자 계정이 하나도 남지 않으면 운영이 불가능해집니다.',
+          action: '다른 관리자를 먼저 추가하거나 활성화한 뒤 다시 시도하세요.',
+        });
       }
     }
 
@@ -227,7 +281,12 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
 
     if (body.role !== undefined) {
       if (!['admin', 'manager', 'user'].includes(body.role)) {
-        return res.status(400).json({ error: '유효하지 않은 역할입니다.' });
+        return respondError(req, res, 400, {
+          code: 'VALIDATION_FAILED',
+          message: '유효하지 않은 역할입니다.',
+          reason: 'role은 admin, manager, user 중 하나여야 합니다.',
+          action: '역할 값을 다시 확인하세요.',
+        });
       }
     }
 
@@ -236,7 +295,12 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
     const setKeys = Object.entries(allowedFields).filter(([, v]) => v !== undefined);
 
     if (setKeys.length === 0) {
-      return res.status(400).json({ error: '변경할 항목이 없습니다.' });
+      return respondError(req, res, 400, {
+        code: 'VALIDATION_FAILED',
+        message: '변경할 항목이 없습니다.',
+        reason: '업데이트 가능한 필드가 요청 본문에 포함되지 않았습니다.',
+        action: 'role 또는 is_active 값을 전달하세요.',
+      });
     }
 
     // 개별 필드 업데이트 (동적 SQL 한계로 인해 분기 처리)
@@ -255,7 +319,7 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
     return res.status(200).json({ ok: true });
   }
 
-  return res.status(405).json({ error: 'Method Not Allowed' });
+  return methodNotAllowed(req, res, ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
 }
 
 // ─── 비밀번호 재설정 요청 관리 ────────────────────────────────
@@ -288,7 +352,12 @@ async function handlePasswordResetRequests(req, res, decoded, rawPath, ip) {
     `;
 
     if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: '요청을 찾을 수 없습니다.' });
+      return respondError(req, res, 404, {
+        code: 'RESOURCE_NOT_FOUND',
+        message: '요청을 찾을 수 없습니다.',
+        reason: '대상 비밀번호 재설정 요청이 없거나 이미 처리되었습니다.',
+        action: '목록을 새로고침한 뒤 다시 시도하세요.',
+      });
     }
 
     await insertAuditLog({
@@ -302,5 +371,5 @@ async function handlePasswordResetRequests(req, res, decoded, rawPath, ip) {
     return res.status(200).json({ ok: true });
   }
 
-  return res.status(404).json({ error: 'Not Found' });
+  return methodNotAllowed(req, res, ['GET', 'POST']);
 }

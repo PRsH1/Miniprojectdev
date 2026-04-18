@@ -8,18 +8,23 @@ const crypto = require('crypto');
 const { parse, serialize } = require('cookie');
 const { getDb } = require('./_shared/db');
 const { sign } = require('./_shared/jwt');
+const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).send('Method Not Allowed');
+    return methodNotAllowed(req, res, ['POST']);
   }
 
   const cookies = parse(req.headers.cookie || '');
   const refreshToken = cookies['refresh_token'];
 
   if (!refreshToken) {
-    return res.status(401).json({ error: '리프레시 토큰이 없습니다.' });
+    return respondError(req, res, 401, {
+      code: 'AUTH_REQUIRED',
+      message: '리프레시 토큰이 없습니다.',
+      reason: '세션 갱신에 필요한 refresh_token 쿠키가 없습니다.',
+      action: '다시 로그인한 뒤 요청을 다시 시도하세요.',
+    });
   }
 
   const sql = getDb();
@@ -38,16 +43,33 @@ module.exports = async function handler(req, res) {
     `;
   } catch (err) {
     console.error('refresh_token 조회 오류:', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return respondError(req, res, 500, {
+      code: 'DATABASE_ERROR',
+      message: '세션 정보를 확인하는 중 오류가 발생했습니다.',
+      reason: '리프레시 토큰 조회에 실패했습니다.',
+      action: '잠시 후 다시 로그인해 주세요.',
+      error: err,
+      logMessage: 'Refresh token lookup failed',
+    });
   }
 
   if (!rows || rows.length === 0) {
-    return res.status(401).json({ error: '유효하지 않은 리프레시 토큰입니다.' });
+    return respondError(req, res, 401, {
+      code: 'TOKEN_INVALID',
+      message: '유효하지 않은 리프레시 토큰입니다.',
+      reason: '토큰이 만료되었거나 이미 폐기되었을 수 있습니다.',
+      action: '다시 로그인해 주세요.',
+    });
   }
 
   const rt = rows[0];
   if (!rt.is_active) {
-    return res.status(403).json({ error: '비활성화된 계정입니다.' });
+    return respondError(req, res, 403, {
+      code: 'FORBIDDEN',
+      message: '비활성화된 계정입니다.',
+      reason: '현재 계정은 세션을 갱신할 수 없는 상태입니다.',
+      action: '관리자에게 계정 상태를 문의하세요.',
+    });
   }
 
   // 기존 토큰 revoke

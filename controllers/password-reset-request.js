@@ -6,11 +6,11 @@
 
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
+const { methodNotAllowed } = require('./_shared/respond-error');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).send('Method Not Allowed');
+    return methodNotAllowed(req, res, ['POST']);
   }
 
   const body = req.body || {};

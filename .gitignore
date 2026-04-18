@@ -52,4 +52,5 @@ tmp-*.json
 
 #docs
 
-/docs
+/docs/*
+!/docs/error-response-format.md

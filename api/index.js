@@ -1,4 +1,5 @@
 // api/index.js (Lazy Loading 적용)
+const { respondError } = require('../controllers/_shared/respond-error');
 
 const controllers = {
   // ─── 인증 API ───────────────────────────────────────────────
@@ -37,8 +38,19 @@ module.exports = async (req, res) => {
 
   // ─── /app/* → auth-middleware (DB 기반 보호 페이지) ────────
   if (path.startsWith('/app/')) {
-    const authMiddleware = require('../controllers/_shared/auth-middleware');
-    return authMiddleware(req, res);
+    try {
+      const authMiddleware = require('../controllers/_shared/auth-middleware');
+      return await authMiddleware(req, res);
+    } catch (error) {
+      return respondError(req, res, 500, {
+        code: 'INTERNAL_ERROR',
+        message: '페이지를 처리하는 중 서버 오류가 발생했습니다.',
+        reason: '보호 페이지 인증 또는 조회 과정에서 오류가 발생했습니다.',
+        action: '잠시 후 다시 시도하세요.',
+        error,
+        logMessage: 'Unhandled app route error',
+      });
+    }
   }
 
   // ─── /api/cron/* → Cron Job 컨트롤러 ──────────────────────
@@ -47,7 +59,13 @@ module.exports = async (req, res) => {
       const cleanupAudit = require('../controllers/cron/cleanup-audit');
       return cleanupAudit(req, res);
     }
-    return res.status(404).send('Not Found');
+    return respondError(req, res, 404, {
+      code: 'RESOURCE_NOT_FOUND',
+      message: '요청한 Cron 엔드포인트를 찾을 수 없습니다.',
+      reason: '등록되지 않은 Cron 경로입니다.',
+      action: '사용 가능한 Cron 엔드포인트를 확인하세요.',
+      logMessage: 'Unknown cron route',
+    });
   }
 
   // ─── /api/credentials/* → 크리덴셜 CRUD ────────────────────
@@ -74,7 +92,13 @@ module.exports = async (req, res) => {
       const adminSignupRequests = require('../controllers/adminSignupRequests');
       return adminSignupRequests(req, res);
     }
-    return res.status(404).send('Not Found');
+    return respondError(req, res, 404, {
+      code: 'RESOURCE_NOT_FOUND',
+      message: '요청한 관리자 API를 찾을 수 없습니다.',
+      reason: '등록되지 않은 관리자 API 경로입니다.',
+      action: '관리자 콘솔에서 사용하는 올바른 경로인지 확인하세요.',
+      logMessage: 'Unknown admin API route',
+    });
   }
 
   let controllerKey = '';
@@ -89,7 +113,17 @@ module.exports = async (req, res) => {
 
   if (!controllerKey || !controllerLoader) {
     console.warn(`⚠️ 404 Not Found: ${path}`);
-    return res.status(404).send('Not Found');
+    return respondError(req, res, 404, {
+      code: path.startsWith('/api/') ? 'RESOURCE_NOT_FOUND' : 'PAGE_NOT_FOUND',
+      message: path.startsWith('/api/')
+        ? '요청한 API 엔드포인트를 찾을 수 없습니다.'
+        : '요청한 페이지를 찾을 수 없습니다.',
+      reason: path.startsWith('/api/')
+        ? '등록되지 않았거나 제거된 API 경로입니다.'
+        : '등록되지 않았거나 제거된 페이지 경로입니다.',
+      action: '경로를 다시 확인한 뒤 다시 시도하세요.',
+      logMessage: 'Controller not found',
+    });
   }
 
   try {
@@ -106,6 +140,17 @@ module.exports = async (req, res) => {
     }
   } catch (error) {
     console.error(`❌ Critical Error in ${controllerKey}:`, error);
-    res.status(500).send('Internal Server Error: ' + error.message);
+    return respondError(req, res, 500, {
+      code: 'INTERNAL_ERROR',
+      message: path.startsWith('/api/')
+        ? '요청을 처리하는 중 서버 오류가 발생했습니다.'
+        : '페이지를 처리하는 중 서버 오류가 발생했습니다.',
+      reason: path.startsWith('/api/')
+        ? '서버가 요청을 정상적으로 완료하지 못했습니다.'
+        : '페이지 렌더링 또는 조회 중 오류가 발생했습니다.',
+      action: '잠시 후 다시 시도하세요.',
+      error,
+      logMessage: `Unhandled controller error: ${controllerKey}`,
+    });
   }
 };

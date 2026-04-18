@@ -10,6 +10,7 @@ const { parse } = require('cookie');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
+const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -21,8 +22,7 @@ async function hashPassword(password) {
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).send('Method Not Allowed');
+    return methodNotAllowed(req, res, ['POST']);
   }
 
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress;
@@ -30,14 +30,21 @@ module.exports = async function handler(req, res) {
   const authToken = cookies['auth_token'];
 
   if (!authToken) {
-    return res.status(401).json({ error: '인증이 필요합니다.' });
+    return respondError(req, res, 401, {
+      code: 'AUTH_REQUIRED',
+      logMessage: 'Change password requires auth token',
+    });
   }
 
   let decoded;
   try {
     decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch {
-    return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
+  } catch (error) {
+    return respondError(req, res, 401, {
+      code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
+      logMessage: 'Invalid token on change-password',
+      error,
+    });
   }
 
   const body = req.body || {};
@@ -45,10 +52,20 @@ module.exports = async function handler(req, res) {
   const confirmPassword = body.confirmPassword || '';
 
   if (!newPassword || newPassword.length < 8) {
-    return res.status(400).json({ error: '비밀번호는 8자 이상이어야 합니다.' });
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: '비밀번호는 8자 이상이어야 합니다.',
+      reason: '보안 정책상 최소 길이를 만족해야 합니다.',
+      action: '8자 이상 비밀번호를 입력하세요.',
+    });
   }
   if (newPassword !== confirmPassword) {
-    return res.status(400).json({ error: '비밀번호 확인이 일치하지 않습니다.' });
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: '비밀번호 확인이 일치하지 않습니다.',
+      reason: 'newPassword와 confirmPassword 값이 다릅니다.',
+      action: '두 입력값을 다시 확인하세요.',
+    });
   }
 
   const sql = getDb();

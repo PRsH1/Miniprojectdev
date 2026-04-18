@@ -21,6 +21,7 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('./db');
 const { sign } = require('./jwt');
 const { insertAuditLog } = require('./audit');
+const { respondError } = require('./respond-error');
 
 // role 접근 권한 계층 체크
 function hasAccess(userRole, requiredRole) {
@@ -47,11 +48,24 @@ module.exports = async function authMiddleware(req, res) {
     `;
   } catch (err) {
     console.error('protected_pages 조회 오류:', err);
-    return res.status(500).send('Internal Server Error');
+    return respondError(req, res, 500, {
+      code: 'DATABASE_ERROR',
+      message: '페이지 정보를 확인하는 중 오류가 발생했습니다.',
+      reason: '보호 페이지 설정을 조회하지 못했습니다.',
+      action: '잠시 후 다시 시도하세요.',
+      error: err,
+      logMessage: 'protected_pages lookup failed',
+    });
   }
 
   if (!rows || rows.length === 0) {
-    return res.status(404).send('페이지를 찾을 수 없습니다.');
+    return respondError(req, res, 404, {
+      code: 'PAGE_NOT_FOUND',
+      message: '요청한 페이지를 찾을 수 없습니다.',
+      reason: '보호 페이지로 등록되지 않았거나 비활성화된 경로입니다.',
+      action: '주소를 다시 확인하거나 홈으로 이동하세요.',
+      logMessage: 'Protected page not found',
+    });
   }
 
   const page = rows[0];
@@ -99,7 +113,13 @@ module.exports = async function authMiddleware(req, res) {
       ipAddress: ip,
       result: 'denied',
     });
-    return res.redirect(302, '/auth/403.html');
+    return respondError(req, res, 403, {
+      code: 'FORBIDDEN',
+      message: '이 페이지에 접근할 권한이 없습니다.',
+      reason: '현재 계정의 역할로는 이 보호 페이지를 열 수 없습니다.',
+      action: '권한이 있는 계정으로 로그인하거나 관리자에게 문의하세요.',
+      logMessage: 'Protected page access denied',
+    });
   }
 
   // 5. HTML 서빙
@@ -119,7 +139,14 @@ module.exports = async function authMiddleware(req, res) {
     return res.status(200).send(html);
   } catch (err) {
     console.error(`페이지 파일 읽기 오류 (${page.file_path}):`, err);
-    return res.status(500).send('페이지를 불러오는 중 오류가 발생했습니다.');
+    return respondError(req, res, 500, {
+      code: 'INTERNAL_ERROR',
+      message: '페이지를 불러오는 중 오류가 발생했습니다.',
+      reason: '페이지 파일을 읽거나 전달하는 중 문제가 발생했습니다.',
+      action: '잠시 후 다시 시도하세요.',
+      error: err,
+      logMessage: `Protected page file read failed: ${page.file_path}`,
+    });
   }
 };
 

@@ -15,11 +15,11 @@ const { parse } = require('cookie');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { tryRefreshToken } = require('./_shared/auth-middleware');
+const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
-    res.setHeader('Allow', 'GET');
-    return res.status(405).json({ error: 'Method Not Allowed' });
+    return methodNotAllowed(req, res, ['GET']);
   }
 
   res.setHeader('Content-Type', 'application/json');
@@ -80,6 +80,13 @@ module.exports = async function handler(req, res) {
     });
   } catch (err) {
     console.error('me.js DB 조회 오류:', err);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return respondError(req, res, 500, {
+      code: 'DATABASE_ERROR',
+      message: '사용자 정보를 조회하는 중 오류가 발생했습니다.',
+      reason: '계정 정보를 읽는 중 서버가 요청을 완료하지 못했습니다.',
+      action: '잠시 후 다시 시도하세요.',
+      error: err,
+      logMessage: 'Current user lookup failed',
+    });
   }
 };

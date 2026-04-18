@@ -1,4 +1,5 @@
 const Pusher = require('pusher');
+const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
@@ -32,10 +33,16 @@ module.exports = async function handler(req, res) {
 
         } catch (error) {
             console.error('Pusher trigger error:', error);
-            res.status(500).json({ message: 'Failed to forward webhook to Pusher' });
+            return respondError(req, res, 502, {
+                code: 'UPSTREAM_API_ERROR',
+                message: '웹훅 이벤트를 실시간 채널로 전달하지 못했습니다.',
+                reason: 'Pusher 연동 처리 중 오류가 발생했습니다.',
+                action: '잠시 후 다시 시도하거나 실시간 연동 설정을 확인하세요.',
+                error,
+                logMessage: 'Pusher trigger failed',
+            });
         }
     } else {
-        res.setHeader('Allow', ['POST']);
-        res.status(405).end(`Method ${req.method} Not Allowed`);
+        return methodNotAllowed(req, res, ['POST']);
     }
 };

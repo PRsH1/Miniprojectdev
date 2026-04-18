@@ -1,9 +1,10 @@
 const nodemailer = require('nodemailer');
 // URLSearchParams는 Node.js 내장이므로 require 없어도 되지만 명시적으로 추가해도 됨
+const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 module.exports = async function handler(req, res) {
     if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, message: 'Method Not Allowed' });
+        return methodNotAllowed(req, res, ['POST']);
     }
 
     const logBuffer = []; 
@@ -22,9 +23,11 @@ module.exports = async function handler(req, res) {
         const security = params.get('security');
 
         if (!host || !port || !from || !to) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "<span style='color:red;'>❌ 필수값(Host/Port/From/To)이 비어 있습니다.</span>" 
+            return respondError(req, res, 400, {
+                code: 'VALIDATION_FAILED',
+                message: '필수값이 비어 있습니다.',
+                reason: 'SMTP 테스트에는 Host, Port, From, To 값이 필요합니다.',
+                action: '입력값을 모두 채운 뒤 다시 시도하세요.',
             });
         }
         
@@ -77,11 +80,13 @@ module.exports = async function handler(req, res) {
         console.error(errorMessage);
         logBuffer.push(errorMessage);
 
-        res.status(500).json({
-            success: false,
-            message: `<span style='color:red;'>❌ 메일 발송 실패: ${error.message}</span>`,
-            logs: logBuffer,
-            error: error.message
+        return respondError(req, res, 502, {
+            code: 'UPSTREAM_API_ERROR',
+            message: '메일 발송 테스트에 실패했습니다.',
+            reason: 'SMTP 서버가 요청을 처리하지 못했거나 연결 과정에서 오류가 발생했습니다.',
+            action: '호스트, 포트, 보안 방식, 인증 정보를 다시 확인하세요.',
+            error,
+            logMessage: 'SMTP send failed',
         });
     }
 };

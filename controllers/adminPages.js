@@ -11,14 +11,15 @@ const { parse } = require('cookie');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
+const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 function requireAdmin(req, res) {
   const cookies = parse(req.headers.cookie || '');
   const authToken = cookies['auth_token'];
-  if (!authToken) { res.status(401).json({ error: '인증이 필요합니다.' }); return null; }
+  if (!authToken) { respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Admin pages API requires authentication' }); return null; }
   let decoded;
-  try { decoded = jwt.verify(authToken, process.env.JWT_SECRET); } catch { res.status(401).json({ error: '유효하지 않은 토큰입니다.' }); return null; }
-  if (decoded.role !== 'admin') { res.status(403).json({ error: '관리자 권한이 필요합니다.' }); return null; }
+  try { decoded = jwt.verify(authToken, process.env.JWT_SECRET); } catch (error) { respondError(req, res, 401, { code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', error, logMessage: 'Admin pages token verification failed' }); return null; }
+  if (decoded.role !== 'admin') { respondError(req, res, 403, { code: 'FORBIDDEN', message: '관리자 권한이 필요합니다.', reason: '현재 계정은 페이지 관리 API를 사용할 수 없습니다.', action: '관리자 계정으로 로그인하세요.', logMessage: 'Admin role required for page API' }); return null; }
   return decoded;
 }
 
@@ -47,10 +48,10 @@ module.exports = async function handler(req, res) {
     const { path: pagePath, name, description, required_role, file_path } = body;
 
     if (!pagePath || !name || !required_role || !file_path) {
-      return res.status(400).json({ error: 'path, name, required_role, file_path는 필수입니다.' });
+      return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: 'path, name, required_role, file_path는 필수입니다.', reason: '보호 페이지 등록에 필요한 값이 누락되었습니다.', action: '필수 항목을 모두 입력한 뒤 다시 시도하세요.' });
     }
     if (!['admin', 'manager', 'user'].includes(required_role)) {
-      return res.status(400).json({ error: '유효하지 않은 required_role입니다.' });
+      return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 required_role입니다.', reason: 'required_role은 admin, manager, user 중 하나여야 합니다.', action: '권한 값을 다시 선택하세요.' });
     }
 
     let newPage;
@@ -63,7 +64,7 @@ module.exports = async function handler(req, res) {
       newPage = rows[0];
     } catch (err) {
       if (err.message && err.message.includes('unique')) {
-        return res.status(409).json({ error: '이미 등록된 경로입니다.' });
+        return respondError(req, res, 409, { code: 'VALIDATION_FAILED', message: '이미 등록된 경로입니다.', reason: '같은 path를 가진 보호 페이지가 이미 존재합니다.', action: '다른 경로를 사용하거나 기존 페이지를 수정하세요.' });
       }
       throw err;
     }
@@ -81,7 +82,7 @@ module.exports = async function handler(req, res) {
       RETURNING path, file_path
     `;
     if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: '페이지를 찾을 수 없습니다.' });
+      return respondError(req, res, 404, { code: 'RESOURCE_NOT_FOUND', message: '페이지를 찾을 수 없습니다.', reason: '삭제 대상 보호 페이지가 존재하지 않습니다.', action: '목록을 새로고침한 뒤 다시 시도하세요.' });
     }
     await insertAuditLog({
       userId: decoded.sub, action: 'page_deleted', target: rows[0].path,
@@ -98,7 +99,7 @@ module.exports = async function handler(req, res) {
 
     if (body.required_role !== undefined) {
       if (!['admin', 'manager', 'user'].includes(body.required_role)) {
-        return res.status(400).json({ error: '유효하지 않은 required_role입니다.' });
+        return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 required_role입니다.', reason: 'required_role은 admin, manager, user 중 하나여야 합니다.', action: '권한 값을 다시 선택하세요.' });
       }
       await sql`UPDATE protected_pages SET required_role = ${body.required_role}, updated_at = now() WHERE id = ${pageId}`;
       const action = 'page_updated';
@@ -114,5 +115,9 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
-  return res.status(404).json({ error: 'Not Found' });
+  if (rawPath === '/api/admin/pages' || deleteMatch || match) {
+    return methodNotAllowed(req, res, ['GET', 'POST', 'PUT', 'DELETE']);
+  }
+
+  return respondError(req, res, 404, { code: 'RESOURCE_NOT_FOUND', message: '요청한 페이지 관리 경로를 찾을 수 없습니다.', reason: '등록되지 않은 페이지 관리 하위 경로입니다.', action: '관리자 콘솔에서 사용하는 경로인지 확인하세요.' });
 };
