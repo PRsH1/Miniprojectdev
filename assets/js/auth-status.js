@@ -113,8 +113,15 @@
         if (!el) return;
 
         if (!user) {
-            // 코너 모드는 비로그인 시 표시 안 함 (공간 낭비)
-            if (CORNER) { el.style.display = 'none'; return; }
+            if (CORNER) {
+                // 코너 모드 비로그인: 로그인/회원가입 버튼 표시
+                var nextParam = '?next=' + encodeURIComponent(window.location.pathname);
+                el.innerHTML =
+                    '<a href="/auth/login.html' + nextParam + '" class="asb-btn primary">로그인</a>' +
+                    '<a href="/auth/signup.html" class="asb-btn">회원가입</a>';
+                return;
+            }
+            // 기본 상단 바 모드 (기존 동작 유지)
             el.innerHTML =
                 '<a href="/" class="asb-brand">eformsign Tools Hub</a>' +
                 '<span class="asb-spacer"></span>' +

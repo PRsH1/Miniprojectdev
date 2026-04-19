@@ -126,7 +126,7 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 | 인라인 | `window.AUTH_STATUS_INLINE = true` | `#authStatusBar` 요소를 HTML에 미리 배치, 자동 삽입 없음 |
 
 ```html
-<!-- 코너 모드 예시 (OpenAPITester.html) -->
+<!-- 코너 모드 예시 (OpenAPITesterFull.html) -->
 <script>window.AUTH_STATUS_CORNER = true;</script>
 <script src="/assets/js/auth-status.js"></script>
 ```
@@ -134,6 +134,7 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 - 비로그인 시 코너 모드는 패널 미표시 (상단 바 모드는 로그인/회원가입 버튼 표시)
 - admin 로그인 시 모든 모드에서 "관리자 콘솔" 버튼 자동 표시
 - **주의:** 각 페이지에 `button { width: 100% }` 스타일이 있어도 `.asb-btn`에 `width: auto !important`가 적용되어 버튼이 늘어나지 않음
+- 기본 모드의 `.asb-brand`("eformsign Tools Hub")는 클릭 시 `/`(index)로 이동하는 링크(`<a>` 태그)로 렌더링됨
 
 ---
 
@@ -163,7 +164,7 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 - 불러오기 시 비밀 키가 null이면 UI에서 직접 입력 안내 표시
 - 모든 엔드포인트는 JWT(`auth_token` 쿠키) 인증 필요, `WHERE user_id = decoded.sub`로 타 사용자 접근 차단
 
-**적용 페이지:** `private/MemberV2.html`, `API(JS,HTML)/OpenAPITester.html`
+**적용 페이지:** `private/MemberV2.html`, `private/OpenAPITesterFull.html`
 
 ---
 

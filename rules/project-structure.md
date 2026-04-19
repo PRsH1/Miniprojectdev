@@ -38,11 +38,11 @@ ProjectImprove/
 │   └── login.html              # 인증 보호 페이지용 로그인 UI
 │
 ├── private/                    # 비밀번호 보호 콘텐츠 (컨트롤러에서 서빙)
-│   └── OpenAPIAutoTest.html / MemberV2.html / Member.html / templatecopy.html / idp-test.html
+│   └── OpenAPIAutoTest.html / MemberV2.html / Member.html / templatecopy.html / idp-test.html / OpenAPITesterFull.html
 │
 ├── API(JS,HTML)/
-│   ├── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버 API 비공개)
-│   └── OpenAPITester.html      # Postman 스타일 API 테스터 — 전체 버전 (멤버 API 포함)
+│   ├── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버 API 비공개, public)
+│   └── OpenAPITester.html      # (deprecated → private/OpenAPITesterFull.html 으로 이동됨)
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
