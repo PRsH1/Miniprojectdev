@@ -13,7 +13,6 @@ $(document).on('click', '.tab-btn', function() {
 // INIT
 // ──────────────────────────────────────────────────────────────────────────
 $(document).ready(function() {
-    buildSidebar();
     updateBaseUrlBadge();
 
     // Auth panel toggle
@@ -110,8 +109,10 @@ $(document).ready(function() {
         }
     });
 
-    // 로그인 상태 캐시 (크리덴셜 버튼 차단용)
-    refreshAuthUser();
+    // 로그인 상태 캐시 후 DB 히스토리 초기화
+    refreshAuthUser().then(() => initHistory()).then(() => {
+        buildSidebar();
+    });
 });
 
 // ──────────────────────────────────────────────────────────────────────────

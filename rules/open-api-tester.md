@@ -21,7 +21,7 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 | `api-specs.js` | 높음 | API 명세 추가/수정 |
 | `ui.js` | 중간 | UI 동작·요청·응답·Save/History 로직 변경 |
 | `init.js` | 낮음 | 초기화·모달·리사이즈·사이드바 탭 이벤트 변경 |
-| `state.js` | 낮음 | 상수·헬퍼 함수·localStorage 히스토리 함수 변경 |
+| `state.js` | 낮음 | 상수·헬퍼 함수·히스토리 함수 변경 (localStorage / DB 분기 포함) |
 
 ### API 데이터 구조 (`API_LIST`)
 
@@ -95,9 +95,25 @@ const API_SPECS = {
 
 ### 요청 저장 및 히스토리 (Save & History)
 
-**저장소:** `localStorage` 키 `openapi_tester_history`, JSON 배열, 최대 100개 (초과 시 오래된 항목 자동 제거)
+**저장소 분기:**
 
-**두 파일 공유:** `OpenAPITesterProd.html`과 `OpenAPITester.html`이 동일한 localStorage 키를 사용하므로 한 쪽에서 저장한 내역이 다른 쪽에서도 보인다. 의도된 동작.
+| 사용자 상태 | 저장소 | 비고 |
+|---|---|---|
+| 비로그인 | `localStorage` 키 `openapi_tester_history` | 기존 동작 유지 |
+| 로그인 | DB `api_request_history` 테이블 | 크로스 디바이스·세션 복원 가능 |
+
+- 최대 100건 (초과 시 오래된 항목 자동 제거 — 비로그인은 프론트, 로그인은 서버에서 처리)
+- 기존 localStorage 항목은 로그인 시 마이그레이션하지 않음 — 로그인하면 DB 전용, localStorage는 비로그인 전용
+- DB 저장 실패 시 localStorage 백업 없음 — 토스트 표시 후 중단
+
+**메모리 캐시 패턴 (`historyCache`):**
+- `let historyCache = null` — `null`이면 비로그인(localStorage 사용), 배열이면 로그인(캐시 사용)
+- `initHistory()`: 페이지 로드 시(`refreshAuthUser()` 완료 후) `GET /api/request-history`로 DB fetch → `historyCache` 세팅
+- `historyLoad()`: `historyCache !== null`이면 캐시 반환, 아니면 localStorage 파싱 — **동기 함수 유지**
+- 저장/삭제/초기화 시 DB API 호출 + `historyCache` 즉시 동기화 → `historyLoad()` 반환값 일관성 보장
+
+**두 파일 공유:**
+- `OpenAPITesterProd.html`과 `OpenAPITesterFull.html`이 동일한 JS 모듈 파일을 사용하므로 로그인 사용자는 DB에서, 비로그인은 localStorage에서 동일하게 히스토리를 공유함
 
 **사이드바 구조:**
 - `sidebar-tabs`: API 탭 / 저장됨 탭 전환 (`init.js` 내 `.sidebar-tab` 클릭 핸들러)
@@ -111,26 +127,36 @@ const API_SPECS = {
 
 **주요 함수 (state.js):**
 
-| 함수 | 역할 |
-|---|---|
-| `historyLoad()` | localStorage에서 배열 파싱 |
-| `historySave(entries)` | localStorage에 저장 |
-| `historyCaptureAndSave(name)` | 현재 요청 상태 캡처 후 저장 |
-| `historyDelete(id)` | 단건 삭제 |
-| `historyClear()` | 전체 삭제 |
-| `historyByEndpoint(endpointId)` | 특정 엔드포인트의 저장 항목만 필터링 |
+| 함수 | async | 역할 |
+|---|---|---|
+| `initHistory()` | async | 로그인 시 DB fetch → `historyCache` 세팅. 비로그인 시 no-op |
+| `historyLoad()` | 동기 | 캐시 또는 localStorage에서 배열 반환 |
+| `historySave(entries)` | 동기 | localStorage에만 저장 (비로그인 전용) |
+| `historyCaptureAndSave(name)` | **async** | 현재 요청 캡처 후 로그인=DB POST+캐시 / 비로그인=localStorage |
+| `historyDelete(id)` | **async** | 로그인=DB DELETE+캐시 / 비로그인=localStorage |
+| `historyClear()` | **async** | 로그인=DB 전체삭제+캐시 초기화 / 비로그인=localStorage 제거 |
+| `historyByEndpoint(endpointId)` | 동기 | `historyLoad()` 결과에서 필터링 |
 
-**주요 함수 (ui.js):**
+**주요 함수 (ui.js) — async 주의:**
 
 | 함수 | 역할 |
 |---|---|
 | `openSaveModal()` / `closeSaveModal()` | Save 모달 열기/닫기 |
-| `confirmSave()` | 저장 실행 → 해당 엔드포인트 자동 펼침 → `buildSidebar()` 재호출 |
+| `confirmSave()` | **async** — 저장 실행 → 실패 시 모달 유지 → 해당 엔드포인트 자동 펼침 → `buildSidebar()` 재호출 |
 | `buildHistoryPanel()` | 저장됨 탭 flat 목록 렌더링 |
 | `loadHistoryEntry(entry)` | 저장 항목 불러오기: `selectEndpoint()` → 50ms 후 파라미터/Body/Authorization 복원 |
-| `historyClearConfirm()` | 전체 삭제 확인 → `expandedSaveEndpoints.clear()` → 재빌드 |
+| `historyClearConfirm()` | **async** — 전체 삭제 확인 → `expandedSaveEndpoints.clear()` → 재빌드 |
 
 **`state.currentHistoryId`:** 현재 불러온 히스토리 항목 ID. `loadHistoryEntry()` 시 설정, `selectEndpoint()` 직접 클릭 시 `null` 초기화.
+
+**DB API 엔드포인트 (`/api/request-history`):**
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/api/request-history` | 내 히스토리 목록 (최신순 100건) |
+| POST | `/api/request-history` | 항목 저장 (100건 초과 시 서버에서 오래된 것 자동 삭제) |
+| DELETE | `/api/request-history/:id` | 단건 삭제 |
+| DELETE | `/api/request-history` | 전체 삭제 |
 
 ---
 
@@ -149,3 +175,6 @@ const API_SPECS = {
 - **히스토리 삭제 후 사이드바 갱신**: `buildHistoryPanel()` 호출만으로는 API 탭의 인라인 배지가 갱신되지 않음. 히스토리 항목 삭제 시 반드시 `buildSidebar($('#sidebarSearch').val())`도 함께 호출할 것
 - **전체 삭제 시 펼침 상태 초기화**: `historyClearConfirm()`에서 `expandedSaveEndpoints.clear()` → `buildSidebar()` 순서를 유지해야 토글 버튼이 완전히 사라짐
 - **`saves-toggle` 클릭 시 `e.stopPropagation()` 필수**: `.endpoint-item` 클릭(→ `selectEndpoint`) 이벤트와 독립되어야 하므로 반드시 전파 차단
+- **`historyCache` 초기화 타이밍**: `initHistory()`는 `refreshAuthUser()` 완료 후 호출되어야 `state.authUser` 체크가 정확함. `init.js`의 `document.ready`에서 `refreshAuthUser().then(() => initHistory()).then(() => buildSidebar())` 체인 순서를 반드시 유지할 것
+- **`historyCaptureAndSave()` 반환값**: 저장 성공 시 `entry` 객체 반환, 실패 시 `null` 반환. `confirmSave()`에서 `null` 확인 후 모달을 유지(닫지 않음)해야 사용자가 재시도할 수 있음
+- **로그인 상태 변경**: 페이지 로드 시 1회 판단 후 고정. 세션 중 로그아웃해도 `historyCache`가 남아있으면 캐시를 계속 사용함 — 페이지 새로고침 시 비로그인 상태로 올바르게 전환됨 (의도된 동작)

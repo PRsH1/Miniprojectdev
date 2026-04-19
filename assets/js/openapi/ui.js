@@ -139,9 +139,10 @@ function _makeEndpointWrap(ep) {
                 loadHistoryEntry(entry);
             });
 
-            $saveItem.find('.save-item-delete').on('click', function(e) {
+            $saveItem.find('.save-item-delete').on('click', async function(e) {
                 e.stopPropagation();
-                historyDelete(entry.id);
+                const deleted = await historyDelete(entry.id);
+                if (!deleted) return;
                 if (historyByEndpoint(ep.id).length === 0) {
                     expandedSaveEndpoints.delete(ep.id);
                 }
@@ -869,12 +870,12 @@ function closeSaveModal() {
     $('#saveModal').removeClass('open');
 }
 
-function confirmSave() {
+async function confirmSave() {
     const name = $('#saveNameInput').val().trim() || state.currentEndpoint?.name;
-    historyCaptureAndSave(name);
+    const entry = await historyCaptureAndSave(name);
+    if (!entry) return;
     closeSaveModal();
     showToast(`"${name}" 저장됨`);
-    // 저장 후 해당 엔드포인트 자동 펼침
     if (state.currentEndpoint) {
         expandedSaveEndpoints.add(state.currentEndpoint.id);
     }
@@ -923,9 +924,10 @@ function buildHistoryPanel() {
             loadHistoryEntry(entry);
         });
 
-        $item.find('.history-delete-btn').on('click', function(e) {
+        $item.find('.history-delete-btn').on('click', async function(e) {
             e.stopPropagation();
-            historyDelete(entry.id);
+            const deleted = await historyDelete(entry.id);
+            if (!deleted) return;
             buildHistoryPanel();
             buildSidebar($('#sidebarSearch').val());
         });
@@ -987,9 +989,10 @@ function loadHistoryEntry(entry) {
     }, 50);
 }
 
-function historyClearConfirm() {
+async function historyClearConfirm() {
     if (!confirm('저장된 요청을 모두 삭제할까요?')) return;
-    historyClear();
+    const cleared = await historyClear();
+    if (!cleared) return;
     expandedSaveEndpoints.clear();
     buildHistoryPanel();
     buildSidebar($('#sidebarSearch').val());

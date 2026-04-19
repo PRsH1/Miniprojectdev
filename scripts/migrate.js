@@ -136,6 +136,29 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS idx_eformsign_credentials_user_id ON eformsign_credentials(user_id)`;
   console.log('✅ 인덱스 생성 완료');
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS api_request_history (
+      id           VARCHAR(20) PRIMARY KEY,
+      user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name         VARCHAR(255) NOT NULL,
+      endpoint_id  VARCHAR(100),
+      method       VARCHAR(10),
+      environment  VARCHAR(50),
+      url          TEXT,
+      path_params  JSONB DEFAULT '[]',
+      query_params JSONB DEFAULT '[]',
+      headers      JSONB DEFAULT '[]',
+      body         TEXT,
+      response     JSONB,
+      saved_at     BIGINT,
+      created_at   TIMESTAMPTZ DEFAULT now()
+    )
+  `;
+  console.log('✅ api_request_history 테이블 생성 완료');
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_api_request_history_user_saved
+    ON api_request_history(user_id, saved_at DESC)`;
+
   // ─── 보호 페이지 시드 데이터 ────────────────────────────────
 
   const pages = [

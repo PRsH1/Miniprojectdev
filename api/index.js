@@ -74,6 +74,12 @@ module.exports = async (req, res) => {
     return credentials(req, res);
   }
 
+  // ─── /api/request-history/* → 요청 히스토리 CRUD ────────────
+  if (path.startsWith('/api/request-history')) {
+    const requestHistory = require('../controllers/requestHistory');
+    return requestHistory(req, res);
+  }
+
   // ─── /api/admin/* → 관리자 API 컨트롤러 ────────────────────
   if (path.startsWith('/api/admin/')) {
     if (path.startsWith('/api/admin/users') || path.startsWith('/api/admin/password-reset-requests')) {

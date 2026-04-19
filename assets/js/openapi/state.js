@@ -89,17 +89,23 @@ function formatJsonSyntax(json) {
 const HISTORY_KEY = 'openapi_tester_history';
 const HISTORY_MAX = 100;
 
+// DB 히스토리 캐시 (로그인 사용자 전용)
+// null = 미초기화(비로그인 또는 로드 전), [] = 빈 목록
+let historyCache = null;
+
 function historyLoad() {
+    if (historyCache !== null) return historyCache;
     try {
         return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
     } catch { return []; }
 }
 
 function historySave(entries) {
+    // 비로그인 전용. 로그인 경로에서는 캐시를 직접 조작함.
     localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
 }
 
-function historyCaptureAndSave(customName) {
+async function historyCaptureAndSave(customName) {
     const ep = state.currentEndpoint;
     if (!ep) return;
 
@@ -143,6 +149,26 @@ function historyCaptureAndSave(customName) {
         response
     };
 
+    if (historyCache !== null) {
+        try {
+            const res = await fetch('/api/request-history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry),
+            });
+            if (!res.ok) {
+                showToast('요청 저장 실패 (서버 오류)', 2000);
+                return null;
+            }
+            historyCache.unshift(entry);
+            if (historyCache.length > HISTORY_MAX) historyCache.splice(HISTORY_MAX);
+        } catch (e) {
+            showToast('요청 저장 중 오류가 발생했습니다', 2000);
+            return null;
+        }
+        return entry;
+    }
+
     const list = historyLoad();
     list.unshift(entry);
     if (list.length > HISTORY_MAX) list.splice(HISTORY_MAX);
@@ -150,18 +176,76 @@ function historyCaptureAndSave(customName) {
     return entry;
 }
 
-function historyDelete(id) {
+async function historyDelete(id) {
+    if (historyCache !== null) {
+        try {
+            const res = await fetch(`/api/request-history/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (!res.ok) {
+                showToast('삭제 실패 (서버 오류)', 2000);
+                return false;
+            }
+        } catch (e) {
+            showToast('삭제 중 오류가 발생했습니다', 2000);
+            return false;
+        }
+        historyCache = historyCache.filter(e => e.id !== id);
+        return true;
+    }
+
     const list = historyLoad().filter(e => e.id !== id);
     historySave(list);
+    return true;
 }
 
-function historyClear() {
+async function historyClear() {
+    if (historyCache !== null) {
+        try {
+            const res = await fetch('/api/request-history', { method: 'DELETE' });
+            if (!res.ok) {
+                showToast('초기화 실패 (서버 오류)', 2000);
+                return false;
+            }
+        } catch (e) {
+            showToast('초기화 중 오류가 발생했습니다', 2000);
+            return false;
+        }
+        historyCache = [];
+        return true;
+    }
+
     localStorage.removeItem(HISTORY_KEY);
+    return true;
 }
 
 // 특정 엔드포인트에 저장된 히스토리 항목 반환 (최신순)
 function historyByEndpoint(endpointId) {
     return historyLoad().filter(e => e.endpointId === endpointId);
+}
+
+// 히스토리 초기화 (로그인 사용자 전용)
+async function initHistory() {
+    if (!state.authUser) return;
+    try {
+        const res = await fetch('/api/request-history');
+        if (!res.ok) { historyCache = []; return; }
+        const list = await res.json();
+        historyCache = list.map(r => ({
+            id:          r.id,
+            savedAt:     r.saved_at,
+            name:        r.name,
+            endpointId:  r.endpoint_id,
+            method:      r.method,
+            environment: r.environment,
+            url:         r.url,
+            pathParams:  r.path_params || [],
+            queryParams: r.query_params || [],
+            headers:     r.headers || [],
+            body:        r.body || '',
+            response:    r.response || null,
+        }));
+    } catch (e) {
+        historyCache = [];
+    }
 }
 
 // ─── 크리덴셜 저장/불러오기 ───────────────────────────────
