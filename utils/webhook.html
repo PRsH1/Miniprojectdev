@@ -144,6 +144,10 @@
                 <input type="text" id="user_id_token" placeholder="User ID 입력">
             </div>
             <button id="getAccessTokenBtn">Access Token 발급</button>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+                <button type="button" onclick="openCredentialSaveModal()" style="width:auto;flex:1;">인증 저장</button>
+                <button type="button" onclick="openCredentialLoadModal()" style="width:auto;flex:1;">인증 불러오기</button>
+            </div>
             <div id="tokenResult"></div>
         </div>
     </div>
@@ -496,6 +500,22 @@
         initializeFilter();
     });
 </script>
+<script>
+window.CREDENTIAL_CONFIG = {
+    apiKeyId:         'apiKey',
+    userIdId:         'user_id_token',
+    secretKeyId:      'secretKey',
+    envId:            'envSelection',
+    envFixed:         null,
+    envSaveMap:       null,
+    envLoadMap:       null,
+    customUrlId:      null,
+    secretMethodId:   null,
+    secretMethodType: null,
+    darkMode:         true,
+};
+</script>
+<script src="/assets/js/credential-panel.js"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

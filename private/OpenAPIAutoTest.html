@@ -452,6 +452,8 @@
                 </div>
                 <div class="auth-actions">
                     <button class="btn-primary" id="btnIssueToken"><i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급</button>
+                    <button class="btn-secondary" type="button" onclick="openCredentialSaveModal()"><i class="fa-solid fa-floppy-disk fa-sm"></i> 인증 저장</button>
+                    <button class="btn-secondary" type="button" onclick="openCredentialLoadModal()"><i class="fa-solid fa-folder-open fa-sm"></i> 인증 불러오기</button>
                     <button class="btn-secondary" id="btnClearToken"><i class="fa-solid fa-xmark fa-sm"></i> 초기화</button>
                     <div class="token-display" id="authTokenDisplay" title="클릭하여 복사">토큰을 발급받아 주세요</div>
                     <div class="company-id-display" id="authCompanyIdDisplay" style="display:none">Company ID: <span id="authCompanyIdValue">-</span></div>
@@ -715,6 +717,21 @@ window.OPEN_API_AUTO_TEST_CONFIG = window.OPEN_API_AUTO_TEST_CONFIG || {
 };
 </script>
 <script src="/assets/js/OpenAPIAutoTest.js"></script>
+<script>
+window.CREDENTIAL_CONFIG = {
+    apiKeyId:         'authApiKey',
+    userIdId:         'authMemberId',
+    secretKeyId:      'authSecretKey',
+    envId:            'envSelect',
+    envFixed:         null,
+    envSaveMap:       null,
+    envLoadMap:       null,
+    customUrlId:      null,
+    secretMethodId:   null,
+    secretMethodType: 'tab',
+};
+</script>
+<script src="/assets/js/credential-panel.js"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

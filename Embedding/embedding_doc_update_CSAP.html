@@ -474,6 +474,10 @@
       <div class="form-group"><label>API Key:</label><input id="apiKey" placeholder="API Key 입력" /></div>
       <div class="form-group"><label>멤버 ID:</label><input id="userId" placeholder="이메일 입력" /></div>
       <button id="getTokenButton" class="btn">Get Access Token</button>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button type="button" class="btn" onclick="openCredentialSaveModal()" style="flex:1;width:auto;">인증 저장</button>
+        <button type="button" class="btn" onclick="openCredentialLoadModal()" style="flex:1;width:auto;">인증 불러오기</button>
+      </div>
       
       <div style="background:#f8f9fa; border:1px solid #eee; padding:10px; margin-top:10px; border-radius:4px;">
           <div class="form-group" style="margin-bottom:5px;"><label>Access Token:</label><input id="accessToken" readonly /></div>
@@ -550,6 +554,21 @@
       <iframe id="eformsign_iframe" name="eformsign_iframe"></iframe>
     </div>
   </div>
+<script>
+window.CREDENTIAL_CONFIG = {
+    apiKeyId:         'apiKey',
+    userIdId:         'userId',
+    secretKeyId:      'privateKeyHex',
+    envId:            null,
+    envFixed:         'csap',
+    envSaveMap:       null,
+    envLoadMap:       null,
+    customUrlId:      null,
+    secretMethodId:   'tokenMethodSelect',
+    secretMethodType: 'select',
+};
+</script>
+<script src="/assets/js/credential-panel.js"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

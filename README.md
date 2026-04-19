@@ -107,6 +107,7 @@ ProjectImprove/
 │   └── Member.html               # (deprecated) 구 멤버 관리 UI
 ├── assets/js/
 │   ├── auth-status.js            # ★ 전 페이지 공통 로그인 상태 상단 바 (IIFE)
+│   ├── credential-panel.js       # ★ eformsign 인증 저장/불러오기 공유 모듈 (IIFE, window.CREDENTIAL_CONFIG 필요)
 │   ├── OpenAPIAutoTest.js        # ★ OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── OpenAPITester.js          # 원본 보존용 (롤백 시 참고) — 직접 편집 금지
 │   ├── member/                   # ★ 멤버/그룹 관리 V2 분할 모듈 (로드 순서 중요)
@@ -556,12 +557,15 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 
 - **신규 DB 테이블**: `eformsign_credentials` (user_id FK, name, environment, api_key, eform_user_id, secret_method, secret_key nullable)
 - **신규 API**: `GET/POST/DELETE /api/credentials` — JWT 인증 필수, 사용자별 완전 격리
-- **적용 도구**: `private/MemberV2.html`, `private/OpenAPITesterFull.html`, `API(JS,HTML)/OpenAPITesterProd.html`
+- **공유 모듈**: `assets/js/credential-panel.js` (IIFE) — Access Token을 발급하는 모든 도구에 적용. `window.CREDENTIAL_CONFIG`로 페이지별 필드 ID·환경값 매핑·다크 모드 설정
+- **적용 도구**: OpenAPITester, MemberV2, API(JS,HTML)/ 내 문서/목록 도구, Embedding/ 전체, utils/ 내 webhook·대량삭제·대량다운로드 등 Access Token 발급 도구 17개 이상
 - **불러오기 UX**: 인증 불러오기 모달에서 항목별 인증 이름·API Key·User ID·비밀 키 저장 여부를 레이블-값 리스트로 표시, [선택] 시 인증 패널 자동 채움
 - **저장 UX**: 저장 모달에서 이름 입력 + 인증 패널 현재 값 pre-fill, 수정 후 저장 가능
 - **비밀 키 저장**: 체크박스로 선택 저장 (`secret_key` nullable) — 미저장 시 불러오기 후 직접 입력 안내
 - **비로그인 차단**: 저장/불러오기 버튼 클릭 시 미인증이면 로그인 안내 모달 표시 (`?next=현재경로` 포함)
 - **보안**: 목록 조회 시 비밀 키 미반환 (`has_secret_key: boolean`만), 단건 조회 시에만 비밀 키 포함 응답
+- **다크 모드**: `CREDENTIAL_CONFIG.darkMode: true` 설정 시 모달이 다크 테마로 렌더링됨 (webhook.html 등 어두운 배경 페이지용)
+- **CSS 격리**: 모달 내 버튼·인풋에 `all:revert` 적용 — 호스트 페이지 전역 CSS(`button { width:100% }` 등) 오염 방지
 
 ### OpenAPITester 요청 히스토리 DB 저장 (로그인 사용자)
 

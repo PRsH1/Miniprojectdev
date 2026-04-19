@@ -235,6 +235,10 @@
             </div>
 
             <button onclick="getAccessToken()">Access Token 발급</button>
+            <div class="form-group" style="display:flex;gap:8px;margin-top:10px;">
+                <button type="button" onclick="openCredentialSaveModal()" style="width:auto;flex:1;">인증 저장</button>
+                <button type="button" onclick="openCredentialLoadModal()" style="width:auto;flex:1;">인증 불러오기</button>
+            </div>
 
             <div class="form-group" style="margin-top: 20px;">
                 <label for="accessToken">발급된 Access Token</label>
@@ -509,6 +513,21 @@
             });
         }
     </script>
+<script>
+window.CREDENTIAL_CONFIG = {
+    apiKeyId:         'apiKey',
+    userIdId:         'user_id_token',
+    secretKeyId:      'privateKeyHex',
+    envId:            'envSelection',
+    envFixed:         null,
+    envSaveMap:       null,
+    envLoadMap:       null,
+    customUrlId:      null,
+    secretMethodId:   'secretKeyMethod',
+    secretMethodType: 'radio',
+};
+</script>
+<script src="/assets/js/credential-panel.js"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

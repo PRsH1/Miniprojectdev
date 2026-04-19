@@ -153,6 +153,10 @@
             <input type="text" id="privateKeyHex" placeholder="Secret Key (Hex) 입력" required />
             
             <button type="button" id="getTokenButton">토큰 발급 받기 (API 호출)</button>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+                <button type="button" onclick="openCredentialSaveModal()" style="width:auto;flex:1;">인증 저장</button>
+                <button type="button" onclick="openCredentialLoadModal()" style="width:auto;flex:1;">인증 불러오기</button>
+            </div>
             
             <div class="token-manual-box">
                 <label>Access Token (입력/확인):</label>
@@ -728,6 +732,21 @@
             $(btn).parent().append(html);
         }
     </script>
+<script>
+window.CREDENTIAL_CONFIG = {
+    apiKeyId:         'apiKey',
+    userIdId:         'user_id',
+    secretKeyId:      'privateKeyHex',
+    envId:            'envSelect',
+    envFixed:         null,
+    envSaveMap:       { 'saas': 'op_saas', 'csap': 'csap', 'custom': 'custom' },
+    envLoadMap:       { 'op_saas': 'saas', 'csap': 'csap', 'custom': 'custom' },
+    customUrlId:      null,
+    secretMethodId:   'tokenMethodSelect',
+    secretMethodType: 'select',
+};
+</script>
+<script src="/assets/js/credential-panel.js"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

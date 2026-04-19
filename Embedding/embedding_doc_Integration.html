@@ -940,6 +940,10 @@
           </div>
         </div>
         <button id="getTokenButton" class="btn">Get Access Token</button>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button type="button" class="btn" onclick="openCredentialSaveModal()" style="flex:1;width:auto;">인증 저장</button>
+          <button type="button" class="btn" onclick="openCredentialLoadModal()" style="flex:1;width:auto;">인증 불러오기</button>
+        </div>
 
         <div
           style="
@@ -1152,6 +1156,21 @@
         <iframe id="eformsign_iframe" name="eformsign_iframe" allow="local-network-access" sandbox="allow-popups allow-scripts allow-forms allow-same-origin"></iframe>
       </div>
     </div>
+  <script>
+  window.CREDENTIAL_CONFIG = {
+      apiKeyId:         'apiKey',
+      userIdId:         'userId',
+      secretKeyId:      'privateKeyHex',
+      envId:            'envSelect',
+      envFixed:         null,
+      envSaveMap:       { 'saas': 'op_saas', 'csap': 'csap', 'custom': 'custom' },
+      envLoadMap:       { 'op_saas': 'saas', 'csap': 'csap', 'custom': 'custom' },
+      customUrlId:      null,
+      secretMethodId:   'tokenMethodSelect',
+      secretMethodType: 'select',
+  };
+  </script>
+  <script src="/assets/js/credential-panel.js"></script>
   <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

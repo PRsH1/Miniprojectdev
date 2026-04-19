@@ -164,14 +164,52 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 - 불러오기 시 비밀 키가 null이면 UI에서 직접 입력 안내 표시
 - 모든 엔드포인트는 JWT(`auth_token` 쿠키) 인증 필요, `WHERE user_id = decoded.sub`로 타 사용자 접근 차단
 
-**적용 페이지:** `private/MemberV2.html`, `private/OpenAPITesterFull.html`, `API(JS,HTML)/OpenAPITesterProd.html`
+**공유 모듈:** `assets/js/credential-panel.js` (IIFE)
 
-**크리덴셜 UI 패턴 (OpenAPITester):**
-- 인증 패널 내 **인증 저장** / **인증 불러오기** 버튼으로 진입
-- **불러오기 모달** (`#credentialLoadModal`): 항목당 인증 이름·API Key·User ID·비밀 키 저장 여부를 레이블-값 리스트로 표시 (API Key / User ID 전체 표시), [선택] 클릭 시 인증 패널 자동 채움 후 모달 닫힘
-- **저장 모달** (`#credentialSaveModal`): 저장 이름 + 인증 패널 현재 값(API Key·User ID·비밀 키) pre-fill, 수정 후 저장 가능, 비밀 키 표시/숨김 토글 포함
-- **비로그인 차단** (`#authRequiredModal`): 두 버튼 모두 `state.authUser`(init.js에서 `/api/me` 캐시) 확인 후 미인증 시 로그인 안내 모달 표시 — [로그인하기] 버튼에 `?next=현재경로` 파라미터 포함
-- 토스트 알림 위치: `bottom: 80px` — 코너 모드 auth 패널(`bottom: 16px`)과 겹치지 않도록 여유 확보
+Access Token을 발급하는 모든 도구 페이지에 적용되는 공유 모듈. 3개 모달을 `<body>`에 자동 주입하고, `openCredentialSaveModal()` / `openCredentialLoadModal()` 전역 함수를 노출한다.
+
+```html
+<!-- 페이지별 설정 선언 후 스크립트 로드 -->
+<script>
+window.CREDENTIAL_CONFIG = {
+    apiKeyId:         'apiKey',           // API Key 입력 필드 ID
+    userIdId:         'user_id_token',    // User ID 입력 필드 ID
+    secretKeyId:      'privateKeyHex',    // 비밀 키 입력 필드 ID
+    envId:            'envSelection',     // 환경 선택 필드 ID (null이면 envFixed 사용)
+    envFixed:         null,               // 'op_saas' | 'csap' (envId가 null일 때)
+    envSaveMap:       null,               // 페이지값→DB값 맵 (예: { saas: 'op_saas' })
+    envLoadMap:       null,               // DB값→페이지값 맵 (예: { op_saas: 'saas' })
+    customUrlId:      null,               // custom 환경 URL 필드 ID
+    secretMethodId:   'secretKeyMethod',  // 인증 방식 선택 필드 ID (null이면 signature 고정)
+    secretMethodType: 'radio',            // 'radio' | 'select' | 'tab' | null
+    darkMode:         false,              // true면 다크 테마 모달 (webhook.html 등)
+};
+</script>
+<script src="/assets/js/credential-panel.js"></script>
+```
+
+**모달 ID (credential-panel.js 주입):**
+- `#_cpLoadModal` — 불러오기 모달
+- `#_cpSaveModal` — 저장 모달
+- `#_cpAuthModal` — 비로그인 차단 모달
+
+**CSS 격리:** `_injectStyles()`가 `<style>` 태그를 `<head>`에 삽입하여 모달 내부 `button`·`input`에 `all:revert` 적용 → 호스트 페이지 전역 CSS 오염 방지
+
+**`secretMethodType` 처리:**
+- `'radio'`: `[name="secretMethodId"]:checked` 값 읽기/쓰기
+- `'select'`: `<select id="secretMethodId">` 값 읽기/쓰기
+- `'tab'`: `[data-method].active` 읽기, `.click()` 쓰기 (OpenAPIAutoTest 방식)
+- `null`: `'signature'` 고정
+
+**`envSaveMap` / `envLoadMap`:** 페이지가 사용하는 환경 값이 DB 저장 형식(`op_saas`/`csap`/`custom`)과 다를 때 지정.
+- Embedding 페이지: `'saas'` ↔ `'op_saas'` 변환
+- CSAP 전용 페이지: `envFixed: 'csap'` (선택 필드 없음)
+
+**적용 페이지:** Access Token을 발급하는 모든 도구 — API(JS,HTML)/, Embedding/, utils/ 내 17개 이상 페이지.
+- OpenAPITester(`OpenAPITesterFull.html`, `OpenAPITesterProd.html`), MemberV2.html은 자체 모달(`#credentialLoadModal` 등) 유지
+- 나머지 도구들은 `credential-panel.js` 공유 모듈 사용
+
+**토스트 알림 위치:** `bottom: 80px` — 코너 모드 auth 패널(`bottom: 16px`)과 겹치지 않도록 여유 확보
 
 ---
 
