@@ -11,6 +11,7 @@ Vercel 서버리스 환경에서 동작하며, 브라우저 기반 HTML 도구 +
 @rules/open-api-auto-test.md
 @rules/open-api-tester.md
 @rules/env-vars.md
+@rules/error-response.md
 @rules/coding-conventions.md
 @rules/local-dev.md
 @rules/gstack.md
