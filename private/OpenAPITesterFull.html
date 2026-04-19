@@ -456,7 +456,7 @@
         .empty-select p { font-size: 0.9rem; }
 
         .toast {
-            position: fixed; bottom: 24px; right: 24px; z-index: 1000;
+            position: fixed; bottom: 80px; right: 24px; z-index: 1000;
             background: #1e2a38; color: #fff; padding: 10px 18px; border-radius: 8px;
             font-size: 0.85rem; box-shadow: 0 4px 16px rgba(0,0,0,0.2);
             opacity: 0; transition: opacity 0.3s; pointer-events: none;
@@ -522,6 +522,7 @@
         .guide-step:nth-child(4)::before { background: linear-gradient(90deg, #8b5cf6, #7c3aed); }
         .guide-step:nth-child(5)::before { background: linear-gradient(90deg, #ec4899, #db2777); }
         .guide-step:nth-child(6)::before { background: linear-gradient(90deg, #06b6d4, #0891b2); }
+        .guide-step:nth-child(7)::before { background: linear-gradient(90deg, #f97316, #ea580c); }
 
         .guide-step-num {
             display: inline-flex; align-items: center; justify-content: center;
@@ -535,6 +536,7 @@
         .guide-step:nth-child(4) .guide-step-num { background: #ede9fe; color: #5b21b6; }
         .guide-step:nth-child(5) .guide-step-num { background: #fce7f3; color: #9d174d; }
         .guide-step:nth-child(6) .guide-step-num { background: #cffafe; color: #164e63; }
+        .guide-step:nth-child(7) .guide-step-num { background: #ffedd5; color: #9a3412; }
 
         .guide-step-icon {
             font-size: 1.5rem; margin-bottom: 10px; display: block;
@@ -545,6 +547,7 @@
         .guide-step:nth-child(4) .guide-step-icon { color: #7c3aed; }
         .guide-step:nth-child(5) .guide-step-icon { color: #db2777; }
         .guide-step:nth-child(6) .guide-step-icon { color: #0891b2; }
+        .guide-step:nth-child(7) .guide-step-icon { color: #ea580c; }
 
         .guide-step h3 { font-size: 0.9rem; font-weight: 700; color: #1a202c; margin-bottom: 8px; }
         .guide-step p  { font-size: 0.8rem; color: #64748b; line-height: 1.6; }
@@ -958,6 +961,11 @@
             font-weight: 700; font-size: 0.95rem; color: #1a202c;
         }
         .modal-header span { flex: 1; }
+        .modal-body { padding: 20px; }
+        .modal-footer {
+            padding: 12px 20px; display: flex; justify-content: flex-end; gap: 8px;
+            border-top: 1px solid #eee;
+        }
         .modal-close {
             background: none; border: none; cursor: pointer;
             color: #a0aec0; font-size: 1.1rem; padding: 2px 6px; border-radius: 4px;
@@ -1150,11 +1158,6 @@
                 <i class="fa-solid fa-chevron-down fa-xs" id="authChevron" style="color:#a0aec0;transition:transform 0.2s"></i>
             </div>
             <div class="auth-panel-body" id="authPanelBody">
-                <!-- 저장된 크리덴셜 -->
-                <div id="credentialListWrap" style="margin-bottom:14px;display:none;">
-                    <div style="font-size:12px;font-weight:600;color:var(--text-muted,#888);margin-bottom:6px;">저장된 인증 정보</div>
-                    <div id="credentialList" style="display:flex;flex-direction:column;gap:5px;"></div>
-                </div>
                 <div class="auth-grid">
                     <div class="auth-field">
                         <label>API Key</label>
@@ -1179,12 +1182,8 @@
                 <div class="auth-actions">
                     <button class="btn-primary" id="btnGetToken"><i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급</button>
                     <button class="btn-secondary" id="btnClearToken"><i class="fa-solid fa-xmark fa-sm"></i> 초기화</button>
-                    <button type="button" class="btn-secondary" onclick="saveCredential()">인증 저장</button>
-                    <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
-                        <input type="checkbox" id="saveSecretKey">
-                        <span>비밀 키 저장</span>
-                        <span title="비밀 키를 서버에 저장합니다. 보안에 주의하세요." style="cursor:help;">⚠️</span>
-                    </label>
+                    <button type="button" class="btn-secondary" onclick="openCredentialSaveModal()">인증 저장</button>
+                    <button type="button" class="btn-secondary" onclick="openCredentialLoadModal()">인증 불러오기</button>
                     <div class="token-display" id="tokenDisplay" title="클릭하여 복사">토큰을 발급받아 주세요</div>
                 </div>
             </div>
@@ -1393,7 +1392,7 @@
             </div>
             <div class="guide-header-text">
                 <h2>eformsign API Tester — 사용 가이드</h2>
-                <p>6단계로 빠르게 API를 테스트해 보세요</p>
+                <p>7단계로 빠르게 API를 테스트해 보세요</p>
             </div>
             <button class="guide-close" onclick="closeGuide()"><i class="fa-solid fa-xmark"></i></button>
         </div>
@@ -1427,9 +1426,23 @@
                     </ul>
                 </div>
 
-                <!-- STEP 3 -->
+                <!-- STEP 3 (신규) -->
                 <div class="guide-step">
                     <div class="guide-step-num">3</div>
+                    <i class="fa-solid fa-floppy-disk guide-step-icon"></i>
+                    <h3>인증 정보 저장 / 불러오기</h3>
+                    <p>자주 사용하는 인증 정보를 이름 붙여 저장해두면 다음에 빠르게 불러올 수 있습니다. <strong>(로그인 필요)</strong></p>
+                    <ul>
+                        <li><strong>인증 저장</strong> 버튼으로 현재 입력된 API Key, User ID, 비밀 키를 이름과 함께 서버에 저장합니다.</li>
+                        <li><strong>인증 불러오기</strong> 버튼으로 목록에서 선택하면 인증 패널 필드가 자동으로 채워집니다.</li>
+                        <li>비밀 키 저장 여부를 선택할 수 있으며, 미저장 시 불러오기 후 직접 입력이 필요합니다.</li>
+                        <li>로그인한 계정에 귀속되며 다른 기기에서도 불러오기가 가능합니다.</li>
+                    </ul>
+                </div>
+
+                <!-- STEP 4 -->
+                <div class="guide-step">
+                    <div class="guide-step-num">4</div>
                     <i class="fa-solid fa-list guide-step-icon"></i>
                     <h3>API 선택</h3>
                     <p>왼쪽 사이드바에서 호출할 API를 선택합니다.</p>
@@ -1441,9 +1454,9 @@
                     </ul>
                 </div>
 
-                <!-- STEP 4 -->
+                <!-- STEP 5 -->
                 <div class="guide-step">
-                    <div class="guide-step-num">4</div>
+                    <div class="guide-step-num">5</div>
                     <i class="fa-solid fa-pen-to-square guide-step-icon"></i>
                     <h3>요청 구성</h3>
                     <p>Path / Query / Headers / Body 탭에서 요청 내용을 설정합니다.</p>
@@ -1456,9 +1469,9 @@
                     </ul>
                 </div>
 
-                <!-- STEP 5 -->
+                <!-- STEP 6 -->
                 <div class="guide-step">
-                    <div class="guide-step-num">5</div>
+                    <div class="guide-step-num">6</div>
                     <i class="fa-solid fa-paper-plane guide-step-icon"></i>
                     <h3>요청 전송 및 응답 확인</h3>
                     <p>Send 버튼을 눌러 API를 호출하고 응답을 확인합니다.</p>
@@ -1471,9 +1484,9 @@
                     </ul>
                 </div>
 
-                <!-- STEP 6 -->
+                <!-- STEP 7 -->
                 <div class="guide-step">
-                    <div class="guide-step-num">6</div>
+                    <div class="guide-step-num">7</div>
                     <i class="fa-solid fa-bookmark guide-step-icon"></i>
                     <h3>요청 저장 및 히스토리</h3>
                     <p>자주 쓰는 요청을 저장하고 언제든 불러올 수 있습니다.</p>
@@ -1546,6 +1559,100 @@
             <button class="btn-primary" onclick="confirmSave()">
                 <i class="fa-solid fa-floppy-disk fa-xs"></i> 저장
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- CREDENTIAL LOAD MODAL -->
+<div id="credentialLoadModal" class="modal-overlay" onclick="if(event.target===this)closeCredentialLoadModal()">
+    <div class="modal-box" style="max-width:720px;">
+        <div class="modal-header">
+            <span>저장된 인증 정보</span>
+            <button class="modal-close" onclick="closeCredentialLoadModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body" id="credentialLoadList" style="max-height:480px;overflow-y:auto;">
+            <!-- renderCredentialLoadModal()에서 주입 -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn-ghost" onclick="closeCredentialLoadModal()">닫기</button>
+        </div>
+    </div>
+</div>
+
+<!-- CREDENTIAL SAVE MODAL -->
+<div id="credentialSaveModal" class="modal-overlay" onclick="if(event.target===this)closeCredentialSaveModal()">
+    <div class="modal-box" style="max-width:520px;">
+        <div class="modal-header">
+            <span>인증 정보 저장</span>
+            <button class="modal-close" onclick="closeCredentialSaveModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="display:flex;flex-direction:column;gap:14px;">
+            <div>
+                <label style="font-size:0.85rem;color:#555;display:block;margin-bottom:5px;">저장 이름</label>
+                <input id="credentialSaveNameInput" type="text"
+                    style="width:100%;box-sizing:border-box;"
+                    placeholder="예: 홍길동 - 운영환경"
+                    onkeydown="if(event.key==='Enter')confirmCredentialSave()">
+            </div>
+            <div>
+                <label style="font-size:0.85rem;color:#555;display:block;margin-bottom:5px;">API Key</label>
+                <input id="credentialSaveApiKey" type="text"
+                    style="width:100%;box-sizing:border-box;"
+                    placeholder="API Key">
+            </div>
+            <div>
+                <label style="font-size:0.85rem;color:#555;display:block;margin-bottom:5px;">User ID (member_id)</label>
+                <input id="credentialSaveUserId" type="text"
+                    style="width:100%;box-sizing:border-box;"
+                    placeholder="User ID">
+            </div>
+            <div>
+                <label style="font-size:0.85rem;color:#555;display:block;margin-bottom:5px;">비밀 키 (Secret Key)</label>
+                <div style="display:flex;gap:6px;">
+                    <input id="credentialSaveSecretKey" type="password"
+                        style="flex:1;box-sizing:border-box;"
+                        placeholder="비밀 키 입력">
+                    <button type="button"
+                        onclick="(function(){var el=document.getElementById('credentialSaveSecretKey');el.type=el.type==='password'?'text':'password';this.textContent=el.type==='password'?'표시':'숨김';}).call(this)"
+                        style="padding:0 10px;font-size:12px;background:none;border:1px solid var(--border,#ccc);border-radius:5px;cursor:pointer;white-space:nowrap;color:var(--text-muted,#666);">표시</button>
+                </div>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;margin-top:8px;">
+                    <input type="checkbox" id="saveSecretKey">
+                    <span>비밀 키 저장</span>
+                    <span title="비밀 키를 서버에 저장합니다. 보안에 주의하세요." style="cursor:help;">⚠️</span>
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-ghost" onclick="closeCredentialSaveModal()">취소</button>
+            <button class="btn-primary" onclick="confirmCredentialSave()">
+                <i class="fa-solid fa-floppy-disk fa-xs"></i> 저장
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- AUTH REQUIRED MODAL -->
+<div id="authRequiredModal" class="modal-overlay" onclick="if(event.target===this)closeAuthRequiredModal()">
+    <div class="modal-box" style="max-width:360px;">
+        <div class="modal-header">
+            <span>로그인이 필요합니다</span>
+            <button class="modal-close" onclick="closeAuthRequiredModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="padding:20px;text-align:center;font-size:14px;color:var(--text-muted,#555);line-height:1.6;">
+            인증 정보 저장/불러오기 기능은<br>로그인 후 사용할 수 있습니다.
+        </div>
+        <div class="modal-footer">
+            <button class="btn-ghost" onclick="closeAuthRequiredModal()">취소</button>
+            <a id="authRequiredLoginBtn" href="/auth/login.html" class="btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                <i class="fa-solid fa-arrow-right-to-bracket fa-xs"></i> 로그인하기
+            </a>
         </div>
     </div>
 </div>

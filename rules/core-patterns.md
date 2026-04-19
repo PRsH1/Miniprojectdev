@@ -131,7 +131,7 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 <script src="/assets/js/auth-status.js"></script>
 ```
 
-- 비로그인 시 코너 모드는 패널 미표시 (상단 바 모드는 로그인/회원가입 버튼 표시)
+- 비로그인 시 코너 모드는 로그인/회원가입 버튼 표시 (`?next=현재경로` 파라미터 포함), 상단 바 모드도 동일
 - admin 로그인 시 모든 모드에서 "관리자 콘솔" 버튼 자동 표시
 - **주의:** 각 페이지에 `button { width: 100% }` 스타일이 있어도 `.asb-btn`에 `width: auto !important`가 적용되어 버튼이 늘어나지 않음
 - 기본 모드의 `.asb-brand`("eformsign Tools Hub")는 클릭 시 `/`(index)로 이동하는 링크(`<a>` 태그)로 렌더링됨
@@ -153,7 +153,7 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| GET | `/api/credentials` | 내 크리덴셜 목록 (비밀 키 제외, `has_secret_key` boolean만 반환) |
+| GET | `/api/credentials` | 내 크리덴셜 목록 (`secret_key` 제외, `api_key`·`eform_user_id`·`has_secret_key` 포함) |
 | GET | `/api/credentials/:id` | 단건 상세 조회 (비밀 키 포함 — 불러오기 시 사용) |
 | POST | `/api/credentials` | 새 크리덴셜 저장 |
 | DELETE | `/api/credentials/:id` | 크리덴셜 삭제 |
@@ -164,7 +164,14 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 - 불러오기 시 비밀 키가 null이면 UI에서 직접 입력 안내 표시
 - 모든 엔드포인트는 JWT(`auth_token` 쿠키) 인증 필요, `WHERE user_id = decoded.sub`로 타 사용자 접근 차단
 
-**적용 페이지:** `private/MemberV2.html`, `private/OpenAPITesterFull.html`
+**적용 페이지:** `private/MemberV2.html`, `private/OpenAPITesterFull.html`, `API(JS,HTML)/OpenAPITesterProd.html`
+
+**크리덴셜 UI 패턴 (OpenAPITester):**
+- 인증 패널 내 **인증 저장** / **인증 불러오기** 버튼으로 진입
+- **불러오기 모달** (`#credentialLoadModal`): 항목당 인증 이름·API Key·User ID·비밀 키 저장 여부를 레이블-값 리스트로 표시 (API Key / User ID 전체 표시), [선택] 클릭 시 인증 패널 자동 채움 후 모달 닫힘
+- **저장 모달** (`#credentialSaveModal`): 저장 이름 + 인증 패널 현재 값(API Key·User ID·비밀 키) pre-fill, 수정 후 저장 가능, 비밀 키 표시/숨김 토글 포함
+- **비로그인 차단** (`#authRequiredModal`): 두 버튼 모두 `state.authUser`(init.js에서 `/api/me` 캐시) 확인 후 미인증 시 로그인 안내 모달 표시 — [로그인하기] 버튼에 `?next=현재경로` 파라미터 포함
+- 토스트 알림 위치: `bottom: 80px` — 코너 모드 auth 패널(`bottom: 16px`)과 겹치지 않도록 여유 확보
 
 ---
 

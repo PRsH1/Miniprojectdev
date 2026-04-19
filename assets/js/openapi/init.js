@@ -15,7 +15,6 @@ $(document).on('click', '.tab-btn', function() {
 $(document).ready(function() {
     buildSidebar();
     updateBaseUrlBadge();
-    loadCredentialList();
 
     // Auth panel toggle
     $('#authPanelToggle').on('click', function() {
@@ -110,6 +109,9 @@ $(document).ready(function() {
             buildHistoryPanel();
         }
     });
+
+    // 로그인 상태 캐시 (크리덴셜 버튼 차단용)
+    refreshAuthUser();
 });
 
 // ──────────────────────────────────────────────────────────────────────────
