@@ -53,6 +53,7 @@
         '#authStatusBar .asb-brand {',
         '  font-weight: 700; letter-spacing: -.3px;',
         '  color: rgba(255,255,255,.85); margin-right: 4px;',
+        '  text-decoration: none; cursor: pointer;',
         '}',
         '#authStatusBar .asb-spacer { flex: 1; }',
         '#authStatusBar .asb-username { font-weight: 600; color: #fff; }',
@@ -115,7 +116,7 @@
             // 코너 모드는 비로그인 시 표시 안 함 (공간 낭비)
             if (CORNER) { el.style.display = 'none'; return; }
             el.innerHTML =
-                '<span class="asb-brand">eformsign Tools Hub</span>' +
+                '<a href="/" class="asb-brand">eformsign Tools Hub</a>' +
                 '<span class="asb-spacer"></span>' +
                 '<a href="/auth/login.html" class="asb-btn primary">로그인</a>' +
                 '<a href="/auth/signup.html" class="asb-btn">회원가입</a>';
@@ -127,7 +128,7 @@
             : '';
 
         // 코너 모드: brand 없이 유저 정보만
-        var brandHtml = CORNER ? '' : '<span class="asb-brand">eformsign Tools Hub</span>';
+        var brandHtml = CORNER ? '' : '<a href="/" class="asb-brand">eformsign Tools Hub</a>';
         var spacerHtml = CORNER ? '' : '<span class="asb-spacer"></span>';
 
         el.innerHTML =
