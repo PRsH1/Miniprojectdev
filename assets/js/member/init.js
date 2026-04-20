@@ -87,6 +87,25 @@ $(document).ready(function () {
     $('#updateAccountId').val($(this).val().trim());
   });
 
+  // 엑셀 파일 선택 시 upload-area 레이블 업데이트
+  const fileInputIds = [
+    'excelFileInput', 'excelFileDeleteInput', 'excelFileUpdateInput',
+    'excelGroupFileInput', 'excelGroupUpdateFileInput', 'excelGroupDeleteFileInput'
+  ];
+  fileInputIds.forEach(function (id) {
+    $('#' + id).on('change', function () {
+      const label = $(this).closest('.upload-area');
+      const iconHtml = '<span style="display:block;font-size:20px;margin-bottom:6px;"><i class="fa-solid fa-file-excel"></i></span>';
+      if (this.files && this.files.length) {
+        label.html(iconHtml + '<strong>' + this.files[0].name + '</strong>');
+        label.css({ borderColor: 'var(--primary)', background: '#f0f6ff', color: 'var(--primary)' });
+      } else {
+        label.html(iconHtml + '클릭하여 엑셀 파일 선택 (.xlsx, .xls)');
+        label.css({ borderColor: '', background: '', color: '' });
+      }
+    });
+  });
+
   // 그룹 목록 토글 버튼
   $('#toggleIncludeMember').on('click', function () {
     $(this).toggleClass('on off').text($(this).hasClass('on') ? 'ON' : 'OFF');
