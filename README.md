@@ -458,7 +458,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | Path 탭 | URL 경로 파라미터 입력 (키 readonly, 배지 = 파라미터 개수) |
 | Query 탭 | Query String 입력, 체크박스 활성화, 행 추가 가능 |
 | Headers 탭 | 헤더 추가/수정, API별 필수 헤더 자동 노출 |
-| Body 탭 | JSON 에디터, 높이 드래그 조절로 자동 확장 — DELETE 메서드도 Body 포함하여 전송 (OPA2_009, OPA2_020 등) |
+| Body 탭 | JSON 에디터, 높이 드래그 조절로 자동 확장 — DELETE 메서드도 Body 포함하여 전송 (OPA2_009, OPA2_020 등). **실시간 JSON 유효성 검증** (타이핑 300ms 후 자동 검사, 오류 시 빨간 테두리 + 에러 메시지), **Format JSON** 버튼 (`Ctrl+Shift+F`) |
 | Response 뷰어 | 상태 코드 배지, JSON 문법 강조, 엔드포인트별 결과 캐싱 |
 | 예시 응답 | 성공/실패/조회결과없음 응답 구조 미리보기 (타입 표현) |
 | Send and Download | 응답을 파일로 강제 저장 (Content-Type 기반 확장자 자동 결정) |
@@ -538,6 +538,20 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 ---
 
 ## 2026-04-21 Update
+
+### Open API Tester — Body 에디터 실시간 JSON 유효성 검증
+
+- **실시간 JSON 검증**: Body 탭 textarea 입력 시 300ms debounce 후 자동 유효성 검사
+  - 유효한 JSON → 초록 테두리
+  - 유효하지 않은 JSON → 빨간 테두리 + 하단 에러 메시지 (SyntaxError 내용, 위치 포함)
+  - 빈 입력 → 중립 상태 (검증 비활성)
+  - API 선택 변경 시 에러 상태 자동 초기화
+- **Format JSON 버튼**: 기존 "정렬" 버튼 아이콘/레이블 개선, `Ctrl+Shift+F` 단축키 추가
+- `OpenAPITesterFull.html`, `OpenAPITesterProd.html` 양쪽 모두 적용
+- **에러 위치 빨간 물결 밑줄**: Backdrop Overlay 기법 적용 — `e.message`의 `position N` 파싱 후 해당 토큰에 `text-decoration: underline wavy` 표시. textarea 뒤에 `#bodyHighlights` div를 겹쳐 렌더링
+- 관련 함수: `showBodyError()` / `clearBodyError()` / `markBodyValid()` / `_validateBodyJson` / `_escapeHtml()` / `_getErrorRange()` / `_buildHighlightHtml()` / `_updateBackdrop()` / `syncBackdropScroll()` (`ui.js`)
+
+---
 
 ### IP 화이트리스트 기능 추가
 

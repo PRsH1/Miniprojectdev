@@ -69,6 +69,9 @@ $(document).ready(function() {
         updateUrlPreview();
     });
 
+    $('#bodyEditor').on('input', _validateBodyJson);
+    document.getElementById('bodyEditor').addEventListener('scroll', syncBackdropScroll, { passive: true });
+
     // Sidebar search
     $('#sidebarSearch').on('input', function() {
         buildSidebar($(this).val());
@@ -93,6 +96,13 @@ $(document).ready(function() {
 
     // 모바일 사이드바 백드롭 클릭 시 닫기
     $('#sidebarBackdrop').on('click', closeMobileSidebar);
+
+    $(document).on('keydown', function(e) {
+        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'f') {
+            e.preventDefault();
+            if ($('#tab-body').hasClass('active')) formatBody();
+        }
+    });
 
     // 사이드바 탭 전환
     $(document).on('click', '.sidebar-tab', function() {

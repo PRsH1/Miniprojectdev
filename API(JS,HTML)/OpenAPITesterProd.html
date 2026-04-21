@@ -378,14 +378,84 @@
         .param-desc { font-size: 0.75rem; color: #a0aec0; margin-top: 1px; }
 
         /* ========== BODY EDITOR ========== */
+        .body-editor-wrap {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 60px;
+        }
+        .body-highlights {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 10px;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.84rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: hidden;
+            box-sizing: border-box;
+            color: transparent;
+        }
         .body-editor {
-            flex: 1; width: 100%; min-height: 60px; font-family: 'SFMono-Regular', Consolas, monospace;
-            font-size: 0.84rem; border: 1px solid var(--border); border-radius: 6px;
-            padding: 10px; resize: none; color: #1a202c; line-height: 1.5; box-sizing: border-box;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            width: 100%;
+            min-height: 60px;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 0.84rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            resize: none;
+            line-height: 1.5;
+            box-sizing: border-box;
+            background: transparent;
+            color: #1a202c;
+            caret-color: #1a202c;
         }
         .body-editor:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,123,224,0.1); }
+        .body-editor.has-error {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231,76,60,0.12);
+        }
+        .body-editor.is-valid {
+            border-color: #27ae60;
+            box-shadow: 0 0 0 3px rgba(39,174,96,0.10);
+        }
+        .body-editor.has-error:focus {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.18);
+        }
+        .body-editor.is-valid:focus {
+            border-color: #27ae60;
+            box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.15);
+        }
         .body-toolbar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-shrink: 0; }
         .body-toolbar span { font-size: 0.8rem; color: #718096; flex: 1; }
+        .body-error-msg {
+            margin-top: 5px;
+            font-size: 0.76rem;
+            color: #c0392b;
+            display: flex;
+            align-items: flex-start;
+            gap: 5px;
+            line-height: 1.5;
+            word-break: break-all;
+        }
+        .body-error-msg i { margin-top: 1px; flex-shrink: 0; }
+        .err-token {
+            text-decoration: underline wavy #e74c3c;
+            background-color: rgba(231, 76, 60, 0.10);
+            border-radius: 2px;
+            color: rgba(0,0,0,0);
+        }
 
         /* ========== RESPONSE PANEL ========== */
         .response-section {
@@ -1300,14 +1370,18 @@
                     <div class="tab-pane" id="tab-body">
                         <div class="body-toolbar">
                             <span>Content-Type: application/json</span>
-                            <button class="btn-secondary" onclick="formatBody()" style="padding:4px 10px;font-size:0.8rem">
-                                <i class="fa-solid fa-wand-magic-sparkles fa-xs"></i> 정렬
+                            <button class="btn-secondary" onclick="formatBody()" style="padding:4px 10px;font-size:0.8rem" title="JSON 자동 정렬 (Ctrl+Shift+F)">
+                                <i class="fa-solid fa-align-left fa-xs"></i> Format JSON
                             </button>
                             <button class="btn-secondary" onclick="clearBody()" style="padding:4px 10px;font-size:0.8rem">
                                 <i class="fa-solid fa-eraser fa-xs"></i> 초기화
                             </button>
                         </div>
-                        <textarea class="body-editor" id="bodyEditor" placeholder='{"key": "value"}'></textarea>
+                        <div class="body-editor-wrap">
+                            <div id="bodyHighlights" class="body-highlights" aria-hidden="true"></div>
+                            <textarea class="body-editor" id="bodyEditor" placeholder='{"key": "value"}' spellcheck="false" autocomplete="off"></textarea>
+                        </div>
+                        <div id="bodyErrorMsg" class="body-error-msg" style="display:none;"></div>
                     </div>
                 </div>
             </div>

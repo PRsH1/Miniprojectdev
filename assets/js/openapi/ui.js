@@ -158,6 +158,14 @@ function _makeEndpointWrap(ep) {
     return $wrap;
 }
 
+function debounce(fn, delay) {
+    let t;
+    return function(...args) {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
 function selectEndpoint(id) {
     const ep = API_LIST.find(e => e.id === id);
     if (!ep) return;
@@ -201,6 +209,7 @@ function selectEndpoint(id) {
     } else {
         $('#bodyEditor').val('');
     }
+    clearBodyError();
 
     // 탭 자동 전환: Path 파라미터 있으면 Path → Body 있으면 Body → 기본 Query
     if (ep.pathParams && ep.pathParams.length > 0) {
@@ -386,16 +395,155 @@ function updateHeadersBadge() {
 // ──────────────────────────────────────────────────────────────────────────
 // BODY EDITOR
 // ──────────────────────────────────────────────────────────────────────────
+function _escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function _getErrorRange(str, pos) {
+    if (pos < 0 || pos >= str.length) return null;
+    const delim = /[\s,\[\]{}:]/;
+    let start = pos;
+    let end = pos + 1;
+
+    while (start > 0 && !delim.test(str[start - 1])) start--;
+    while (end < str.length && !delim.test(str[end])) end++;
+    if (start === end) end = Math.min(start + 1, str.length);
+
+    return { start, end };
+}
+
+function _buildHighlightHtml(raw, errorRange) {
+    if (!errorRange) return _escapeHtml(raw);
+
+    const { start, end } = errorRange;
+    const before = _escapeHtml(raw.slice(0, start));
+    const token = _escapeHtml(raw.slice(start, end));
+    const after = _escapeHtml(raw.slice(end));
+
+    return before + '<mark class="err-token">' + token + '</mark>' + after + '\n';
+}
+
+function _updateBackdrop(raw, errorRange) {
+    const $highlights = $('#bodyHighlights');
+    if (!$highlights.length) return;
+
+    if (!raw) {
+        $highlights.html('');
+        return;
+    }
+
+    $highlights.html(_buildHighlightHtml(raw, errorRange));
+
+    const ta = document.getElementById('bodyEditor');
+    if (!ta) return;
+    $highlights[0].scrollTop = ta.scrollTop;
+    $highlights[0].scrollLeft = ta.scrollLeft;
+}
+
+function syncBackdropScroll() {
+    const ta = this;
+    const hl = document.getElementById('bodyHighlights');
+    if (!hl) return;
+    hl.scrollTop = ta.scrollTop;
+    hl.scrollLeft = ta.scrollLeft;
+}
+
+function _inferErrorRangeFromMessage(raw, clean) {
+    const posMatch = clean.match(/\bposition\s+(\d+)/i);
+    if (posMatch) {
+        const pos = parseInt(posMatch[1], 10);
+        return Number.isNaN(pos) ? null : _getErrorRange(raw, pos);
+    }
+
+    const tokenMatch = clean.match(/Unexpected token ['"]?([^'" ]+)['"]?/i);
+    if (tokenMatch && tokenMatch[1]) {
+        const token = tokenMatch[1];
+        if (token.length > 1) {
+            const idx = raw.indexOf(token);
+            if (idx >= 0) return _getErrorRange(raw, idx);
+        } else {
+            const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const valuePattern = new RegExp(':\\s*(' + escaped + '[^,\\]\\}\\s]*)');
+            const m = raw.match(valuePattern);
+            if (m) {
+                const idx = raw.indexOf(m[1]);
+                if (idx >= 0) return _getErrorRange(raw, idx);
+            }
+        }
+    }
+
+    const barewordMatch = raw.match(/:\s*((?!true\b|false\b|null\b)[A-Za-z_$][\w$-]*)/);
+    if (barewordMatch && barewordMatch[1]) {
+        const idx = raw.indexOf(barewordMatch[1]);
+        if (idx >= 0) return _getErrorRange(raw, idx);
+    }
+
+    return null;
+}
+
+function showBodyError(msg) {
+    const clean = String(msg || 'JSON 형식이 올바르지 않습니다')
+        .replace(/^JSON\.parse:\s*/i, '')
+        .replace(/^SyntaxError:\s*/i, '');
+
+    const raw = $('#bodyEditor').val();
+    const errorRange = _inferErrorRangeFromMessage(raw, clean);
+    _updateBackdrop(raw, errorRange);
+
+    $('#bodyEditor').removeClass('is-valid').addClass('has-error');
+    $('#bodyErrorMsg')
+        .html('<i class="fa-solid fa-circle-exclamation fa-xs"></i><span>' + clean + '</span>')
+        .show();
+}
+
+function clearBodyError() {
+    $('#bodyEditor').removeClass('has-error is-valid');
+    $('#bodyErrorMsg').hide().empty();
+    _updateBackdrop('', null);
+}
+
+function markBodyValid() {
+    $('#bodyEditor').removeClass('has-error').addClass('is-valid');
+    $('#bodyErrorMsg').hide().empty();
+    _updateBackdrop('', null);
+}
+
+const _validateBodyJson = debounce(function() {
+    const raw = $('#bodyEditor').val().trim();
+    if (!raw) {
+        clearBodyError();
+        return;
+    }
+
+    try {
+        JSON.parse(raw);
+        markBodyValid();
+    } catch (e) {
+        showBodyError(e.message);
+    }
+}, 300);
+
 function formatBody() {
     const raw = $('#bodyEditor').val().trim();
-    if (!raw) return;
+    if (!raw) {
+        clearBodyError();
+        return;
+    }
+
     try {
         $('#bodyEditor').val(JSON.stringify(JSON.parse(raw), null, 2));
-    } catch { showToast('JSON 형식이 올바르지 않습니다', 2000); }
+        markBodyValid();
+    } catch (e) {
+        showBodyError(e.message);
+    }
 }
 
 function clearBody() {
     $('#bodyEditor').val('');
+    clearBodyError();
 }
 
 // ──────────────────────────────────────────────────────────────────────────

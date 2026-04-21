@@ -160,6 +160,46 @@ const API_SPECS = {
 
 ---
 
+### Body 에디터 JSON 검증
+
+`#bodyEditor` textarea에 입력 시 300ms debounce 후 자동으로 JSON 유효성 검사.
+
+| 상태 | 표시 |
+|---|---|
+| 유효한 JSON | 초록 테두리 (`.is-valid`) |
+| 유효하지 않은 JSON | 빨간 테두리 (`.has-error`) + `#bodyErrorMsg` div에 SyntaxError 내용 표시 |
+| 빈 입력 | 중립 (검증 비활성) |
+
+**관련 함수 (`ui.js`):**
+
+| 함수 | 역할 |
+|---|---|
+| `showBodyError(msg)` | 에러 표시 — e.message에서 `JSON.parse:` / `SyntaxError:` 접두어 제거 후 렌더링 |
+| `clearBodyError()` | 에러 해제 — 테두리 클래스 + `#bodyErrorMsg` 초기화 |
+| `markBodyValid()` | 유효 표시 — 초록 테두리 적용 + `#bodyErrorMsg` 초기화 |
+| `_validateBodyJson` | debounce(300ms) 래퍼 — `#bodyEditor` input 이벤트에 바인딩 |
+
+**`selectEndpoint()` 호출 시 `clearBodyError()` 자동 실행** — API 선택 변경 시 이전 에러 상태 초기화.
+
+**Format JSON (`formatBody()`)** — 성공 시 `markBodyValid()`, 실패 시 `showBodyError()` 연동.
+
+**HTML 구조 (`#tab-body`):**
+```html
+<div class="body-toolbar">
+    <span>Content-Type: application/json</span>
+    <button onclick="formatBody()" title="JSON 자동 정렬 (Ctrl+Shift+F)">
+        <i class="fa-solid fa-align-left fa-xs"></i> Format JSON
+    </button>
+    <button onclick="clearBody()">초기화</button>
+</div>
+<textarea class="body-editor" id="bodyEditor"></textarea>
+<div id="bodyErrorMsg" class="body-error-msg" style="display:none;"></div>
+```
+
+> **에러 위치 빨간 물결 밑줄**: Backdrop Overlay 기법으로 구현됨. `e.message`에서 `position N` 파싱 → 해당 토큰에 `<mark class="err-token">` 삽입 → `text-decoration: underline wavy #e74c3c` 표시. 관련 함수: `_escapeHtml()` / `_getErrorRange()` / `_buildHighlightHtml()` / `_updateBackdrop()` / `syncBackdropScroll()` (`ui.js`). HTML: `#bodyHighlights` div가 `#bodyEditor` textarea 뒤에 겹쳐서 렌더링됨 (`.body-editor-wrap` 내 absolute 배치).
+
+---
+
 ### 비(非)자명한 동작 — 수정 시 주의
 
 - **사이드바 정렬 모드**: `ui.js`의 `currentViewMode` 변수로 관리 (`'group'` | `'code'` | `'method'`)
