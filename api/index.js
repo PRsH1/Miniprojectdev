@@ -73,6 +73,74 @@ module.exports = async (req, res) => {
     }
   }
 
+  // ─── 정적 파일 서빙 (/api/*, /app/* 외 모든 경로) ───────────
+  if (!path.startsWith('/api/')) {
+    const { promises: fs } = require('fs');
+    const nodePath = require('path');
+    const cwd = process.cwd();
+
+    // 허용된 정적 경로만 서빙 (private/, controllers/ 등 서버 내부 파일 차단)
+    const STATIC_ROOTS = new Set(['utils', 'auth', 'Embedding', 'assets', 'errors', 'API(JS,HTML)']);
+    const relativePath = path === '/' || path === '' ? 'index.html' : path.replace(/^\//, '');
+    const topLevel = relativePath.split('/')[0];
+    const isAllowed = relativePath === 'index.html' || relativePath === 'favicon.svg' || STATIC_ROOTS.has(topLevel);
+
+    if (!isAllowed) {
+      return respondError(req, res, 404, {
+        code: 'PAGE_NOT_FOUND',
+        message: '요청한 페이지를 찾을 수 없습니다.',
+        reason: '등록되지 않았거나 제거된 페이지 경로입니다.',
+        action: '주소를 다시 확인하거나 홈으로 이동하세요.',
+        logMessage: `Static path not allowed: ${path}`,
+      });
+    }
+
+    const staticFilePath = nodePath.resolve(cwd, relativePath);
+
+    // 경로 탈출 방지
+    if (!staticFilePath.startsWith(cwd)) {
+      return respondError(req, res, 403, {
+        code: 'FORBIDDEN',
+        message: '접근이 거부되었습니다.',
+        reason: '허용되지 않은 경로입니다.',
+        action: '올바른 경로로 다시 시도하세요.',
+        logMessage: `Path traversal blocked: ${path}`,
+      });
+    }
+
+    const MIME = {
+      '.html': 'text/html; charset=utf-8',
+      '.js':   'application/javascript; charset=utf-8',
+      '.css':  'text/css; charset=utf-8',
+      '.svg':  'image/svg+xml',
+      '.png':  'image/png',
+      '.jpg':  'image/jpeg',
+      '.ico':  'image/x-icon',
+      '.json': 'application/json; charset=utf-8',
+      '.woff': 'font/woff',
+      '.woff2':'font/woff2',
+      '.ttf':  'font/ttf',
+    };
+
+    try {
+      const content = await fs.readFile(staticFilePath);
+      const ext = nodePath.extname(staticFilePath).toLowerCase();
+      res.setHeader('Content-Type', MIME[ext] || 'application/octet-stream');
+      res.setHeader('Cache-Control', ext === '.html'
+        ? 'no-cache, no-store, must-revalidate'
+        : 'public, max-age=86400');
+      return res.status(200).send(content);
+    } catch {
+      return respondError(req, res, 404, {
+        code: 'PAGE_NOT_FOUND',
+        message: '요청한 페이지를 찾을 수 없습니다.',
+        reason: '파일이 존재하지 않거나 이동되었습니다.',
+        action: '주소를 다시 확인하거나 홈으로 이동하세요.',
+        logMessage: `Static file not found: ${path}`,
+      });
+    }
+  }
+
   // ─── /api/cron/* → Cron Job 컨트롤러 ──────────────────────
   if (path.startsWith('/api/cron/')) {
     if (path === '/api/cron/cleanup-audit') {

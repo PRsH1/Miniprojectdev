@@ -61,6 +61,12 @@ function matchesPathPattern(reqPath, pattern) {
  * @returns {Promise<{allowed: boolean, blockedBy?: 'global'|'path'|'protected'}>}
  */
 async function checkIpAllowed(clientIp, requestPath, mode = 'global_and_path') {
+  // 로컬호스트(vercel dev 환경 포함)는 항상 허용
+  const cleanedIp = clientIp.replace(/^::ffff:/, '');
+  if (cleanedIp === '127.0.0.1' || cleanedIp === '::1' || clientIp === '::1') {
+    return { allowed: true };
+  }
+
   let data;
   try {
     data = await loadData();

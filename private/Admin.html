@@ -1435,19 +1435,23 @@ $(function () {
 
   function buildScopeCard(scope, isDeletable) {
     const isEnabled = scope.is_enabled;
+    const borderColor = isEnabled ? '#fca5a5' : 'var(--border)';
+    const bgColor = isEnabled ? '#fff5f5' : '#f8fafc';
     const warningHtml = isEnabled
       ? `<p style="margin-top:8px;font-size:11px;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 10px">
           ⚠️ 주의: 화이트리스트에 없는 모든 IP가 ${scope.scope_type === 'global' ? '전체 사이트에서' : '/app/ 접근 시'} 차단됩니다.
         </p>` : '';
-    return `<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-card)">
+    return `<div style="background:${bgColor};border:2px solid ${borderColor};border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-card)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
         <strong style="font-size:13px">${esc(scope.label)}</strong>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
-          <input type="checkbox" class="ipw-scope-toggle" data-id="${scope.id}" ${isEnabled ? 'checked' : ''}>
-          ${isEnabled ? '<span style="color:var(--danger);font-weight:700">활성</span>' : '<span style="color:var(--text-muted)">비활성</span>'}
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;user-select:none">
+          <input type="checkbox" class="ipw-scope-toggle" data-id="${scope.id}" ${isEnabled ? 'checked' : ''} style="width:16px;height:16px;cursor:pointer">
+          ${isEnabled
+            ? '<span style="color:var(--danger);font-weight:700">활성 (차단 중)</span>'
+            : '<span style="color:var(--text-muted)">비활성 (모두 허용)</span>'}
         </label>
       </div>
-      <p style="font-size:11px;color:var(--text-muted)">스코프: ${scope.scope_type}</p>
+      <p style="font-size:11px;color:var(--text-sub)">스코프 타입: <code>${scope.scope_type}</code></p>
       ${warningHtml}
     </div>`;
   }
