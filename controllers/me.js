@@ -7,15 +7,21 @@
  * - 인증 사용자 → { username, role, protected_pages }
  * - 비인증 사용자 → { authenticated: false, protected_pages }
  *
- * protected_pages: is_active = true인 레코드만 포함 (path, required_role)
+ * protected_pages: is_active = true인 레코드만 포함 (path, required_role, file_path_hash)
+ * file_path는 서버에서 SHA-256 해시로 변환 후 반환 — 실제 경로는 클라이언트에 노출되지 않음
  * 비인증 사용자도 카드 가시성 계산에 필요하므로 항상 반환
  */
 
 const { parse } = require('cookie');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { getDb } = require('./_shared/db');
 const { tryRefreshToken } = require('./_shared/auth-middleware');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+
+function hashFilePath(filePath) {
+  return crypto.createHash('sha256').update(filePath).digest('hex');
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -36,7 +42,11 @@ module.exports = async function handler(req, res) {
       SELECT path, required_role, file_path FROM protected_pages
       WHERE is_active = true ORDER BY path
     `;
-    protectedPages = pages;
+    protectedPages = pages.map(p => ({
+      path: p.path,
+      required_role: p.required_role,
+      file_path_hash: p.file_path ? hashFilePath(p.file_path) : null,
+    }));
   } catch (err) {
     console.error('me.js protected_pages 조회 오류:', err);
     // 오류 시 빈 배열로 계속 진행 (카드 전체 숨김 처리됨)

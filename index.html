@@ -655,27 +655,36 @@
             return false;
         }
 
-        // file_path 정규화 (앞 슬래시 제거, 대소문자 유지)
+        // URL 정규화 (앞 슬래시 제거, 대소문자 유지)
         function normalizeFilePath(url) {
             return url ? String(url).replace(/^\//, '') : '';
         }
 
+        // SHA-256 해시 (Web Crypto API)
+        async function sha256Hex(str) {
+            var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+            return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+        }
+
         // 카드 role 필터링 적용 (data-role-visible 속성으로 상태 관리)
-        function applyRoleFilter(userRole, protectedPages) {
+        async function applyRoleFilter(userRole, protectedPages) {
             protectedPages = protectedPages || [];
 
-            // ── 1. 자동 매칭: data-original-url ↔ protected_pages.file_path ──
+            // ── 1. 자동 매칭: SHA256(data-original-url) ↔ protected_pages.file_path_hash ──
             // data-protected-path 없고 data-original-url 있는 카드에 대해
-            // file_path 기준으로 보호 페이지를 동적 연결
-            document.querySelectorAll('[data-original-url]:not([data-protected-path])').forEach(function(card) {
-                var originalUrl = normalizeFilePath(card.dataset.originalUrl);
-                var matched = null;
-                for (var i = 0; i < protectedPages.length; i++) {
-                    if (normalizeFilePath(protectedPages[i].file_path) === originalUrl) {
-                        matched = protectedPages[i];
-                        break;
-                    }
+            // file_path_hash 기준으로 보호 페이지를 동적 연결
+            var hashMap = {};
+            for (var i = 0; i < protectedPages.length; i++) {
+                if (protectedPages[i].file_path_hash) {
+                    hashMap[protectedPages[i].file_path_hash] = protectedPages[i];
                 }
+            }
+            var autoMatchCards = document.querySelectorAll('[data-original-url]:not([data-protected-path])');
+            for (var ci = 0; ci < autoMatchCards.length; ci++) {
+                var card = autoMatchCards[ci];
+                var originalUrl = normalizeFilePath(card.dataset.originalUrl);
+                var hash = await sha256Hex(originalUrl);
+                var matched = hashMap[hash] || null;
                 if (matched) {
                     // data-protected-path 동적 주입 → 이후 처리는 data-protected-path 블록에서 통합
                     card.dataset.protectedPath = matched.path;
@@ -684,7 +693,7 @@
                     card.href = 'javascript:void(0)';
                     card.onclick = function(e) { e.preventDefault(); navigateCard(this); };
                 }
-            });
+            }
 
             // ── 2. data-protected-path 카드: DB의 required_role 기준으로 가시성 결정 ──
             // (1번 블록에서 동적 주입된 카드 포함)
@@ -799,12 +808,12 @@
         // ─── 초기화: /api/me → 헤더 렌더링 + 카드 필터링 ─────────
         fetch('/api/me')
             .then(function(r) { return r.json(); })
-            .then(function(data) {
+            .then(async function(data) {
                 // me.js는 인증 여부와 무관하게 항상 200 반환
                 var isAuth = data && data.authenticated !== false && data.username;
                 renderHeaderUser(isAuth ? data : null);
                 protectedPages = (data && data.protected_pages) || [];
-                applyRoleFilter(isAuth ? data.role : null, protectedPages);
+                await applyRoleFilter(isAuth ? data.role : null, protectedPages);
             })
             .catch(function() {
                 renderHeaderUser(null);
