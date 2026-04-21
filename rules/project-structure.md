@@ -4,16 +4,18 @@
 ProjectImprove/
 ├── index.html                  # 메인 허브 페이지 (모든 도구 링크 모음)
 ├── favicon.svg                 # 공통 파비콘 (플러그 아이콘, #1a73e8)
+├── middleware.js               # Vercel Edge Middleware — IP 화이트리스트 global scope 체크
 ├── vercel.json                 # Vercel 배포 라우팅 설정
 ├── package.json
 │
 ├── api/
-│   └── index.js                # 메인 API 라우터 (lazy-loading)
+│   └── index.js                # 메인 API 라우터 (lazy-loading) + IP 화이트리스트 path/protected 체크
 │
 ├── controllers/
 │   ├── _shared/
 │   │   ├── protected-pages-config.js  # 보호 페이지 설정 공통화
-│   │   └── protectedPage.js           # 보호 페이지 공통 핸들러
+│   │   ├── protectedPage.js           # 보호 페이지 공통 핸들러
+│   │   └── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
 │   ├── credentials.js          # eformsign 인증 정보 저장/조회/수정/삭제 (사용자별 크리덴셜 CRUD)
 │   ├── getToken.js             # ECDSA 서명으로 Access Token 발급
 │   ├── downloadDocument.js     # 문서 파일 프록시 다운로드
@@ -29,6 +31,7 @@ ProjectImprove/
 │   ├── sso-login.js            # SAML SSO 로그인 폼
 │   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우
 │   ├── metadata.js             # SAML 메타데이터 엔드포인트
+│   ├── adminIpWhitelist.js     # IP 화이트리스트 Admin API (규칙/스코프 CRUD + 테스트)
 │   └── send.js                 # SMTP 이메일 테스트
 │
 ├── lib/
@@ -62,6 +65,11 @@ ProjectImprove/
 │       ├── state.js            #   DOMAINS, state, responseCache, 공통 헬퍼
 │       ├── ui.js               #   사이드바, 요청 빌더, 인증, 전송, 응답, 코드 스니펫
 │       └── init.js             #   탭 이벤트, document.ready, 리사이즈, API 명세 모달
+│
+├── scripts/
+│   ├── migrate.js                  # DB 스키마 초기화 + 시드 (최초 1회)
+│   ├── migrate-ip-whitelist.js     # IP 화이트리스트 테이블 마이그레이션 (최초 1회)
+│   └── create-admin.js             # 최초 admin 계정 생성
 │
 └── docs/
     └── openapi-response-status.md  # 예시 응답 현황
