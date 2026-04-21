@@ -169,6 +169,9 @@
       <div class="sidebar-menu-item" data-tab="audit">
         <i class="fa fa-scroll"></i> 감사 로그
       </div>
+      <div class="sidebar-menu-item" data-tab="ipwhitelist">
+        <i class="fa fa-shield"></i> IP 화이트리스트
+      </div>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" id="btnLogout">로그아웃</button>
@@ -277,6 +280,64 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ IP 화이트리스트 탭 ══════════ -->
+    <div class="tab-content" id="tab-ipwhitelist">
+      <div class="section-title">IP 화이트리스트 관리</div>
+
+      <!-- 스코프 설정 -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">스코프 설정</span></div>
+        <div class="card-body">
+          <div id="ipwScopeCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px"></div>
+        </div>
+      </div>
+
+      <!-- IP 규칙 관리 -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">IP 규칙 관리</span>
+          <button class="btn btn-primary" id="btnAddIpRule"><i class="fa fa-plus"></i> IP 추가</button>
+        </div>
+        <div class="card-body">
+          <div class="filter-row" style="margin-bottom:12px">
+            <label class="form-label" style="white-space:nowrap;align-self:center">스코프 필터</label>
+            <select class="form-input" id="ipwScopeFilter" style="max-width:260px">
+              <option value="">전체</option>
+            </select>
+          </div>
+          <div class="tbl-wrap">
+            <table id="ipwRulesTable">
+              <thead>
+                <tr><th>라벨</th><th>IP / CIDR</th><th>스코프</th><th>활성</th><th>추가일</th><th>액션</th></tr>
+              </thead>
+              <tbody id="ipwRulesBody">
+                <tr class="empty-row"><td colspan="6">로딩 중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- IP 테스트 도구 -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">IP 테스트 도구</span></div>
+        <div class="card-body">
+          <div class="form-grid" style="margin-bottom:12px">
+            <div class="form-group">
+              <label class="form-label">테스트 IP *</label>
+              <input type="text" class="form-input" id="ipwTestIp" placeholder="예: 1.2.3.4">
+            </div>
+            <div class="form-group">
+              <label class="form-label">경로 (선택)</label>
+              <input type="text" class="form-input" id="ipwTestPath" placeholder="예: /api/admin/*">
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btnIpTest"><i class="fa fa-vial"></i> 테스트</button>
+          <div id="ipwTestResult" style="margin-top:14px;display:none"></div>
         </div>
       </div>
     </div>
@@ -568,6 +629,54 @@
   </div>
 </div>
 
+<!-- IP 규칙 추가 모달 -->
+<div class="modal-overlay" id="addIpRuleModal">
+  <div class="modal">
+    <h2>IP 규칙 추가</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">라벨 *</label>
+        <input type="text" class="form-input" id="ipRuleLabel" placeholder="규칙 설명 (예: 사무실 IP)">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">IP / CIDR *</label>
+        <input type="text" class="form-input" id="ipRuleCidr" placeholder="예: 1.2.3.4 또는 192.168.0.0/24">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">스코프 *</label>
+        <select class="form-input" id="ipRuleScope"></select>
+      </div>
+    </div>
+    <p class="form-msg" id="addIpRuleMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelAddIpRule">취소</button>
+      <button class="btn btn-primary" id="confirmAddIpRule">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- path 스코프 추가 모달 -->
+<div class="modal-overlay" id="addPathScopeModal">
+  <div class="modal">
+    <h2>경로 패턴 스코프 추가</h2>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">경로 패턴 * (예: /api/admin/*)</label>
+        <input type="text" class="form-input" id="pathScopePath" placeholder="/api/admin/*">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">라벨 *</label>
+        <input type="text" class="form-input" id="pathScopeLabel" placeholder="스코프 설명 (예: 관리자 API)">
+      </div>
+    </div>
+    <p class="form-msg" id="addPathScopeMsg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelAddPathScope">취소</button>
+      <button class="btn btn-primary" id="confirmAddPathScope">추가</button>
+    </div>
+  </div>
+</div>
+
 <!-- 비private 경로 등록 추가 확인 모달 -->
 <div class="modal-overlay" id="confirmPageRegistrationModal">
   <div class="modal">
@@ -604,6 +713,7 @@ $(function () {
     if (tab === 'users') loadUsers();
     if (tab === 'pages') loadPages();
     if (tab === 'audit') loadAuditLogs(1);
+    if (tab === 'ipwhitelist') loadIpWhitelist();
   });
 
   // ─── 로그아웃 ─────────────────────────────────────────────
@@ -1240,6 +1350,295 @@ $(function () {
     }).fail(function (xhr) {
       $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
     });
+  });
+
+  // ═══════════════════════════════════════════════════════════
+  // IP 화이트리스트 관리
+  // ═══════════════════════════════════════════════════════════
+
+  let _ipwData = { scopes: [], rules: [] };
+
+  function loadIpWhitelist() {
+    $.getJSON('/api/admin/ip-whitelist', function (data) {
+      _ipwData = data;
+      renderIpwScopes(data.scopes);
+      renderIpwRules(data.scopes, data.rules);
+      populateScopeFilter(data.scopes);
+      populateRuleScopeSelect(data.scopes);
+    }).fail(function (xhr) {
+      if (xhr.status === 401) location.href = '/auth/login.html';
+      else alert('IP 화이트리스트 로드 실패');
+    });
+  }
+
+  function scopeLabel(scopes, scopeType, scopePath) {
+    const s = scopes.find(s => s.scope_type === scopeType && (scopePath ? s.scope_path === scopePath : true));
+    return s ? s.label : scopeType;
+  }
+
+  function renderIpwScopes(scopes) {
+    const $container = $('#ipwScopeCards').empty();
+    const globalScope = scopes.find(s => s.scope_type === 'global');
+    const protectedScope = scopes.find(s => s.scope_type === 'protected');
+    const pathScopes = scopes.filter(s => s.scope_type === 'path');
+
+    // global 카드
+    if (globalScope) $container.append(buildScopeCard(globalScope, false));
+    // protected 카드
+    if (protectedScope) $container.append(buildScopeCard(protectedScope, false));
+    // path 스코프 카드 묶음
+    const $pathCard = $(`
+      <div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-card)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <strong style="font-size:13px">경로별 (path)</strong>
+          <button class="btn btn-ghost" id="btnAddPathScope" style="font-size:11px"><i class="fa fa-plus"></i> 패턴 추가</button>
+        </div>
+        <div id="ipwPathScopeList"></div>
+      </div>
+    `);
+    const $pathList = $pathCard.find('#ipwPathScopeList');
+    if (!pathScopes.length) {
+      $pathList.html('<p style="font-size:12px;color:var(--text-muted)">등록된 경로 패턴 없음</p>');
+    } else {
+      pathScopes.forEach(function (s) {
+        $pathList.append(buildPathScopeRow(s));
+      });
+    }
+    $container.append($pathCard);
+
+    // 토글 이벤트
+    $container.find('.ipw-scope-toggle').off('click').on('click', function () {
+      const id = $(this).data('id');
+      const isEnabled = $(this).is(':checked');
+      $.ajax({ url: `/api/admin/ip-whitelist/scopes/${id}`, method: 'PUT', contentType: 'application/json', data: JSON.stringify({ is_enabled: isEnabled }) })
+        .done(function () { loadIpWhitelist(); })
+        .fail(function (xhr) { alert(xhr.responseJSON?.error?.message || '오류 발생'); loadIpWhitelist(); });
+    });
+
+    // path 스코프 삭제 이벤트
+    $container.find('.ipw-path-scope-delete').off('click').on('click', function () {
+      const id = $(this).data('id');
+      const path = $(this).data('path');
+      if (!confirm(`"${path}" 스코프와 관련 규칙을 모두 삭제하시겠습니까?`)) return;
+      $.ajax({ url: `/api/admin/ip-whitelist/scopes/${id}`, method: 'DELETE' })
+        .done(function () { loadIpWhitelist(); })
+        .fail(function (xhr) { alert(xhr.responseJSON?.error?.message || '오류 발생'); });
+    });
+
+    // path 스코프 추가 버튼
+    $('#btnAddPathScope').off('click').on('click', function () {
+      $('#pathScopePath,#pathScopeLabel').val('');
+      $('#addPathScopeMsg').text('').removeClass('ok err');
+      $('#addPathScopeModal').addClass('open');
+    });
+  }
+
+  function buildScopeCard(scope, isDeletable) {
+    const isEnabled = scope.is_enabled;
+    const warningHtml = isEnabled
+      ? `<p style="margin-top:8px;font-size:11px;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 10px">
+          ⚠️ 주의: 화이트리스트에 없는 모든 IP가 ${scope.scope_type === 'global' ? '전체 사이트에서' : '/app/ 접근 시'} 차단됩니다.
+        </p>` : '';
+    return `<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-card)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <strong style="font-size:13px">${esc(scope.label)}</strong>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+          <input type="checkbox" class="ipw-scope-toggle" data-id="${scope.id}" ${isEnabled ? 'checked' : ''}>
+          ${isEnabled ? '<span style="color:var(--danger);font-weight:700">활성</span>' : '<span style="color:var(--text-muted)">비활성</span>'}
+        </label>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted)">스코프: ${scope.scope_type}</p>
+      ${warningHtml}
+    </div>`;
+  }
+
+  function buildPathScopeRow(scope) {
+    const isEnabled = scope.is_enabled;
+    const warningHtml = isEnabled
+      ? `<span style="font-size:10px;color:#991b1b;margin-left:6px">⚠️ 활성</span>` : '';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;font-size:12px">
+        <input type="checkbox" class="ipw-scope-toggle" data-id="${scope.id}" ${isEnabled ? 'checked' : ''}>
+        <code style="font-size:11px">${esc(scope.scope_path)}</code>
+        <span style="color:var(--text-muted)">${esc(scope.label)}</span>
+        ${warningHtml}
+      </label>
+      <button class="btn btn-danger ipw-path-scope-delete" style="font-size:11px;padding:4px 8px" data-id="${scope.id}" data-path="${esc(scope.scope_path)}">삭제</button>
+    </div>`;
+  }
+
+  function renderIpwRules(scopes, rules) {
+    const filterVal = $('#ipwScopeFilter').val() || '';
+    const filtered = filterVal
+      ? rules.filter(r => {
+          if (filterVal === 'global') return r.scope_type === 'global';
+          if (filterVal === 'protected') return r.scope_type === 'protected';
+          return r.scope_type === 'path' && r.scope_path === filterVal;
+        })
+      : rules;
+
+    const $tbody = $('#ipwRulesBody').empty();
+    if (!filtered.length) {
+      // 활성 스코프에 규칙이 없는 경우 경고
+      const hasActiveScope = scopes.some(s => s.is_enabled);
+      const msg = hasActiveScope && !rules.length
+        ? '⚠️ 규칙 없음 — 현재 활성 스코프에서 모든 IP 차단 중'
+        : '등록된 규칙 없음';
+      $tbody.append(`<tr class="empty-row"><td colspan="6">${msg}</td></tr>`);
+      return;
+    }
+
+    filtered.forEach(function (r) {
+      const createdAt = new Date(r.created_at).toLocaleString('ko-KR');
+      const scopeDesc = r.scope_type === 'path' ? `path: ${esc(r.scope_path || '')}` : r.scope_type;
+      $tbody.append(`<tr>
+        <td>${esc(r.label)}</td>
+        <td><code style="font-size:12px">${esc(r.ip_cidr)}</code></td>
+        <td style="font-size:12px;color:var(--text-sub)">${scopeDesc}</td>
+        <td>${r.is_active ? '<span class="badge-status active">활성</span>' : '<span class="badge-status inactive">비활성</span>'}</td>
+        <td style="font-size:11px;color:var(--text-muted)">${createdAt}</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn ${r.is_active ? 'btn-danger' : 'btn-success'} btn-ipw-rule-toggle" data-id="${r.id}" data-active="${r.is_active}">${r.is_active ? '비활성화' : '활성화'}</button>
+            <button class="btn btn-danger btn-ipw-rule-delete" data-id="${r.id}">삭제</button>
+          </div>
+        </td>
+      </tr>`);
+    });
+
+    $tbody.find('.btn-ipw-rule-toggle').on('click', function () {
+      const id = $(this).data('id');
+      const newActive = !$(this).data('active');
+      $.ajax({ url: `/api/admin/ip-whitelist/rules/${id}`, method: 'PATCH', contentType: 'application/json', data: JSON.stringify({ is_active: newActive }) })
+        .done(function () { loadIpWhitelist(); })
+        .fail(function (xhr) { alert(xhr.responseJSON?.error?.message || '오류 발생'); });
+    });
+
+    $tbody.find('.btn-ipw-rule-delete').on('click', function () {
+      const id = $(this).data('id');
+      if (!confirm('이 규칙을 삭제하시겠습니까?')) return;
+      $.ajax({ url: `/api/admin/ip-whitelist/rules/${id}`, method: 'DELETE' })
+        .done(function () { loadIpWhitelist(); })
+        .fail(function (xhr) { alert(xhr.responseJSON?.error?.message || '오류 발생'); });
+    });
+  }
+
+  function populateScopeFilter(scopes) {
+    const $select = $('#ipwScopeFilter');
+    const cur = $select.val();
+    $select.find('option:not(:first)').remove();
+    $select.append('<option value="global">전체 사이트 (global)</option>');
+    $select.append('<option value="protected">보호 페이지 (protected)</option>');
+    scopes.filter(s => s.scope_type === 'path').forEach(function (s) {
+      $select.append(`<option value="${esc(s.scope_path)}">${esc(s.scope_path)} — ${esc(s.label)}</option>`);
+    });
+    if (cur) $select.val(cur);
+  }
+
+  function populateRuleScopeSelect(scopes) {
+    const $select = $('#ipRuleScope');
+    $select.empty();
+    $select.append('<option value="global">전체 사이트 (global)</option>');
+    $select.append('<option value="protected">보호 페이지 (protected)</option>');
+    scopes.filter(s => s.scope_type === 'path').forEach(function (s) {
+      $select.append(`<option value="path:${esc(s.scope_path)}">${esc(s.scope_path)} — ${esc(s.label)}</option>`);
+    });
+  }
+
+  // 스코프 필터 변경
+  $('#ipwScopeFilter').on('change', function () {
+    if (_ipwData.rules) renderIpwRules(_ipwData.scopes, _ipwData.rules);
+  });
+
+  // IP 규칙 추가 모달
+  $('#btnAddIpRule').on('click', function () {
+    $('#ipRuleLabel,#ipRuleCidr').val('');
+    $('#addIpRuleMsg').text('').removeClass('ok err');
+    populateRuleScopeSelect(_ipwData.scopes || []);
+    $('#addIpRuleModal').addClass('open');
+  });
+  $('#cancelAddIpRule').on('click', function () { $('#addIpRuleModal').removeClass('open'); });
+  $('#confirmAddIpRule').on('click', function () {
+    const label = $('#ipRuleLabel').val().trim();
+    const ip_cidr = $('#ipRuleCidr').val().trim();
+    const scopeVal = $('#ipRuleScope').val();
+    const $msg = $('#addIpRuleMsg');
+    $msg.text('').removeClass('ok err');
+    if (!label || !ip_cidr || !scopeVal) { $msg.text('모든 필드를 입력하세요.').addClass('err'); return; }
+
+    let scope_type, scope_path;
+    if (scopeVal === 'global') { scope_type = 'global'; scope_path = undefined; }
+    else if (scopeVal === 'protected') { scope_type = 'protected'; scope_path = undefined; }
+    else { scope_type = 'path'; scope_path = scopeVal.replace(/^path:/, ''); }
+
+    const payload = { label, ip_cidr, scope_type };
+    if (scope_path) payload.scope_path = scope_path;
+
+    $.ajax({ url: '/api/admin/ip-whitelist/rules', method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) })
+      .done(function () {
+        $('#addIpRuleModal').removeClass('open');
+        loadIpWhitelist();
+      })
+      .fail(function (xhr) {
+        $msg.text(xhr.responseJSON?.error?.message || '오류 발생').addClass('err');
+      });
+  });
+
+  // path 스코프 추가 모달
+  $('#cancelAddPathScope').on('click', function () { $('#addPathScopeModal').removeClass('open'); });
+  $('#confirmAddPathScope').on('click', function () {
+    const scope_path = $('#pathScopePath').val().trim();
+    const label = $('#pathScopeLabel').val().trim();
+    const $msg = $('#addPathScopeMsg');
+    $msg.text('').removeClass('ok err');
+    if (!scope_path || !label) { $msg.text('경로 패턴과 라벨을 입력하세요.').addClass('err'); return; }
+    $.ajax({ url: '/api/admin/ip-whitelist/scopes', method: 'POST', contentType: 'application/json', data: JSON.stringify({ scope_path, label }) })
+      .done(function () {
+        $('#addPathScopeModal').removeClass('open');
+        loadIpWhitelist();
+      })
+      .fail(function (xhr) {
+        $msg.text(xhr.responseJSON?.error?.message || '오류 발생').addClass('err');
+      });
+  });
+
+  // IP 테스트
+  $('#btnIpTest').on('click', function () {
+    const ip = $('#ipwTestIp').val().trim();
+    const path = $('#ipwTestPath').val().trim();
+    if (!ip) { alert('테스트할 IP를 입력하세요.'); return; }
+    const payload = { ip };
+    if (path) payload.path = path;
+    $.ajax({ url: '/api/admin/ip-whitelist/test', method: 'POST', contentType: 'application/json', data: JSON.stringify(payload) })
+      .done(function (data) {
+        const $res = $('#ipwTestResult').show();
+        const allowed = data.allowed;
+        const color = allowed ? 'var(--success)' : 'var(--danger)';
+        const icon = allowed ? '✅' : '🚫';
+        const d = data.detail || {};
+        function scopeDetailHtml(label, s) {
+          if (!s) return '';
+          const status = !s.enabled ? '비활성 (모두 허용)' : (s.allowed ? '허용' : '차단');
+          const statusColor = !s.enabled ? 'var(--text-muted)' : (s.allowed ? 'var(--success)' : 'var(--danger)');
+          return `<tr><td style="font-size:12px;color:var(--text-sub)">${label}</td><td style="color:${statusColor};font-size:12px;font-weight:600">${status}</td></tr>`;
+        }
+        $res.html(`
+          <div style="background:${allowed ? '#f0fdf4' : '#fef2f2'};border:1px solid ${allowed ? '#bbf7d0' : '#fecaca'};border-radius:10px;padding:14px 16px">
+            <p style="font-size:15px;font-weight:700;color:${color};margin-bottom:10px">${icon} ${allowed ? '허용' : '차단'}</p>
+            <table style="width:100%;font-size:13px">
+              <thead><tr><th style="text-align:left;font-size:11px;color:var(--text-sub);padding-bottom:4px">스코프</th><th style="text-align:left;font-size:11px;color:var(--text-sub)">결과</th></tr></thead>
+              <tbody>
+                ${scopeDetailHtml('전체 사이트 (global)', d.global)}
+                ${scopeDetailHtml('경로별 (path)', d.path)}
+                ${scopeDetailHtml('보호 페이지 (protected)', d.protected)}
+              </tbody>
+            </table>
+          </div>
+        `);
+      })
+      .fail(function (xhr) {
+        $('#ipwTestResult').show().html(`<div class="alert warning">테스트 오류: ${xhr.responseJSON?.error?.message || '알 수 없는 오류'}</div>`);
+      });
   });
 
   // ─── 모달 배경 클릭 닫기 ─────────────────────────────────

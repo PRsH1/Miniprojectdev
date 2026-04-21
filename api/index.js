@@ -36,6 +36,26 @@ module.exports = async (req, res) => {
   const { url } = req;
   const path = url.split('?')[0];
 
+  // ─── IP 화이트리스트 체크 (global + path scope) ─────────────
+  try {
+    const { checkIpAllowed } = require('../controllers/_shared/ip-whitelist');
+    const clientIp = (req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+      || req.socket?.remoteAddress || '';
+    const ipCheck = await checkIpAllowed(clientIp, path, 'global_and_path');
+    if (!ipCheck.allowed) {
+      console.warn(`[IP Whitelist] 차단: ${clientIp} → ${path} (scope: ${ipCheck.blockedBy})`);
+      return respondError(req, res, 403, {
+        code: 'FORBIDDEN',
+        message: '이 IP 주소에서는 접근이 허용되지 않습니다.',
+        reason: 'IP 화이트리스트에 등록되지 않은 주소입니다.',
+        action: '허용된 네트워크에서 접근하거나 관리자에게 문의하세요.',
+        logMessage: `IP whitelist blocked (${ipCheck.blockedBy}): ${clientIp}`,
+      });
+    }
+  } catch (err) {
+    console.error('[IP Whitelist] 체크 오류 (fail-open):', err);
+  }
+
   // ─── /app/* → auth-middleware (DB 기반 보호 페이지) ────────
   if (path.startsWith('/app/')) {
     try {
@@ -97,6 +117,10 @@ module.exports = async (req, res) => {
     if (path.startsWith('/api/admin/signup-requests')) {
       const adminSignupRequests = require('../controllers/adminSignupRequests');
       return adminSignupRequests(req, res);
+    }
+    if (path.startsWith('/api/admin/ip-whitelist')) {
+      const adminIpWhitelist = require('../controllers/adminIpWhitelist');
+      return adminIpWhitelist(req, res);
     }
     return respondError(req, res, 404, {
       code: 'RESOURCE_NOT_FOUND',

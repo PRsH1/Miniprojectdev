@@ -37,6 +37,24 @@ module.exports = async function authMiddleware(req, res) {
   const pagePath = rawUrl.split('?')[0]; // 예: /app/memberV2
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress;
 
+  // ─── IP 화이트리스트 체크 (protected scope) ─────────────────
+  try {
+    const { checkIpAllowed } = require('./ip-whitelist');
+    const ipCheck = await checkIpAllowed(ip, null, 'protected_only');
+    if (!ipCheck.allowed) {
+      console.warn(`[IP Whitelist] 보호 페이지 차단: ${ip} → ${pagePath}`);
+      return respondError(req, res, 403, {
+        code: 'FORBIDDEN',
+        message: '이 IP 주소에서는 접근이 허용되지 않습니다.',
+        reason: 'IP 화이트리스트에 등록되지 않은 주소입니다.',
+        action: '허용된 네트워크에서 접근하거나 관리자에게 문의하세요.',
+        logMessage: `IP whitelist blocked (protected): ${ip}`,
+      });
+    }
+  } catch (err) {
+    console.error('[IP Whitelist] 보호 페이지 체크 오류 (fail-open):', err);
+  }
+
   // 1. DB에서 보호 페이지 조회
   const sql = getDb();
   let rows;
