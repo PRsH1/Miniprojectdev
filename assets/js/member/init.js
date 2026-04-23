@@ -15,9 +15,6 @@ $(document).ready(function () {
   updateUrlDisplay();
   updateTokenStatus('', $('#envSelection').val());
 
-  // 저장된 크리덴셜 목록 로드
-  loadCredentialList();
-
   // 환경 선택 변경
   $('#envSelection').on('change', function () {
     if (this.value === 'custom') $('#customEnvUrlField').slideDown();
@@ -114,11 +111,21 @@ $(document).ready(function () {
     $(this).toggleClass('on off').text($(this).hasClass('on') ? 'ON' : 'OFF');
   });
 
-  // 멤버 검색 — 테이블 뷰 표시 중일 때만 필터 적용
-  $('#searchMemberName, #searchMemberId').on('input', function () {
-    if ($('#tableContainer').is(':visible')) {
-      filterAndRenderMembers();
-    }
+  // 멤버 검색 — 300ms 디바운스 후 API 재호출
+  let _memberSearchTimer = null;
+  $('#memberSearchInput').on('input', function () {
+    clearTimeout(_memberSearchTimer);
+    _memberSearchTimer = setTimeout(() => {
+      const token = $('#accessToken').val().trim();
+      if (!token) return;
+      listMembers(_memberCurrentView);
+    }, 300);
+  });
+
+  $('#includeDeleted').on('change', function () {
+    const token = $('#accessToken').val().trim();
+    if (!token) return;
+    listMembers(_memberCurrentView);
   });
 
   // 사이드바 메뉴 클릭

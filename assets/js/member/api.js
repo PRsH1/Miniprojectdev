@@ -4,8 +4,11 @@
 
 'use strict';
 
-// ─── 멤버 목록 캐시 ─────────────────────────────────────
+// ─── 멤버 목록 캐시 & 페이지네이션 상태 ─────────────────
 let _membersCache = [];
+const MEMBER_PAGE_SIZE = 25;
+let _memberCurrentPage = 1;
+let _memberCurrentView = 'table';
 
 // ─── 결과 배지 표시 헬퍼 ─────────────────────────────────
 function setResultBadge(badgeId, isOk) {
@@ -266,30 +269,86 @@ function listMembers(viewType, button) {
   const token = $('#accessToken').val().trim();
   if (!token) { hideLoading(button); return alert('먼저 Access Token 발급해주세요.'); }
 
+  _memberCurrentView = viewType || _memberCurrentView;
+  _memberCurrentPage = 1;
+
   const baseUrl = getMemberBaseUrl();
-  fetch(baseUrl, {
-    method: 'GET',
-    headers: { 'Authorization': 'Bearer ' + token },
-  })
+  const params = new URLSearchParams();
+  const q = $('#memberSearchInput').val().trim();
+  if (q) params.set('eb_name_search', q);
+  if ($('#includeDeleted').is(':checked')) params.set('include_delete', 'true');
+
+  const url = params.toString() ? `${baseUrl}?${params}` : baseUrl;
+
+  fetch(url, { method: 'GET', headers: { 'Authorization': 'Bearer ' + token } })
     .then(res => res.json())
     .then(data => {
-      data.members.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
-      _membersCache = data.members;
-      if (viewType === 'json') {
-        $('#jsonContainer').show();
-        $('#tableContainer').hide();
-        $('#listResultJson').text(JSON.stringify(data, null, 2));
-      } else {
-        $('#jsonContainer').hide();
-        $('#tableContainer').show();
-        filterAndRenderMembers();
-      }
+      const members = data.members || [];
+      members.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+      _membersCache = members;
+      _renderMemberView();
     })
     .catch(err => { $('#listResultJson').text('조회 실패: ' + err); })
     .finally(() => hideLoading(button));
 }
 
-// ─── 멤버 테이블 렌더링 / 검색 필터 ────────────────────
+function _renderMemberView() {
+  const total = _membersCache.length;
+  const totalPages = Math.max(1, Math.ceil(total / MEMBER_PAGE_SIZE));
+  if (_memberCurrentPage > totalPages) _memberCurrentPage = totalPages;
+
+  const start = (_memberCurrentPage - 1) * MEMBER_PAGE_SIZE;
+  const pageData = _membersCache.slice(start, start + MEMBER_PAGE_SIZE);
+
+  $('#memberCountLabel').text(
+    total > 0
+      ? `총 ${total}명 중 ${start + 1}–${start + pageData.length}번째`
+      : '검색 결과 없음'
+  );
+
+  if (_memberCurrentView === 'json') {
+    $('#jsonContainer').show();
+    $('#tableContainer').hide();
+    $('#listResultJson').text(JSON.stringify({ members: pageData }, null, 2));
+  } else {
+    $('#jsonContainer').hide();
+    $('#tableContainer').show();
+    renderMemberTable(pageData);
+  }
+
+  _renderMemberPaginator(totalPages);
+}
+
+function _renderMemberPaginator(totalPages) {
+  const $p = $('#memberPaginator');
+  $p.empty();
+  if (totalPages <= 1) return;
+
+  const cur = _memberCurrentPage;
+
+  const mkBtn = (label, page, disabled) => {
+    const $b = $(`<button class="btn-secondary" style="height:32px;padding:0 12px;font-size:12px;width:auto;">${label}</button>`);
+    if (disabled) $b.prop('disabled', true);
+    else $b.on('click', () => { _memberCurrentPage = page; _renderMemberView(); });
+    return $b;
+  };
+
+  $p.append(mkBtn('←', cur - 1, cur === 1));
+
+  const pages = new Set([1, totalPages, cur - 1, cur, cur + 1].filter(p => p >= 1 && p <= totalPages));
+  let prev = 0;
+  Array.from(pages).sort((a, b) => a - b).forEach(p => {
+    if (prev && p - prev > 1) $p.append($('<span style="padding:0 4px;color:var(--text-muted);">…</span>'));
+    const $b = $(`<button style="height:32px;padding:0 12px;font-size:12px;border-radius:8px;border:1px solid var(--border);background:${p === cur ? 'var(--primary)' : 'var(--page-bg)'};color:${p === cur ? '#fff' : 'var(--text-main)'};width:auto;">${p}</button>`);
+    if (p !== cur) $b.on('click', () => { _memberCurrentPage = p; _renderMemberView(); });
+    $p.append($b);
+    prev = p;
+  });
+
+  $p.append(mkBtn('→', cur + 1, cur === totalPages));
+}
+
+// ─── 멤버 테이블 렌더링 ──────────────────────────────────
 function renderMemberTable(members) {
   const tbody = document.querySelector('#listResultTable tbody');
   if (!tbody) return;
@@ -306,17 +365,6 @@ function renderMemberTable(members) {
     });
     tbody.appendChild(tr);
   });
-}
-
-function filterAndRenderMembers() {
-  const nameQ = ($('#searchMemberName').val() || '').trim().toLowerCase();
-  const idQ   = ($('#searchMemberId').val()   || '').trim().toLowerCase();
-  const filtered = _membersCache.filter(m => {
-    const nameMatch = !nameQ || (m.name || '').toLowerCase().includes(nameQ);
-    const idMatch   = !idQ   || (m.id   || '').toLowerCase().includes(idQ);
-    return nameMatch && idMatch;
-  });
-  renderMemberTable(filtered);
 }
 
 // ─── 그룹 추가 ───────────────────────────────────────────
@@ -817,131 +865,6 @@ function executeExcelGroupUpdate(button) {
     const ok = results.filter(r => r.success).length;
     $('#excelGroupUpdateResult').text(JSON.stringify({ summary: `엑셀 그룹 수정 완료 (성공 ${ok}건, 실패 ${results.length - ok}건)`, details: results }, null, 2));
   }).finally(() => hideLoading(button));
-}
-
-// ─── 크리덴셜 저장/불러오기 ───────────────────────────────
-
-async function loadCredentialList() {
-  try {
-    const res = await fetch('/api/credentials');
-    if (!res.ok) return; // 비로그인 상태 등 무시
-    const list = await res.json();
-    renderCredentialList(list);
-  } catch (e) {
-    console.warn('크리덴셜 목록 로드 실패:', e);
-  }
-}
-
-function renderCredentialList(list) {
-  const wrap = document.getElementById('credentialListWrap');
-  const container = document.getElementById('credentialList');
-  if (!wrap || !container) return;
-
-  if (!list.length) {
-    wrap.style.display = 'none';
-    return;
-  }
-
-  wrap.style.display = '';
-  container.innerHTML = list.map(c => {
-    const envLabel = c.environment === 'op_saas' ? '운영(SaaS)' : c.environment === 'csap' ? '공공(CSAP)' : '직접 입력';
-    const secretIcon = c.has_secret_key ? '🔑' : '🔓';
-    return `
-      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--bg-card,#fff);border:1px solid var(--border,#e0e0e0);border-radius:8px;">
-        <span style="flex:1;font-size:13px;">
-          <strong>${escHtml(c.name)}</strong>
-          <span style="color:var(--text-muted);margin-left:6px;">${envLabel}</span>
-          <span style="margin-left:4px;" title="${c.has_secret_key ? '비밀 키 저장됨' : '비밀 키 미저장'}">${secretIcon}</span>
-        </span>
-        <button class="btn-secondary" style="padding:4px 10px;font-size:12px;"
-                onclick="applyCredential('${c.id}')">불러오기</button>
-        <button class="btn-ghost" style="padding:4px 8px;font-size:12px;color:var(--danger,#d32f2f);"
-                onclick="deleteCredential('${c.id}', this)">삭제</button>
-      </div>
-    `;
-  }).join('');
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-async function applyCredential(id) {
-  try {
-    const res = await fetch(`/api/credentials/${id}`);
-    if (!res.ok) return alert('불러오기 실패');
-    const c = await res.json();
-
-    // 환경 설정
-    $('#envSelection').val(c.environment).trigger('change');
-    if (c.environment === 'custom' && c.custom_url) {
-      $('#customEnvUrl').val(c.custom_url);
-    }
-    // 인증 필드 채우기
-    $('#apiKey').val(c.api_key);
-    $('#user_id_token').val(c.eform_user_id);
-    // 인증 방식
-    $(`input[name="secretKeyMethod"][value="${c.secret_method}"]`).prop('checked', true).trigger('change');
-    // 비밀 키
-    if (c.secret_key) {
-      $('#privateKeyHex').val(c.secret_key);
-    } else {
-      $('#privateKeyHex').val('');
-      alert(`"${c.name}" 인증 정보를 불러왔습니다.\n비밀 키는 저장되지 않았으므로 직접 입력해주세요.`);
-    }
-  } catch (e) {
-    alert('불러오기 중 오류가 발생했습니다.');
-  }
-}
-
-async function saveCredential() {
-  const name = prompt('저장할 이름을 입력하세요.\n예: 홍길동 - 운영환경');
-  if (!name || !name.trim()) return;
-
-  const env = $('#envSelection').val();
-  const apiKey = $('#apiKey').val().trim();
-  const eformUserId = $('#user_id_token').val().trim();
-  const secretMethod = $('input[name="secretKeyMethod"]:checked').val();
-  const saveSecret = document.getElementById('saveSecretKey').checked;
-  const secretKey = saveSecret ? $('#privateKeyHex').val().trim() : null;
-
-  if (!apiKey || !eformUserId) return alert('API Key와 User ID를 입력해주세요.');
-
-  const body = {
-    name: name.trim(),
-    environment: env,
-    custom_url: env === 'custom' ? $('#customEnvUrl').val().trim() : null,
-    api_key: apiKey,
-    eform_user_id: eformUserId,
-    secret_method: secretMethod || 'signature',
-    secret_key: secretKey || null,
-  };
-
-  try {
-    const res = await fetch('/api/credentials', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return alert('저장 실패: ' + (err.error || res.status));
-    }
-    await loadCredentialList(); // 목록 갱신
-  } catch (e) {
-    alert('저장 중 오류가 발생했습니다.');
-  }
-}
-
-async function deleteCredential(id, btn) {
-  if (!confirm('이 인증 정보를 삭제하시겠습니까?')) return;
-  try {
-    const res = await fetch(`/api/credentials/${id}`, { method: 'DELETE' });
-    if (!res.ok) return alert('삭제 실패');
-    await loadCredentialList();
-  } catch (e) {
-    alert('삭제 중 오류가 발생했습니다.');
-  }
 }
 
 // ─── 사이드바 토큰 상태 업데이트 (ui.js에서도 호출 가능) ──
