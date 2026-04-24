@@ -103,6 +103,13 @@
                 'width:100%;',
                 'display:block;',
             '}',
+            '#_cpSaveModal select{',
+                'all:revert;',
+                'font-family:inherit;',
+                'box-sizing:border-box;',
+                'width:100%;',
+                'display:block;',
+            '}',
         ].join('');
         document.head.appendChild(s);
     }
@@ -233,11 +240,20 @@
         }
     }
 
+    // custom 환경 포함 환경 레이블 반환
+    function _envLabel(c) {
+        if (c.environment === 'op_saas') return '운영(SaaS)';
+        if (c.environment === 'csap') return '공공(CSAP)';
+        if (c.environment === 'custom') {
+            return c.custom_url ? '직접 입력 · ' + _esc(c.custom_url) : '직접 입력';
+        }
+        return _esc(c.environment);
+    }
+
     // 불러오기 목록 렌더링
     function _renderList(list) {
         var el = document.getElementById('_cpLoadList');
         if (!el) return;
-        var envMap = { op_saas: '운영(SaaS)', csap: '공공(CSAP)', custom: '직접 입력' };
         if (!list.length) {
             el.innerHTML = '<div style="text-align:center;padding:40px 0;color:' + _c.textMuted + ';font-size:13px;">저장된 인증 정보가 없습니다.<br>인증 저장 버튼으로 저장하세요.</div>';
             return;
@@ -246,8 +262,8 @@
             var border = i < list.length - 1 ? 'border-bottom:1px solid ' + _c.border + ';' : '';
             return '<div style="' + border + 'padding:14px 16px;">' +
                 '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">' +
-                    '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:' + _c.tagBg + ';color:' + _c.tagColor + ';">' +
-                    _esc(envMap[c.environment] || c.environment) + '</span>' +
+                    '<span style="padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:' + _c.tagBg + ';color:' + _c.tagColor + ';max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:middle;">' +
+                    _envLabel(c) + '</span>' +
                     '<span style="flex:1"></span>' +
                     '<button type="button" onclick="_cpApplyCredential(\'' + c.id + '\')" style="padding:4px 12px;font-size:12px;background:#1a73e8;color:#fff;border:none;border-radius:5px;cursor:pointer;white-space:nowrap;font-weight:600;">선택</button>' +
                     '<button type="button" onclick="_cpDeleteCredential(\'' + c.id + '\')" style="padding:4px 8px;font-size:12px;background:none;border:1px solid ' + _c.btnBorder + ';border-radius:5px;cursor:pointer;color:#d32f2f;white-space:nowrap;">삭제</button>' +
@@ -300,6 +316,18 @@
                         '<div style="margin-bottom:14px;">',
                             '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:' + _c.text + ';">저장 이름 <span style="color:#e53e3e;">*</span></label>',
                             '<input id="_cpSaveName" type="text" placeholder="예: 운영 계정" style="' + _inputStyle() + '">',
+                        '</div>',
+                        '<div style="margin-bottom:14px;">',
+                            '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:' + _c.text + ';">환경</label>',
+                            '<select id="_cpSaveEnv" onchange="_cpSaveEnvChange()" style="' + _inputStyle('padding:8px 10px;') + '">',
+                                '<option value="op_saas">운영(SaaS)</option>',
+                                '<option value="csap">공공(CSAP)</option>',
+                                '<option value="custom">직접 입력</option>',
+                            '</select>',
+                        '</div>',
+                        '<div id="_cpSaveCustomUrlWrap" style="display:none;margin-bottom:14px;">',
+                            '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:' + _c.text + ';">Custom URL <span style="color:#e53e3e;">*</span></label>',
+                            '<input id="_cpSaveCustomUrl" type="text" placeholder="https://your-domain.com/Service" style="' + _inputStyle() + '">',
                         '</div>',
                         '<div style="margin-bottom:14px;">',
                             '<label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:' + _c.text + ';">API Key</label>',
@@ -369,8 +397,25 @@
         document.getElementById('_cpSaveSecretKey').type = 'password';
         document.getElementById('_cpToggleBtn').textContent = '표시';
         document.getElementById('_cpSaveSecretCheck').checked = false;
+        // 환경 select 초기값 세팅
+        var saveEnv = document.getElementById('_cpSaveEnv');
+        var saveCustomUrl = document.getElementById('_cpSaveCustomUrl');
+        var saveCustomUrlWrap = document.getElementById('_cpSaveCustomUrlWrap');
+        if (saveEnv) {
+            saveEnv.value = cur.env || 'op_saas';
+            saveEnv.disabled = !!cfg.envFixed;
+        }
+        if (saveCustomUrl) saveCustomUrl.value = cur.customUrl || '';
+        if (saveCustomUrlWrap) saveCustomUrlWrap.style.display = cur.env === 'custom' ? '' : 'none';
         document.getElementById('_cpSaveModal').style.display = 'flex';
         setTimeout(function () { document.getElementById('_cpSaveName').focus(); }, 50);
+    };
+
+    // 저장 모달 환경 select 변경 시 Custom URL 래퍼 토글
+    window._cpSaveEnvChange = function () {
+        var env = document.getElementById('_cpSaveEnv').value;
+        var wrap = document.getElementById('_cpSaveCustomUrlWrap');
+        if (wrap) wrap.style.display = env === 'custom' ? '' : 'none';
     };
 
     window._cpCloseLoadModal = function () {
@@ -416,15 +461,25 @@
         if (!apiKey || !userId) { alert('API Key와 User ID를 입력해주세요.'); return; }
         var saveSecret = document.getElementById('_cpSaveSecretCheck').checked;
         var secretKey = saveSecret ? (document.getElementById('_cpSaveSecretKey').value.trim() || null) : null;
-        var cur = _readFromPage();
+        // 환경값은 모달 select에서 직접 읽음 (DB 형식: op_saas/csap/custom)
+        var modalEnv = (document.getElementById('_cpSaveEnv') || {}).value || _readFromPage().env;
+        var modalCustomUrl = modalEnv === 'custom'
+            ? ((document.getElementById('_cpSaveCustomUrl') || {}).value || '').trim()
+            : null;
+        if (modalEnv === 'custom' && !modalCustomUrl) {
+            var urlEl = document.getElementById('_cpSaveCustomUrl');
+            if (urlEl) urlEl.focus();
+            return;
+        }
+        var cur = _readFromPage(); // secretMethod 읽기용
         try {
             var res = await fetch('/api/credentials', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: name,
-                    environment: cur.env,
-                    custom_url: cur.env === 'custom' ? cur.customUrl : null,
+                    environment: modalEnv,
+                    custom_url: modalCustomUrl,
                     api_key: apiKey,
                     eform_user_id: userId,
                     secret_method: cur.secretMethod,
