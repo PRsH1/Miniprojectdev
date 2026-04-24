@@ -88,6 +88,12 @@ module.exports = async (req, res) => {
     });
   }
 
+  // ─── /api/notifications/* → 알림 API ────────────────────────
+  if (path.startsWith('/api/notifications')) {
+    const notifications = require('../controllers/notifications');
+    return notifications(req, res);
+  }
+
   // ─── /api/credentials/* → 크리덴셜 CRUD ────────────────────
   if (path.startsWith('/api/credentials')) {
     const credentials = require('../controllers/credentials');

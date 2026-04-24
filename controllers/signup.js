@@ -102,7 +102,23 @@ module.exports = async function handler(req, res) {
 
   const requestId = rows[0].id;
 
-  // 5. 감사 로그
+  // 5. 알림 INSERT (실패해도 회원가입 요청 자체는 성공 처리)
+  try {
+    await sql`
+      INSERT INTO notifications (type, reference_id, title, body, target_role)
+      VALUES (
+        'signup_request',
+        ${String(requestId)},
+        '새 회원가입 요청',
+        ${username + ' 님이 가입을 요청했습니다.'},
+        'admin'
+      )
+    `;
+  } catch (notifErr) {
+    console.error('알림 INSERT 오류 (무시):', notifErr);
+  }
+
+  // 6. 감사 로그
   await insertAuditLog({
     username,
     action: 'signup_requested',

@@ -331,6 +331,12 @@
         .btn-header.admin { background: #dc2626; color: #fff; border-color: #b91c1c; }
         .btn-header.admin:hover { background: #b91c1c; }
 
+        /* 알림 벨 래퍼 */
+        #idxBellWrap {
+            display: inline-flex;
+            align-items: center;
+        }
+
         /* 카드 초기 숨김 (FOUC 방지 — JS에서 role 확인 후 표시) */
         .card[data-min-role] { display: none; }
         .card[data-protected-path] { display: none; }
@@ -624,6 +630,7 @@
 
     </div>
 
+    <script src="/assets/js/notification-bell.js"></script>
     <script>
         // protected_pages 배열 (스크립트 스코프 — navigateCard에서도 접근)
         var protectedPages = [];
@@ -746,20 +753,32 @@
                 el.innerHTML =
                     '<a href="/auth/login.html" class="btn-header primary">로그인</a>' +
                     '<a href="/auth/signup.html" class="btn-header">회원가입</a>';
-            } else {
-                var roleBadge = '<span class="badge-role-header ' + meData.role + '">' + meData.role + '</span>';
-                var adminBtn = meData.role === 'admin'
-                    ? '<a href="/app/admin" class="btn-header admin">관리자 콘솔</a>'
-                    : '';
-                el.innerHTML =
-                    '<span class="username">' + escHtml(meData.username) + '</span>' +
-                    roleBadge +
-                    adminBtn +
-                    '<button class="btn-header" id="btnLogout">로그아웃</button>';
-                document.getElementById('btnLogout').addEventListener('click', function() {
-                    fetch('/api/logout', { method: 'POST' })
-                        .finally(function() { location.reload(); });
-                });
+                return;
+            }
+
+            var roleBadge = '<span class="badge-role-header ' + meData.role + '">' + meData.role + '</span>';
+            var bellHtml  = meData.role === 'admin' ? '<div id="idxBellWrap"></div>' : '';
+            var adminBtn  = meData.role === 'admin'
+                ? '<a href="/app/admin" class="btn-header admin">관리자 콘솔</a>'
+                : '';
+
+            el.innerHTML =
+                '<span class="username">' + escHtml(meData.username) + '</span>' +
+                roleBadge +
+                bellHtml +
+                adminBtn +
+                '<button class="btn-header" id="btnLogout">로그아웃</button>';
+
+            document.getElementById('btnLogout').addEventListener('click', function() {
+                fetch('/api/logout', { method: 'POST' })
+                    .finally(function() { location.reload(); });
+            });
+
+            if (meData.role === 'admin') {
+                var wrap = document.getElementById('idxBellWrap');
+                if (wrap && window.NotifBell) {
+                    window.NotifBell.init(wrap);
+                }
             }
         }
 

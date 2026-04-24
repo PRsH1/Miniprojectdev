@@ -133,6 +133,7 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 
 - 비로그인 시 코너 모드는 로그인/회원가입 버튼 표시 (`?next=현재경로` 파라미터 포함), 상단 바 모드도 동일
 - admin 로그인 시 모든 모드에서 "관리자 콘솔" 버튼 자동 표시
+- **admin 전용 알림 벨**: 기본(상단 바) 모드에서만 `🔔` 벨 버튼 + 미읽음 배지 표시. 60초 폴링으로 count 갱신. 클릭 시 드롭다운 패널 → 알림 목록 + "모두 읽음" 처리. CORNER 모드에서는 미표시
 - **주의:** 각 페이지에 `button { width: 100% }` 스타일이 있어도 `.asb-btn`에 `width: auto !important`가 적용되어 버튼이 늘어나지 않음
 - 기본 모드의 `.asb-brand`("eformsign Tools Hub")는 클릭 시 `/`(index)로 이동하는 링크(`<a>` 태그)로 렌더링됨
 
@@ -226,6 +227,72 @@ window.CREDENTIAL_CONFIG = {
 - 나머지 도구들은 `credential-panel.js` 공유 모듈 사용
 
 **토스트 알림 위치:** `bottom: 80px` — 코너 모드 auth 패널(`bottom: 16px`)과 겹치지 않도록 여유 확보
+
+---
+
+### 알림 시스템 (Notification Bell)
+
+admin에게 회원가입 요청 등 주요 이벤트를 상단 바 벨 아이콘으로 알려주는 모듈형 알림 시스템.
+
+**DB 테이블:** `notifications`
+
+```
+컬럼: id, type (varchar64), target_role (varchar32, default 'admin'),
+      reference_id (varchar128), title (varchar256), body (text),
+      is_read (boolean, default false), created_at, read_at
+```
+
+**API 엔드포인트:** `/api/notifications` (admin 전용)
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/api/notifications` | 미읽음 count + 최신 30건 목록 |
+| PATCH | `/api/notifications/read` | 전체 읽음 처리 |
+| PATCH | `/api/notifications/:id/read` | 단건 읽음 처리 |
+
+**신규 알림 생성 패턴 (서버):**
+```javascript
+// 알림 발생 지점(예: signup.js)에서 INSERT만 추가 — 클라이언트 변경 불필요
+await sql`
+  INSERT INTO notifications (type, reference_id, title, body, target_role)
+  VALUES ('signup_request', ${requestId}, '새 회원가입 요청',
+          ${username + ' 님이 가입을 요청했습니다.'}, 'admin')
+`;
+```
+
+**알림 타입 확장:** `type` 컬럼에 새 값 추가 + 서버에서 INSERT 한 줄만 추가하면 클라이언트 무변경으로 표시됨.
+
+**현재 알림 타입:**
+
+| type | 발생 시점 | 이동 경로 |
+|---|---|---|
+| `signup_request` | `POST /api/signup` | `/app/admin?tab=signup-requests` |
+
+**프론트엔드 구성 — 2파일 분리:**
+
+| 파일 | 적용 범위 | 설명 |
+|---|---|---|
+| `auth-status.js` | `/app/*` 등 auth-status.js 적용 페이지 | 벨 로직 내장. admin + 기본(상단 바) 모드에서만 활성화 |
+| `assets/js/notification-bell.js` | `index.html` | 독립 모듈 (IIFE → `window.NotifBell`). `index.html`이 `<script>` 로드 후 `NotifBell.init(containerEl)` 호출 |
+
+**`notification-bell.js` 사용 방법 (index.html 전용):**
+```html
+<!-- </body> 직전, 인라인 <script> 보다 먼저 로드 -->
+<script src="/assets/js/notification-bell.js"></script>
+```
+```javascript
+// renderHeaderUser() 내 admin 구간
+if (meData.role === 'admin') {
+    var wrap = document.getElementById('idxBellWrap');
+    if (wrap && window.NotifBell) window.NotifBell.init(wrap);
+}
+```
+
+**패널 위치 계산:** `notification-bell.js`는 `getBoundingClientRect()`로 벨 버튼 기준 동적 계산 → 스크롤 위치와 무관하게 벨 바로 아래에 표시됨.
+
+**CSS 격리:** `notification-bell.js`의 CSS 클래스는 `._nb-` 접두어 사용, auth-status.js의 `asb-`·`anp-`와 충돌 없음. 두 파일이 동시에 로드되어도 독립 동작.
+
+**폴링:** 60초 interval로 `/api/notifications` 호출 → unread_count만 갱신. 패널이 열려 있는 동안은 폴링 스킵.
 
 ---
 

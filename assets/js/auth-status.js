@@ -14,6 +14,10 @@
     var CORNER = window.AUTH_STATUS_CORNER === true;
     var INLINE = window.AUTH_STATUS_INLINE === true;
 
+    // 알림 상태
+    var notifUnreadCount = 0;
+    var notifPollTimer = null;
+
     // ─── CSS 주입 ────────────────────────────────────────────
     var barCss;
 
@@ -78,6 +82,75 @@
         '#authStatusBar .asb-btn.primary:hover { background: #fff; }',
         '#authStatusBar .asb-btn.danger { background: rgba(220,38,38,.55); border-color: rgba(220,38,38,.5); }',
         '#authStatusBar .asb-btn.danger:hover { background: rgba(220,38,38,.75); }',
+        /* ─── 알림 벨 ─── */
+        '#authStatusBar .asb-notif-wrap {',
+        '  position: relative; display: inline-flex; align-items: center;',
+        '}',
+        '#authStatusBar .asb-bell {',
+        '  width: auto !important; display: inline-flex !important; align-items: center !important;',
+        '  background: none; border: none; color: #fff; font-size: 16px;',
+        '  cursor: pointer; padding: 4px 6px; border-radius: 6px;',
+        '  transition: background .12s; position: relative; flex-shrink: 0;',
+        '}',
+        '#authStatusBar .asb-bell:hover { background: rgba(255,255,255,.18); }',
+        '#authStatusBar .asb-badge {',
+        '  position: absolute; top: -2px; right: -2px;',
+        '  background: #ef4444; color: #fff;',
+        '  font-size: 10px; font-weight: 700; line-height: 1;',
+        '  min-width: 16px; height: 16px; border-radius: 8px;',
+        '  display: flex; align-items: center; justify-content: center;',
+        '  padding: 0 3px; pointer-events: none;',
+        '}',
+        /* 드롭다운 패널 */
+        '#asbNotifPanel {',
+        '  position: fixed; top: 44px; right: 16px;',
+        '  width: 320px; max-height: 420px;',
+        '  background: #1e293b; border: 1px solid rgba(255,255,255,.12);',
+        '  border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.45);',
+        '  z-index: 999999; overflow: hidden;',
+        '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+        '  display: none;',
+        '}',
+        '#asbNotifPanel .anp-header {',
+        '  padding: 12px 16px 10px;',
+        '  border-bottom: 1px solid rgba(255,255,255,.08);',
+        '  font-size: 13px; font-weight: 700; color: #fff;',
+        '  display: flex; align-items: center; justify-content: space-between;',
+        '}',
+        '#asbNotifPanel .anp-mark-all {',
+        '  font-size: 11px; font-weight: 500; color: rgba(255,255,255,.5);',
+        '  background: none; border: none; cursor: pointer; padding: 0;',
+        '}',
+        '#asbNotifPanel .anp-mark-all:hover { color: rgba(255,255,255,.85); }',
+        '#asbNotifPanel .anp-list {',
+        '  overflow-y: auto; max-height: 360px;',
+        '}',
+        '#asbNotifPanel .anp-item {',
+        '  padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,.06);',
+        '  cursor: pointer; transition: background .1s;',
+        '  display: flex; gap: 10px; align-items: flex-start;',
+        '}',
+        '#asbNotifPanel .anp-item:hover { background: rgba(255,255,255,.07); }',
+        '#asbNotifPanel .anp-item.unread { background: rgba(59,130,246,.1); }',
+        '#asbNotifPanel .anp-item.unread:hover { background: rgba(59,130,246,.18); }',
+        '#asbNotifPanel .anp-dot {',
+        '  width: 7px; height: 7px; border-radius: 50%;',
+        '  background: #3b82f6; flex-shrink: 0; margin-top: 5px;',
+        '}',
+        '#asbNotifPanel .anp-dot.read { background: transparent; }',
+        '#asbNotifPanel .anp-title {',
+        '  font-size: 12px; font-weight: 600; color: #f1f5f9; margin-bottom: 2px;',
+        '}',
+        '#asbNotifPanel .anp-body {',
+        '  font-size: 11px; color: rgba(255,255,255,.55); margin-bottom: 2px;',
+        '}',
+        '#asbNotifPanel .anp-time {',
+        '  font-size: 10px; color: rgba(255,255,255,.35);',
+        '}',
+        '#asbNotifPanel .anp-empty {',
+        '  padding: 24px 16px; text-align: center;',
+        '  font-size: 12px; color: rgba(255,255,255,.35);',
+        '}',
     ].join('\n');
 
     // 상단 바 모드에서만 body 여백 주입 (INLINE·CORNER는 기존 레이아웃 유지)
@@ -134,6 +207,17 @@
             ? '<a href="/app/admin" class="asb-btn">관리자 콘솔</a>'
             : '';
 
+        // 벨 아이콘 — 상단 바 모드 + admin 전용
+        var bellHtml = '';
+        if (user.role === 'admin' && !CORNER) {
+            bellHtml =
+                '<div class="asb-notif-wrap">' +
+                '<button class="asb-bell" id="asbBellBtn" title="알림">&#128276;' +
+                '<span id="asbBellBadge" class="asb-badge" style="display:none;">0</span>' +
+                '</button>' +
+                '</div>';
+        }
+
         // 코너 모드: brand 없이 유저 정보만
         var brandHtml = CORNER ? '' : '<a href="/" class="asb-brand">eformsign Tools Hub</a>';
         var spacerHtml = CORNER ? '' : '<span class="asb-spacer"></span>';
@@ -143,6 +227,7 @@
             spacerHtml +
             '<span class="asb-username">' + escHtml(user.username) + '</span>' +
             '<span class="asb-role ' + escHtml(user.role) + '">' + escHtml(user.role) + '</span>' +
+            bellHtml +
             adminBtn +
             '<button class="asb-btn danger" id="asbBtnLogout">로그아웃</button>';
 
@@ -150,6 +235,169 @@
             fetch('/api/logout', { method: 'POST' })
                 .finally(function () { window.location.reload(); });
         });
+
+        // admin 전용 알림 초기화 (상단 바 모드에서만)
+        if (user.role === 'admin' && !CORNER) {
+            var bellBtn = document.getElementById('asbBellBtn');
+            if (bellBtn) {
+                bellBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var panel = document.getElementById('asbNotifPanel');
+                    if (panel && panel.style.display === 'block') {
+                        closeNotifPanel();
+                    } else {
+                        openNotifPanel();
+                    }
+                });
+            }
+            // 초기 미읽음 count 조회
+            fetchUnreadCount();
+            // 60초 폴링 (패널 열려있지 않을 때만)
+            if (notifPollTimer) clearInterval(notifPollTimer);
+            notifPollTimer = setInterval(function () {
+                var panel = document.getElementById('asbNotifPanel');
+                if (!panel || panel.style.display === 'none') {
+                    fetchUnreadCount();
+                }
+            }, 60000);
+        }
+    }
+
+    // ─── 알림 헬퍼 함수 ──────────────────────────────────────
+
+    // 상대 시간 표시
+    function formatRelativeTime(dateStr) {
+        var diff = Date.now() - new Date(dateStr).getTime();
+        var minutes = Math.floor(diff / 60000);
+        if (minutes < 1) return '방금 전';
+        if (minutes < 60) return minutes + '분 전';
+        var hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + '시간 전';
+        var days = Math.floor(hours / 24);
+        if (days <= 6) return days + '일 전';
+        var d = new Date(dateStr);
+        return (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
+    }
+
+    // 전체 읽음 처리 후 패널 새로고침
+    function markAllRead() {
+        fetch('/api/notifications/read', { method: 'PATCH' })
+            .then(function () { openNotifPanel(); })
+            .catch(function () {});
+    }
+
+    // 드롭다운 패널 HTML 빌드 및 갱신
+    function renderNotifPanel(notifications, unreadCount) {
+        var panel = document.getElementById('asbNotifPanel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.id = 'asbNotifPanel';
+            document.body.appendChild(panel);
+        }
+
+        var markAllBtn = unreadCount > 0
+            ? '<button class="anp-mark-all" id="asbMarkAllBtn">모두 읽음</button>'
+            : '';
+
+        var headerHtml =
+            '<div class="anp-header">' +
+            '<span>알림</span>' +
+            markAllBtn +
+            '</div>';
+
+        var listHtml = '';
+        if (!notifications || notifications.length === 0) {
+            listHtml = '<div class="anp-empty">알림이 없습니다.</div>';
+        } else {
+            listHtml = '<div class="anp-list">';
+            for (var i = 0; i < notifications.length; i++) {
+                var n = notifications[i];
+                var isUnread = !n.is_read;
+                var itemClass = 'anp-item' + (isUnread ? ' unread' : '');
+                var dotClass = 'anp-dot' + (isUnread ? '' : ' read');
+                var dest = n.type === 'signup_request'
+                    ? '/app/admin?tab=signup-requests'
+                    : '/app/admin';
+                listHtml +=
+                    '<div class="' + itemClass + '" data-notif-id="' + n.id + '" data-dest="' + escHtml(dest) + '">' +
+                    '<div class="' + dotClass + '"></div>' +
+                    '<div style="flex:1;min-width:0;">' +
+                    '<div class="anp-title">' + escHtml(n.title) + '</div>' +
+                    (n.body ? '<div class="anp-body">' + escHtml(n.body) + '</div>' : '') +
+                    '<div class="anp-time">' + formatRelativeTime(n.created_at) + '</div>' +
+                    '</div>' +
+                    '</div>';
+            }
+            listHtml += '</div>';
+        }
+
+        panel.innerHTML = headerHtml + listHtml;
+
+        // "모두 읽음" 버튼 이벤트
+        var markAllBtnEl = document.getElementById('asbMarkAllBtn');
+        if (markAllBtnEl) {
+            markAllBtnEl.addEventListener('click', function (e) {
+                e.stopPropagation();
+                markAllRead();
+            });
+        }
+
+        // 알림 항목 클릭 이벤트
+        var items = panel.querySelectorAll('.anp-item');
+        for (var j = 0; j < items.length; j++) {
+            (function (item) {
+                item.addEventListener('click', function () {
+                    var notifId = item.getAttribute('data-notif-id');
+                    var dest = item.getAttribute('data-dest');
+                    fetch('/api/notifications/' + notifId + '/read', { method: 'PATCH' })
+                        .finally(function () {
+                            window.location.href = dest;
+                        });
+                });
+            })(items[j]);
+        }
+    }
+
+    // 미읽음 count만 갱신 (폴링용)
+    function fetchUnreadCount() {
+        fetch('/api/notifications')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (!data) return;
+                notifUnreadCount = data.unread_count || 0;
+                var badge = document.getElementById('asbBellBadge');
+                if (badge) {
+                    badge.textContent = notifUnreadCount > 99 ? '99+' : notifUnreadCount;
+                    badge.style.display = notifUnreadCount > 0 ? 'flex' : 'none';
+                }
+            })
+            .catch(function () {});
+    }
+
+    // 패널 열기
+    function openNotifPanel() {
+        fetch('/api/notifications')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (!data) return;
+                notifUnreadCount = data.unread_count || 0;
+                renderNotifPanel(data.notifications || [], notifUnreadCount);
+                var panel = document.getElementById('asbNotifPanel');
+                if (panel) panel.style.display = 'block';
+                // 배지 동기화
+                var badge = document.getElementById('asbBellBadge');
+                if (badge) {
+                    badge.textContent = notifUnreadCount > 99 ? '99+' : notifUnreadCount;
+                    badge.style.display = notifUnreadCount > 0 ? 'flex' : 'none';
+                }
+            })
+            .catch(function () {});
+    }
+
+    // 패널 닫기
+    function closeNotifPanel() {
+        var panel = document.getElementById('asbNotifPanel');
+        if (panel) panel.style.display = 'none';
     }
 
     // ─── /api/me 호출 ────────────────────────────────────────
@@ -160,4 +408,14 @@
             render(isAuth ? data : null);
         })
         .catch(function () { render(null); });
+
+    // 드롭다운 바깥 클릭 시 패널 닫기
+    document.addEventListener('click', function (e) {
+        var panel = document.getElementById('asbNotifPanel');
+        var bell = document.getElementById('asbBellBtn');
+        if (!panel || panel.style.display !== 'block') return;
+        if (!panel.contains(e.target) && (!bell || !bell.contains(e.target))) {
+            closeNotifPanel();
+        }
+    });
 })();
