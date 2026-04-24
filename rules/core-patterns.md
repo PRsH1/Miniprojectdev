@@ -249,6 +249,8 @@ admin에게 회원가입 요청 등 주요 이벤트를 상단 바 벨 아이콘
 | GET | `/api/notifications` | 미읽음 count + 최신 30건 목록 |
 | PATCH | `/api/notifications/read` | 전체 읽음 처리 |
 | PATCH | `/api/notifications/:id/read` | 단건 읽음 처리 |
+| DELETE | `/api/notifications/:id` | 단건 삭제 |
+| DELETE | `/api/notifications` | 전체 삭제 |
 
 **신규 알림 생성 패턴 (서버):**
 ```javascript
@@ -293,6 +295,18 @@ if (meData.role === 'admin') {
 **CSS 격리:** `notification-bell.js`의 CSS 클래스는 `._nb-` 접두어 사용, auth-status.js의 `asb-`·`anp-`와 충돌 없음. 두 파일이 동시에 로드되어도 독립 동작.
 
 **폴링:** 60초 interval로 `/api/notifications` 호출 → unread_count만 갱신. 패널이 열려 있는 동안은 폴링 스킵.
+
+**알림 삭제 UX:**
+
+| 동작 | 결과 |
+|---|---|
+| 알림 항목 우측 X 버튼 클릭 | 페이지 이동 없이 해당 항목만 DOM에서 즉시 제거. 미읽음 항목이면 배지 카운트 즉시 감소 |
+| 패널 헤더 "전체 삭제" 버튼 클릭 | 전체 삭제 후 패널 새로고침 |
+| 알림 항목 클릭 (이동) | 기존과 동일 — 단건 읽음 처리 후 연관 페이지 이동 |
+
+- X 버튼은 평상시 반투명, hover 시 빨간색으로 강조 (`._nb-del` / `.anp-del`)
+- 항목이 모두 삭제되면 패널이 "알림이 없습니다." 빈 상태로 즉시 전환 (DOM 조작, API 재호출 없음)
+- "전체 삭제" 버튼은 알림 목록이 하나라도 있을 때만 헤더에 노출 (`._nb-del-all` / `.anp-del-all`)
 
 ---
 

@@ -151,6 +151,22 @@
         '  padding: 24px 16px; text-align: center;',
         '  font-size: 12px; color: rgba(255,255,255,.35);',
         '}',
+        /* X 버튼 */
+        '#asbNotifPanel .anp-del {',
+        '  background: none; border: none; cursor: pointer;',
+        '  color: rgba(255,255,255,.25); font-size: 14px; line-height: 1;',
+        '  padding: 2px 4px; border-radius: 4px; flex-shrink: 0;',
+        '  transition: color .1s, background .1s;',
+        '  align-self: flex-start; margin-top: -1px;',
+        '}',
+        '#asbNotifPanel .anp-item:hover .anp-del { color: rgba(255,255,255,.6); }',
+        '#asbNotifPanel .anp-del:hover { color: #ef4444 !important; background: rgba(239,68,68,.12); }',
+        /* 전체 삭제 버튼 */
+        '#asbNotifPanel .anp-del-all {',
+        '  font-size: 11px; color: rgba(255,255,255,.35);',
+        '  background: none; border: none; cursor: pointer; padding: 0;',
+        '}',
+        '#asbNotifPanel .anp-del-all:hover { color: #ef4444; }',
     ].join('\n');
 
     // 상단 바 모드에서만 body 여백 주입 (INLINE·CORNER는 기존 레이아웃 유지)
@@ -286,6 +302,42 @@
             .catch(function () {});
     }
 
+    // 단건 삭제
+    function deleteNotifOne(id, itemEl) {
+        fetch('/api/notifications/' + id, { method: 'DELETE' })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(function () {
+                if (itemEl) itemEl.remove();
+                // 삭제된 항목이 unread였으면 배지 감소
+                if (itemEl && itemEl.classList.contains('unread')) {
+                    notifUnreadCount = Math.max(0, notifUnreadCount - 1);
+                    var badge = document.getElementById('asbBellBadge');
+                    if (badge) {
+                        badge.textContent = notifUnreadCount > 99 ? '99+' : notifUnreadCount;
+                        badge.style.display = notifUnreadCount > 0 ? 'flex' : 'none';
+                    }
+                }
+                // 목록이 비었으면 빈 상태 표시
+                var list = document.querySelector('#asbNotifPanel .anp-list');
+                if (list && list.querySelectorAll('.anp-item').length === 0) {
+                    list.outerHTML = '<div class="anp-empty">알림이 없습니다.</div>';
+                    // 헤더 버튼들도 갱신
+                    var delAllEl = document.getElementById('asbDelAllBtn');
+                    if (delAllEl) delAllEl.remove();
+                    var markAllEl = document.getElementById('asbMarkAllBtn');
+                    if (markAllEl) markAllEl.remove();
+                }
+            })
+            .catch(function () {});
+    }
+
+    // 전체 삭제
+    function deleteNotifAll() {
+        fetch('/api/notifications', { method: 'DELETE' })
+            .then(function () { openNotifPanel(); })
+            .catch(function () {});
+    }
+
     // 드롭다운 패널 HTML 빌드 및 갱신
     function renderNotifPanel(notifications, unreadCount) {
         var panel = document.getElementById('asbNotifPanel');
@@ -299,10 +351,16 @@
             ? '<button class="anp-mark-all" id="asbMarkAllBtn">모두 읽음</button>'
             : '';
 
+        var delAllBtn = notifications && notifications.length > 0
+            ? '<button class="anp-del-all" id="asbDelAllBtn">전체 삭제</button>'
+            : '';
+
         var headerHtml =
             '<div class="anp-header">' +
             '<span>알림</span>' +
-            markAllBtn +
+            '<span style="display:flex;gap:8px;align-items:center;">' +
+            markAllBtn + delAllBtn +
+            '</span>' +
             '</div>';
 
         var listHtml = '';
@@ -326,6 +384,7 @@
                     (n.body ? '<div class="anp-body">' + escHtml(n.body) + '</div>' : '') +
                     '<div class="anp-time">' + formatRelativeTime(n.created_at) + '</div>' +
                     '</div>' +
+                    '<button class="anp-del" data-del-id="' + n.id + '" title="알림 삭제">&#10005;</button>' +
                     '</div>';
             }
             listHtml += '</div>';
@@ -355,6 +414,27 @@
                         });
                 });
             })(items[j]);
+        }
+
+        // "전체 삭제" 버튼 이벤트
+        var delAllBtnEl = document.getElementById('asbDelAllBtn');
+        if (delAllBtnEl) {
+            delAllBtnEl.addEventListener('click', function (e) {
+                e.stopPropagation();
+                deleteNotifAll();
+            });
+        }
+
+        // X 버튼(개별 삭제) 이벤트
+        var delBtns = panel.querySelectorAll('.anp-del');
+        for (var k = 0; k < delBtns.length; k++) {
+            (function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var id = btn.getAttribute('data-del-id');
+                    deleteNotifOne(id, btn.closest('.anp-item'));
+                });
+            })(delBtns[k]);
         }
     }
 

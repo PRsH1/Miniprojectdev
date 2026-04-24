@@ -71,6 +71,22 @@
             '  padding: 24px 16px; text-align: center;',
             '  font-size: 12px; color: rgba(255,255,255,.35);',
             '}',
+            /* X 버튼 */
+            '#_nbPanel ._nb-del {',
+            '  background: none; border: none; cursor: pointer;',
+            '  color: rgba(255,255,255,.25); font-size: 14px; line-height: 1;',
+            '  padding: 2px 4px; border-radius: 4px; flex-shrink: 0;',
+            '  transition: color .1s, background .1s;',
+            '  align-self: flex-start; margin-top: -1px;',
+            '}',
+            '#_nbPanel ._nb-item:hover ._nb-del { color: rgba(255,255,255,.6); }',
+            '#_nbPanel ._nb-del:hover { color: #ef4444 !important; background: rgba(239,68,68,.12); }',
+            /* 전체 삭제 버튼 */
+            '#_nbPanel ._nb-del-all {',
+            '  font-size: 11px; color: rgba(255,255,255,.35);',
+            '  background: none; border: none; cursor: pointer; padding: 0;',
+            '}',
+            '#_nbPanel ._nb-del-all:hover { color: #ef4444; }',
         ].join('\n');
         document.head.appendChild(style);
     }
@@ -142,10 +158,16 @@
             ? '<button class="_nb-mark-all" id="_nbMarkAllBtn">모두 읽음</button>'
             : '';
 
+        var delAllBtn = notifications && notifications.length > 0
+            ? '<button class="_nb-del-all" id="_nbDelAllBtn">전체 삭제</button>'
+            : '';
+
         var headerHtml =
             '<div class="_nb-ph">' +
             '<span>알림</span>' +
-            markAllBtn +
+            '<span style="display:flex;gap:8px;align-items:center;">' +
+            markAllBtn + delAllBtn +
+            '</span>' +
             '</div>';
 
         var listHtml = '';
@@ -169,6 +191,7 @@
                     (n.body ? '<div class="_nb-item-body">' + _esc(n.body) + '</div>' : '') +
                     '<div class="_nb-item-time">' + _relTime(n.created_at) + '</div>' +
                     '</div>' +
+                    '<button class="_nb-del" data-del-id="' + n.id + '" title="알림 삭제">&#10005;</button>' +
                     '</div>';
             }
             listHtml += '</div>';
@@ -199,6 +222,27 @@
                 });
             })(items[j]);
         }
+
+        // "전체 삭제" 버튼 이벤트
+        var delAllBtnEl = document.getElementById('_nbDelAllBtn');
+        if (delAllBtnEl) {
+            delAllBtnEl.addEventListener('click', function (e) {
+                e.stopPropagation();
+                _deleteAll();
+            });
+        }
+
+        // X 버튼(개별 삭제) 이벤트
+        var delBtns = panel.querySelectorAll('._nb-del');
+        for (var k = 0; k < delBtns.length; k++) {
+            (function (btn) {
+                btn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var id = btn.getAttribute('data-del-id');
+                    _deleteOne(id, btn.closest('._nb-item'));
+                });
+            })(delBtns[k]);
+        }
     }
 
     function _openPanel() {
@@ -225,6 +269,36 @@
 
     function _markAllRead() {
         fetch('/api/notifications/read', { method: 'PATCH' })
+            .then(function () { _openPanel(); })
+            .catch(function () {});
+    }
+
+    function _deleteOne(id, itemEl) {
+        fetch('/api/notifications/' + id, { method: 'DELETE' })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(function () {
+                if (itemEl) itemEl.remove();
+                // 삭제된 항목이 unread였으면 배지 감소
+                if (itemEl && itemEl.classList.contains('unread')) {
+                    _unreadCount = Math.max(0, _unreadCount - 1);
+                    _updateBadge(_unreadCount);
+                }
+                // 목록이 비었으면 빈 상태 표시
+                var list = document.querySelector('#_nbPanel ._nb-list');
+                if (list && list.querySelectorAll('._nb-item').length === 0) {
+                    list.outerHTML = '<div class="_nb-empty">알림이 없습니다.</div>';
+                    // 헤더 버튼들도 갱신
+                    var delAllEl = document.getElementById('_nbDelAllBtn');
+                    if (delAllEl) delAllEl.remove();
+                    var markAllEl = document.getElementById('_nbMarkAllBtn');
+                    if (markAllEl) markAllEl.remove();
+                }
+            })
+            .catch(function () {});
+    }
+
+    function _deleteAll() {
+        fetch('/api/notifications', { method: 'DELETE' })
             .then(function () { _openPanel(); })
             .catch(function () {});
     }

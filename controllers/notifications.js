@@ -108,5 +108,35 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
-  return methodNotAllowed(req, res, ['GET', 'PATCH']);
+  // DELETE /api/notifications/:id (단건 삭제)
+  const singleDeleteMatch = rawPath.match(/^\/api\/notifications\/(\d+)$/);
+  if (req.method === 'DELETE' && singleDeleteMatch) {
+    const id = parseInt(singleDeleteMatch[1], 10);
+    const existing = await sql`
+      SELECT id FROM notifications WHERE id = ${id} AND target_role = 'admin'
+    `;
+    if (!existing || existing.length === 0) {
+      return respondError(req, res, 404, {
+        code: 'RESOURCE_NOT_FOUND',
+        message: '요청한 알림을 찾을 수 없습니다.',
+        reason: '대상 알림이 없거나 이미 삭제되었을 수 있습니다.',
+        action: '입력값을 다시 확인한 뒤 다시 시도하세요.',
+        logMessage: `Notification not found for delete: id=${id}`,
+      });
+    }
+    await sql`
+      DELETE FROM notifications WHERE id = ${id} AND target_role = 'admin'
+    `;
+    return res.status(200).json({ ok: true });
+  }
+
+  // DELETE /api/notifications (전체 삭제)
+  if (req.method === 'DELETE' && rawPath === '/api/notifications') {
+    await sql`
+      DELETE FROM notifications WHERE target_role = 'admin'
+    `;
+    return res.status(200).json({ ok: true });
+  }
+
+  return methodNotAllowed(req, res, ['GET', 'PATCH', 'DELETE']);
 };

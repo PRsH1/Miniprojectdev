@@ -157,6 +157,8 @@ ProjectImprove/
 | `GET /api/notifications` | GET | 미읽음 count + 최신 30건 목록 |
 | `PATCH /api/notifications/read` | PATCH | 전체 읽음 처리 |
 | `PATCH /api/notifications/:id/read` | PATCH | 단건 읽음 처리 |
+| `DELETE /api/notifications/:id` | DELETE | 단건 삭제 |
+| `DELETE /api/notifications` | DELETE | 전체 삭제 |
 
 ### 관리자 API (admin 역할 전용)
 
@@ -586,6 +588,32 @@ node scripts/migrate-notifications.js
 | type | 발생 시점 |
 |---|---|
 | `signup_request` | 회원가입 요청 접수 시 |
+
+---
+
+### 알림 삭제 기능 추가
+
+알림 패널에 개별 삭제(X 버튼)와 전체 삭제 기능을 추가했습니다.
+
+#### 변경된 동작
+
+| 동작 | 결과 |
+|---|---|
+| 알림 항목 우측 **X 버튼** 클릭 | 페이지 이동 없이 해당 항목만 즉시 제거. 미읽음 항목이면 배지 카운트 즉시 감소 |
+| 패널 헤더 **"전체 삭제"** 버튼 클릭 | 전체 삭제 후 패널 새로고침 |
+| 알림 항목 클릭 (이동) | 기존과 동일 — 단건 읽음 처리 후 연관 페이지 이동 |
+
+- X 버튼: 평상시 반투명, hover 시 빨간색 강조
+- 목록이 모두 비워지면 패널이 "알림이 없습니다." 상태로 즉시 전환 (API 재호출 없음)
+- "전체 삭제" 버튼은 알림이 하나라도 있을 때만 헤더에 노출
+
+#### 변경 파일
+
+| 파일 | 변경 내용 |
+|---|---|
+| `controllers/notifications.js` | `DELETE /api/notifications/:id`, `DELETE /api/notifications` 핸들러 추가 |
+| `assets/js/notification-bell.js` | X 버튼·전체 삭제 버튼 UI 및 클릭 핸들러 추가 (`._nb-del`, `._nb-del-all`) |
+| `assets/js/auth-status.js` | 동일 변경 적용 (`.anp-del`, `.anp-del-all`) |
 
 ---
 
