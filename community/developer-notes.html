@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>개발자 노트</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(99,102,241,.12), transparent 28%),
+        linear-gradient(180deg, #f7f8fc 0%, #eef2ff 100%);
+      color: #1f2937;
+      min-height: 100vh;
+    }
+    .shell {
+      width: min(1080px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 56px 0 80px;
+    }
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 28px;
+    }
+    .hero-copy h1 {
+      margin: 0 0 8px;
+      font-size: clamp(32px, 5vw, 42px);
+      letter-spacing: -.04em;
+      color: #111827;
+    }
+    .hero-copy p {
+      margin: 0;
+      max-width: 720px;
+      line-height: 1.7;
+      color: #4b5563;
+    }
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 11px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      background: linear-gradient(135deg, #4338ca, #6366f1);
+      color: #fff;
+      box-shadow: 0 14px 30px rgba(79, 70, 229, .18);
+    }
+    .btn-ghost {
+      background: #eef2ff;
+      color: #4338ca;
+    }
+    .btn-danger {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 18px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .notes {
+      display: grid;
+      gap: 16px;
+    }
+    .note-card {
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(129, 140, 248, .18);
+      border-radius: 24px;
+      box-shadow: 0 18px 42px rgba(15, 23, 42, .06);
+      padding: 24px 24px 20px;
+      backdrop-filter: blur(12px);
+    }
+    .note-card.pinned {
+      border-color: rgba(79, 70, 229, .32);
+      box-shadow: 0 20px 44px rgba(79, 70, 229, .1);
+    }
+    .note-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .note-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #eef2ff;
+      color: #4338ca;
+    }
+    .chip.pin {
+      background: #ede9fe;
+      color: #5b21b6;
+    }
+    .chip.date {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+    .note-title {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.3;
+      color: #111827;
+    }
+    .note-sub {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .note-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .note-content {
+      position: relative;
+      max-height: 220px;
+      overflow: hidden;
+      color: #334155;
+    }
+    .note-content.expanded {
+      max-height: none;
+    }
+    .note-content:not(.expanded)::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 72px;
+      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,.96));
+      pointer-events: none;
+    }
+    .note-content h1,
+    .note-content h2,
+    .note-content h3 { color: #111827; line-height: 1.35; }
+    .note-content p,
+    .note-content li,
+    .note-content blockquote {
+      line-height: 1.75;
+      color: #334155;
+    }
+    .note-content pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 14px;
+      border-radius: 14px;
+      overflow-x: auto;
+    }
+    .note-content code {
+      background: #e2e8f0;
+      color: #1e293b;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .note-content pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+    .toggle-row {
+      margin-top: 14px;
+      display: flex;
+      justify-content: flex-start;
+    }
+    .toggle-link {
+      border: 0;
+      background: transparent;
+      color: #4338ca;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+    }
+    .empty,
+    .error-box {
+      background: rgba(255,255,255,.9);
+      border-radius: 24px;
+      border: 1px solid rgba(148, 163, 184, .18);
+      padding: 28px;
+      color: #64748b;
+      text-align: center;
+    }
+    .error-box {
+      border-color: rgba(239, 68, 68, .25);
+      color: #b91c1c;
+    }
+    .status-msg {
+      min-height: 20px;
+      font-size: 13px;
+      color: #dc2626;
+    }
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, .55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 100000;
+    }
+    .modal.open { display: flex; }
+    .modal-card {
+      width: min(860px, 100%);
+      background: #fff;
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 28px 60px rgba(15, 23, 42, .22);
+    }
+    .modal-card h2 {
+      margin: 0 0 18px;
+      font-size: 22px;
+      color: #111827;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .field.full {
+      grid-column: 1 / -1;
+    }
+    label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #374151;
+    }
+    input[type="text"],
+    textarea {
+      width: 100%;
+      border: 1px solid #dbe4ff;
+      border-radius: 16px;
+      padding: 13px 15px;
+      font: inherit;
+      color: #111827;
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+      background: #f8faff;
+    }
+    input[type="text"]:focus,
+    textarea:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, .12);
+    }
+    textarea {
+      min-height: 280px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+    .checkline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 18px;
+      font-size: 14px;
+      color: #374151;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    @media (max-width: 840px) {
+      .shell { width: min(100vw - 24px, 1080px); padding-top: 32px; }
+      .hero { flex-direction: column; }
+      .hero-actions { width: 100%; }
+      .form-grid { grid-template-columns: 1fr; }
+      .note-head { flex-direction: column; }
+      .note-actions { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>개발자 노트</h1>
+        <p>릴리즈 이력과 작업 메모를 마크다운으로 정리합니다. 중요한 공지는 상단 고정으로 먼저 노출됩니다.</p>
+      </div>
+      <div class="hero-actions">
+        <button type="button" class="btn btn-primary" id="btnCreateNote" style="display:none;">글 작성</button>
+      </div>
+    </section>
+
+    <div class="toolbar">
+      <div id="noteSummary">노트를 불러오는 중입니다.</div>
+      <div id="adminHint"></div>
+    </div>
+
+    <div class="status-msg" id="pageMessage"></div>
+    <section class="notes" id="notesList"></section>
+  </main>
+
+  <div class="modal" id="noteModal" aria-hidden="true">
+    <div class="modal-card">
+      <h2 id="modalTitle">개발자 노트 작성</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="noteTitle">제목</label>
+          <input type="text" id="noteTitle" maxlength="256" placeholder="예: v1.3.0 배포 노트">
+        </div>
+        <div class="field">
+          <label for="noteVersion">버전</label>
+          <input type="text" id="noteVersion" maxlength="64" placeholder="예: v1.3.0">
+        </div>
+        <div class="field full">
+          <label for="noteContent">내용 (Markdown)</label>
+          <textarea id="noteContent" placeholder="마크다운 형식으로 내용을 작성하세요."></textarea>
+        </div>
+      </div>
+      <label class="checkline" for="notePinned">
+        <input type="checkbox" id="notePinned">
+        상단 고정
+      </label>
+      <div class="status-msg" id="modalMessage"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btnCloseModal">취소</button>
+        <button type="button" class="btn btn-primary" id="btnSaveNote">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.AUTH_STATUS_CORNER = true;
+  </script>
+  <script>
+    const state = {
+      me: null,
+      notes: [],
+      editingId: null,
+    };
+
+    const notesList = document.getElementById('notesList');
+    const noteSummary = document.getElementById('noteSummary');
+    const adminHint = document.getElementById('adminHint');
+    const pageMessage = document.getElementById('pageMessage');
+    const btnCreateNote = document.getElementById('btnCreateNote');
+    const noteModal = document.getElementById('noteModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const noteTitle = document.getElementById('noteTitle');
+    const noteVersion = document.getElementById('noteVersion');
+    const noteContent = document.getElementById('noteContent');
+    const notePinned = document.getElementById('notePinned');
+    const btnSaveNote = document.getElementById('btnSaveNote');
+    const btnCloseModal = document.getElementById('btnCloseModal');
+
+    function escHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderMarkdown(markdown) {
+      if (!window.marked || typeof window.marked.parse !== 'function') {
+        return '<p>' + escHtml(markdown) + '</p>';
+      }
+      return window.marked.parse(markdown);
+    }
+
+    function formatDate(value) {
+      if (!value) return '-';
+      return new Date(value).toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+    }
+
+    function isAdmin() {
+      return !!(state.me && state.me.role === 'admin');
+    }
+
+    function setPageMessage(message, isError) {
+      pageMessage.textContent = message || '';
+      pageMessage.style.color = isError ? '#dc2626' : '#2563eb';
+    }
+
+    function getPreviewText(markdown) {
+      const temp = document.createElement('div');
+      temp.innerHTML = renderMarkdown(markdown);
+      return (temp.textContent || '').trim();
+    }
+
+    function updateAdminUi() {
+      btnCreateNote.style.display = isAdmin() ? 'inline-flex' : 'none';
+      adminHint.textContent = isAdmin() ? '관리자 권한으로 작성·수정·삭제할 수 있습니다.' : '';
+    }
+
+    function renderNotes() {
+      noteSummary.textContent = state.notes.length
+        ? '총 ' + state.notes.length + '개의 노트'
+        : '등록된 노트가 없습니다.';
+
+      if (!state.notes.length) {
+        notesList.innerHTML = '<div class="empty">아직 등록된 개발자 노트가 없습니다.</div>';
+        return;
+      }
+
+      notesList.innerHTML = state.notes.map(function (note) {
+        const rendered = renderMarkdown(note.content);
+        const previewText = getPreviewText(note.content);
+        const author = note.author_username ? escHtml(note.author_username) : 'admin';
+        return '' +
+          '<article class="note-card' + (note.pinned ? ' pinned' : '') + '" data-note-id="' + note.id + '">' +
+            '<div class="note-head">' +
+              '<div>' +
+                '<div class="note-meta">' +
+                  (note.pinned ? '<span class="chip pin">📌 상단 고정</span>' : '') +
+                  (note.version ? '<span class="chip">' + escHtml(note.version) + '</span>' : '') +
+                  '<span class="chip date">' + formatDate(note.created_at) + '</span>' +
+                '</div>' +
+                '<h2 class="note-title">' + escHtml(note.title) + '</h2>' +
+                '<div class="note-sub">작성자 ' + author + ' · 업데이트 ' + formatDate(note.updated_at) + '</div>' +
+              '</div>' +
+              (isAdmin()
+                ? '<div class="note-actions">' +
+                    '<button type="button" class="btn btn-ghost" data-action="edit">편집</button>' +
+                    '<button type="button" class="btn btn-danger" data-action="delete">삭제</button>' +
+                  '</div>'
+                : '') +
+            '</div>' +
+            '<div class="note-content" data-role="content">' + rendered + '</div>' +
+            (previewText.length > 180
+              ? '<div class="toggle-row"><button type="button" class="toggle-link" data-action="toggle">더 보기</button></div>'
+              : '') +
+          '</article>';
+      }).join('');
+    }
+
+    async function loadMe() {
+      const response = await fetch('/api/me');
+      const data = await response.json();
+      const authenticated = data && data.authenticated !== false && data.username;
+      state.me = authenticated ? data : null;
+      updateAdminUi();
+    }
+
+    async function loadNotes() {
+      try {
+        const response = await fetch('/api/developer-notes');
+        const data = await response.json();
+        state.notes = (data && data.notes) || [];
+        renderNotes();
+      } catch (error) {
+        notesList.innerHTML = '<div class="error-box">개발자 노트를 불러오지 못했습니다.</div>';
+      }
+    }
+
+    function openModal(note) {
+      state.editingId = note ? note.id : null;
+      modalTitle.textContent = note ? '개발자 노트 수정' : '개발자 노트 작성';
+      noteTitle.value = note ? note.title : '';
+      noteVersion.value = note && note.version ? note.version : '';
+      noteContent.value = note ? note.content : '';
+      notePinned.checked = !!(note && note.pinned);
+      modalMessage.textContent = '';
+      noteModal.classList.add('open');
+      noteModal.setAttribute('aria-hidden', 'false');
+      setTimeout(function () { noteTitle.focus(); }, 10);
+    }
+
+    function closeModal() {
+      noteModal.classList.remove('open');
+      noteModal.setAttribute('aria-hidden', 'true');
+      state.editingId = null;
+    }
+
+    async function saveNote() {
+      const payload = {
+        title: noteTitle.value.trim(),
+        version: noteVersion.value.trim(),
+        content: noteContent.value.trim(),
+        pinned: notePinned.checked,
+      };
+
+      if (!payload.title || !payload.content) {
+        modalMessage.textContent = '제목과 내용을 입력하세요.';
+        return;
+      }
+
+      btnSaveNote.disabled = true;
+      btnSaveNote.textContent = '저장 중...';
+      modalMessage.textContent = '';
+
+      try {
+        const isEdit = !!state.editingId;
+        const response = await fetch(isEdit ? '/api/developer-notes/' + state.editingId + '/update' : '/api/developer-notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          modalMessage.textContent = data?.error?.message || '저장에 실패했습니다.';
+          return;
+        }
+        closeModal();
+        setPageMessage(isEdit ? '노트를 수정했습니다.' : '노트를 등록했습니다.', false);
+        await loadNotes();
+      } catch (error) {
+        modalMessage.textContent = '저장 중 오류가 발생했습니다.';
+      } finally {
+        btnSaveNote.disabled = false;
+        btnSaveNote.textContent = '저장';
+      }
+    }
+
+    async function deleteNote(noteId) {
+      if (!confirm('이 노트를 삭제하시겠습니까?')) return;
+      setPageMessage('', false);
+      try {
+        const response = await fetch('/api/developer-notes/' + noteId, { method: 'DELETE' });
+        const data = await response.json();
+        if (!response.ok) {
+          setPageMessage(data?.error?.message || '삭제에 실패했습니다.', true);
+          return;
+        }
+        setPageMessage('노트를 삭제했습니다.', false);
+        await loadNotes();
+      } catch (error) {
+        setPageMessage('삭제 중 오류가 발생했습니다.', true);
+      }
+    }
+
+    btnCreateNote.addEventListener('click', function () { openModal(null); });
+    btnCloseModal.addEventListener('click', closeModal);
+    btnSaveNote.addEventListener('click', saveNote);
+    noteModal.addEventListener('click', function (event) {
+      if (event.target === noteModal) closeModal();
+    });
+
+    notesList.addEventListener('click', function (event) {
+      const article = event.target.closest('[data-note-id]');
+      if (!article) return;
+
+      const noteId = parseInt(article.getAttribute('data-note-id'), 10);
+      const note = state.notes.find(function (item) { return item.id === noteId; });
+      if (!note) return;
+
+      const action = event.target.getAttribute('data-action');
+      if (action === 'toggle') {
+        const content = article.querySelector('[data-role="content"]');
+        const expanded = content.classList.toggle('expanded');
+        event.target.textContent = expanded ? '접기' : '더 보기';
+      } else if (action === 'edit' && isAdmin()) {
+        openModal(note);
+      } else if (action === 'delete' && isAdmin()) {
+        deleteNote(noteId);
+      }
+    });
+
+    (async function init() {
+      try {
+        await loadMe();
+      } catch (error) {
+        state.me = null;
+      }
+      await loadNotes();
+    })();
+  </script>
+  <script src="/assets/js/auth-status.js"></script>
+</body>
+</html>

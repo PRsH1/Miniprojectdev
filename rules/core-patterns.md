@@ -269,6 +269,7 @@ await sql`
 | type | 발생 시점 | 이동 경로 |
 |---|---|---|
 | `signup_request` | `POST /api/signup` | `/app/admin?tab=signup-requests` |
+| `bug_report` | `POST /api/bug-reports` | `/app/admin?tab=bug-reports` |
 
 **프론트엔드 구성 — 2파일 분리:**
 
@@ -307,6 +308,85 @@ if (meData.role === 'admin') {
 - X 버튼은 평상시 반투명, hover 시 빨간색으로 강조 (`._nb-del` / `.anp-del`)
 - 항목이 모두 삭제되면 패널이 "알림이 없습니다." 빈 상태로 즉시 전환 (DOM 조작, API 재호출 없음)
 - "전체 삭제" 버튼은 알림 목록이 하나라도 있을 때만 헤더에 노출 (`._nb-del-all` / `.anp-del-all`)
+
+---
+
+### 커뮤니티 기능 (개발자 노트 + 버그 리포트)
+
+index.html "커뮤니티" 섹션의 두 기능. 실제 HTML 파일은 `community/` 디렉토리에 위치하며 `utils/*.html`은 리디렉트 스텁.
+
+**DB 테이블:** `developer_notes`, `bug_reports`
+
+```
+developer_notes: id, title, content(TEXT), version, author_id(UUID FK→users), pinned, created_at, updated_at
+bug_reports:     id, title, description, reporter_user_id(UUID FK→users), reporter_name, reporter_email,
+                 page_url, severity(low/normal/high/critical), status(open/in-progress/resolved/closed),
+                 admin_note, created_at, updated_at
+```
+
+**API 엔드포인트 — 개발자 노트 (`controllers/developer-notes.js`)**
+
+| 메서드 | 경로 | 인증 | 설명 |
+|--------|------|------|------|
+| GET | `/api/developer-notes` | public | 목록 (pinned 우선, 정렬 파라미터 화이트리스트 적용) |
+| GET | `/api/developer-notes/:id` | public | 단건 |
+| POST | `/api/developer-notes` | admin | 작성 |
+| PATCH | `/api/developer-notes/:id` | admin | 수정 (표준) |
+| POST | `/api/developer-notes/:id/update` | admin | 수정 (PATCH 우회 — Admin Console 실제 사용 경로) |
+| DELETE | `/api/developer-notes/:id` | admin | 삭제 |
+
+**API 엔드포인트 — 버그 리포트 (`controllers/bug-reports.js`)**
+
+| 메서드 | 경로 | 인증 | 설명 |
+|--------|------|------|------|
+| POST | `/api/bug-reports` | 로그인 사용자 | 제보 + notifications INSERT (`bug_report` 타입) |
+| GET | `/api/bug-reports` | admin | 목록 (status/severity 필터) |
+| GET | `/api/bug-reports/:id` | admin | 단건 |
+| PATCH | `/api/bug-reports/:id` | admin | 상태/메모 수정 (표준) |
+| POST | `/api/bug-reports/:id/update` | admin | 상태/메모 수정 (PATCH 우회 — Admin Console 실제 사용 경로) |
+| DELETE | `/api/bug-reports/:id` | admin | 삭제 |
+
+**`/update` 우회 경로 존재 이유:**
+로컬 `vercel dev` 환경에서 PATCH + JSON body 요청이 완료되지 않는 문제가 확인되어 `POST /:id/update` 보조 경로를 추가했다. 컨트롤러 내부에서 `(req.method === 'PATCH' && idMatch) || (req.method === 'POST' && updateMatch)` 조건으로 동일 핸들러를 공유한다. 신규 수정 경로 추가 시 이 패턴을 따를 것.
+
+**알림 연동 패턴:**
+```javascript
+// bug-reports.js POST handler — notifications 테이블 INSERT
+await sql`
+  INSERT INTO notifications (type, reference_id, title, body, target_role)
+  VALUES ('bug_report', ${String(report.id)}, '새 버그 리포트',
+          ${reporter.username + ' 님이 버그를 제보했습니다: ' + title}, 'admin')
+`;
+// 알림 INSERT는 try-catch로 감싸 실패해도 제보 자체는 성공 처리
+```
+
+알림 이동 경로 (`notification-bell.js` / `auth-status.js`):
+- `signup_request` → `/app/admin?tab=signup-requests`
+- `bug_report` → `/app/admin?tab=bug-reports`
+
+**인증 헬퍼 패턴 분리:**
+- `requireAdmin(req, res)` — admin 역할 필수 (notifications.js 패턴 동일)
+- `requireAuth(req, res)` — 역할 무관, 로그인 여부만 확인 (bug-reports.js POST에서 사용)
+
+**정렬·필터 파라미터 보안:**
+```javascript
+// SQL injection 방지 — 컨트롤러에서 화이트리스트 선언
+const ALLOWED_SORT = ['created_at', 'updated_at', 'pinned'];
+const ALLOWED_DIR  = ['ASC', 'DESC'];
+const ALLOWED_SEVERITY = ['low', 'normal', 'high', 'critical'];
+const ALLOWED_STATUS   = ['open', 'in-progress', 'resolved', 'closed'];
+```
+
+**Admin Console 탭 (`private/Admin.html`):**
+- `bug-reports` 탭 추가 — `TAB_ALIAS['bug-reports'] = 'bug-reports'`
+- `loadBugReports(preserveSelection, message)` — 상태/심각도 필터, 행 클릭 시 상세 패널
+- 상세 패널은 request sequence 기반 stale response 무시 로직 적용 (race condition 방지)
+- 상태 저장: `POST /api/bug-reports/:id/update { status }`, 메모 저장: `{ admin_note }`
+
+**마이그레이션:**
+```bash
+POSTGRES_URL="..." node scripts/migrate-community.js
+```
 
 ---
 

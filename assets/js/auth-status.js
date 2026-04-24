@@ -295,6 +295,12 @@
         return (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
     }
 
+    function getNotificationDest(type) {
+        if (type === 'signup_request') return '/app/admin?tab=signup-requests';
+        if (type === 'bug_report') return '/app/admin?tab=bug-reports';
+        return '/app/admin';
+    }
+
     // 전체 읽음 처리 후 패널 새로고침
     function markAllRead() {
         fetch('/api/notifications/read', { method: 'PATCH' })
@@ -373,9 +379,7 @@
                 var isUnread = !n.is_read;
                 var itemClass = 'anp-item' + (isUnread ? ' unread' : '');
                 var dotClass = 'anp-dot' + (isUnread ? '' : ' read');
-                var dest = n.type === 'signup_request'
-                    ? '/app/admin?tab=signup-requests'
-                    : '/app/admin';
+                var dest = getNotificationDest(n.type);
                 listHtml +=
                     '<div class="' + itemClass + '" data-notif-id="' + n.id + '" data-dest="' + escHtml(dest) + '">' +
                     '<div class="' + dotClass + '"></div>' +

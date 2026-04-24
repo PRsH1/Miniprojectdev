@@ -124,6 +124,12 @@
         _badgeEl.style.display = count > 0 ? 'flex' : 'none';
     }
 
+    function _notificationDest(type) {
+        if (type === 'signup_request') return '/app/admin?tab=signup-requests';
+        if (type === 'bug_report') return '/app/admin?tab=bug-reports';
+        return '/app/admin';
+    }
+
     function _positionPanel() {
         var panel = document.getElementById('_nbPanel');
         if (!panel || !_bellEl) return;
@@ -180,9 +186,7 @@
                 var isUnread = !n.is_read;
                 var itemClass = '_nb-item' + (isUnread ? ' unread' : '');
                 var dotClass = '_nb-dot' + (isUnread ? '' : ' read');
-                var dest = n.type === 'signup_request'
-                    ? '/app/admin?tab=signup-requests'
-                    : '/app/admin';
+                var dest = _notificationDest(n.type);
                 listHtml +=
                     '<div class="' + itemClass + '" data-notif-id="' + n.id + '" data-dest="' + _esc(dest) + '">' +
                     '<div class="' + dotClass + '"></div>' +

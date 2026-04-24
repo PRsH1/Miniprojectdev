@@ -11,6 +11,8 @@ const controllers = {
   'signup-status':            () => require('../controllers/signupStatus'),
   'password-reset-request':   () => require('../controllers/password-reset-request'),
   'change-password':          () => require('../controllers/change-password'),
+  'developer-notes':          () => require('../controllers/developer-notes'),
+  'bug-reports':              () => require('../controllers/bug-reports'),
 
   // ─── 기존 API 엔드포인트 ─────────────────────────────────────
   'auth':                     () => require('../controllers/auth'),

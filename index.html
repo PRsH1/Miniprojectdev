@@ -264,17 +264,22 @@
         .theme-tools .section-icon { background: linear-gradient(135deg, #475569, #64748b); }
         .theme-tools .card-icon { background: #f1f5f9; color: #475569; }
 
+        .theme-community .section-icon { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .theme-community .card-icon { background: #ede9fe; color: #6366f1; }
+
         /* 카드 호버 시 섹션별 테마 색상 */
         .theme-api .card:hover { border-color: #1a73e8; box-shadow: 0 4px 16px rgba(26, 115, 232, 0.12); }
         .theme-embed .card:hover { border-color: #0d9488; box-shadow: 0 4px 16px rgba(13, 148, 136, 0.12); }
         .theme-webhook .card:hover { border-color: #e67e22; box-shadow: 0 4px 16px rgba(230, 126, 34, 0.12); }
         .theme-saml .card:hover { border-color: #7c3aed; box-shadow: 0 4px 16px rgba(124, 58, 237, 0.12); }
         .theme-tools .card:hover { border-color: #475569; box-shadow: 0 4px 16px rgba(71, 85, 105, 0.12); }
+        .theme-community .card:hover { border-color: #6366f1; box-shadow: 0 4px 16px rgba(99, 102, 241, 0.12); }
 
         .theme-embed .card:hover .card-arrow { color: #0d9488; }
         .theme-webhook .card:hover .card-arrow { color: #e67e22; }
         .theme-saml .card:hover .card-arrow { color: #7c3aed; }
         .theme-tools .card:hover .card-arrow { color: #475569; }
+        .theme-community .card:hover .card-arrow { color: #6366f1; }
 
         /* 검색 결과 없음 */
         .no-results {
@@ -617,6 +622,31 @@
                     <div class="card-content">
                         <div class="card-title">JSON/XML 포맷 정리 <span class="badge badge-new">New</span></div>
                         <div class="card-desc">JSON/XML 포맷팅 도구</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+            </div>
+        </section>
+
+        <section class="section theme-community" data-section>
+            <div class="section-header">
+                <div class="section-icon"><i class="fa-solid fa-users"></i></div>
+                <h2>커뮤니티 <span class="section-count"></span></h2>
+            </div>
+            <div class="card-grid">
+                <a href="/community/developer-notes.html" class="card" data-card data-min-role="public" data-original-url="/community/developer-notes.html">
+                    <div class="card-icon"><i class="fa-solid fa-note-sticky"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">개발자 노트</div>
+                        <div class="card-desc">업데이트 이력과 릴리즈 노트 모음</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/community/bug-report.html" class="card" data-card data-min-role="public" data-original-url="/community/bug-report.html">
+                    <div class="card-icon"><i class="fa-solid fa-bug"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">버그 리포트</div>
+                        <div class="card-desc">로그인 사용자용 버그 제보 페이지</div>
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
