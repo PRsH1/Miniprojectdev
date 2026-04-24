@@ -159,7 +159,12 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 | DELETE | `/api/credentials/:id` | 크리덴셜 삭제 |
 
 **보안 원칙:**
-- 목록 조회 시 `secret_key`는 반환하지 않고 `has_secret_key: boolean`만 반환
+- `secret_key`는 저장/조회 시 AES-256-GCM으로 암호화 처리 (`CREDENTIAL_ENCRYPTION_KEY` 환경변수 필요)
+  - 저장 형식: `{iv_hex}:{authTag_hex}:{ciphertext_hex}` — DB에는 암호문만 저장
+  - 목록 조회(`GET /api/credentials`)에서는 `secret_key` 미반환, `has_secret_key: boolean`만 반환
+  - 단건 조회(`GET /api/credentials/:id`)에서 서버가 복호화 후 평문 반환 — 클라이언트 변경 없음
+  - `secret_key`가 null인 경우(미저장) 암호화/복호화 시도 없이 그대로 처리
+  - 기존 plaintext 데이터는 `scripts/migrate-credentials-encrypt.js`로 일괄 재암호화
 - 비밀 키 저장은 사용자가 체크박스로 선택 (`secret_key` nullable)
 - 불러오기 시 비밀 키가 null이면 UI에서 직접 입력 안내 표시
 - 모든 엔드포인트는 JWT(`auth_token` 쿠키) 인증 필요, `WHERE user_id = decoded.sub`로 타 사용자 접근 차단
@@ -190,10 +195,21 @@ window.CREDENTIAL_CONFIG = {
 
 **모달 ID (credential-panel.js 주입):**
 - `#_cpLoadModal` — 불러오기 모달
-- `#_cpSaveModal` — 저장 모달
+- `#_cpSaveModal` — 저장 모달 (환경 select `#_cpSaveEnv` + Custom URL 입력 `#_cpSaveCustomUrl` 포함)
 - `#_cpAuthModal` — 비로그인 차단 모달
 
-**CSS 격리:** `_injectStyles()`가 `<style>` 태그를 `<head>`에 삽입하여 모달 내부 `button`·`input`에 `all:revert` 적용 → 호스트 페이지 전역 CSS 오염 방지
+**저장 모달 환경 선택:**
+- `#_cpSaveEnv` (`<select>`): 운영(SaaS) / 공공(CSAP) / 직접 입력 — 모달 열릴 때 현재 페이지 환경으로 초기값 세팅
+- `#_cpSaveCustomUrlWrap` / `#_cpSaveCustomUrl`: `직접 입력` 선택 시에만 표시되는 URL 입력 필드
+- `_cpSaveEnvChange()`: select 변경 시 Custom URL 래퍼 표시/숨김 처리
+- `envFixed` 설정 페이지에서는 `#_cpSaveEnv`가 `disabled` — 환경 변경 불가
+- 저장 시 환경값은 페이지 필드가 아닌 **모달 select에서 직접 읽음** (항상 DB 형식 `op_saas`/`csap`/`custom`)
+
+**불러오기 모달 환경 표시:**
+- `_envLabel(c)` 헬퍼: `custom` 환경이고 `custom_url`이 있으면 `직접 입력 · {url}` 형식으로 표시
+- URL이 긴 경우 환경 태그에서 `max-width:320px` + 말줄임(`text-overflow:ellipsis`) 처리
+
+**CSS 격리:** `_injectStyles()`가 `<style>` 태그를 `<head>`에 삽입하여 모달 내부 `button`·`input`·`select`에 `all:revert` 적용 → 호스트 페이지 전역 CSS 오염 방지
 
 **`secretMethodType` 처리:**
 - `'radio'`: `[name="secretMethodId"]:checked` 값 읽기/쓰기

@@ -295,6 +295,9 @@ BASE_URL=                # 예: https://eformproj.vercel.app
 SAML_PRIVATE_KEY=        # base64 인코딩된 개인 키
 SAML_PUBLIC_CERT=        # base64 인코딩된 공개 인증서
 
+# ─── 크리덴셜 암호화 ─────────────────────────────────────
+CREDENTIAL_ENCRYPTION_KEY=  # eformsign 비밀 키 AES-256-GCM 암호화 키 (openssl rand -hex 32 로 생성)
+
 # ─── Cron ─────────────────────────────────────────────────
 CRON_SECRET=             # Cron 엔드포인트 인증 시크릿 (임의 문자열)
 
@@ -537,6 +540,55 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 
 ---
 
+## 2026-04-24 Update
+
+### eformsign 크리덴셜 비밀 키 AES-256-GCM 암호화 적용
+
+DB에 plaintext로 저장되던 `secret_key`(EC 개인키)를 AES-256-GCM으로 암호화하여 저장하도록 변경했습니다.
+
+- **암호화 키**: `CREDENTIAL_ENCRYPTION_KEY` 환경변수 (32바이트 hex, `openssl rand -hex 32`)
+- **저장 형식**: `{iv_hex}:{authTag_hex}:{ciphertext_hex}` — DB에는 암호문만 저장
+- **복호화 시점**: 단건 조회(`GET /api/credentials/:id`) 시 서버에서 복호화 후 반환 — 클라이언트(`credential-panel.js`) 변경 없음
+- **null 처리**: 비밀 키를 저장하지 않은 크리덴셜은 암호화/복호화 대상에서 제외, 기존 동작 유지
+- **기존 데이터 마이그레이션**: `scripts/migrate-credentials-encrypt.js` one-time 스크립트로 기존 plaintext 데이터 일괄 재암호화 가능
+- **하위 호환**: 마이그레이션 전 기존 plaintext 데이터도 정상 복호화 — `isEncrypted()` 판별 후 분기 처리
+
+#### 마이그레이션 (기존 저장된 비밀 키가 있는 경우)
+
+```bash
+POSTGRES_URL="..." CREDENTIAL_ENCRYPTION_KEY="..." node scripts/migrate-credentials-encrypt.js
+```
+
+#### 환경변수 키 생성
+
+```bash
+# Linux/Mac
+openssl rand -hex 32
+
+# PowerShell
+-join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) })
+```
+
+Vercel 대시보드에서 Production / Preview / Development 세 환경 모두 등록 후 `vercel env pull .env.local` 로 로컬 동기화.
+
+### 크리덴셜 저장/불러오기 모달 환경 선택 및 Custom URL 표시 개선
+
+`assets/js/credential-panel.js` 단일 파일 수정. 서버·DB·HTML 파일 변경 없음.
+
+**저장 모달:**
+- 환경 선택 드롭다운 (`#_cpSaveEnv`) 추가 — 운영(SaaS) / 공공(CSAP) / 직접 입력
+- `직접 입력` 선택 시 Custom URL 입력 필드 (`#_cpSaveCustomUrl`) 동적 표시
+- 모달 열릴 때 현재 페이지 환경·URL이 초기값으로 자동 세팅
+- `envFixed` 페이지에서는 환경 select disabled 처리
+- 저장 시 환경·URL은 모달 필드에서 직접 읽음 (페이지 필드 재참조 없음)
+
+**불러오기 모달:**
+- `custom` 환경 항목의 환경 태그에 실제 URL 표시: `직접 입력 · {url}`
+- `custom_url`이 없는 항목은 기존과 동일하게 `직접 입력`만 표시
+- 긴 URL은 `max-width:320px` + 말줄임(`text-overflow:ellipsis`) 처리
+
+---
+
 ## 2026-04-21 Update
 
 ### Open API Tester — Body 에디터 실시간 JSON 유효성 검증
@@ -635,11 +687,11 @@ POSTGRES_URL="..." node scripts/migrate-ip-whitelist.js
 - **신규 API**: `GET/POST/DELETE /api/credentials` — JWT 인증 필수, 사용자별 완전 격리
 - **공유 모듈**: `assets/js/credential-panel.js` (IIFE) — Access Token을 발급하는 모든 도구에 적용. `window.CREDENTIAL_CONFIG`로 페이지별 필드 ID·환경값 매핑·다크 모드 설정
 - **적용 도구**: OpenAPITester, MemberV2, API(JS,HTML)/ 내 문서/목록 도구, Embedding/ 전체, utils/ 내 webhook·대량삭제·대량다운로드 등 Access Token 발급 도구 17개 이상
-- **불러오기 UX**: 인증 불러오기 모달에서 항목별 인증 이름·API Key·User ID·비밀 키 저장 여부를 레이블-값 리스트로 표시, [선택] 시 인증 패널 자동 채움
-- **저장 UX**: 저장 모달에서 이름 입력 + 인증 패널 현재 값 pre-fill, 수정 후 저장 가능
+- **불러오기 UX**: 인증 불러오기 모달에서 항목별 인증 이름·API Key·User ID·비밀 키 저장 여부를 레이블-값 리스트로 표시, [선택] 시 인증 패널 자동 채움. `custom` 환경 항목은 환경 태그에 `직접 입력 · {url}` 형식으로 실제 URL 표시 (말줄임 처리 포함)
+- **저장 UX**: 저장 모달에서 이름 입력 + 인증 패널 현재 값 pre-fill, 수정 후 저장 가능. **환경 선택 드롭다운** (운영/공공/직접 입력) 포함 — 직접 입력 선택 시 Custom URL 입력 필드 동적 표시. `envFixed` 페이지에서는 환경 선택 disabled
 - **비밀 키 저장**: 체크박스로 선택 저장 (`secret_key` nullable) — 미저장 시 불러오기 후 직접 입력 안내
 - **비로그인 차단**: 저장/불러오기 버튼 클릭 시 미인증이면 로그인 안내 모달 표시 (`?next=현재경로` 포함)
-- **보안**: 목록 조회 시 비밀 키 미반환 (`has_secret_key: boolean`만), 단건 조회 시에만 비밀 키 포함 응답
+- **보안**: 목록 조회 시 비밀 키 미반환 (`has_secret_key: boolean`만), 단건 조회 시에만 비밀 키 포함 응답. 비밀 키는 DB에 AES-256-GCM 암호화하여 저장 (→ 2026-04-24 Update 참고)
 - **다크 모드**: `CREDENTIAL_CONFIG.darkMode: true` 설정 시 모달이 다크 테마로 렌더링됨 (webhook.html 등 어두운 배경 페이지용)
 - **CSS 격리**: 모달 내 버튼·인풋에 `all:revert` 적용 — 호스트 페이지 전역 CSS(`button { width:100% }` 등) 오염 방지
 
