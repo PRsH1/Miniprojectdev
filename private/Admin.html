@@ -1566,7 +1566,7 @@ $(function () {
           <div class="detail-value">접수 ${createdAt}<br><span style="color:var(--text-sub)">업데이트 ${updatedAt}</span></div>
         </div>
         <div class="detail-block">
-          <div class="detail-label">상태 변경</div>
+          <div class="detail-label">답변 및 상태 관리</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <select class="form-input" id="bugReportStatusSelect" style="max-width:220px">
               <option value="open">open</option>
@@ -1574,14 +1574,21 @@ $(function () {
               <option value="resolved">resolved</option>
               <option value="closed">closed</option>
             </select>
-            <button class="btn btn-primary" id="btnSaveBugStatus">상태 저장</button>
           </div>
         </div>
         <div class="detail-block">
           <div class="detail-label">관리자 메모</div>
           <textarea class="form-input" id="bugReportAdminNote" rows="7" placeholder="내부 처리 메모를 남길 수 있습니다." style="resize:vertical">${esc(report.admin_note || '')}</textarea>
+        </div>
+        <div class="detail-block">
+          <div class="detail-label">버그 원인</div>
+          <textarea class="form-input" id="bugReportCause" rows="5" placeholder="제보자에게 공유할 원인 분석 내용을 입력하세요." style="resize:vertical">${esc(report.cause || '')}</textarea>
+        </div>
+        <div class="detail-block">
+          <div class="detail-label">조치 사항</div>
+          <textarea class="form-input" id="bugReportActionTaken" rows="5" placeholder="수정 내용, 우회 방법, 배포 여부 등을 입력하세요." style="resize:vertical">${esc(report.action_taken || '')}</textarea>
           <div class="detail-actions">
-            <button class="btn btn-ghost" id="btnSaveBugNote">메모 저장</button>
+            <button class="btn btn-primary" id="btnSaveBugReply">답변 저장</button>
             <button class="btn btn-danger" id="btnDeleteBugReport">삭제</button>
           </div>
         </div>
@@ -1591,29 +1598,18 @@ $(function () {
 
     $('#bugReportStatusSelect').val(report.status);
 
-    $('#btnSaveBugStatus').on('click', function () {
+    $('#btnSaveBugReply').on('click', function () {
       const status = $('#bugReportStatusSelect').val();
-      $.ajax({
-        url: `/api/bug-reports/${report.id}/update`,
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({ status }),
-      }).done(function () {
-        loadBugReports(true, '상태를 저장했습니다.');
-      }).fail(function (xhr) {
-        $('#bugReportDetailMsg').text(bugReportErrorMessage(xhr)).removeClass('ok').addClass('err');
-      });
-    });
-
-    $('#btnSaveBugNote').on('click', function () {
       const admin_note = $('#bugReportAdminNote').val();
+      const cause = $('#bugReportCause').val();
+      const action_taken = $('#bugReportActionTaken').val();
       $.ajax({
         url: `/api/bug-reports/${report.id}/update`,
         method: 'POST',
         contentType: 'application/json',
-        data: JSON.stringify({ admin_note }),
+        data: JSON.stringify({ status, admin_note, cause, action_taken }),
       }).done(function () {
-        loadBugReports(true, '메모를 저장했습니다.');
+        loadBugReports(true, '답변을 저장했습니다.');
       }).fail(function (xhr) {
         $('#bugReportDetailMsg').text(bugReportErrorMessage(xhr)).removeClass('ok').addClass('err');
       });

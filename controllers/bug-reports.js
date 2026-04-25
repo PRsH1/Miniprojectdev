@@ -3,6 +3,8 @@
  * 버그 리포트 API
  *
  * POST   /api/bug-reports
+ * GET    /api/bug-reports/mine
+ * GET    /api/bug-reports/mine/:id
  * GET    /api/bug-reports
  * GET    /api/bug-reports/:id
  * PATCH  /api/bug-reports/:id
@@ -18,6 +20,7 @@ const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 const ALLOWED_SEVERITY = ['low', 'normal', 'high', 'critical'];
 const ALLOWED_STATUS = ['open', 'in-progress', 'resolved', 'closed'];
+const STATUS_LABEL = { open: '접수됨', 'in-progress': '처리중', resolved: '해결됨', closed: '종료됨' };
 
 function requireAdmin(req, res) {
   const cookies = parse(req.headers.cookie || '');
@@ -197,13 +200,51 @@ module.exports = async function handler(req, res) {
 
     const reports = await sql`
       SELECT id, title, reporter_name, reporter_email, reporter_user_id, page_url,
-             severity, status, admin_note, created_at, updated_at
+             severity, status, cause, action_taken, admin_note, created_at, updated_at
       FROM bug_reports
       WHERE (${status}::text IS NULL OR status = ${status})
         AND (${severity}::text IS NULL OR severity = ${severity})
       ORDER BY created_at DESC, id DESC
     `;
     return res.status(200).json({ reports });
+  }
+
+  if (req.method === 'GET' && rawPath === '/api/bug-reports/mine') {
+    const decoded = requireAuth(req, res);
+    if (!decoded) return;
+
+    const reports = await sql`
+      SELECT id, title, description, severity, status, cause, action_taken, admin_note,
+             page_url, created_at, updated_at
+      FROM bug_reports
+      WHERE reporter_user_id = ${decoded.sub}
+      ORDER BY created_at DESC, id DESC
+    `;
+    return res.status(200).json({ reports });
+  }
+
+  const myReportMatch = rawPath.match(/^\/api\/bug-reports\/mine\/(\d+)$/);
+  if (req.method === 'GET' && myReportMatch) {
+    const decoded = requireAuth(req, res);
+    if (!decoded) return;
+
+    const id = parseInt(myReportMatch[1], 10);
+    const rows = await sql`
+      SELECT id, title, description, severity, status, cause, action_taken,
+             admin_note, page_url, created_at, updated_at
+      FROM bug_reports
+      WHERE id = ${id} AND reporter_user_id = ${decoded.sub}
+      LIMIT 1
+    `;
+    if (!rows.length) {
+      return respondError(req, res, 404, {
+        code: 'RESOURCE_NOT_FOUND',
+        message: '버그 리포트를 찾을 수 없습니다.',
+        reason: '본인이 제출한 리포트가 아니거나 삭제된 리포트입니다.',
+        action: '내 제보 목록을 새로고침한 뒤 다시 시도하세요.',
+      });
+    }
+    return res.status(200).json({ report: rows[0] });
   }
 
   const reportMatch = rawPath.match(/^\/api\/bug-reports\/(\d+)$/);
@@ -216,8 +257,9 @@ module.exports = async function handler(req, res) {
     const id = parseInt(reportMatch[1], 10);
     const rows = await sql`
       SELECT br.id, br.title, br.description, br.reporter_name, br.reporter_email,
-             br.reporter_user_id, br.page_url, br.severity, br.status, br.admin_note,
-             br.created_at, br.updated_at, u.username AS reporter_username
+             br.reporter_user_id, br.page_url, br.severity, br.status, br.cause,
+             br.action_taken, br.admin_note, br.created_at, br.updated_at,
+             u.username AS reporter_username
       FROM bug_reports br
       LEFT JOIN users u ON u.id = br.reporter_user_id
       WHERE br.id = ${id}
@@ -241,18 +283,22 @@ module.exports = async function handler(req, res) {
     const id = parseInt((reportMatch || reportUpdateMatch)[1], 10);
     const body = req.body || {};
     const hasStatus = body.status !== undefined;
+    const hasCause = body.cause !== undefined;
+    const hasActionTaken = body.action_taken !== undefined;
     const hasAdminNote = body.admin_note !== undefined;
 
-    if (!hasStatus && !hasAdminNote) {
+    if (!hasStatus && !hasCause && !hasActionTaken && !hasAdminNote) {
       return respondError(req, res, 400, {
         code: 'VALIDATION_FAILED',
         message: '변경할 항목이 없습니다.',
-        reason: 'status 또는 admin_note 중 하나 이상이 필요합니다.',
+        reason: 'status, cause, action_taken, admin_note 중 하나 이상이 필요합니다.',
         action: '수정할 값을 입력한 뒤 다시 시도하세요.',
       });
     }
 
     const status = hasStatus ? String(body.status || '').trim() : null;
+    const cause = hasCause ? (String(body.cause || '').trim() || null) : null;
+    const actionTaken = hasActionTaken ? (String(body.action_taken || '').trim() || null) : null;
     const adminNote = hasAdminNote ? (String(body.admin_note || '').trim() || null) : null;
 
     if (hasStatus && !ALLOWED_STATUS.includes(status)) {
@@ -264,24 +310,69 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const rows = await sql`
-      UPDATE bug_reports
-      SET
-        status = CASE WHEN ${hasStatus} THEN ${status} ELSE status END,
-        admin_note = CASE WHEN ${hasAdminNote} THEN ${adminNote} ELSE admin_note END,
-        updated_at = NOW()
+    const beforeRows = await sql`
+      SELECT status, reporter_user_id, cause, action_taken
+      FROM bug_reports
       WHERE id = ${id}
-      RETURNING id, title, description, reporter_name, reporter_email, reporter_user_id,
-                page_url, severity, status, admin_note, created_at, updated_at
+      LIMIT 1
     `;
-
-    if (!rows.length) {
+    if (!beforeRows.length) {
       return respondError(req, res, 404, {
         code: 'RESOURCE_NOT_FOUND',
         message: '버그 리포트를 찾을 수 없습니다.',
         reason: '수정 대상 제보가 없거나 이미 삭제되었습니다.',
         action: '목록을 새로고침한 뒤 다시 시도하세요.',
       });
+    }
+    const before = beforeRows[0];
+
+    const rows = await sql`
+      UPDATE bug_reports
+      SET
+        status = CASE WHEN ${hasStatus} THEN ${status} ELSE status END,
+        cause = CASE WHEN ${hasCause} THEN ${cause} ELSE cause END,
+        action_taken = CASE WHEN ${hasActionTaken} THEN ${actionTaken} ELSE action_taken END,
+        admin_note = CASE WHEN ${hasAdminNote} THEN ${adminNote} ELSE admin_note END,
+        updated_at = NOW()
+      WHERE id = ${id}
+      RETURNING id, title, description, reporter_name, reporter_email, reporter_user_id,
+                page_url, severity, status, cause, action_taken, admin_note,
+                created_at, updated_at
+    `;
+
+    if (hasStatus && before.status !== status && before.reporter_user_id) {
+      try {
+        await sql`
+          INSERT INTO notifications (type, reference_id, title, body, target_user_id)
+          VALUES (
+            'bug_report_status',
+            ${String(id)},
+            '버그 리포트 상태 변경',
+            ${'리포트 #' + id + ' 상태가 ' + (STATUS_LABEL[status] || status) + '으로 변경되었습니다.'},
+            ${before.reporter_user_id}
+          )
+        `;
+      } catch (notifError) {
+        console.error('버그 알림 INSERT 오류 (무시):', notifError);
+      }
+    }
+
+    if (before.reporter_user_id
+      && ((hasCause && !before.cause && cause) || (hasActionTaken && !before.action_taken && actionTaken))) {
+      try {
+        await sql`
+          INSERT INTO notifications (type, reference_id, title, body, target_user_id)
+          VALUES (
+            'bug_report_reply',
+            ${String(id)},
+            '버그 리포트 답변 등록',
+            ${'리포트 #' + id + ' 에 관리자 답변이 등록되었습니다.'},
+            ${before.reporter_user_id}
+          )
+        `;
+      } catch (notifError) {
+        console.error('버그 답변 알림 INSERT 오류 (무시):', notifError);
+      }
     }
 
     await insertAuditLog({
@@ -290,7 +381,7 @@ module.exports = async function handler(req, res) {
       target: String(id),
       ipAddress: ip,
       result: 'success',
-      metadata: { hasStatus, hasAdminNote, status },
+      metadata: { hasStatus, hasCause, hasActionTaken, hasAdminNote, status },
     });
 
     return res.status(200).json({ report: rows[0] });
@@ -327,7 +418,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
-  if (rawPath === '/api/bug-reports' || reportMatch || reportUpdateMatch) {
+  if (rawPath === '/api/bug-reports' || rawPath === '/api/bug-reports/mine' || myReportMatch || reportMatch || reportUpdateMatch) {
     return methodNotAllowed(req, res, ['GET', 'POST', 'PATCH', 'DELETE']);
   }
 

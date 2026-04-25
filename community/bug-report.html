@@ -16,41 +16,44 @@
         radial-gradient(circle at top right, rgba(248,113,113,.14), transparent 28%),
         linear-gradient(180deg, #fff9f5 0%, #f8fafc 100%);
     }
-    .shell {
-      width: min(900px, calc(100vw - 32px));
-      margin: 0 auto;
-      padding: 60px 0 80px;
-    }
-    .hero {
-      margin-bottom: 24px;
-    }
-    .hero h1 {
-      margin: 0 0 10px;
-      font-size: clamp(30px, 4.5vw, 40px);
-      letter-spacing: -.04em;
-    }
-    .hero p {
-      margin: 0;
-      max-width: 700px;
-      line-height: 1.7;
-      color: #4b5563;
-    }
+    .shell { width: min(960px, calc(100vw - 32px)); margin: 0 auto; padding: 60px 0 80px; }
+    .hero { margin-bottom: 24px; }
+    .hero h1 { margin: 0 0 10px; font-size: clamp(30px, 4.5vw, 40px); letter-spacing: -.04em; }
+    .hero p { margin: 0; max-width: 720px; line-height: 1.7; color: #4b5563; }
     .panel {
       background: rgba(255,255,255,.92);
-      border: 1px solid rgba(251, 146, 60, .18);
+      border: 1px solid rgba(251,146,60,.18);
       border-radius: 28px;
-      box-shadow: 0 22px 54px rgba(15, 23, 42, .08);
+      box-shadow: 0 22px 54px rgba(15,23,42,.08);
       padding: 28px;
       backdrop-filter: blur(10px);
     }
-    .gate,
-    .success-box {
-      display: none;
+    .tab-nav {
+      display: flex;
+      gap: 10px;
+      padding-bottom: 18px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid #fed7aa;
     }
-    .gate.active,
-    .success-box.active {
-      display: block;
+    .tab-btn {
+      border: 1px solid #fed7aa;
+      border-radius: 999px;
+      padding: 11px 18px;
+      background: #fff7ed;
+      color: #9a3412;
+      font-weight: 800;
+      cursor: pointer;
     }
+    .tab-btn.active {
+      border-color: transparent;
+      color: #fff;
+      background: linear-gradient(135deg, #ea580c, #fb923c);
+      box-shadow: 0 14px 28px rgba(249,115,22,.18);
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .gate, .success-box { display: none; }
+    .gate.active, .success-box.active { display: block; }
     .gate {
       background: #fff7ed;
       border: 1px solid #fed7aa;
@@ -58,32 +61,12 @@
       padding: 24px;
       color: #9a3412;
     }
-    .gate h2,
-    .success-box h2 {
-      margin: 0 0 10px;
-      font-size: 24px;
-    }
-    .gate p,
-    .success-box p {
-      margin: 0;
-      line-height: 1.7;
-    }
-    .form-shell.hidden {
-      display: none;
-    }
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 18px;
-    }
-    label {
-      font-size: 13px;
-      font-weight: 700;
-      color: #374151;
-    }
-    input[type="text"],
-    textarea {
+    .gate h2, .success-box h2 { margin: 0 0 10px; font-size: 24px; }
+    .gate p, .success-box p { margin: 0; line-height: 1.7; }
+    .form-shell.hidden, .view-hidden { display: none; }
+    .field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+    label { font-size: 13px; font-weight: 700; color: #374151; }
+    input[type="text"], textarea {
       width: 100%;
       border: 1px solid #fed7aa;
       border-radius: 18px;
@@ -94,29 +77,14 @@
       outline: none;
       transition: border-color .15s ease, box-shadow .15s ease;
     }
-    input[type="text"]:focus,
-    textarea:focus {
+    input[type="text"]:focus, textarea:focus {
       border-color: #f97316;
-      box-shadow: 0 0 0 4px rgba(249, 115, 22, .12);
+      box-shadow: 0 0 0 4px rgba(249,115,22,.12);
     }
-    textarea {
-      min-height: 180px;
-      resize: vertical;
-      line-height: 1.65;
-    }
-    .severity-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .severity-option {
-      position: relative;
-    }
-    .severity-option input {
-      position: absolute;
-      opacity: 0;
-      pointer-events: none;
-    }
+    textarea { min-height: 180px; resize: vertical; line-height: 1.65; }
+    .severity-group { display: flex; flex-wrap: wrap; gap: 10px; }
+    .severity-option { position: relative; }
+    .severity-option input { position: absolute; opacity: 0; pointer-events: none; }
     .severity-option span {
       display: inline-flex;
       align-items: center;
@@ -137,13 +105,9 @@
       color: #fff;
       border-color: transparent;
       transform: translateY(-1px);
-      box-shadow: 0 14px 28px rgba(249, 115, 22, .18);
+      box-shadow: 0 14px 28px rgba(249,115,22,.18);
     }
-    .actions {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 24px;
-    }
+    .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; flex-wrap: wrap; }
     .btn {
       border: 0;
       border-radius: 999px;
@@ -153,12 +117,10 @@
       cursor: pointer;
       background: linear-gradient(135deg, #ea580c, #fb923c);
       color: #fff;
-      box-shadow: 0 14px 28px rgba(249, 115, 22, .2);
+      box-shadow: 0 14px 28px rgba(249,115,22,.2);
     }
-    .btn:disabled {
-      opacity: .7;
-      cursor: wait;
-    }
+    .btn.secondary { background: #111827; box-shadow: none; }
+    .btn:disabled { opacity: .7; cursor: wait; }
     .btn-link {
       display: inline-flex;
       align-items: center;
@@ -179,12 +141,7 @@
       color: #9a3412;
       font-size: 14px;
     }
-    .status-msg {
-      min-height: 20px;
-      margin-top: 6px;
-      font-size: 13px;
-      color: #dc2626;
-    }
+    .status-msg { min-height: 20px; margin-top: 6px; font-size: 13px; color: #dc2626; }
     .success-box {
       border-radius: 22px;
       border: 1px solid #bbf7d0;
@@ -192,11 +149,115 @@
       padding: 24px;
       color: #166534;
     }
+    .list-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .list-head h2 { margin: 0; font-size: 22px; }
+    .report-list { display: grid; gap: 12px; }
+    .report-card {
+      width: 100%;
+      text-align: left;
+      border: 1px solid #ffedd5;
+      border-radius: 20px;
+      padding: 16px;
+      background: #fffaf7;
+      cursor: pointer;
+      transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+    }
+    .report-card:hover {
+      transform: translateY(-1px);
+      border-color: #fb923c;
+      box-shadow: 0 14px 28px rgba(15,23,42,.08);
+    }
+    .report-card-title { margin: 0 0 10px; font-size: 16px; font-weight: 900; color: #111827; }
+    .report-card-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #6b7280; font-size: 13px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .status-open, .status-closed { background: #f3f4f6; color: #4b5563; }
+    .status-in-progress { background: #dbeafe; color: #1d4ed8; }
+    .status-resolved { background: #dcfce7; color: #047857; }
+    .severity-low { background: #ecfdf5; color: #047857; }
+    .severity-normal { background: #eff6ff; color: #1d4ed8; }
+    .severity-high { background: #fff7ed; color: #c2410c; }
+    .severity-critical { background: #fef2f2; color: #dc2626; }
+    .empty-state {
+      border: 1px dashed #fdba74;
+      border-radius: 20px;
+      padding: 28px;
+      color: #9a3412;
+      background: #fff7ed;
+      text-align: center;
+    }
+    .detail-toolbar { margin-bottom: 16px; }
+    .back-btn {
+      border: 0;
+      background: transparent;
+      color: #9a3412;
+      font-weight: 800;
+      cursor: pointer;
+      padding: 0;
+    }
+    .detail-card {
+      border: 1px solid #ffedd5;
+      border-radius: 24px;
+      padding: 22px;
+      background: #fffaf7;
+    }
+    .detail-card h2 { margin: 0 0 12px; font-size: 24px; letter-spacing: -.02em; }
+    .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+    .detail-field {
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: #fff;
+      border: 1px solid #ffedd5;
+    }
+    .detail-label { font-size: 12px; font-weight: 900; color: #9a3412; margin-bottom: 6px; }
+    .detail-value { font-size: 14px; color: #374151; overflow-wrap: anywhere; }
+    .content-block { margin-top: 18px; }
+    .content-block h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+      color: #111827;
+    }
+    .content-box {
+      white-space: pre-wrap;
+      line-height: 1.7;
+      border-radius: 16px;
+      border: 1px solid #ffedd5;
+      background: #fff;
+      padding: 14px;
+      color: #374151;
+    }
+    .answer-section {
+      margin-top: 22px;
+      padding-top: 22px;
+      border-top: 1px solid #fed7aa;
+    }
+    .answer-empty {
+      border-radius: 16px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      padding: 16px;
+      color: #6b7280;
+    }
     @media (max-width: 680px) {
-      .shell { width: min(100vw - 24px, 900px); padding-top: 34px; }
+      .shell { width: min(100vw - 24px, 960px); padding-top: 34px; }
       .panel { padding: 20px; }
+      .tab-nav { display: grid; grid-template-columns: 1fr; }
       .severity-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .severity-option span { width: 100%; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .list-head { align-items: flex-start; flex-direction: column; }
     }
   </style>
 </head>
@@ -204,66 +265,82 @@
   <main class="shell">
     <section class="hero">
       <h1>버그 리포트</h1>
-      <p>재현 가능한 문제를 제보해 주세요. 로그인 사용자만 제출할 수 있으며, 접수 즉시 관리자에게 알림이 전달됩니다.</p>
+      <p>재현 가능한 문제를 제보하고, 내가 제출한 리포트의 처리 상태와 관리자 답변을 확인할 수 있습니다.</p>
     </section>
 
     <section class="panel">
-      <div class="gate" id="loginGate">
-        <h2>로그인 후 제보할 수 있습니다</h2>
-        <p>운영 부하와 스팸을 줄이기 위해 로그인 사용자만 버그 리포트를 제출할 수 있습니다.</p>
-        <a class="btn-link" id="loginLink" href="/auth/login.html?next=%2Fcommunity%2Fbug-report.html">로그인하러 가기</a>
+      <div class="tab-nav">
+        <button type="button" class="tab-btn active" id="tabSubmitBtn" data-tab="submit">버그 제보</button>
+        <button type="button" class="tab-btn" id="tabMyListBtn" data-tab="my">내 제보 목록 · <span id="myReportCount">0</span></button>
       </div>
 
-      <div class="form-shell hidden" id="reportShell">
-        <div class="meta" id="reporterMeta"></div>
-        <form id="bugReportForm">
-          <div class="field">
-            <label for="reportTitle">제목 *</label>
-            <input type="text" id="reportTitle" maxlength="256" placeholder="예: 관리자 콘솔 저장 버튼이 동작하지 않습니다">
-          </div>
+      <div class="tab-panel active" id="tabSubmit">
+        <div class="gate" id="loginGate">
+          <h2>로그인 후 제보할 수 있습니다</h2>
+          <p>운영 부하와 스팸을 줄이기 위해 로그인 사용자만 버그 리포트를 제출할 수 있습니다.</p>
+          <a class="btn-link" id="loginLink" href="/auth/login.html?next=%2Fcommunity%2Fbug-report.html">로그인하러 가기</a>
+        </div>
 
-          <div class="field">
-            <label for="reportDescription">설명 *</label>
-            <textarea id="reportDescription" placeholder="재현 절차, 기대 결과, 실제 결과를 함께 적어 주세요."></textarea>
-          </div>
-
-          <div class="field">
-            <label for="reportPageUrl">발생 페이지</label>
-            <input type="text" id="reportPageUrl" maxlength="512" placeholder="예: /app/admin?tab=users">
-          </div>
-
-          <div class="field">
-            <label>심각도</label>
-            <div class="severity-group">
-              <label class="severity-option">
-                <input type="radio" name="severity" value="low">
-                <span>낮음</span>
-              </label>
-              <label class="severity-option">
-                <input type="radio" name="severity" value="normal" checked>
-                <span>보통</span>
-              </label>
-              <label class="severity-option">
-                <input type="radio" name="severity" value="high">
-                <span>높음</span>
-              </label>
-              <label class="severity-option">
-                <input type="radio" name="severity" value="critical">
-                <span>긴급</span>
-              </label>
+        <div class="form-shell hidden" id="reportShell">
+          <div class="meta" id="reporterMeta"></div>
+          <form id="bugReportForm">
+            <div class="field">
+              <label for="reportTitle">제목 *</label>
+              <input type="text" id="reportTitle" maxlength="256" placeholder="예: 관리자 콘솔 저장 버튼이 동작하지 않습니다">
             </div>
-          </div>
 
-          <div class="status-msg" id="formMessage"></div>
-          <div class="actions">
-            <button type="submit" class="btn" id="submitButton">제출</button>
+            <div class="field">
+              <label for="reportDescription">설명 *</label>
+              <textarea id="reportDescription" placeholder="재현 절차, 기대 결과, 실제 결과를 함께 적어 주세요."></textarea>
+            </div>
+
+            <div class="field">
+              <label for="reportPageUrl">발생 페이지</label>
+              <input type="text" id="reportPageUrl" maxlength="512" placeholder="예: /app/admin?tab=users">
+            </div>
+
+            <div class="field">
+              <label>심각도</label>
+              <div class="severity-group">
+                <label class="severity-option"><input type="radio" name="severity" value="low"><span>낮음</span></label>
+                <label class="severity-option"><input type="radio" name="severity" value="normal" checked><span>보통</span></label>
+                <label class="severity-option"><input type="radio" name="severity" value="high"><span>높음</span></label>
+                <label class="severity-option"><input type="radio" name="severity" value="critical"><span>긴급</span></label>
+              </div>
+            </div>
+
+            <div class="status-msg" id="formMessage"></div>
+            <div class="actions">
+              <button type="submit" class="btn" id="submitButton">제출</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="success-box" id="successBox">
+          <h2>버그 리포트를 접수했습니다</h2>
+          <p id="successText">관리자가 확인 후 상태를 업데이트합니다.</p>
+          <div class="actions" style="justify-content:flex-start">
+            <button type="button" class="btn secondary" id="goMyReportsBtn">내 제보 목록 보기</button>
           </div>
-        </form>
+        </div>
       </div>
 
-      <div class="success-box" id="successBox">
-        <h2>버그 리포트를 접수했습니다</h2>
-        <p id="successText">관리자가 확인 후 상태를 업데이트합니다.</p>
+      <div class="tab-panel" id="tabMyList">
+        <div class="gate" id="myListGate">
+          <h2>로그인 후 내 제보를 확인할 수 있습니다</h2>
+          <p>내가 제출한 버그 리포트 목록과 관리자 답변은 로그인 사용자에게만 표시됩니다.</p>
+          <a class="btn-link" id="myListLoginLink" href="/auth/login.html?next=%2Fcommunity%2Fbug-report.html%23my-reports">로그인하러 가기</a>
+        </div>
+
+        <div id="myListView" class="view-hidden">
+          <div class="list-head">
+            <h2>내 제보 목록</h2>
+            <button type="button" class="btn secondary" id="reloadMyReportsBtn">새로고침</button>
+          </div>
+          <div id="myReportsList" class="report-list"></div>
+        </div>
+
+        <div id="myDetailView" class="view-hidden"></div>
       </div>
     </section>
   </main>
@@ -271,8 +348,10 @@
   <script>
     window.AUTH_STATUS_CORNER = true;
   </script>
+  <script src="/assets/js/auth-status.js"></script>
   <script>
     const loginGate = document.getElementById('loginGate');
+    const myListGate = document.getElementById('myListGate');
     const reportShell = document.getElementById('reportShell');
     const reporterMeta = document.getElementById('reporterMeta');
     const bugReportForm = document.getElementById('bugReportForm');
@@ -283,35 +362,180 @@
     const reportTitle = document.getElementById('reportTitle');
     const reportDescription = document.getElementById('reportDescription');
     const reportPageUrl = document.getElementById('reportPageUrl');
+    const myReportsList = document.getElementById('myReportsList');
+    const myListView = document.getElementById('myListView');
+    const myDetailView = document.getElementById('myDetailView');
+    const myReportCount = document.getElementById('myReportCount');
+
+    let currentUser = null;
+    let myReports = [];
+    let activeTab = 'submit';
+
+    const STATUS_LABEL = { open: '접수됨', 'in-progress': '처리중', resolved: '해결됨', closed: '종료됨' };
+    const SEVERITY_LABEL = { low: '낮음', normal: '보통', high: '높음', critical: '긴급' };
+
+    function esc(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatDate(value) {
+      return value ? new Date(value).toLocaleString('ko-KR') : '-';
+    }
+
+    function statusBadge(status) {
+      return '<span class="badge status-' + esc(status || 'open') + '">' + esc(STATUS_LABEL[status] || status || '-') + '</span>';
+    }
+
+    function severityBadge(severity) {
+      return '<span class="badge severity-' + esc(severity || 'normal') + '">' + esc(SEVERITY_LABEL[severity] || severity || '-') + '</span>';
+    }
 
     function showGate() {
       loginGate.classList.add('active');
       reportShell.classList.add('hidden');
       successBox.classList.remove('active');
+      myListGate.classList.add('active');
+      myListView.classList.add('view-hidden');
+      myDetailView.classList.add('view-hidden');
     }
 
     function showForm(user) {
       loginGate.classList.remove('active');
       reportShell.classList.remove('hidden');
+      successBox.classList.remove('active');
       reporterMeta.textContent = user.username + ' 계정으로 제보합니다. 제출 후 관리자에게 알림이 전송됩니다.';
+      myListGate.classList.remove('active');
+      myListView.classList.remove('view-hidden');
+    }
+
+    function switchTab(tab, options) {
+      activeTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+      });
+      document.getElementById('tabSubmit').classList.toggle('active', tab === 'submit');
+      document.getElementById('tabMyList').classList.toggle('active', tab === 'my');
+
+      if (tab === 'my') {
+        if (window.location.hash !== '#my-reports') window.location.hash = 'my-reports';
+        if (currentUser) loadMyReports();
+      } else if (!options || !options.keepHash) {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+        if (currentUser) showForm(currentUser);
+      }
     }
 
     function showSuccess(reportId) {
       reportShell.classList.add('hidden');
       successBox.classList.add('active');
       successText.textContent = '리포트 #' + reportId + ' 로 접수했습니다. 관리자가 확인 후 상태를 업데이트합니다.';
+      setTimeout(function () {
+        switchTab('my');
+      }, 1500);
+    }
+
+    function renderMyReports() {
+      myReportCount.textContent = myReports.length;
+      myDetailView.classList.add('view-hidden');
+      myListView.classList.remove('view-hidden');
+      myReportsList.innerHTML = '';
+
+      if (!myReports.length) {
+        myReportsList.innerHTML = '<div class="empty-state">아직 제보한 버그가 없습니다.</div>';
+        return;
+      }
+
+      myReports.forEach(function (report) {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'report-card';
+        card.innerHTML =
+          '<p class="report-card-title">' + esc(report.title) + '</p>' +
+          '<div class="report-card-meta">' +
+          statusBadge(report.status) +
+          severityBadge(report.severity) +
+          '<span>제보일 ' + esc(formatDate(report.created_at)) + '</span>' +
+          '</div>';
+        card.addEventListener('click', function () { renderMyDetail(report); });
+        myReportsList.appendChild(card);
+      });
+    }
+
+    function renderAnswerBlock(report) {
+      const blocks = [];
+      if (report.cause) {
+        blocks.push('<div class="content-block"><h3>버그 원인</h3><div class="content-box">' + esc(report.cause) + '</div></div>');
+      }
+      if (report.action_taken) {
+        blocks.push('<div class="content-block"><h3>조치 사항</h3><div class="content-box">' + esc(report.action_taken) + '</div></div>');
+      }
+      if (report.admin_note) {
+        blocks.push('<div class="content-block"><h3>메모</h3><div class="content-box">' + esc(report.admin_note) + '</div></div>');
+      }
+      if (!blocks.length) {
+        return '<div class="answer-empty">관리자가 검토 중입니다.</div>';
+      }
+      return blocks.join('');
+    }
+
+    function renderMyDetail(report) {
+      myListView.classList.add('view-hidden');
+      myDetailView.classList.remove('view-hidden');
+      myDetailView.innerHTML =
+        '<div class="detail-toolbar"><button type="button" class="back-btn" id="backToMyListBtn">← 목록으로</button></div>' +
+        '<div class="detail-card">' +
+        '<h2>' + esc(report.title) + '</h2>' +
+        '<div class="report-card-meta">' + statusBadge(report.status) + severityBadge(report.severity) + '</div>' +
+        '<div class="detail-grid">' +
+        '<div class="detail-field"><div class="detail-label">제보일</div><div class="detail-value">' + esc(formatDate(report.created_at)) + '</div></div>' +
+        '<div class="detail-field"><div class="detail-label">업데이트</div><div class="detail-value">' + esc(formatDate(report.updated_at)) + '</div></div>' +
+        '<div class="detail-field" style="grid-column:1/-1"><div class="detail-label">발생 페이지</div><div class="detail-value">' + esc(report.page_url || '-') + '</div></div>' +
+        '</div>' +
+        '<div class="content-block"><h3>내 제보 내용</h3><div class="content-box">' + esc(report.description || '') + '</div></div>' +
+        '<div class="answer-section"><h3>관리자 답변</h3>' + renderAnswerBlock(report) + '</div>' +
+        '</div>';
+      document.getElementById('backToMyListBtn').addEventListener('click', renderMyReports);
+    }
+
+    async function loadMyReports() {
+      if (!currentUser) return;
+      myListGate.classList.remove('active');
+      myListView.classList.remove('view-hidden');
+      myDetailView.classList.add('view-hidden');
+      myReportsList.innerHTML = '<div class="empty-state">내 제보 목록을 불러오는 중...</div>';
+
+      try {
+        const response = await fetch('/api/bug-reports/mine');
+        const data = await response.json();
+        if (!response.ok) {
+          myReportsList.innerHTML = '<div class="empty-state">목록을 불러오지 못했습니다.</div>';
+          return;
+        }
+        myReports = data.reports || [];
+        renderMyReports();
+      } catch (error) {
+        myReportsList.innerHTML = '<div class="empty-state">목록을 불러오는 중 오류가 발생했습니다.</div>';
+      }
     }
 
     async function loadMe() {
       try {
-        const response = await fetch('/api/me');
-        const data = await response.json();
+        const data = window.AUTH_STATUS_ME_PROMISE
+          ? await window.AUTH_STATUS_ME_PROMISE
+          : await fetch('/api/me').then(function (response) { return response.json(); });
         const authenticated = data && data.authenticated !== false && data.username;
         if (!authenticated) {
           showGate();
           return null;
         }
+        currentUser = data;
         showForm(data);
+        if (activeTab === 'my') loadMyReports();
         return data;
       } catch (error) {
         showGate();
@@ -360,6 +584,11 @@
       }
     });
 
+    document.getElementById('tabSubmitBtn').addEventListener('click', function () { switchTab('submit'); });
+    document.getElementById('tabMyListBtn').addEventListener('click', function () { switchTab('my'); });
+    document.getElementById('goMyReportsBtn').addEventListener('click', function () { switchTab('my'); });
+    document.getElementById('reloadMyReportsBtn').addEventListener('click', loadMyReports);
+
     if (document.referrer) {
       try {
         const ref = new URL(document.referrer);
@@ -369,8 +598,10 @@
       } catch (error) {}
     }
 
+    if (window.location.hash === '#my-reports') {
+      switchTab('my', { keepHash: true });
+    }
     loadMe();
   </script>
-  <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

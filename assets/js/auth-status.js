@@ -223,9 +223,9 @@
             ? '<a href="/app/admin" class="asb-btn">관리자 콘솔</a>'
             : '';
 
-        // 벨 아이콘 — 상단 바 모드 + admin 전용
+        // 벨 아이콘 — 상단 바 모드 로그인 사용자 공통
         var bellHtml = '';
-        if (user.role === 'admin' && !CORNER) {
+        if (!CORNER) {
             bellHtml =
                 '<div class="asb-notif-wrap">' +
                 '<button class="asb-bell" id="asbBellBtn" title="알림">&#128276;' +
@@ -252,8 +252,8 @@
                 .finally(function () { window.location.reload(); });
         });
 
-        // admin 전용 알림 초기화 (상단 바 모드에서만)
-        if (user.role === 'admin' && !CORNER) {
+        // 알림 초기화 (상단 바 모드에서만)
+        if (!CORNER) {
             var bellBtn = document.getElementById('asbBellBtn');
             if (bellBtn) {
                 bellBtn.addEventListener('click', function (e) {
@@ -298,6 +298,8 @@
     function getNotificationDest(type) {
         if (type === 'signup_request') return '/app/admin?tab=signup-requests';
         if (type === 'bug_report') return '/app/admin?tab=bug-reports';
+        if (type === 'bug_report_status') return '/community/bug-report.html#my-reports';
+        if (type === 'bug_report_reply') return '/community/bug-report.html#my-reports';
         return '/app/admin';
     }
 
@@ -485,13 +487,14 @@
     }
 
     // ─── /api/me 호출 ────────────────────────────────────────
-    fetch('/api/me')
+    window.AUTH_STATUS_ME_PROMISE = window.AUTH_STATUS_ME_PROMISE || fetch('/api/me')
         .then(function (r) { return r.json(); })
-        .then(function (data) {
-            var isAuth = data && data.authenticated !== false && data.username;
-            render(isAuth ? data : null);
-        })
-        .catch(function () { render(null); });
+        .catch(function () { return null; });
+
+    window.AUTH_STATUS_ME_PROMISE.then(function (data) {
+        var isAuth = data && data.authenticated !== false && data.username;
+        render(isAuth ? data : null);
+    });
 
     // 드롭다운 바깥 클릭 시 패널 닫기
     document.addEventListener('click', function (e) {
