@@ -2,6 +2,9 @@
   "name": "miniproject-hub",
   "version": "1.0.0",
   "description": "API, Embedding, and Utility Tools Hub",
+  "scripts": {
+    "check:pages": "node scripts/check-protected-pages.js"
+  },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
     "@vercel/analytics": "^1.6.1",
