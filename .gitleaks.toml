@@ -1,0 +1,74 @@
+title = "ProjectImprove secret scanning"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "tracked-env-file"
+description = "Environment files must not be committed."
+path = '''(?i)(^|[\\/])\.env($|\.)'''
+regex = '''(?s).{1,}'''
+tags = ["env", "secret"]
+
+[[rules]]
+id = "tracked-pem-file"
+description = "PEM files, including SAML keys and certificates, must not be committed."
+path = '''(?i)(^|[\\/])certs[\\/]|\.pem$'''
+regex = '''(?s).{1,}'''
+tags = ["pem", "saml"]
+
+[[rules]]
+id = "private-key-pem-block"
+description = "Private key PEM block."
+regex = '''(?i)-{5}BEGIN[[:space:]]+(RSA[[:space:]]+|DSA[[:space:]]+|EC[[:space:]]+|OPENSSH[[:space:]]+|ENCRYPTED[[:space:]]+)?PRIVATE[[:space:]]+KEY-{5}'''
+keywords = ["PRIVATE KEY"]
+tags = ["key", "pem", "saml"]
+
+[[rules]]
+id = "certificate-pem-block"
+description = "Public certificate PEM block."
+regex = '''(?i)-{5}BEGIN[[:space:]]+CERTIFICATE-{5}'''
+keywords = ["BEGIN CERTIFICATE"]
+tags = ["certificate", "pem", "saml"]
+
+[[rules]]
+id = "saml-private-key-env"
+description = "Base64-encoded SAML private key environment value."
+regex = '''(?i)SAML_PRIVATE_KEY[[:space:]]*[:=][[:space:]]*["']?[A-Za-z0-9+/=]{80,}'''
+keywords = ["SAML_PRIVATE_KEY"]
+tags = ["saml", "private-key"]
+
+[[rules]]
+id = "saml-public-cert-env"
+description = "Base64-encoded SAML public certificate environment value."
+regex = '''(?i)SAML_PUBLIC_CERT[[:space:]]*[:=][[:space:]]*["']?[A-Za-z0-9+/=]{80,}'''
+keywords = ["SAML_PUBLIC_CERT"]
+tags = ["saml", "certificate"]
+
+[[rules]]
+id = "database-url"
+description = "Database URL containing credentials."
+regex = '''(?i)(postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^:\s"'<>]+:[^@\s"'<>]+@[^ \t\r\n"'<>]+'''
+keywords = ["postgres", "postgresql", "mysql", "mongodb"]
+tags = ["database", "secret"]
+
+[[rules]]
+id = "database-url-env"
+description = "Database URL environment value."
+regex = '''(?i)(DATABASE_URL|POSTGRES_URL|POSTGRES_PRISMA_URL|POSTGRES_URL_NON_POOLING)[[:space:]]*[:=][[:space:]]*["']?[^"'\s]{20,}'''
+keywords = ["DATABASE_URL", "POSTGRES_URL"]
+tags = ["database", "secret"]
+
+[[rules]]
+id = "pusher-secret"
+description = "Pusher secret environment value."
+regex = '''(?i)PUSHER_[A-Z0-9_]*SECRET[[:space:]]*[:=][[:space:]]*["']?[A-Za-z0-9_./+=-]{16,}'''
+keywords = ["PUSHER", "SECRET"]
+tags = ["pusher", "secret"]
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT secret environment value."
+regex = '''(?i)JWT(_[A-Z0-9]+)*_SECRET[[:space:]]*[:=][[:space:]]*["']?[A-Za-z0-9_./+=-]{16,}'''
+keywords = ["JWT_SECRET"]
+tags = ["jwt", "secret"]

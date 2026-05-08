@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "API, Embedding, and Utility Tools Hub",
   "scripts": {
-    "check:pages": "node scripts/check-protected-pages.js"
+    "check:pages": "node scripts/check-protected-pages.js",
+    "security:secrets": "node scripts/check-secrets.js",
+    "security:secrets:gitleaks": "gitleaks detect --source . --config .gitleaks.toml --redact --no-banner"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
