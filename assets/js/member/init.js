@@ -92,6 +92,7 @@ $(document).ready(function () {
   fileInputIds.forEach(function (id) {
     $('#' + id).on('change', function () {
       const label = $(this).closest('.upload-area');
+      const $input = $(this).detach(); // label.html() 전에 분리해야 DOM에서 파괴되지 않음
       const iconHtml = '<span style="display:block;font-size:20px;margin-bottom:6px;"><i class="fa-solid fa-file-excel"></i></span>';
       if (this.files && this.files.length) {
         label.html(iconHtml + '<strong>' + this.files[0].name + '</strong>');
@@ -100,6 +101,7 @@ $(document).ready(function () {
         label.html(iconHtml + '클릭하여 엑셀 파일 선택 (.xlsx, .xls)');
         label.css({ borderColor: '', background: '', color: '' });
       }
+      label.append($input); // 원본 input 요소(id, 파일 선택 상태 포함) 복원
     });
   });
 
