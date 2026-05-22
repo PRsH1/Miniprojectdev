@@ -29,6 +29,7 @@ const handler = async (req, res) => {
                 reason: '외부 인증 API가 요청을 정상적으로 처리하지 못했습니다.',
                 action: '도메인, API Key, 서명 값을 확인한 뒤 다시 시도하세요.',
                 logMessage: 'Upstream token API returned non-ok response',
+                eformsignErrorMessage: data.message || 'No error message provided by eformsign',
                 error: data,
             });
         }
@@ -40,6 +41,7 @@ const handler = async (req, res) => {
             message: 'eformsign 액세스 토큰 발급에 실패했습니다.',
             reason: '외부 인증 API 호출 또는 응답 처리 중 문제가 발생했습니다.',
             action: '연결 대상 도메인과 인증 정보를 다시 확인하세요.',
+            eformsignErrorMessage: error.message || 'No error message provided by eformsign',
             error,
             logMessage: 'Token API request failed',
         });
