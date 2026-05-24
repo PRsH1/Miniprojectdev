@@ -111,7 +111,12 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 ### 전 페이지 로그인 상태 바 패턴 (`assets/js/auth-status.js`)
 
 `auth-status.js`는 IIFE로 `/api/me`를 호출해 로그인 상태를 표시하는 공통 스크립트다.
-`</body>` 직전에 `<script src="/assets/js/auth-status.js"></script>` 한 줄로 모든 페이지에 적용한다.
+`</body>` 직전에 Pusher CDN + `auth-status.js` 순서로 로드한다. Pusher CDN이 없으면 알림 실시간 갱신이 fallback 폴링(300초)으로 동작한다.
+
+```html
+<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+<script src="/assets/js/auth-status.js"></script>
+```
 
 ```
 적용 제외 페이지: auth/login.html, auth/signup.html, auth/change-password.html, auth/403.html, index.html
@@ -127,13 +132,14 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 
 ```html
 <!-- 코너 모드 예시 (OpenAPITesterFull.html) -->
+<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
 <script>window.AUTH_STATUS_CORNER = true;</script>
 <script src="/assets/js/auth-status.js"></script>
 ```
 
 - 비로그인 시 코너 모드는 로그인/회원가입 버튼 표시 (`?next=현재경로` 파라미터 포함), 상단 바 모드도 동일
 - admin 로그인 시 모든 모드에서 "관리자 콘솔" 버튼 자동 표시
-- **admin 전용 알림 벨**: 기본(상단 바) 모드에서만 `🔔` 벨 버튼 + 미읽음 배지 표시. 60초 폴링으로 count 갱신. 클릭 시 드롭다운 패널 → 알림 목록 + "모두 읽음" 처리. CORNER 모드에서는 미표시
+- **알림 벨**: 기본(상단 바) 모드 + 로그인 사용자에게 벨 버튼 + 미읽음 배지 표시. Pusher WebSocket으로 실시간 갱신 (Pusher 연결 실패 시 300초 fallback 폴링). 클릭 시 드롭다운 패널 → 알림 목록 + "모두 읽음" 처리. CORNER 모드에서는 미표시
 - **주의:** 각 페이지에 `button { width: 100% }` 스타일이 있어도 `.asb-btn`에 `width: auto !important`가 적용되어 버튼이 늘어나지 않음
 - 기본 모드의 `.asb-brand`("eformsign Tools Hub")는 클릭 시 `/`(index)로 이동하는 링크(`<a>` 태그)로 렌더링됨
 
