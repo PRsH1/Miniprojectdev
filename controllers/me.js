@@ -84,9 +84,12 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ authenticated: false, protected_pages: protectedPages });
     }
     return res.status(200).json({
+      id: decoded.sub,
       username: rows[0].username,
       role: decoded.role,
       protected_pages: protectedPages,
+      pusher_key: process.env.PUSHER_KEY || null,
+      pusher_cluster: process.env.PUSHER_CLUSTER || null,
     });
   } catch (err) {
     console.error('me.js DB 조회 오류:', err);

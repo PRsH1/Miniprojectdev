@@ -4,7 +4,7 @@
  *
  * 사용법:
  *   <script src="/assets/js/notification-bell.js"></script>
- *   window.NotifBell.init(containerEl);  // admin 로그인 확인 후 호출
+ *   window.NotifBell.init(containerEl, meData);  // admin 로그인 확인 후 호출
  */
 (function () {
     // 이미 로드된 경우 스킵
@@ -94,7 +94,8 @@
     // ─── 내부 상태 ────────────────────────────────────────────
     var _bellEl = null;
     var _badgeEl = null;
-    var _pollTimer = null;
+    var _fallbackTimer = null;
+    var _pusherClient = null;
     var _unreadCount = 0;
 
     // ─── 헬퍼 함수 ────────────────────────────────────────────
@@ -119,9 +120,10 @@
     }
 
     function _updateBadge(count) {
+        _unreadCount = count || 0;
         if (!_badgeEl) return;
-        _badgeEl.textContent = count > 99 ? '99+' : count;
-        _badgeEl.style.display = count > 0 ? 'flex' : 'none';
+        _badgeEl.textContent = _unreadCount > 99 ? '99+' : _unreadCount;
+        _badgeEl.style.display = _unreadCount > 0 ? 'flex' : 'none';
     }
 
     function _notificationDest(type) {
@@ -146,8 +148,7 @@
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
                 if (!data) return;
-                _unreadCount = data.unread_count || 0;
-                _updateBadge(_unreadCount);
+                _updateBadge(data.unread_count || 0);
             })
             .catch(function () {});
     }
@@ -284,8 +285,7 @@
                 if (itemEl) itemEl.remove();
                 // 삭제된 항목이 unread였으면 배지 감소
                 if (itemEl && itemEl.classList.contains('unread')) {
-                    _unreadCount = Math.max(0, _unreadCount - 1);
-                    _updateBadge(_unreadCount);
+                    _updateBadge(Math.max(0, _unreadCount - 1));
                 }
                 // 목록이 비었으면 빈 상태 표시
                 var list = document.querySelector('#_nbPanel ._nb-list');
@@ -307,9 +307,78 @@
             .catch(function () {});
     }
 
+    function _startFallbackPolling() {
+        if (_fallbackTimer) return;
+        _fallbackTimer = setInterval(function () {
+            var panel = document.getElementById('_nbPanel');
+            if (!panel || panel.style.display === 'none') _fetchCount();
+        }, 300000);
+    }
+
+    function _stopFallbackPolling() {
+        if (!_fallbackTimer) return;
+        clearInterval(_fallbackTimer);
+        _fallbackTimer = null;
+    }
+
+    function _setupRealtime(meData) {
+        _stopFallbackPolling();
+        if (_pusherClient) {
+            try { _pusherClient.disconnect(); } catch (e) {}
+            _pusherClient = null;
+        }
+
+        if (!window.Pusher || !meData || !meData.pusher_key || !meData.pusher_cluster) {
+            _startFallbackPolling();
+            return;
+        }
+
+        try {
+            _pusherClient = new Pusher(meData.pusher_key, {
+                cluster: meData.pusher_cluster,
+                authEndpoint: '/api/pusher/auth',
+            });
+
+            var channel = _pusherClient.subscribe('private-notifications-admin');
+
+            channel.bind('new-notification', function (data) {
+                if (data && typeof data.unread_count === 'number') {
+                    _updateBadge(data.unread_count);
+                } else {
+                    _fetchCount();
+                }
+            });
+            channel.bind('notification-read', function (data) {
+                _updateBadge(data && data.unread_count);
+            });
+            channel.bind('notifications-read', function (data) {
+                _updateBadge(data && data.unread_count);
+            });
+            channel.bind('notification-deleted', function (data) {
+                _updateBadge(data && data.unread_count);
+            });
+            channel.bind('notifications-cleared', function (data) {
+                _updateBadge(data && data.unread_count);
+            });
+            channel.bind('pusher:subscription_error', function () {
+                _startFallbackPolling();
+            });
+
+            _pusherClient.connection.bind('unavailable', function () {
+                _startFallbackPolling();
+            });
+            _pusherClient.connection.bind('connected', function () {
+                _stopFallbackPolling();
+            });
+        } catch (error) {
+            console.error('알림 Pusher 초기화 오류:', error);
+            _startFallbackPolling();
+        }
+    }
+
     // ─── 공개 인터페이스 ──────────────────────────────────────
 
-    function init(containerEl) {
+    function init(containerEl, meData) {
         _injectStyles();
 
         // 벨 버튼 삽입
@@ -335,12 +404,7 @@
         // 초기 미읽음 count 조회
         _fetchCount();
 
-        // 60초 폴링 (패널 열려있지 않을 때만)
-        if (_pollTimer) clearInterval(_pollTimer);
-        _pollTimer = setInterval(function () {
-            var panel = document.getElementById('_nbPanel');
-            if (!panel || panel.style.display === 'none') _fetchCount();
-        }, 60000);
+        _setupRealtime(meData);
 
         // 바깥 클릭 시 패널 닫기
         document.addEventListener('click', function (e) {

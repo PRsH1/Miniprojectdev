@@ -16,11 +16,27 @@ const { parse } = require('cookie');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
+const pusher = require('./_shared/pusher');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 const ALLOWED_SEVERITY = ['low', 'normal', 'high', 'critical'];
 const ALLOWED_STATUS = ['open', 'in-progress', 'resolved', 'closed'];
 const STATUS_LABEL = { open: '접수됨', 'in-progress': '처리중', resolved: '해결됨', closed: '종료됨' };
+
+async function triggerNewNotification(channel, notification, unreadCount) {
+  try {
+    await pusher.trigger(channel, 'new-notification', {
+      id: notification.id,
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+      created_at: notification.created_at,
+      unread_count: unreadCount,
+    });
+  } catch (error) {
+    console.error('알림 Pusher trigger 오류 (무시):', error);
+  }
+}
 
 function requireAdmin(req, res) {
   const cookies = parse(req.headers.cookie || '');
@@ -146,7 +162,7 @@ module.exports = async function handler(req, res) {
     const report = inserted[0];
 
     try {
-      await sql`
+      const notificationRows = await sql`
         INSERT INTO notifications (type, reference_id, title, body, target_role)
         VALUES (
           'bug_report',
@@ -155,7 +171,14 @@ module.exports = async function handler(req, res) {
           ${reporter.username + ' 님이 버그를 제보했습니다: ' + title},
           'admin'
         )
+        RETURNING id, type, title, body, created_at
       `;
+      const [{ count }] = await sql`
+        SELECT COUNT(*)::int AS count
+        FROM notifications
+        WHERE target_role = 'admin' AND target_user_id IS NULL AND is_read = FALSE
+      `;
+      await triggerNewNotification('private-notifications-admin', notificationRows[0], count);
     } catch (notifError) {
       console.error('bug_report 알림 INSERT 오류 (무시):', notifError);
     }
@@ -342,7 +365,7 @@ module.exports = async function handler(req, res) {
 
     if (hasStatus && before.status !== status && before.reporter_user_id) {
       try {
-        await sql`
+        const notificationRows = await sql`
           INSERT INTO notifications (type, reference_id, title, body, target_user_id)
           VALUES (
             'bug_report_status',
@@ -351,7 +374,14 @@ module.exports = async function handler(req, res) {
             ${'리포트 #' + id + ' 상태가 ' + (STATUS_LABEL[status] || status) + '으로 변경되었습니다.'},
             ${before.reporter_user_id}
           )
+          RETURNING id, type, title, body, created_at
         `;
+        const [{ count }] = await sql`
+          SELECT COUNT(*)::int AS count
+          FROM notifications
+          WHERE target_user_id = ${before.reporter_user_id} AND is_read = FALSE
+        `;
+        await triggerNewNotification(`private-notifications-${before.reporter_user_id}`, notificationRows[0], count);
       } catch (notifError) {
         console.error('버그 알림 INSERT 오류 (무시):', notifError);
       }
@@ -360,7 +390,7 @@ module.exports = async function handler(req, res) {
     if (before.reporter_user_id
       && ((hasCause && !before.cause && cause) || (hasActionTaken && !before.action_taken && actionTaken))) {
       try {
-        await sql`
+        const notificationRows = await sql`
           INSERT INTO notifications (type, reference_id, title, body, target_user_id)
           VALUES (
             'bug_report_reply',
@@ -369,7 +399,14 @@ module.exports = async function handler(req, res) {
             ${'리포트 #' + id + ' 에 관리자 답변이 등록되었습니다.'},
             ${before.reporter_user_id}
           )
+          RETURNING id, type, title, body, created_at
         `;
+        const [{ count }] = await sql`
+          SELECT COUNT(*)::int AS count
+          FROM notifications
+          WHERE target_user_id = ${before.reporter_user_id} AND is_read = FALSE
+        `;
+        await triggerNewNotification(`private-notifications-${before.reporter_user_id}`, notificationRows[0], count);
       } catch (notifError) {
         console.error('버그 답변 알림 INSERT 오류 (무시):', notifError);
       }

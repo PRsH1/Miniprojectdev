@@ -96,6 +96,12 @@ module.exports = async (req, res) => {
     return notifications(req, res);
   }
 
+  // ─── /api/pusher/* → Pusher private channel auth ───────────
+  if (path.startsWith('/api/pusher/')) {
+    const pusherAuth = require('../controllers/pusher-auth');
+    return pusherAuth(req, res);
+  }
+
   // ─── /api/credentials/* → 크리덴셜 CRUD ────────────────────
   if (path.startsWith('/api/credentials')) {
     const credentials = require('../controllers/credentials');

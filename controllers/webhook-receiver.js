@@ -1,13 +1,5 @@
-const Pusher = require('pusher');
+const pusher = require('./_shared/pusher');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
-
-const pusher = new Pusher({
-  appId: process.env.PUSHER_APP_ID,
-  key: process.env.PUSHER_KEY,
-  secret: process.env.PUSHER_SECRET,
-  cluster: process.env.PUSHER_CLUSTER,
-  useTLS: true
-});
 
 module.exports = async function handler(req, res) {
     if (req.method === 'POST') {

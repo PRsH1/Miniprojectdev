@@ -16,7 +16,8 @@
 
     // 알림 상태
     var notifUnreadCount = 0;
-    var notifPollTimer = null;
+    var notifFallbackTimer = null;
+    var notifPusher = null;
 
     // ─── CSS 주입 ────────────────────────────────────────────
     var barCss;
@@ -268,14 +269,7 @@
             }
             // 초기 미읽음 count 조회
             fetchUnreadCount();
-            // 60초 폴링 (패널 열려있지 않을 때만)
-            if (notifPollTimer) clearInterval(notifPollTimer);
-            notifPollTimer = setInterval(function () {
-                var panel = document.getElementById('asbNotifPanel');
-                if (!panel || panel.style.display === 'none') {
-                    fetchUnreadCount();
-                }
-            }, 60000);
+            setupNotificationRealtime(user);
         }
     }
 
@@ -303,6 +297,90 @@
         return '/app/admin';
     }
 
+    function updateNotifBadge(count) {
+        notifUnreadCount = count || 0;
+        var badge = document.getElementById('asbBellBadge');
+        if (badge) {
+            badge.textContent = notifUnreadCount > 99 ? '99+' : notifUnreadCount;
+            badge.style.display = notifUnreadCount > 0 ? 'flex' : 'none';
+        }
+    }
+
+    function startNotificationFallbackPolling() {
+        if (notifFallbackTimer) return;
+        notifFallbackTimer = setInterval(function () {
+            var panel = document.getElementById('asbNotifPanel');
+            if (!panel || panel.style.display === 'none') {
+                fetchUnreadCount();
+            }
+        }, 300000);
+    }
+
+    function stopNotificationFallbackPolling() {
+        if (!notifFallbackTimer) return;
+        clearInterval(notifFallbackTimer);
+        notifFallbackTimer = null;
+    }
+
+    function setupNotificationRealtime(user) {
+        stopNotificationFallbackPolling();
+        if (notifPusher) {
+            try { notifPusher.disconnect(); } catch (e) {}
+            notifPusher = null;
+        }
+
+        var channelName = user.role === 'admin'
+            ? 'private-notifications-admin'
+            : 'private-notifications-' + user.id;
+
+        if (!window.Pusher || !user.pusher_key || !user.pusher_cluster || (!user.id && user.role !== 'admin')) {
+            startNotificationFallbackPolling();
+            return;
+        }
+
+        try {
+            notifPusher = new Pusher(user.pusher_key, {
+                cluster: user.pusher_cluster,
+                authEndpoint: '/api/pusher/auth',
+            });
+
+            var channel = notifPusher.subscribe(channelName);
+
+            channel.bind('new-notification', function (data) {
+                if (data && typeof data.unread_count === 'number') {
+                    updateNotifBadge(data.unread_count);
+                } else {
+                    fetchUnreadCount();
+                }
+            });
+            channel.bind('notification-read', function (data) {
+                updateNotifBadge(data && data.unread_count);
+            });
+            channel.bind('notifications-read', function (data) {
+                updateNotifBadge(data && data.unread_count);
+            });
+            channel.bind('notification-deleted', function (data) {
+                updateNotifBadge(data && data.unread_count);
+            });
+            channel.bind('notifications-cleared', function (data) {
+                updateNotifBadge(data && data.unread_count);
+            });
+            channel.bind('pusher:subscription_error', function () {
+                startNotificationFallbackPolling();
+            });
+
+            notifPusher.connection.bind('unavailable', function () {
+                startNotificationFallbackPolling();
+            });
+            notifPusher.connection.bind('connected', function () {
+                stopNotificationFallbackPolling();
+            });
+        } catch (error) {
+            console.error('알림 Pusher 초기화 오류:', error);
+            startNotificationFallbackPolling();
+        }
+    }
+
     // 전체 읽음 처리 후 패널 새로고침
     function markAllRead() {
         fetch('/api/notifications/read', { method: 'PATCH' })
@@ -318,12 +396,7 @@
                 if (itemEl) itemEl.remove();
                 // 삭제된 항목이 unread였으면 배지 감소
                 if (itemEl && itemEl.classList.contains('unread')) {
-                    notifUnreadCount = Math.max(0, notifUnreadCount - 1);
-                    var badge = document.getElementById('asbBellBadge');
-                    if (badge) {
-                        badge.textContent = notifUnreadCount > 99 ? '99+' : notifUnreadCount;
-                        badge.style.display = notifUnreadCount > 0 ? 'flex' : 'none';
-                    }
+                    updateNotifBadge(Math.max(0, notifUnreadCount - 1));
                 }
                 // 목록이 비었으면 빈 상태 표시
                 var list = document.querySelector('#asbNotifPanel .anp-list');
@@ -450,12 +523,7 @@
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
                 if (!data) return;
-                notifUnreadCount = data.unread_count || 0;
-                var badge = document.getElementById('asbBellBadge');
-                if (badge) {
-                    badge.textContent = notifUnreadCount > 99 ? '99+' : notifUnreadCount;
-                    badge.style.display = notifUnreadCount > 0 ? 'flex' : 'none';
-                }
+                updateNotifBadge(data.unread_count || 0);
             })
             .catch(function () {});
     }
@@ -471,11 +539,7 @@
                 var panel = document.getElementById('asbNotifPanel');
                 if (panel) panel.style.display = 'block';
                 // 배지 동기화
-                var badge = document.getElementById('asbBellBadge');
-                if (badge) {
-                    badge.textContent = notifUnreadCount > 99 ? '99+' : notifUnreadCount;
-                    badge.style.display = notifUnreadCount > 0 ? 'flex' : 'none';
-                }
+                updateNotifBadge(notifUnreadCount);
             })
             .catch(function () {});
     }

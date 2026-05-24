@@ -10,6 +10,7 @@
 const { parse } = require('cookie');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
+const pusher = require('./_shared/pusher');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 function requireAuth(req, res) {
@@ -31,6 +32,38 @@ function requireAuth(req, res) {
     return null;
   }
   return decoded;
+}
+
+function getNotificationChannel(decoded) {
+  return decoded.role === 'admin'
+    ? 'private-notifications-admin'
+    : `private-notifications-${decoded.sub}`;
+}
+
+async function getUnreadCount(sql, decoded) {
+  if (decoded.role === 'admin') {
+    const [countRow] = await sql`
+      SELECT COUNT(*)::int AS unread_count
+      FROM notifications
+      WHERE target_role = 'admin' AND target_user_id IS NULL AND is_read = FALSE
+    `;
+    return countRow.unread_count;
+  }
+
+  const [countRow] = await sql`
+    SELECT COUNT(*)::int AS unread_count
+    FROM notifications
+    WHERE target_user_id = ${decoded.sub} AND is_read = FALSE
+  `;
+  return countRow.unread_count;
+}
+
+async function triggerNotificationEvent(decoded, eventName, payload) {
+  try {
+    await pusher.trigger(getNotificationChannel(decoded), eventName, payload);
+  } catch (error) {
+    console.error('알림 상태 Pusher trigger 오류 (무시):', error);
+  }
 }
 
 module.exports = async function handler(req, res) {
@@ -100,7 +133,9 @@ module.exports = async function handler(req, res) {
         WHERE target_user_id = ${decoded.sub} AND is_read = FALSE
       `;
     }
-    return res.status(200).json({ ok: true });
+    const unreadCount = await getUnreadCount(sql, decoded);
+    await triggerNotificationEvent(decoded, 'notifications-read', { unread_count: unreadCount });
+    return res.status(200).json({ ok: true, unread_count: unreadCount });
   }
 
   // PATCH /api/notifications/:id/read (단건 읽음)
@@ -132,7 +167,9 @@ module.exports = async function handler(req, res) {
         WHERE id = ${id} AND target_user_id = ${decoded.sub}
       `;
     }
-    return res.status(200).json({ ok: true });
+    const unreadCount = await getUnreadCount(sql, decoded);
+    await triggerNotificationEvent(decoded, 'notification-read', { id, unread_count: unreadCount });
+    return res.status(200).json({ ok: true, unread_count: unreadCount });
   }
 
   // DELETE /api/notifications/:id (단건 삭제)
@@ -156,7 +193,9 @@ module.exports = async function handler(req, res) {
     } else {
       await sql`DELETE FROM notifications WHERE id = ${id} AND target_user_id = ${decoded.sub}`;
     }
-    return res.status(200).json({ ok: true });
+    const unreadCount = await getUnreadCount(sql, decoded);
+    await triggerNotificationEvent(decoded, 'notification-deleted', { id, unread_count: unreadCount });
+    return res.status(200).json({ ok: true, unread_count: unreadCount });
   }
 
   // DELETE /api/notifications (전체 삭제)
@@ -166,7 +205,9 @@ module.exports = async function handler(req, res) {
     } else {
       await sql`DELETE FROM notifications WHERE target_user_id = ${decoded.sub}`;
     }
-    return res.status(200).json({ ok: true });
+    const unreadCount = await getUnreadCount(sql, decoded);
+    await triggerNotificationEvent(decoded, 'notifications-cleared', { unread_count: unreadCount });
+    return res.status(200).json({ ok: true, unread_count: unreadCount });
   }
 
   return methodNotAllowed(req, res, ['GET', 'PATCH', 'DELETE']);

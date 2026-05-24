@@ -660,6 +660,7 @@
 
     </div>
 
+    <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
     <script src="/assets/js/notification-bell.js"></script>
     <script>
         // protected_pages 배열 (스크립트 스코프 — navigateCard에서도 접근)
@@ -807,7 +808,7 @@
             if (meData.role === 'admin') {
                 var wrap = document.getElementById('idxBellWrap');
                 if (wrap && window.NotifBell) {
-                    window.NotifBell.init(wrap);
+                    window.NotifBell.init(wrap, meData);
                 }
             }
         }

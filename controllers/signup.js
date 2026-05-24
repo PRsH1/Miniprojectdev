@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const { promisify } = require('util');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
+const pusher = require('./_shared/pusher');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 const scryptAsync = promisify(crypto.scrypt);
@@ -16,6 +17,21 @@ async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = await scryptAsync(password, salt, 64);
   return `${salt}:${hash.toString('hex')}`;
+}
+
+async function triggerNewNotification(channel, notification, unreadCount) {
+  try {
+    await pusher.trigger(channel, 'new-notification', {
+      id: notification.id,
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+      created_at: notification.created_at,
+      unread_count: unreadCount,
+    });
+  } catch (error) {
+    console.error('알림 Pusher trigger 오류 (무시):', error);
+  }
 }
 
 module.exports = async function handler(req, res) {
@@ -104,7 +120,7 @@ module.exports = async function handler(req, res) {
 
   // 5. 알림 INSERT (실패해도 회원가입 요청 자체는 성공 처리)
   try {
-    await sql`
+    const notificationRows = await sql`
       INSERT INTO notifications (type, reference_id, title, body, target_role)
       VALUES (
         'signup_request',
@@ -113,7 +129,14 @@ module.exports = async function handler(req, res) {
         ${username + ' 님이 가입을 요청했습니다.'},
         'admin'
       )
+      RETURNING id, type, title, body, created_at
     `;
+    const [{ count }] = await sql`
+      SELECT COUNT(*)::int AS count
+      FROM notifications
+      WHERE target_role = 'admin' AND target_user_id IS NULL AND is_read = FALSE
+    `;
+    await triggerNewNotification('private-notifications-admin', notificationRows[0], count);
   } catch (notifErr) {
     console.error('알림 INSERT 오류 (무시):', notifErr);
   }
