@@ -15,7 +15,8 @@ ProjectImprove/
 │   ├── _shared/
 │   │   ├── protected-pages-config.js  # 보호 페이지 설정 공통화
 │   │   ├── protectedPage.js           # 보호 페이지 공통 핸들러
-│   │   └── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
+│   │   ├── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
+│   │   └── pusher.js                  # Pusher 인스턴스 공통 모듈 (알림 + Webhook 공용)
 │   ├── credentials.js          # eformsign 인증 정보 저장/조회/수정/삭제 (사용자별 크리덴셜 CRUD)
 │   ├── getToken.js             # ECDSA 서명으로 Access Token 발급
 │   ├── downloadDocument.js     # 문서 파일 프록시 다운로드
@@ -32,6 +33,7 @@ ProjectImprove/
 │   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우
 │   ├── metadata.js             # SAML 메타데이터 엔드포인트
 │   ├── adminIpWhitelist.js     # IP 화이트리스트 Admin API (규칙/스코프 CRUD + 테스트)
+│   ├── pusher-auth.js          # Pusher private 채널 인증 (JWT 검증 + 채널 소유권 확인)
 │   └── send.js                 # SMTP 이메일 테스트
 │
 ├── lib/
