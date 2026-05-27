@@ -9,6 +9,10 @@
             csap: {
                 label: "공공 (CSAP)",
                 baseUrl: "https://www.gov-eformsign.com/Service"
+            },
+            custom: {
+                label: "직접 입력",
+                baseUrl: ""
             }
         },
         auth: {
@@ -42,9 +46,11 @@
             },
 
             lookupTargets: {
-                downloadDocumentId: "",
-                attachDocumentId: ""
+                downloadDocumentId: ""
             },
+
+            attachTemplateId: "",
+            attachFieldId: "첨부 1",
 
             member: {
                 id: "test.autorun@example.com"
@@ -67,15 +73,27 @@
         token: "",
         companyId: "",
         authMethod: "signature",
-        viewMode: "group"
+        viewMode: "group",
+        lastReportData: null
     };
     const els = {};
+    const DUMMY_PDF_BASE64 = "JVBERi0xLjEKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyMDAgMjAwXSA+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDQgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjE5OQolJUVPRg==";
+    const DUMMY_ATTACH_FILES = [{
+        src: `data:application/pdf;base64,${DUMMY_PDF_BASE64}`,
+        filetype: "pdf",
+        filename: "auto_test_attach.pdf"
+    }];
+    const SEED_STEPS = new Set([
+        "listFormsForSeed",
+        "listDocsBasic",
+        "listCompletedDocsForDownload"
+    ]);
 
     const scenarios = [
         { code: "OPA 003", group: "문서", method: "GET", name: "문서 정보 조회", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 기본/상세 조회를 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "docInfoBasic", "docInfoDetail", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 004", group: "문서", method: "GET", name: "문서 파일 다운로드", desc: "완료(status_type=003) 문서 목록을 조회하여 최대 5개의 문서 ID를 자동 수집한 뒤 순차적으로 다운로드를 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listCompletedDocsForDownload", "tryDownloadDocAuto"], keys: ["auth.mode"] },
         { code: "OPA 005", group: "문서", method: "POST", name: "새 문서 작성 (내부)", desc: "작성 가능한 템플릿 목록에서 최대 3개를 자동 추출한 뒤 순차적으로 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
-        { code: "OPA 006", group: "문서", method: "GET", name: "문서 첨부 파일 다운로드", desc: "첨부 파일 포함 문서의 첨부 다운로드를 검증합니다.", steps: ["downloadAttach"], keys: ["auth.mode", "data.attachDocId"] },
+        { code: "OPA 006", group: "문서", method: "GET", name: "문서 첨부 파일 다운로드", desc: "첨부 컴포넌트가 있는 템플릿으로 문서를 생성한 뒤, 해당 문서의 첨부 파일 다운로드를 검증합니다.", steps: ["createDocWithAttach", "downloadAttachAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.attachTemplateId", "data.attachFieldId"] },
         { code: "OPA 007", group: "문서", method: "POST", name: "새 문서 작성 (외부)", desc: "외부 문서를 생성하고 정리합니다. company_id와 API Key는 토큰 발급 정보에서 자동으로 채워집니다.", steps: ["createExternalDoc", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.extTemplateId"] },
         { code: "OPA 008", group: "문서", method: "POST", name: "문서 목록 조회", desc: "문서 목록 기본/상세 조회를 검증합니다.", steps: ["listDocsBasic", "listDocsDetail"], keys: ["auth.mode"] },
         { code: "OPA 010", group: "멤버", method: "GET", name: "멤버 목록 조회", desc: "멤버 목록 조회를 검증합니다.", steps: ["listMembers"], keys: ["auth.mode"] },
@@ -84,12 +102,12 @@
         { code: "OPA 013", group: "멤버", method: "DELETE", name: "멤버 삭제", desc: "테스트 멤버를 생성한 뒤 삭제를 검증합니다.", steps: ["createMember", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 014", group: "문서", method: "POST", name: "수신자 문서 재요청", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 수신자 재요청을 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "rerequestDoc", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.targetEmail"] },
         { code: "OPA 015", group: "문서", method: "GET", name: "작성 가능한 템플릿 목록", desc: "작성 가능한 템플릿 목록을 조회합니다.", steps: ["listForms"], keys: ["auth.mode"] },
-        { code: "OPA 016", group: "문서", method: "POST", name: "문서 일괄 작성", desc: "작성 가능한 템플릿 목록에서 최대 3개를 자동 추출한 뒤 순차적으로 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
+        { code: "OPA 016", group: "문서", method: "POST", name: "문서 일괄 작성", desc: "작성 가능한 템플릿 목록에서 최대 3개를 자동 추출한 뒤 순차적으로 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateAuto"], keys: ["auth.mode"] },
         { code: "OPA 017", group: "그룹", method: "GET", name: "그룹 목록 조회", desc: "그룹 목록 조회를 검증합니다.", steps: ["listGroups"], keys: ["auth.mode"] },
         { code: "OPA 018", group: "그룹", method: "POST", name: "그룹 추가", desc: "테스트 그룹 생성 후 정리합니다.", steps: ["createMember", "createGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 019", group: "그룹", method: "PATCH", name: "그룹 수정", desc: "테스트 그룹 생성, 수정 후 정리합니다.", steps: ["createMember", "createGroup", "updateGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 020", group: "그룹", method: "DELETE", name: "그룹 삭제", desc: "테스트 그룹 생성 후 삭제를 검증합니다.", steps: ["createMember", "createGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
-        { code: "OPA 021", group: "문서", method: "POST", name: "문서 일괄 작성 (멀티)", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID 조합으로 멀티 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateMultiAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
+        { code: "OPA 021", group: "문서", method: "POST", name: "문서 일괄 작성 (멀티)", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID 조합으로 멀티 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateMultiAuto"], keys: ["auth.mode"] },
         { code: "OPA 025", group: "회사 도장", method: "GET", name: "회사 도장 정보 조회", desc: "도장 목록을 먼저 조회한 뒤 상세를 검증합니다.", steps: ["listStamps", "stampDetail"], keys: ["auth.mode"] },
         { code: "OPA 029", group: "회사 도장", method: "GET", name: "회사 도장 목록 조회", desc: "회사 도장 목록 조회를 검증합니다.", steps: ["listStamps"], keys: ["auth.mode"] },
         { code: "OPA 030", group: "멤버", method: "POST", name: "멤버 일괄 추가", desc: "일괄 멤버 추가와 정리를 검증합니다.", steps: ["bulkCreateMembers", "cleanupBulk1", "cleanupBulk2"], keys: ["auth.mode", "data.memberId"] },
@@ -103,8 +121,8 @@
 
     function init() {
         [
-            "envSelect", "baseUrlBadge", "configBadge", "scenarioSearch", "scenarioList", "selectAllBtn", "clearAllBtn",
-            "runActiveBtn", "runSelectedBtn", "selectedCount", "plannedStepCount", "readinessLabel", "lastRunSummary",
+            "envSelect", "customUrlInput", "baseUrlBadge", "configBadge", "scenarioSearch", "scenarioList", "selectAllBtn", "clearAllBtn",
+            "runActiveBtn", "runSelectedBtn", "openReportBtn", "selectedCount", "plannedStepCount", "readinessLabel", "lastRunSummary",
             "activeScenarioTitle", "activeScenarioDescription", "activeScenarioMissing", "missingSectionWrap", "pipelineList", "configStatusList", "progressText", "progressBar", "resultTableBody",
             "settingsEditor", "saveSettingsBtn", "reloadSettingsBtn", "resetSettingsBtn", "settingsStatusText",
             "openSettingsModalBtn", "openSettingsModalBtnInline", "closeSettingsModalBtn", "settingsModalCard", "settingsModalOverlay", "settingsSummaryText",
@@ -113,7 +131,8 @@
             "authTabSignature", "authTabBearer",
             "btnIssueToken", "btnClearToken", "authTokenDisplay", "authCompanyIdDisplay", "authCompanyIdValue",
             "modalIssueTokenBtn", "modalClearTokenBtn", "modalTokenDisplay", "modalCompanyIdDisplay", "modalCompanyIdValue",
-            "sortGroupBtn", "sortOpaBtn"
+            "sortGroupBtn", "sortOpaBtn",
+            "reportModal", "reportModalBody", "downloadReportMarkdownBtn", "downloadReportHtmlBtn", "closeReportBtn"
         ].forEach((id) => { els[id] = document.getElementById(id); });
 
         Object.entries(config.environments || {}).forEach(([key, value]) => {
@@ -126,7 +145,8 @@
 
         initAuthPanel();
 
-        els.envSelect.addEventListener("change", refreshStatus);
+        els.envSelect.addEventListener("change", handleHeaderEnvironmentChange);
+        els.customUrlInput.addEventListener("input", handleHeaderCustomUrlInput);
         els.scenarioSearch.addEventListener("input", refreshAll);
         els.selectAllBtn.addEventListener("click", () => { scenarios.forEach((s) => state.selectedCodes.add(s.code)); refreshAll(); });
         els.clearAllBtn.addEventListener("click", () => { state.selectedCodes.clear(); refreshAll(); });
@@ -134,6 +154,11 @@
         els.sortOpaBtn.addEventListener("click", () => { state.viewMode = "opa"; els.sortOpaBtn.classList.add("active"); els.sortGroupBtn.classList.remove("active"); renderList(); });
         els.runSelectedBtn.addEventListener("click", () => runSet([...state.selectedCodes]));
         els.runActiveBtn.addEventListener("click", () => state.activeCode && runSet([state.activeCode]));
+        els.openReportBtn.addEventListener("click", openReportModal);
+        els.downloadReportMarkdownBtn.addEventListener("click", () => downloadReport("md"));
+        els.downloadReportHtmlBtn.addEventListener("click", () => downloadReport("html"));
+        els.closeReportBtn.addEventListener("click", closeReportModal);
+        els.reportModal.addEventListener("click", (event) => { if (event.target === els.reportModal) closeReportModal(); });
         els.saveSettingsBtn.addEventListener("click", saveSettingsFromEditor);
         els.reloadSettingsBtn.addEventListener("click", loadSettingsIntoEditor);
         els.resetSettingsBtn.addEventListener("click", resetStoredSettings);
@@ -159,7 +184,7 @@
         els.configBadge.textContent = checks.every((c) => c.ready) ? "자동 실행 가능" : `설정 ${checks.filter((c) => !c.ready).length}개 누락`;
         els.configBadge.style.color = checks.every((c) => c.ready) ? "#84f2b2" : "#ffd269";
         els.selectedCount.textContent = `${state.selectedCodes.size}개`;
-        els.plannedStepCount.textContent = `${plan([...state.selectedCodes]).length}개`;
+        els.plannedStepCount.textContent = `${totalScenarioSteps([...state.selectedCodes])}개`;
         els.readinessLabel.textContent = `${readyCount}/${scenarios.length} 준비`;
     }
 
@@ -258,7 +283,8 @@
             listCompletedDocsForDownload: ["POST", "완료 문서 목록 조회 (자동 탐색 - status 003)"],
             tryDownloadDocAuto: ["GET", "문서 파일 다운로드 (자동 선택 - 최대 5개 시도)"],
             downloadDoc: ["GET", "문서 파일 다운로드"],
-            downloadAttach: ["GET", "문서 첨부 파일 다운로드"],
+            createDocWithAttach: ["POST", "새 문서 작성 (첨부파일 포함)"],
+            downloadAttachAuto: ["GET", "문서 첨부 파일 다운로드 (자동)"],
             createExternalDoc: ["POST", "새 문서 작성 (외부)"],
             listDocsBasic: ["POST", "문서 목록 조회 - 기본"],
             listDocsDetail: ["POST", "문서 목록 조회 - 상세"],
@@ -316,7 +342,25 @@
             return { statusType: "FAIL", responseStatus: "ALL_FAIL", method: "GET", label: stepMeta(id).label, url: `${baseUrl()}/v2.0/api/documents/.../download_files`, duration: "-", requestBody: null, responseText: `${candidates.length}개 문서 모두 실패:\n${attemptLog.join("\n")}` };
         }
         if (id === "downloadDoc") return request({ id, method: "GET", path: `/v2.0/api/documents/${encodeURIComponent(must(d.downloadDocId, "downloadDocId가 비어 있습니다."))}/download_files?file_type=document,audit_trail`, ok: [200] });
-        if (id === "downloadAttach") return request({ id, method: "GET", path: `/v2.0/api/documents/${encodeURIComponent(must(d.attachDocId, "attachDocId가 비어 있습니다."))}/download_attach_files`, ok: [200] });
+        if (id === "createDocWithAttach") {
+            const templateId = must(d.attachTemplateId, "첨부 템플릿 ID가 비어 있습니다.");
+            const fieldId = d.attachFieldId || "첨부 1";
+            const body = {
+                document: {
+                    document_name: "OPA 006 첨부파일 자동 테스트",
+                    comment: "Auto Test - 첨부 파일 다운로드 검증용",
+                    fields: [{
+                        id: fieldId,
+                        value: JSON.stringify(DUMMY_ATTACH_FILES)
+                    }],
+                    recipients: [],
+                    parameters: [],
+                    notification: []
+                }
+            };
+            return request({ id, method: "POST", path: `/v2.0/api/documents?template_id=${encodeURIComponent(templateId)}`, body, ok: [200], after: (json) => rememberDoc(json) });
+        }
+        if (id === "downloadAttachAuto") return request({ id, method: "GET", path: `/v2.0/api/documents/${encodeURIComponent(must(state.shared.lastCreatedId, "첨부 문서가 생성되지 않았습니다."))}/download_attach_files`, ok: [200] });
         if (id === "createExternalDoc") return request({ id, method: "POST", useToken: false, headers: { Authorization: `Bearer ${btoa(must(d.companyApiKey, "companyApiKey가 비어 있습니다."))}` }, path: `/v2.0/api/documents/external?company_id=${encodeURIComponent(must(d.companyId, "companyId가 비어 있습니다."))}&template_id=${encodeURIComponent(must(d.extTemplateId, "extTemplateId가 비어 있습니다."))}`, body: docBody(), ok: [200], after: (json) => rememberDoc(json) });
         if (id === "listDocsBasic") return request({ id, method: "POST", path: "/v2.0/api/list_document", body: listBody(), ok: [200], after: (json) => { const docs = Array.isArray(json.documents) ? json.documents : []; state.shared.completedDocIds = docs.filter((doc) => doc.current_status && doc.current_status.status_type === "003").slice(0, 5).map((doc) => doc.id); } });
         if (id === "listDocsDetail") return request({ id, method: "POST", path: "/v2.0/api/list_document?include_fields=true&include_histories=true&include_previous_status=true&include_next_status=true&include_external_token=true&include_detail_template_info=true", body: listBody(), ok: [200] });
@@ -531,7 +575,7 @@
 
     function appendRow(index, result) {
         const rowId = `result-log-${index}`;
-        const statusClass = result.statusType === "PASS" ? "status-pass" : result.statusType === "SKIP" ? "status-skip" : "status-fail";
+        const statusClass = result.statusType === "PASS" ? "status-pass" : ["SKIP", "CACHE"].includes(result.statusType) ? "status-skip" : "status-fail";
         els.resultTableBody.insertAdjacentHTML("beforeend", `
             <tr>
                 <td>${index}</td>
@@ -549,6 +593,17 @@
         const button = els.resultTableBody.querySelector(`[data-log-target="${rowId}"]`);
         const box = document.getElementById(rowId);
         button.addEventListener("click", () => { box.style.display = box.style.display === "block" ? "none" : "block"; });
+    }
+
+    function appendOpaDivider(scenario) {
+        if (!els.resultTableBody || !scenario) return;
+        els.resultTableBody.insertAdjacentHTML("beforeend", `
+            <tr>
+                <td colspan="6" style="background:#f1f5f9;color:#0f172a;font-weight:700;padding:8px 14px;border-bottom:1px solid #e2e8f0;">
+                    ${esc(scenario.code)} — ${esc(scenario.name)}
+                </td>
+            </tr>
+        `);
     }
 
     function globalChecks() {
@@ -589,6 +644,13 @@
             });
         });
         return order;
+    }
+
+    function totalScenarioSteps(codes) {
+        return codes.reduce((sum, code) => {
+            const scenario = scenarios.find((item) => item.code === code);
+            return sum + (scenario ? scenario.steps.length : 0);
+        }, 0);
     }
 
     function rememberDoc(json) {
@@ -680,15 +742,68 @@
             pdfTargetPhone: raw.pdfTargetPhone || (raw.pdfRecipient && raw.pdfRecipient.phone) || "",
 
             downloadDocId: raw.downloadDocId || (raw.lookupTargets && raw.lookupTargets.downloadDocumentId) || "",
-            attachDocId: raw.attachDocId || (raw.lookupTargets && raw.lookupTargets.attachDocumentId) || "",
+            attachTemplateId: raw.attachTemplateId || "",
+            attachFieldId: raw.attachFieldId || "첨부 1",
 
             memberId: raw.memberId || (raw.member && raw.member.id) || "test.autorun@example.com",
             commonFields: raw.commonFields || [],
             doc2Fields: raw.doc2Fields || raw.secondaryFields || []
         };
     }
-    function baseUrl() { const env = config.environments[els.envSelect.value]; return env ? env.baseUrl.replace(/\/$/, "") : ""; }
+    function normalizeBaseUrl(value) {
+        return String(value || "").trim().replace(/\/+$/, "");
+    }
+
+    function ensureCustomEnvironment() {
+        config.environments = config.environments || {};
+        config.environments.custom = config.environments.custom || { label: "직접 입력", baseUrl: "" };
+        config.environments.custom.label = config.environments.custom.label || "직접 입력";
+        config.environments.custom.baseUrl = normalizeBaseUrl(config.environments.custom.baseUrl);
+    }
+
+    function syncEnvironmentControls(source) {
+        ensureCustomEnvironment();
+        const keys = Object.keys(config.environments);
+        const selectedEnv = config.defaultEnvironment in config.environments ? config.defaultEnvironment : keys[0];
+        config.defaultEnvironment = selectedEnv;
+        if (source !== "header" && els.envSelect) els.envSelect.value = selectedEnv;
+        if (source !== "form" && els.formDefaultEnvironment) els.formDefaultEnvironment.value = selectedEnv;
+        if (source !== "header" && els.customUrlInput) els.customUrlInput.value = config.environments.custom.baseUrl || "";
+        if (source !== "form" && els.formCustomUrl) els.formCustomUrl.value = config.environments.custom.baseUrl || "";
+        const showCustom = selectedEnv === "custom";
+        if (els.customUrlInput) els.customUrlInput.style.display = showCustom ? "" : "none";
+        if (els.formCustomUrlWrap) els.formCustomUrlWrap.style.display = showCustom ? "" : "none";
+    }
+
+    function handleHeaderEnvironmentChange() {
+        config.defaultEnvironment = els.envSelect.value;
+        syncEnvironmentControls("header");
+        updateEditorFromConfig();
+        refreshAll();
+    }
+
+    function handleHeaderCustomUrlInput() {
+        ensureCustomEnvironment();
+        config.environments.custom.baseUrl = normalizeBaseUrl(els.customUrlInput.value);
+        syncEnvironmentControls("header");
+        updateEditorFromConfig();
+        refreshStatus();
+    }
+
+    function baseUrl() {
+        const selectedEnv = els.envSelect ? els.envSelect.value : config.defaultEnvironment;
+        if (selectedEnv === "custom") return normalizeBaseUrl(els.customUrlInput ? els.customUrlInput.value : config.environments?.custom?.baseUrl);
+        const env = config.environments[selectedEnv];
+        return env ? normalizeBaseUrl(env.baseUrl) : "";
+    }
     function freshShared() { return { lastCreatedId: null, createdIdList: [], createdGroupId: null, companyStampId: null, bulkMemberIds: [], completedDocIds: [], candidateTemplateIds: [], candidateDocIds: [] }; }
+    function restoreSeedCache(seedCache) { Object.values(seedCache).forEach((cached) => Object.assign(state.shared, clone(cached))); }
+    function extractSeedData(stepId) {
+        if (stepId === "listFormsForSeed") return { candidateTemplateIds: [...(state.shared.candidateTemplateIds || [])] };
+        if (stepId === "listDocsBasic") return { completedDocIds: [...(state.shared.completedDocIds || [])] };
+        if (stepId === "listCompletedDocsForDownload") return { candidateDocIds: [...(state.shared.candidateDocIds || [])] };
+        return {};
+    }
     function toggleButtons(disabled) { els.runActiveBtn.disabled = disabled; els.runSelectedBtn.disabled = disabled; els.selectAllBtn.disabled = disabled; els.clearAllBtn.disabled = disabled; }
     function progress(width, text) { els.progressBar.style.width = `${width}%`; els.progressText.textContent = text; }
     function renderDetail() {
@@ -725,21 +840,27 @@
         state.shared = freshShared();
         state.token = "";
         state.companyId = state.companyId || "";  // 인증 패널에서 발급된 companyId는 유지
+        state.lastReportData = null;
+        closeReportModal();
+        if (els.openReportBtn) els.openReportBtn.style.display = "none";
         els.resultTableBody.innerHTML = "";
         toggleButtons(true);
         progress(0, "토큰과 실행 계획 준비 중");
 
-        const stepIds = plan(codes);
+        const totalSteps = totalScenarioSteps(codes);
+        const seedCache = {};
+        const allOpaResults = [];
+        const reportData = createReportData(codes);
         let pass = 0;
         let fail = 0;
         let skip = 0;
+        let globalStepIndex = 0;
 
         try {
             try {
                 await token();
             } catch (error) {
-                fail += 1;
-                appendRow(1, {
+                const authResult = {
                     statusType: "FAIL",
                     responseStatus: "ERROR",
                     method: "AUTH",
@@ -748,29 +869,65 @@
                     duration: "-",
                     requestBody: null,
                     responseText: error.message || String(error)
-                });
+                };
+                fail += 1;
+                appendRow(1, authResult);
+                addReportStep(reportData, "auth", 1, authResult, "사전 준비");
                 return;
             }
 
-            for (let i = 0; i < stepIds.length; i += 1) {
-                const id = stepIds[i];
-                progress(Math.round(((i + 1) / stepIds.length) * 100), `실행 중: ${stepMeta(id).label}`);
-                let result;
-                try {
-                    result = await runStep(id);
-                } catch (error) {
-                    result = { statusType: "FAIL", responseStatus: "ERROR", method: stepMeta(id).method, label: stepMeta(id).label, url: "", duration: "-", requestBody: null, responseText: error.message || String(error) };
+            for (const code of codes) {
+                const scenario = scenarios.find((item) => item.code === code);
+                if (!scenario) continue;
+
+                state.shared = freshShared();
+                restoreSeedCache(seedCache);
+                appendOpaDivider(scenario);
+
+                const opaStepResults = [];
+                let opaFailed = false;
+
+                for (const stepId of scenario.steps) {
+                    globalStepIndex += 1;
+                    progress(Math.round((globalStepIndex / Math.max(totalSteps, 1)) * 100), `실행 중: ${code} — ${stepMeta(stepId).label}`);
+
+                    let result;
+                    if (opaFailed) {
+                        result = skippedAfterFailureResult(stepId);
+                    } else if (SEED_STEPS.has(stepId) && seedCache[stepId]) {
+                        Object.assign(state.shared, clone(seedCache[stepId]));
+                        result = cachedSeedResult(stepId);
+                    } else {
+                        try {
+                            result = await runStep(stepId);
+                        } catch (error) {
+                            result = { statusType: "FAIL", responseStatus: "ERROR", method: stepMeta(stepId).method, label: stepMeta(stepId).label, url: "", duration: "-", requestBody: null, responseText: error.message || String(error) };
+                        }
+                        if (SEED_STEPS.has(stepId) && result.statusType === "PASS") seedCache[stepId] = extractSeedData(stepId);
+                        if (result.statusType === "FAIL") opaFailed = true;
+                    }
+
+                    if (result.statusType === "PASS" || result.statusType === "CACHE") pass += 1;
+                    else if (result.statusType === "SKIP") skip += 1;
+                    else fail += 1;
+
+                    appendRow(globalStepIndex, result);
+                    opaStepResults.push(addReportStep(reportData, stepId, globalStepIndex, result, code));
                 }
-                if (result.statusType === "PASS") pass += 1;
-                else if (result.statusType === "SKIP") skip += 1;
-                else fail += 1;
-                appendRow(i + 1, result);
+
+                allOpaResults.push({ code, scenario, steps: opaStepResults });
             }
         } finally {
+            finalizeReportData(reportData, codes, allOpaResults);
+            state.lastReportData = reportData;
+            pass = reportData.totalSummary.passedSteps;
+            fail = reportData.totalSummary.failedSteps;
+            skip = reportData.totalSummary.skippedSteps;
             state.running = false;
             toggleButtons(false);
             els.lastRunSummary.textContent = `PASS ${pass} / FAIL ${fail} / SKIP ${skip}`;
             progress(100, `완료: PASS ${pass}, FAIL ${fail}, SKIP ${skip}`);
+            if (els.openReportBtn) els.openReportBtn.style.display = "";
             saveRunHistory({
                 when: new Date().toLocaleString("ko-KR", { hour12: false }),
                 codes: codes.slice(),
@@ -781,6 +938,440 @@
                 authMode: config.auth && config.auth.mode ? config.auth.mode : "-"
             });
         }
+    }
+
+    function cachedSeedResult(stepId) {
+        const meta = stepMeta(stepId);
+        return {
+            statusType: "CACHE",
+            responseStatus: "",
+            method: meta.method,
+            label: `${meta.label} (캐시)`,
+            url: "",
+            duration: "-",
+            requestBody: null,
+            responseText: "이전 OPA의 탐색 결과를 재사용했습니다."
+        };
+    }
+
+    function skippedAfterFailureResult(stepId) {
+        const meta = stepMeta(stepId);
+        return {
+            statusType: "SKIP",
+            responseStatus: "-",
+            method: meta.method,
+            label: meta.label,
+            url: "",
+            duration: "-",
+            requestBody: null,
+            responseText: "선행 step 실패로 스킵됨"
+        };
+    }
+
+    function createReportData(codes) {
+        const envKey = els.envSelect ? els.envSelect.value : config.defaultEnvironment;
+        const env = config.environments && config.environments[envKey] ? config.environments[envKey] : {};
+        const auth = authSnapshot();
+        return {
+            meta: {
+                executedAt: formatDateTime(new Date()),
+                environment: envKey,
+                environmentLabel: env.label || envKey,
+                baseUrl: baseUrl(),
+                customUrl: envKey === "custom" ? baseUrl() : null,
+                profile: currentProfileName(),
+                authMode: auth.mode === "bearer" ? "Bearer" : "Signature",
+                codes: codes.slice()
+            },
+            opaSummary: [],
+            stepDetails: [],
+            failures: [],
+            totalSummary: {
+                totalOpa: 0,
+                passedOpa: 0,
+                failedOpa: 0,
+                skippedOpa: 0,
+                totalSteps: 0,
+                passedSteps: 0,
+                failedSteps: 0,
+                skippedSteps: 0
+            }
+        };
+    }
+
+    function addReportStep(reportData, stepId, index, result, opaCode) {
+        const error = result.statusType === "FAIL" ? parseErrorInfo(result.responseText) : null;
+        const detail = {
+            index,
+            opaCode,
+            sharedOpaCodes: [opaCode],
+            stepId,
+            label: result.label || stepMeta(stepId).label,
+            method: result.method || stepMeta(stepId).method,
+            status: result.statusType || "FAIL",
+            httpStatus: result.responseStatus || "-",
+            duration: result.duration || "-",
+            url: result.url || "",
+            requestBody: result.requestBody === undefined ? null : result.requestBody,
+            responseBody: result.responseText || "",
+            error
+        };
+        reportData.stepDetails.push(detail);
+        if (detail.status === "FAIL") reportData.failures.push(toFailure(detail));
+        return detail;
+    }
+
+    function finalizeReportData(reportData, codes, allOpaResults) {
+        const summaries = [];
+        const opaResultMap = new Map(allOpaResults.map((item) => [item.code, item]));
+        codes.forEach((code) => {
+            const scenario = scenarios.find((item) => item.code === code);
+            if (!scenario) return;
+            const opaResult = opaResultMap.get(code);
+            const steps = scenario.steps.map((stepId, index) => {
+                const executed = opaResult && opaResult.steps[index];
+                return executed ? { ...executed, opaCode: code, opaIndex: index + 1 } : skippedReportStep(stepId, code, index + 1);
+            });
+            const passed = steps.filter((step) => step.status === "PASS" || step.status === "CACHE").length;
+            const failed = steps.filter((step) => step.status === "FAIL").length;
+            const skipped = steps.filter((step) => step.status === "SKIP").length;
+            let result = "SKIP";
+            if (failed > 0) result = "FAIL";
+            else if (passed === steps.length && steps.length > 0) result = "PASS";
+            else if (skipped === steps.length) result = "SKIP";
+            summaries.push({
+                code: scenario.code,
+                name: scenario.name,
+                result,
+                totalSteps: steps.length,
+                passed,
+                failed,
+                skipped,
+                steps
+            });
+        });
+        reportData.opaSummary = summaries;
+        reportData.totalSummary = {
+            totalOpa: summaries.length,
+            passedOpa: summaries.filter((item) => item.result === "PASS").length,
+            failedOpa: summaries.filter((item) => item.result === "FAIL").length,
+            skippedOpa: summaries.filter((item) => item.result === "SKIP").length,
+            totalSteps: summaries.reduce((sum, item) => sum + item.totalSteps, 0) + preflightStepCount(reportData),
+            passedSteps: summaries.reduce((sum, item) => sum + item.passed, 0),
+            failedSteps: summaries.reduce((sum, item) => sum + item.failed, 0) + preflightFailCount(reportData),
+            skippedSteps: summaries.reduce((sum, item) => sum + item.skipped, 0)
+        };
+    }
+
+    function preflightStepCount(reportData) {
+        return reportData.stepDetails.filter((step) => step.opaCode === "사전 준비").length;
+    }
+
+    function preflightFailCount(reportData) {
+        return reportData.stepDetails.filter((step) => step.opaCode === "사전 준비" && step.status === "FAIL").length;
+    }
+
+    function skippedReportStep(stepId, opaCode, opaIndex) {
+        const meta = stepMeta(stepId);
+        return {
+            index: "-",
+            opaIndex,
+            opaCode,
+            sharedOpaCodes: [opaCode],
+            stepId,
+            label: meta.label,
+            method: meta.method,
+            status: "SKIP",
+            httpStatus: "-",
+            duration: "-",
+            url: "",
+            requestBody: null,
+            responseBody: "",
+            error: null
+        };
+    }
+
+    function toFailure(detail) {
+        return {
+            opaCode: detail.opaCode,
+            opaCodes: detail.sharedOpaCodes && detail.sharedOpaCodes.length ? detail.sharedOpaCodes : [detail.opaCode],
+            stepId: detail.stepId,
+            label: detail.label,
+            method: detail.method,
+            httpStatus: detail.httpStatus,
+            duration: detail.duration,
+            url: detail.url,
+            errorCode: detail.error && detail.error.code ? detail.error.code : "-",
+            errorMessage: detail.error && detail.error.message ? detail.error.message : "-",
+            responseBody: detail.responseBody || ""
+        };
+    }
+
+    function parseErrorInfo(responseText) {
+        const text = String(responseText || "").trim();
+        if (!text) return { code: "", message: "" };
+        let parsed = null;
+        try {
+            parsed = JSON.parse(text);
+        } catch (error) {
+            const objectStart = text.indexOf("{");
+            const objectEnd = text.lastIndexOf("}");
+            if (objectStart >= 0 && objectEnd > objectStart) {
+                try { parsed = JSON.parse(text.slice(objectStart, objectEnd + 1)); } catch (innerError) {}
+            }
+        }
+        if (parsed && typeof parsed === "object") {
+            return {
+                code: findDeepValue(parsed, ["code", "error_code", "errorCode", "ErrorCode", "status_code", "statusCode"]) || "",
+                message: findDeepValue(parsed, ["ErrorMessage", "error_message", "errorMessage", "message", "Message", "description", "detail"]) || ""
+            };
+        }
+        const codeMatch = text.match(/(?:code|error_code|errorCode)\s*[:=]\s*["']?([A-Za-z0-9_-]+)/i);
+        return {
+            code: codeMatch ? codeMatch[1] : "",
+            message: text.split(/\r?\n/).find(Boolean) || ""
+        };
+    }
+
+    function findDeepValue(value, keys) {
+        if (!value || typeof value !== "object") return "";
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                const found = findDeepValue(item, keys);
+                if (found) return found;
+            }
+            return "";
+        }
+        for (const key of keys) {
+            if (value[key] !== undefined && value[key] !== null && String(value[key]).trim() !== "") return String(value[key]);
+        }
+        for (const child of Object.values(value)) {
+            const found = findDeepValue(child, keys);
+            if (found) return found;
+        }
+        return "";
+    }
+
+    function openReportModal() {
+        if (!state.lastReportData) return alert("표시할 리포트가 없습니다. 테스트 실행 후 다시 시도해 주세요.");
+        els.reportModalBody.innerHTML = generateReportHtml(state.lastReportData);
+        els.reportModal.classList.add("open");
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeReportModal() {
+        if (els.reportModal) els.reportModal.classList.remove("open");
+        if (els.reportModalBody) els.reportModalBody.innerHTML = "";
+        if (!els.settingsModalCard || !els.settingsModalCard.classList.contains("modal-open")) document.body.style.overflow = "";
+    }
+
+    function downloadReport(format) {
+        if (!state.lastReportData) return alert("다운로드할 리포트가 없습니다.");
+        const report = state.lastReportData;
+        const isHtml = format === "html";
+        const content = isHtml ? generateReportHtmlFile(report) : generateReportMarkdown(report);
+        const blob = new Blob([content], { type: isHtml ? "text/html;charset=utf-8" : "text/markdown;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = reportFilename(report, isHtml ? "html" : "md");
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    function generateReportHtml(report) {
+        const summary = report.totalSummary;
+        const opaPercent = summary.totalOpa ? Math.round((summary.passedOpa / summary.totalOpa) * 100) : 0;
+        const stepPercent = summary.totalSteps ? Math.round((summary.passedSteps / summary.totalSteps) * 100) : 0;
+        return `
+            <section class="report-section">
+                <h3>실행 정보</h3>
+                <div class="report-info-grid">
+                    <div class="report-info-item"><span>일시</span><strong>${esc(report.meta.executedAt)}</strong></div>
+                    <div class="report-info-item"><span>환경</span><strong>${esc(report.meta.environmentLabel)} - ${esc(report.meta.baseUrl || "-")}</strong></div>
+                    <div class="report-info-item"><span>프로필</span><strong>${esc(report.meta.profile)}</strong></div>
+                    <div class="report-info-item"><span>인증 방식</span><strong>${esc(report.meta.authMode)}</strong></div>
+                </div>
+            </section>
+            <section class="report-section">
+                <h3>전체 요약</h3>
+                <div class="report-summary-card">
+                    <p>OPA: ${esc(summary.totalOpa)}개 중 ${esc(summary.passedOpa)}개 성공 (${esc(opaPercent)}%)</p>
+                    <p>Step: ${esc(summary.totalSteps)}개 중 ${esc(summary.passedSteps)}개 성공, ${esc(summary.failedSteps)}개 실패, ${esc(summary.skippedSteps)}개 스킵</p>
+                    <div class="report-progress-bg"><div class="report-progress-fill" style="width:${stepPercent}%"></div></div>
+                </div>
+            </section>
+            <section class="report-section">
+                <h3>OPA별 결과</h3>
+                ${report.opaSummary.map((opa) => `
+                    <div class="report-opa-card">
+                        <div class="report-opa-head">
+                            <div class="report-opa-title">${esc(opa.code)} ${esc(opa.name)}</div>
+                            <span class="report-pill ${reportStatusClass(opa.result)}">${esc(opa.result)} ${esc(opa.passed)}/${esc(opa.totalSteps)}</span>
+                        </div>
+                        <table class="report-table">
+                            <thead><tr><th>#</th><th>Step</th><th>Method</th><th>Status</th><th>Duration</th><th>Result</th></tr></thead>
+                            <tbody>
+                                ${opa.steps.map((step, index) => `
+                                    <tr>
+                                        <td>${index + 1}</td>
+                                        <td>${esc(step.label)}${sharedOpaText(step)}</td>
+                                        <td>${esc(step.method)}</td>
+                                        <td>${esc(String(step.httpStatus || "-"))}</td>
+                                        <td>${esc(step.duration)}</td>
+                                        <td><span class="report-pill ${reportStatusClass(step.status)}">${esc(step.status)}</span></td>
+                                    </tr>
+                                `).join("")}
+                            </tbody>
+                        </table>
+                    </div>
+                `).join("")}
+            </section>
+            <section class="report-section">
+                <h3>실패 상세</h3>
+                ${report.failures.length ? report.failures.map((failure) => `
+                    <div class="report-failure-card">
+                        <h4>${esc(failure.opaCodes.join(", "))} &gt; ${esc(failure.label)}</h4>
+                        <div class="report-failure-meta">
+                            ${esc(failure.method)} ${esc(failure.url || "(URL 없음)")}<br>
+                            HTTP ${esc(String(failure.httpStatus))} | ${esc(failure.duration)}<br>
+                            에러: [${esc(failure.errorCode)}] ${esc(failure.errorMessage)}
+                        </div>
+                        <pre>${esc(failure.responseBody || "(Empty)")}</pre>
+                    </div>
+                `).join("") : `<div class="report-failure-card"><div class="report-failure-meta">실패한 step이 없습니다.</div></div>`}
+            </section>
+        `;
+    }
+
+    function generateReportMarkdown(report) {
+        const summary = report.totalSummary;
+        const opaPercent = summary.totalOpa ? Math.round((summary.passedOpa / summary.totalOpa) * 100) : 0;
+        const lines = [
+            "# eformsign Open API 테스트 리포트",
+            "",
+            "## 실행 정보",
+            "",
+            "| 항목 | 값 |",
+            "|---|---|",
+            `| 일시 | ${md(report.meta.executedAt)} |`,
+            `| 환경 | ${md(report.meta.environmentLabel)} - ${md(report.meta.baseUrl || "-")} |`,
+            `| 프로필 | ${md(report.meta.profile)} |`,
+            `| 인증 방식 | ${md(report.meta.authMode)} |`,
+            "",
+            "## 전체 요약",
+            "",
+            `- **OPA**: ${summary.totalOpa}개 중 ${summary.passedOpa}개 성공 (${opaPercent}%)`,
+            `- **Step**: ${summary.totalSteps}개 중 ${summary.passedSteps}개 성공, ${summary.failedSteps}개 실패, ${summary.skippedSteps}개 스킵`,
+            "",
+            "## OPA별 결과",
+            ""
+        ];
+        report.opaSummary.forEach((opa) => {
+            lines.push(`### ${opa.code} - ${opa.name} (${opa.result} ${opa.passed}/${opa.totalSteps})`);
+            lines.push("");
+            lines.push("| # | Step | Method | Status | Duration | Result |");
+            lines.push("|---|---|---|---|---|---|");
+            opa.steps.forEach((step, index) => {
+                lines.push(`| ${index + 1} | ${md(step.label)}${md(sharedOpaPlainText(step))} | ${md(step.method)} | ${md(step.httpStatus)} | ${md(step.duration)} | ${md(step.status)} |`);
+            });
+            lines.push("");
+        });
+        lines.push("## 실패 상세");
+        lines.push("");
+        if (!report.failures.length) {
+            lines.push("실패한 step이 없습니다.");
+            lines.push("");
+        } else {
+            report.failures.forEach((failure) => {
+                lines.push(`### ${failure.opaCodes.join(", ")} > ${failure.label}`);
+                lines.push("");
+                lines.push(`- **URL**: ${failure.method} ${failure.url || "(URL 없음)"}`);
+                lines.push(`- **HTTP Status**: ${failure.httpStatus}`);
+                lines.push(`- **Duration**: ${failure.duration}`);
+                lines.push(`- **에러 코드**: ${failure.errorCode}`);
+                lines.push(`- **에러 메시지**: ${failure.errorMessage}`);
+                lines.push("");
+                lines.push("**Response:**");
+                lines.push("```json");
+                lines.push(safeFence(failure.responseBody || "(Empty)"));
+                lines.push("```");
+                lines.push("");
+            });
+        }
+        return lines.join("\n");
+    }
+
+    function generateReportHtmlFile(report) {
+        return `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>eformsign Open API 테스트 리포트</title>
+<style>
+body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.report-body{max-width:1120px;margin:0 auto;padding:28px}
+.report-section+ .report-section{margin-top:22px}
+.report-section h3{font-size:18px;margin:0 0 10px}
+.report-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.report-info-item,.report-summary-card,.report-opa-card,.report-failure-card{border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:12px}
+.report-info-item span{display:block;color:#64748b;font-size:12px;margin-bottom:4px}.report-info-item strong{word-break:break-all}
+.report-progress-bg{width:100%;height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:10px}.report-progress-fill{height:100%;background:#1f9d55}
+.report-opa-card+ .report-opa-card,.report-failure-card+ .report-failure-card{margin-top:12px}.report-opa-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px}.report-opa-title{font-weight:700}
+.report-pill{display:inline-flex;align-items:center;justify-content:center;min-width:70px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}.report-pill.pass{background:#e9f9ef;color:#1f9d55}.report-pill.fail{background:#fdecec;color:#d64545}.report-pill.skip{background:#fff7df;color:#c78b07}
+.report-table{width:100%;border-collapse:collapse;font-size:13px}.report-table th,.report-table td{padding:8px 9px;border-bottom:1px solid #eef2f7;text-align:left;vertical-align:top}.report-table th{color:#475569;background:#f8fafc;font-size:12px;text-transform:uppercase}
+.report-failure-meta{color:#475569;font-size:13px;line-height:1.5;margin-bottom:8px;word-break:break-all}.report-failure-card pre{white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:12px;line-height:1.45;overflow:auto}
+@media(max-width:760px){.report-info-grid{grid-template-columns:1fr}.report-body{padding:16px}}
+</style>
+</head>
+<body><main class="report-body">${generateReportHtml(report)}</main></body>
+</html>`;
+    }
+
+    function reportStatusClass(status) {
+        if (status === "CACHE") return "skip";
+        return String(status).toLowerCase();
+    }
+
+    function sharedOpaText(step) {
+        if (!step.sharedOpaCodes || step.sharedOpaCodes.length <= 1) return "";
+        return ` <span style="color:#64748b;font-size:0.72rem;">(공유: ${esc(step.sharedOpaCodes.join(", "))})</span>`;
+    }
+
+    function sharedOpaPlainText(step) {
+        if (!step.sharedOpaCodes || step.sharedOpaCodes.length <= 1) return "";
+        return ` (공유: ${step.sharedOpaCodes.join(", ")})`;
+    }
+
+    function md(value) {
+        return String(value ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, "<br>");
+    }
+
+    function safeFence(value) {
+        return String(value ?? "").replace(/```/g, "'''");
+    }
+
+    function reportFilename(report, ext) {
+        return `OPA_Report_${safeFilename(report.meta.profile)}_${fileDateTime(new Date())}.${ext}`;
+    }
+
+    function safeFilename(value) {
+        return String(value || "Default").replace(/[^\w.-]+/g, "_") || "Default";
+    }
+
+    function formatDateTime(date) {
+        return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+    }
+
+    function fileDateTime(date) {
+        return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}_${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
+    }
+
+    function pad2(value) {
+        return String(value).padStart(2, "0");
     }
     function getByPath(obj, path) { return path.split(".").reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj); }
     function has(value) { return Array.isArray(value) ? value.length > 0 : value !== undefined && value !== null && String(value).trim() !== ""; }
@@ -798,7 +1389,7 @@
         "profileSelect", "profileNameInput", "saveProfileBtn", "deleteProfileBtn", "exportProfileBtn", "importProfileBtn",
         "importProfileFile", "clearHistoryBtn", "historyList",
         "openSettingsModalBtn", "openSettingsModalBtnInline", "closeSettingsModalBtn", "settingsModalCard", "settingsModalOverlay", "settingsSummaryText",
-        "formDefaultEnvironment", "formAuthMode", "formExternalTemplateId", "formAttachDocumentId",
+        "formDefaultEnvironment", "formCustomUrl", "formCustomUrlWrap", "formAuthMode", "formExternalTemplateId", "formAttachTemplateId", "formAttachFieldId",
         "formMemberId", "formPdfRecipientName", "formTargetEmail", "formTargetPhone", "formTargetName",
         "formPdfRecipientEmail", "formApiKey", "formAuthMemberId", "formSecretKey"
     ];
@@ -948,8 +1539,10 @@
         ]);
         setInputValue("formDefaultEnvironment", config.defaultEnvironment);
         setInputValue("formAuthMode", normalizedAuthMode(config.auth && config.auth.mode));
+        setInputValue("formCustomUrl", config.environments?.custom?.baseUrl);
         setInputValue("formExternalTemplateId", dataConfig.extTemplateId);
-        setInputValue("formAttachDocumentId", dataConfig.attachDocId);
+        setInputValue("formAttachTemplateId", dataConfig.attachTemplateId);
+        setInputValue("formAttachFieldId", dataConfig.attachFieldId);
         setInputValue("formMemberId", dataConfig.memberId);
         setInputValue("formPdfRecipientName", dataConfig.pdfTargetName);
         setInputValue("formTargetEmail", dataConfig.targetEmail);
@@ -960,6 +1553,7 @@
         setInputValue("formAuthMemberId", config.auth && config.auth.memberId);
         setInputValue("formSecretKey", normalizedAuthMode(config.auth && config.auth.mode) === "bearer" ? config.auth && config.auth.accessToken : config.auth && config.auth.secretKey);
         if (els.envSelect) els.envSelect.value = config.defaultEnvironment in config.environments ? config.defaultEnvironment : Object.keys(config.environments)[0];
+        syncEnvironmentControls();
         populateAuthPanelFromConfig();
     }
 
@@ -995,6 +1589,10 @@
     function applyFormValues(targetConfig) {
         const next = merge(clone(baseDefaultConfig()), targetConfig || {});
         next.defaultEnvironment = getInputValue("formDefaultEnvironment") || next.defaultEnvironment;
+        next.environments = next.environments || {};
+        next.environments.custom = next.environments.custom || { label: "직접 입력", baseUrl: "" };
+        next.environments.custom.label = next.environments.custom.label || "직접 입력";
+        next.environments.custom.baseUrl = normalizeBaseUrl(getInputValue("formCustomUrl"));
         next.auth = next.auth || {};
         next.auth.mode = normalizedAuthMode(getInputValue("formAuthMode") || next.auth.mode || "signature");
         next.auth.apiKey = getInputValue("formApiKey");
@@ -1003,8 +1601,8 @@
         next.auth.accessToken = next.auth.mode === "bearer" ? getInputValue("formSecretKey") : (state.token || next.auth.accessToken || "");
         next.data = next.data || {};
         next.data.externalTemplateId = getInputValue("formExternalTemplateId");
-        next.data.lookupTargets = next.data.lookupTargets || {};
-        next.data.lookupTargets.attachDocumentId = getInputValue("formAttachDocumentId");
+        next.data.attachTemplateId = getInputValue("formAttachTemplateId");
+        next.data.attachFieldId = getInputValue("formAttachFieldId") || "첨부 1";
         next.data.member = next.data.member || {};
         next.data.member.id = getInputValue("formMemberId");
         next.data.targetRecipient = next.data.targetRecipient || {};
@@ -1024,6 +1622,7 @@
         if (els.authSecretKey && els.formSecretKey) els.authSecretKey.value = els.formSecretKey.value;
         const next = applyFormValues(config);
         replaceConfig(next);
+        syncEnvironmentControls("form");
         syncConfigFromAuthPanel();
         updateEditorFromConfig();
         refreshAll();
@@ -1202,7 +1801,7 @@
     function bindSettingsInputs() {
         ensureProfileElements();
         [
-            "formDefaultEnvironment", "formAuthMode", "formExternalTemplateId", "formAttachDocumentId",
+            "formDefaultEnvironment", "formCustomUrl", "formAuthMode", "formExternalTemplateId", "formAttachTemplateId", "formAttachFieldId",
             "formMemberId", "formPdfRecipientName", "formTargetEmail", "formTargetPhone", "formTargetName",
             "formPdfRecipientEmail", "formApiKey", "formAuthMemberId", "formSecretKey"
         ].forEach((id) => {
@@ -1565,7 +2164,7 @@
                 <p>사용자 설정 모달의 일반 설정 섹션에서 테스트에 필요한 값을 채웁니다. 실행하려는 OPA에 따라 필요한 항목이 다릅니다.</p>
                 <ul>
                     <li><strong>외부 Template ID</strong> — OPA 007(외부 문서 작성)에 필요. Company ID와 API Key는 토큰 발급 정보에서 자동으로 채워집니다.</li>
-                    <li><strong>첨부 문서 ID</strong> — OPA 006(첨부 파일 다운로드)에 사용. 실제 첨부 파일이 있는 완료 문서 ID를 입력해야 합니다.</li>
+                    <li><strong>첨부 템플릿 ID / 첨부 필드 ID</strong> — OPA 006(첨부 파일 다운로드)에 사용. 첨부 컴포넌트가 있는 템플릿과 해당 필드 ID를 입력해야 합니다.</li>
                     <li><strong>테스트 멤버 ID</strong> — 멤버·그룹 관련 OPA(011~013, 018~020, 030)에 필요합니다.</li>
                     <li><strong>기본 수신자 (이름/이메일/휴대폰)</strong> — OPA 014(재요청) 시나리오에서 수신자 정보로 사용됩니다.</li>
                     <li><strong>PDF 수신자 (이름/이메일)</strong> — OPA 037(완료 문서 PDF 전송)에 필요</li>
@@ -1599,7 +2198,7 @@
             </div>
         `;
 
-        tip.innerHTML = `<strong>팁:</strong> OPA 003·004·005·016·021·040·042·045는 템플릿 또는 완료 문서를 자동으로 탐색하므로 ID를 별도로 입력하지 않아도 됩니다. OPA 037(PDF 전송), OPA 040(일괄 다운로드), OPA 045(완료 토큰 연장), OPA 004(단건 다운로드)는 계정에 완료 상태(status_type=003) 문서가 없으면 실행해도 의미 있는 검증이 되지 않습니다. OPA 006은 실제 첨부 파일이 있는 완료 문서 ID를 첨부 문서 ID에 직접 입력해야 합니다.`;
+        tip.innerHTML = `<strong>팁:</strong> OPA 003·004·005·016·021·040·042·045는 템플릿 또는 완료 문서를 자동으로 탐색하므로 ID를 별도로 입력하지 않아도 됩니다. OPA 037(PDF 전송), OPA 040(일괄 다운로드), OPA 045(완료 토큰 연장), OPA 004(단건 다운로드)는 계정에 완료 상태(status_type=003) 문서가 없으면 실행해도 의미 있는 검증이 되지 않습니다. OPA 006은 첨부 컴포넌트가 있는 템플릿으로 테스트 문서를 생성한 뒤 첨부 파일 다운로드를 자동 검증합니다.`;
     }
 
     window.openGuide = function () {

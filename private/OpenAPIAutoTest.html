@@ -49,10 +49,15 @@
         .logo span { color: #4fa8ff; }
         .header-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; }
         .header-tools label { color: var(--sidebar-muted); font-size: 0.8rem; }
-        .header-tools select {
+        .header-tools select,
+        .header-tools input {
             background: #2a3a4f; color: #fff; border: 1px solid #3a4f6a;
             border-radius: 6px; padding: 6px 10px; font-size: 0.84rem;
         }
+        .header-tools input {
+            width: 260px;
+        }
+        .header-tools input::placeholder { color: #7a8fa6; }
         .base-url-badge, .config-badge {
             background: #0d1820; color: #4fa8ff; font-size: 0.78rem;
             padding: 4px 10px; border-radius: 999px; border: 1px solid #1e3550; white-space: nowrap;
@@ -372,6 +377,41 @@
         .guide-tip p { font-size: 0.82rem; color: #1e3a5f; line-height: 1.7; }
         .guide-tip strong { font-weight: 700; }
 
+        /* ===== REPORT MODAL ===== */
+        .report-overlay { display: none; position: fixed; inset: 0; z-index: 2200; background: rgba(10,18,28,0.72); backdrop-filter: blur(3px); align-items: center; justify-content: center; }
+        .report-overlay.open { display: flex; }
+        .report-modal { background: #fff; border-radius: 14px; width: min(1120px, calc(100vw - 32px)); max-height: 92vh; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.28); display: flex; flex-direction: column; }
+        .report-header { background: var(--sidebar-bg); padding: 16px 22px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .report-header-icon { width: 34px; height: 34px; border-radius: 9px; background: rgba(79,168,255,0.15); border: 1px solid rgba(79,168,255,0.3); display: flex; align-items: center; justify-content: center; color: #4fa8ff; }
+        .report-header-text h2 { color: #fff; font-size: 1rem; margin-bottom: 2px; }
+        .report-header-text p { color: var(--sidebar-muted); font-size: 0.8rem; }
+        .report-header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+        .report-header-actions button { border: 1px solid #3a4f6a; background: #2a3a4f; color: #fff; border-radius: 7px; padding: 7px 10px; font-size: 0.8rem; cursor: pointer; }
+        .report-header-actions button:hover { border-color: #4fa8ff; color: #4fa8ff; }
+        .report-body { padding: 24px; overflow-y: auto; background: #f8fafc; }
+        .report-section + .report-section { margin-top: 22px; }
+        .report-section h3 { font-size: 0.95rem; color: #0f172a; margin-bottom: 10px; }
+        .report-info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        .report-info-item, .report-summary-card, .report-opa-card, .report-failure-card { border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 12px; }
+        .report-info-item span { display: block; color: #64748b; font-size: 0.75rem; margin-bottom: 4px; }
+        .report-info-item strong { color: #0f172a; font-size: 0.86rem; word-break: break-all; }
+        .report-summary-card p { color: #334155; font-size: 0.86rem; line-height: 1.5; }
+        .report-progress-bg { width: 100%; height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-top: 10px; }
+        .report-progress-fill { height: 100%; background: linear-gradient(90deg, #1f9d55, #4ade80); }
+        .report-opa-card + .report-opa-card, .report-failure-card + .report-failure-card { margin-top: 12px; }
+        .report-opa-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+        .report-opa-title { font-weight: 700; color: #0f172a; }
+        .report-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 70px; padding: 4px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
+        .report-pill.pass { background: #e9f9ef; color: var(--green); }
+        .report-pill.fail { background: #fdecec; color: var(--red); }
+        .report-pill.skip { background: #fff7df; color: var(--yellow); }
+        .report-table { width: 100%; border-collapse: collapse; font-size: 0.79rem; }
+        .report-table th, .report-table td { padding: 8px 9px; border-bottom: 1px solid #eef2f7; text-align: left; vertical-align: top; }
+        .report-table th { color: #475569; background: #f8fafc; font-size: 0.72rem; text-transform: uppercase; }
+        .report-failure-card h4 { color: #0f172a; font-size: 0.88rem; margin-bottom: 8px; }
+        .report-failure-meta { color: #475569; font-size: 0.8rem; line-height: 1.5; margin-bottom: 8px; word-break: break-all; }
+        .report-failure-card pre { white-space: pre-wrap; word-break: break-word; background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; font-size: 0.76rem; line-height: 1.45; max-height: 280px; overflow: auto; }
+
         @media (max-width: 1100px) {
             .content { grid-template-columns: 1fr; }
             .detail-panel { border-right: none; border-bottom: 1px solid var(--border); }
@@ -386,6 +426,10 @@
             .auth-grid { grid-template-columns: 1fr; }
             .auth-grid .span2 { grid-column: span 1; }
             .guide-steps { grid-template-columns: 1fr; }
+            .report-header { align-items: flex-start; flex-wrap: wrap; }
+            .report-header-actions { margin-left: 0; width: 100%; }
+            .report-header-actions button { flex: 1; }
+            .report-info-grid { grid-template-columns: 1fr; }
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
@@ -396,6 +440,7 @@
     <div class="header-tools">
         <label for="envSelect">환경</label>
         <select id="envSelect"></select>
+        <input id="customUrlInput" type="text" placeholder="https://api.example.com" style="display:none">
         <div class="base-url-badge" id="baseUrlBadge"></div>
         <div class="config-badge" id="configBadge">설정 확인 중</div>
         <button class="btn-guide" onclick="openGuide()"><i class="fa-solid fa-book-open fa-sm"></i> 사용 가이드</button>
@@ -471,6 +516,7 @@
                     <button class="btn-secondary" id="openSettingsModalBtn">입력값 설정</button>
                     <button class="btn-secondary" id="runActiveBtn">현재 OPA만 실행</button>
                     <button class="btn-primary" id="runSelectedBtn">선택한 OPA 실행</button>
+                    <button class="btn-secondary" id="openReportBtn" style="display:none"><i class="fa-solid fa-chart-bar fa-sm"></i> 리포트 보기</button>
                 </div>
             </div>
 
@@ -531,15 +577,24 @@
                                 <select id="formDefaultEnvironment">
                                     <option value="saas">운영 (SaaS)</option>
                                     <option value="csap">공공 (CSAP)</option>
+                                    <option value="custom">직접 입력</option>
                                 </select>
+                            </div>
+                            <div class="settings-field" id="formCustomUrlWrap" style="display:none">
+                                <label for="formCustomUrl">Custom URL</label>
+                                <input id="formCustomUrl" type="text" placeholder="https://api.example.com">
                             </div>
                             <div class="settings-field">
                                 <label for="formExternalTemplateId">외부 Template ID <small style="color:var(--muted)">(OPA 007)</small></label>
                                 <input id="formExternalTemplateId" type="text">
                             </div>
                             <div class="settings-field">
-                                <label for="formAttachDocumentId">첨부 문서 ID</label>
-                                <input id="formAttachDocumentId" type="text">
+                                <label for="formAttachTemplateId">첨부 템플릿 ID <small style="color:var(--muted)">(OPA 006)</small></label>
+                                <input id="formAttachTemplateId" type="text">
+                            </div>
+                            <div class="settings-field">
+                                <label for="formAttachFieldId">첨부 필드 ID <small style="color:var(--muted)">(기본: 첨부 1)</small></label>
+                                <input id="formAttachFieldId" type="text" placeholder="첨부 1">
                             </div>
                             <div class="settings-field">
                                 <label for="formMemberId">테스트 멤버 ID</label>
@@ -653,6 +708,25 @@
     </main>
 </div>
 
+<!-- REPORT MODAL -->
+<div class="report-overlay" id="reportModal">
+    <div class="report-modal">
+        <div class="report-header">
+            <div class="report-header-icon"><i class="fa-solid fa-chart-bar"></i></div>
+            <div class="report-header-text">
+                <h2>테스트 리포트</h2>
+                <p>OPA별 실행 결과와 실패 상세를 확인합니다.</p>
+            </div>
+            <div class="report-header-actions">
+                <button type="button" id="downloadReportMarkdownBtn">Markdown</button>
+                <button type="button" id="downloadReportHtmlBtn">HTML</button>
+                <button type="button" id="closeReportBtn">닫기</button>
+            </div>
+        </div>
+        <div class="report-body" id="reportModalBody"></div>
+    </div>
+</div>
+
 <div class="settings-modal-overlay" id="settingsModalOverlay"></div>
 
 <!-- GUIDE MODAL -->
@@ -705,9 +779,10 @@ window.OPEN_API_AUTO_TEST_CONFIG = window.OPEN_API_AUTO_TEST_CONFIG || {
             phone: ""
         },
         lookupTargets: {
-            downloadDocumentId: "",
-            attachDocumentId: ""
+            downloadDocumentId: ""
         },
+        attachTemplateId: "",
+        attachFieldId: "첨부 1",
         member: {
             id: "test.autorun@example.com"
         },
@@ -726,7 +801,7 @@ window.CREDENTIAL_CONFIG = {
     envFixed:         null,
     envSaveMap:       null,
     envLoadMap:       null,
-    customUrlId:      null,
+    customUrlId:      'customUrlInput',
     secretMethodId:   null,
     secretMethodType: 'tab',
 };
