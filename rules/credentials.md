@@ -64,7 +64,8 @@ window.CREDENTIAL_CONFIG = {
 - `custom` 환경: `직접 입력 · {url}` 형식으로 표시, 긴 URL은 `max-width:320px` 말줄임
 
 **비(非)자명한 동작:**
-- **CSS 격리**: 모달 내 `button`·`input`·`select`에 `all:revert` 적용 → 호스트 페이지 전역 CSS 오염 방지
-- **`secretMethodType: 'tab'`**: `[data-method].active` 읽기, `.click()` 쓰기 (OpenAPIAutoTest 방식)
+- **CSS 격리**: 모달 내 `button`·`input`·`select`에 `all:revert`, `table`·`tr`·`td`에 명시적 속성 오버라이드(`border:none`, `background:transparent` 등) 적용 → 호스트 페이지 전역 CSS 오염 방지
+- **`secretMethodType: 'tab'`**: `[data-method].active` 읽기, `.click()` 쓰기
+- **`secretMethodType: 'select'`**: `<select>` 요소에서 직접 `.value` 읽기/쓰기 (OpenAPIAutoTest 설정 모달 방식)
 - **토스트 위치**: `bottom: 80px` — 코너 모드 auth 패널(`bottom: 16px`)과 겹치지 않도록
 - **적용 제외**: OpenAPITester(`OpenAPITesterFull.html`, `OpenAPITesterProd.html`), MemberV2.html은 자체 모달 유지

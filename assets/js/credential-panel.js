@@ -110,6 +110,18 @@
                 'width:100%;',
                 'display:block;',
             '}',
+            '#_cpLoadModal table,#_cpSaveModal table{',
+                'border-collapse:collapse;width:100%;',
+            '}',
+            '#_cpLoadModal td,#_cpSaveModal td{',
+                'border:none;background:transparent;padding:3px 0;vertical-align:top;',
+            '}',
+            '#_cpLoadModal tr,#_cpSaveModal tr{',
+                'background:transparent;',
+            '}',
+            '#_cpLoadModal tr:hover,#_cpSaveModal tr:hover{',
+                'background:transparent;',
+            '}',
         ].join('');
         document.head.appendChild(s);
     }

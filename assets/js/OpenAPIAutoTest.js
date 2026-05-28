@@ -2143,6 +2143,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 <ul>
                     <li><strong>운영 (SaaS)</strong> — kr-api.eformsign.com</li>
                     <li><strong>공공 (CSAP)</strong> — www.gov-eformsign.com</li>
+                    <li><strong>직접 입력</strong> — 원하는 API URL을 직접 입력합니다. 커스텀 서버나 개발 환경 테스트에 활용할 수 있습니다.</li>
                     <li>환경이 맞지 않으면 토큰 발급 단계에서 인증 오류가 발생합니다.</li>
                 </ul>
             </div>
@@ -2150,25 +2151,26 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 <div class="guide-step-num">2</div>
                 <i class="fa-solid fa-key guide-step-icon"></i>
                 <h3>인증 설정 및 토큰 발급</h3>
-                <p>상단의 <strong>사용자 설정</strong>을 클릭해 모달을 열고, 인증 방식을 선택한 뒤 값을 입력합니다.</p>
+                <p><strong>입력값 설정</strong> 모달을 열고, 하단의 "인증 및 외부 API 설정" 섹션에서 인증 방식을 선택한 뒤 값을 입력합니다.</p>
                 <ul>
-                    <li><strong>Signature</strong> — API Key + User ID + Secret Key(Hex)를 입력하고 토큰 발급 버튼을 클릭합니다. 발급 성공 시 Company ID가 자동으로 채워집니다.</li>
-                    <li><strong>Bearer Token</strong> — 이미 보유한 Access Token을 직접 붙여넣습니다. 토큰 발급 버튼 없이 바로 입력값을 사용합니다.</li>
-                    <li>발급된 토큰과 Company ID는 모달 하단에서 확인할 수 있으며, 클릭하면 클립보드에 복사됩니다.</li>
+                    <li><strong>Signature</strong> — API Key + Auth Member ID + Secret Key를 입력하고 "토큰 발급" 버튼을 클릭합니다. 발급 성공 시 Company ID가 자동으로 채워집니다.</li>
+                    <li><strong>Bearer Token</strong> — 이미 보유한 Access Token을 Secret Key / Bearer Token 필드에 직접 붙여넣습니다. 토큰 발급 버튼 없이 바로 사용됩니다.</li>
+                    <li>발급된 토큰과 Company ID는 인증 섹션 하단에서 확인할 수 있으며, 클릭하면 클립보드에 복사됩니다.</li>
+                    <li><strong>인증 저장</strong> 버튼으로 현재 인증 정보를 DB에 저장해두면, <strong>인증 불러오기</strong>로 다음 테스트 시 재입력 없이 바로 불러올 수 있습니다. (로그인 필요)</li>
                 </ul>
             </div>
             <div class="guide-step">
                 <div class="guide-step-num">3</div>
                 <i class="fa-solid fa-file-pen guide-step-icon"></i>
                 <h3>테스트 데이터 입력</h3>
-                <p>사용자 설정 모달의 일반 설정 섹션에서 테스트에 필요한 값을 채웁니다. 실행하려는 OPA에 따라 필요한 항목이 다릅니다.</p>
+                <p><strong>입력값 설정</strong> 모달의 "일반 설정" 섹션에서 테스트에 필요한 값을 채웁니다. 실행하려는 OPA에 따라 필요한 항목이 다릅니다.</p>
                 <ul>
                     <li><strong>외부 Template ID</strong> — OPA 007(외부 문서 작성)에 필요. Company ID와 API Key는 토큰 발급 정보에서 자동으로 채워집니다.</li>
                     <li><strong>첨부 템플릿 ID / 첨부 필드 ID</strong> — OPA 006(첨부 파일 다운로드)에 사용. 첨부 컴포넌트가 있는 템플릿과 해당 필드 ID를 입력해야 합니다.</li>
                     <li><strong>테스트 멤버 ID</strong> — 멤버·그룹 관련 OPA(011~013, 018~020, 030)에 필요합니다.</li>
                     <li><strong>기본 수신자 (이름/이메일/휴대폰)</strong> — OPA 014(재요청) 시나리오에서 수신자 정보로 사용됩니다.</li>
-                    <li><strong>PDF 수신자 (이름/이메일)</strong> — OPA 037(완료 문서 PDF 전송)에 필요</li>
-                    <li>문서 생성·취소·다운로드 관련 OPA(003, 004, 005, 016, 021, 040, 042, 045)는 템플릿·완료 문서를 자동 탐색하므로 별도 ID 입력 불필요</li>
+                    <li><strong>PDF 수신자 (이름/이메일)</strong> — OPA 037(완료 문서 PDF 전송)에 필요합니다.</li>
+                    <li>문서 생성·취소·다운로드 관련 OPA(003, 004, 005, 016, 021, 040, 042, 045)는 템플릿·완료 문서를 자동 탐색하므로 별도 ID 입력이 불필요합니다.</li>
                     <li>설정을 프로필로 저장해두면 다음 테스트 시 재입력 없이 바로 불러올 수 있습니다.</li>
                 </ul>
             </div>
@@ -2180,8 +2182,8 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 <ul>
                     <li><strong class="guide-ready">준비됨</strong> — 현재 입력된 설정으로 바로 실행 가능합니다.</li>
                     <li><strong class="guide-warn">설정 필요</strong> — 누락된 값이 있습니다. 항목을 클릭하면 우측 상세 패널에서 어떤 설정이 부족한지 확인할 수 있습니다.</li>
-                    <li>체크박스로 여러 OPA를 선택하면 step이 중복되지 않도록 자동으로 최적화하여 순서대로 실행합니다.</li>
-                    <li>우측 실행 파이프라인 패널에서 어떤 단계들이 실제로 실행될지 미리 확인할 수 있습니다.</li>
+                    <li>여러 OPA를 선택하면 OPA별로 독립 실행됩니다. 각 OPA의 문서 생명주기(생성 → 검증 → 정리)가 격리되어 서로 영향을 주지 않습니다.</li>
+                    <li>템플릿·완료 문서 탐색 결과는 OPA 간 캐싱되어 중복 API 호출 없이 재사용됩니다.</li>
                 </ul>
             </div>
             <div class="guide-step">
@@ -2191,14 +2193,15 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 <p>실행 버튼을 누르면 토큰 준비부터 정리 단계까지 자동으로 처리됩니다. 각 step의 결과가 테이블로 표시됩니다.</p>
                 <ul>
                     <li><strong>현재 OPA만 실행</strong> — 사이드바에서 선택(클릭)된 OPA 하나만 실행합니다.</li>
-                    <li><strong>선택한 OPA 실행</strong> — 체크박스로 선택된 OPA 전체를 연속 실행합니다.</li>
-                    <li><strong>PASS / FAIL</strong> — step 단위로 결과가 표시됩니다. FAIL 시 <strong>결과 보기</strong>를 클릭하면 요청 바디와 응답 전문을 확인할 수 있습니다.</li>
-                    <li>실행 이력은 프로필별로 최근 10회까지 사용자 설정 모달에서 확인할 수 있습니다.</li>
+                    <li><strong>선택한 OPA 실행</strong> — 체크박스로 선택된 OPA 전체를 OPA 단위로 순차 실행합니다.</li>
+                    <li><strong>PASS / FAIL / SKIP</strong> — step 단위로 결과가 표시됩니다. 선행 step 실패 시 같은 OPA의 후속 step은 자동으로 SKIP됩니다. FAIL 시 결과 보기를 클릭하면 요청 바디와 응답 전문을 확인할 수 있습니다.</li>
+                    <li>실행 완료 후 <strong>리포트 보기</strong> 버튼이 나타납니다. 리포트 모달에서 OPA별/Step별 결과 요약과 실패 상세를 확인할 수 있습니다.</li>
+                    <li>리포트를 <strong>Markdown</strong> 또는 <strong>HTML</strong> 파일로 다운로드하여 공유할 수 있습니다.</li>
                 </ul>
             </div>
         `;
 
-        tip.innerHTML = `<strong>팁:</strong> OPA 003·004·005·016·021·040·042·045는 템플릿 또는 완료 문서를 자동으로 탐색하므로 ID를 별도로 입력하지 않아도 됩니다. OPA 037(PDF 전송), OPA 040(일괄 다운로드), OPA 045(완료 토큰 연장), OPA 004(단건 다운로드)는 계정에 완료 상태(status_type=003) 문서가 없으면 실행해도 의미 있는 검증이 되지 않습니다. OPA 006은 첨부 컴포넌트가 있는 템플릿으로 테스트 문서를 생성한 뒤 첨부 파일 다운로드를 자동 검증합니다.`;
+        tip.innerHTML = `<strong>팁:</strong> OPA 003·004·005·016·021·040·042·045는 템플릿 또는 완료 문서를 자동으로 탐색하므로 ID를 별도로 입력하지 않아도 됩니다. OPA 016·021(일괄 작성)은 작성 검증만 수행하며 문서 정리(취소/삭제) 단계가 없습니다. OPA 037(PDF 전송), OPA 040(일괄 다운로드), OPA 045(완료 토큰 연장), OPA 004(단건 다운로드)는 계정에 완료 상태(status_type=003) 문서가 없으면 실행해도 의미 있는 검증이 되지 않습니다. OPA 006은 첨부 컴포넌트가 있는 템플릿으로 테스트 문서를 생성한 뒤 첨부 파일 다운로드를 자동 검증합니다.`;
     }
 
     window.openGuide = function () {
