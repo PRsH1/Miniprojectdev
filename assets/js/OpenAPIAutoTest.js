@@ -531,10 +531,17 @@
         sig.updateString(execTime.toString());
         const signature = sig.sign();
 
-        const response = await fetch("/api/getToken", {
+        // 브라우저에서 eformsign로 직접 호출 (Tester ui.js 패턴과 동일).
+        // /api/getToken 서버 프록시를 쓰면 Vercel egress IP가 사내/dev 도메인에
+        // 접근하지 못해 custom 환경에서 ConnectTimeout이 발생함. request()도 직접 호출이므로 일관됨.
+        const response = await fetch(`${baseUrl()}/v2.0/api_auth/access_token`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ domain: baseUrl(), apiKey, memberId, signature, execTime })
+            headers: {
+                "Content-Type": "application/json; charset=UTF-8",
+                "Authorization": "Bearer " + btoa(apiKey),
+                "eformsign_signature": signature
+            },
+            body: JSON.stringify({ execution_time: execTime, member_id: memberId })
         });
         const payload = await response.json();
         if (!response.ok) throw new Error(payload.message || payload.ErrorMessage || "Access Token 발급에 실패했습니다.");
