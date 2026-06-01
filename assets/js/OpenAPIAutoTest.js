@@ -83,6 +83,30 @@
         filetype: "pdf",
         filename: "auto_test_attach.pdf"
     }];
+
+    // 회사 도장(OPA 026/028) 테스트용 임의 이미지를 canvas로 즉석 생성.
+    // 반환값은 PNG data URL("data:image/png;base64,..."). stamp.path가 순수 base64만
+    // 받는 환경이면 STAMP_USE_DATA_URI를 false로 바꿔 접두어를 제거한다.
+    const STAMP_USE_DATA_URI = true;
+    function makeStampImage() {
+        const c = document.createElement("canvas");
+        c.width = c.height = 120;
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, 120, 120);
+        ctx.strokeStyle = "#d64545";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(60, 60, 52, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = "#d64545";
+        ctx.font = "bold 30px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("自動", 60, 60);
+        const dataUri = c.toDataURL("image/png");
+        return STAMP_USE_DATA_URI ? dataUri : dataUri.replace(/^data:image\/png;base64,/, "");
+    }
     const SEED_STEPS = new Set([
         "listFormsForSeed",
         "listDocsBasic",
@@ -109,6 +133,8 @@
         { code: "OPA 020", group: "그룹", method: "DELETE", name: "그룹 삭제", desc: "테스트 그룹 생성 후 삭제를 검증합니다.", steps: ["createMember", "createGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 021", group: "문서", method: "POST", name: "문서 일괄 작성 (멀티)", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID 조합으로 멀티 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateMultiAuto"], keys: ["auth.mode"] },
         { code: "OPA 025", group: "회사 도장", method: "GET", name: "회사 도장 정보 조회", desc: "도장 목록을 먼저 조회한 뒤 상세를 검증합니다.", steps: ["listStamps", "stampDetail"], keys: ["auth.mode"] },
+        { code: "OPA 026", group: "회사 도장", method: "POST", name: "회사 도장 추가", desc: "임의 생성한 도장 이미지로 회사 도장을 추가한 뒤 삭제로 정리합니다. 별도 입력값이 필요 없습니다.", steps: ["createStamp", "deleteStamp"], keys: ["auth.mode"] },
+        { code: "OPA 028", group: "회사 도장", method: "DELETE", name: "회사 도장 삭제", desc: "임의 생성한 도장 이미지로 회사 도장을 추가한 뒤 삭제 API를 검증합니다. 별도 입력값이 필요 없습니다.", steps: ["createStamp", "deleteStamp"], keys: ["auth.mode"] },
         { code: "OPA 029", group: "회사 도장", method: "GET", name: "회사 도장 목록 조회", desc: "회사 도장 목록 조회를 검증합니다.", steps: ["listStamps"], keys: ["auth.mode"] },
         { code: "OPA 030", group: "멤버", method: "POST", name: "멤버 일괄 추가", desc: "일괄 멤버 추가와 정리를 검증합니다.", steps: ["bulkCreateMembers", "cleanupBulk1", "cleanupBulk2"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 037", group: "문서", method: "POST", name: "일괄 완료 문서 PDF 전송", desc: "완료 문서 최대 5개를 수집한 뒤 2개 조합으로 PDF 전송을 시도하고, 하나라도 성공하면 통과합니다. company_id는 토큰 발급 정보에서 자동으로 채워집니다.", steps: ["listDocsBasic", "trySendPdfAuto"], keys: ["auth.mode", "data.pdfTargetEmail"] },
@@ -302,6 +328,8 @@
             massCreateMultiDocs: ["POST", "문서 일괄 작성 - 멀티 템플릿"],
             listStamps: ["GET", "회사 도장 목록 조회"],
             stampDetail: ["GET", "회사 도장 정보 조회"],
+            createStamp: ["POST", "회사 도장 추가"],
+            deleteStamp: ["DELETE", "회사 도장 삭제"],
             bulkCreateMembers: ["POST", "멤버 일괄 추가"],
             tryRefreshCompleteTokenAuto: ["POST", "완료 토큰 기한 연장 (자동 선택 - 최대 5개 시도)"],
             tryDownloadMultiAuto: ["POST", "문서 파일 일괄 다운로드 (자동 선택 - 2개 조합 시도)"],
@@ -429,6 +457,8 @@
         if (id === "massCreateMultiDocs") return request({ id, method: "POST", path: "/v2.0/api/forms/mass_multi_documents", body: multiMassBody(), ok: [200], after: collectDocs });
         if (id === "listStamps") return request({ id, method: "GET", path: "/v2.0/api/company_stamp", ok: [200], after: (json) => { const first = Array.isArray(json.company_stamps) ? json.company_stamps[0] : null; state.shared.companyStampId = first ? first.id : null; } });
         if (id === "stampDetail") return request({ id, method: "GET", path: `/v2.0/api/company_stamp/${must(state.shared.companyStampId, "조회할 회사 도장 ID가 없습니다.")}`, ok: [200] });
+        if (id === "createStamp") return request({ id, method: "POST", path: "/v2.0/api/company_stamp", body: { company_stamp: { name: `OPA자동테스트_${Date.now()}`, description: "Open API 자동 테스트 도장", stamp: { path: makeStampImage() }, auth: { groups: [], members: [], allow_all_members: true } } }, ok: [200], after: (json) => { state.shared.companyStampId = (json && json.company_stamp && json.company_stamp.id) || null; } });
+        if (id === "deleteStamp") return request({ id, method: "DELETE", path: `/v2.0/api/company_stamp/${encodeURIComponent(must(state.shared.companyStampId, "삭제할 회사 도장 ID가 없습니다."))}`, ok: [200] });
         if (id === "bulkCreateMembers") return request({ id, method: "POST", path: "/v2.0/api/list_members", body: bulkBody(), ok: [200], after: (json) => { const failed = (json.members || []).filter((m) => m.success === false); if (failed.length) throw new Error("일괄 멤버 추가 응답에 success:false 항목이 포함되었습니다."); } });
         if (id === "tryRefreshCompleteTokenAuto") {
             const candidates = state.shared.completedDocIds || [];
