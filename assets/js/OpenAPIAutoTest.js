@@ -116,7 +116,7 @@
     const scenarios = [
         { code: "OPA 003", group: "문서", method: "GET", name: "문서 정보 조회", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 기본/상세 조회를 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "docInfoBasic", "docInfoDetail", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 004", group: "문서", method: "GET", name: "문서 파일 다운로드", desc: "완료(status_type=003) 문서 목록을 조회하여 최대 5개의 문서 ID를 자동 수집한 뒤 순차적으로 다운로드를 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listCompletedDocsForDownload", "tryDownloadDocAuto"], keys: ["auth.mode"] },
-        { code: "OPA 005", group: "문서", method: "POST", name: "새 문서 작성 (내부)", desc: "작성 가능한 템플릿 목록에서 최대 3개를 자동 추출한 뒤 순차적으로 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
+        { code: "OPA 005", group: "문서", method: "POST", name: "새 문서 작성 (내부)", desc: "작성 가능한 템플릿 목록에서 최대 10개를 자동 추출한 뒤 순차적으로 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 006", group: "문서", method: "GET", name: "문서 첨부 파일 다운로드", desc: "첨부 컴포넌트가 있는 템플릿으로 문서를 생성한 뒤, 해당 문서의 첨부 파일 다운로드를 검증합니다.", steps: ["createDocWithAttach", "downloadAttachAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.attachTemplateId", "data.attachFieldId"] },
         { code: "OPA 007", group: "문서", method: "POST", name: "새 문서 작성 (외부)", desc: "외부 문서를 생성하고 정리합니다. company_id와 API Key는 토큰 발급 정보에서 자동으로 채워집니다.", steps: ["createExternalDoc", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.extTemplateId"] },
         { code: "OPA 008", group: "문서", method: "POST", name: "문서 목록 조회", desc: "문서 목록 기본/상세 조회를 검증합니다.", steps: ["listDocsBasic", "listDocsDetail"], keys: ["auth.mode"] },
@@ -126,12 +126,12 @@
         { code: "OPA 013", group: "멤버", method: "DELETE", name: "멤버 삭제", desc: "테스트 멤버를 생성한 뒤 삭제를 검증합니다.", steps: ["createMember", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 014", group: "문서", method: "POST", name: "수신자 문서 재요청", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 수신자 재요청을 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "rerequestDoc", "cancelDocs", "deleteDocs"], keys: ["auth.mode", "data.targetEmail"] },
         { code: "OPA 015", group: "문서", method: "GET", name: "작성 가능한 템플릿 목록", desc: "작성 가능한 템플릿 목록을 조회합니다.", steps: ["listForms"], keys: ["auth.mode"] },
-        { code: "OPA 016", group: "문서", method: "POST", name: "문서 일괄 작성", desc: "작성 가능한 템플릿 목록에서 최대 3개를 자동 추출한 뒤 순차적으로 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateAuto"], keys: ["auth.mode"] },
+        { code: "OPA 016", group: "문서", method: "POST", name: "문서 일괄 작성", desc: "작성 가능한 템플릿 목록에서 최대 10개를 자동 추출한 뒤 순차적으로 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateAuto"], keys: ["auth.mode"] },
         { code: "OPA 017", group: "그룹", method: "GET", name: "그룹 목록 조회", desc: "그룹 목록 조회를 검증합니다.", steps: ["listGroups"], keys: ["auth.mode"] },
         { code: "OPA 018", group: "그룹", method: "POST", name: "그룹 추가", desc: "테스트 그룹 생성 후 정리합니다.", steps: ["createMember", "createGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 019", group: "그룹", method: "PATCH", name: "그룹 수정", desc: "테스트 그룹 생성, 수정 후 정리합니다.", steps: ["createMember", "createGroup", "updateGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
         { code: "OPA 020", group: "그룹", method: "DELETE", name: "그룹 삭제", desc: "테스트 그룹 생성 후 삭제를 검증합니다.", steps: ["createMember", "createGroup", "deleteGroup", "deleteMember"], keys: ["auth.mode", "data.memberId"] },
-        { code: "OPA 021", group: "문서", method: "POST", name: "문서 일괄 작성 (멀티)", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID 조합으로 멀티 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateMultiAuto"], keys: ["auth.mode"] },
+        { code: "OPA 021", group: "문서", method: "POST", name: "문서 일괄 작성 (멀티)", desc: "작성 가능한 템플릿 목록에서 최대 10개를 자동 추출한 뒤 2개씩 조합하여 멀티 일괄 문서 작성을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listFormsForSeed", "tryMassCreateMultiAuto"], keys: ["auth.mode"] },
         { code: "OPA 025", group: "회사 도장", method: "GET", name: "회사 도장 정보 조회", desc: "도장 목록을 먼저 조회한 뒤 상세를 검증합니다.", steps: ["listStamps", "stampDetail"], keys: ["auth.mode"] },
         { code: "OPA 026", group: "회사 도장", method: "POST", name: "회사 도장 추가", desc: "임의 생성한 도장 이미지로 회사 도장을 추가한 뒤 삭제로 정리합니다. 별도 입력값이 필요 없습니다.", steps: ["createStamp", "deleteStamp"], keys: ["auth.mode"] },
         { code: "OPA 028", group: "회사 도장", method: "DELETE", name: "회사 도장 삭제", desc: "임의 생성한 도장 이미지로 회사 도장을 추가한 뒤 삭제 API를 검증합니다. 별도 입력값이 필요 없습니다.", steps: ["createStamp", "deleteStamp"], keys: ["auth.mode"] },
@@ -301,8 +301,8 @@
         const dict = {
             seedInternalDoc: ["POST", "새 문서 작성 (OPA 005 - 내부 seed)"],
             listFormsForSeed: ["GET", "작성 가능한 템플릿 목록 조회 (자동 탐색)"],
-            tryCreateAuto: ["POST", "새 문서 작성 (자동 선택 - 최대 3개 시도)"],
-            tryMassCreateAuto: ["POST", "문서 일괄 작성 (자동 선택 - 최대 3개 시도)"],
+            tryCreateAuto: ["POST", "새 문서 작성 (자동 선택 - 최대 10개 시도)"],
+            tryMassCreateAuto: ["POST", "문서 일괄 작성 (자동 선택 - 최대 10개 시도)"],
             tryMassCreateMultiAuto: ["POST", "문서 일괄 작성 - 멀티 (자동 선택 조합 시도)"],
             docInfoBasic: ["GET", "문서 정보 조회 - 기본"],
             docInfoDetail: ["GET", "문서 정보 조회 - 상세"],
@@ -400,7 +400,7 @@
         if (id === "listForms") return request({ id, method: "GET", path: "/v2.0/api/forms", ok: [200] });
         if (id === "listFormsForSeed") return request({ id, method: "GET", path: "/v2.0/api/forms", ok: [200], after: (json) => {
             const forms = Array.isArray(json.templates) ? json.templates : [];
-            state.shared.candidateTemplateIds = forms.filter((f) => f.enabled !== false).slice(0, 3).map((f) => f.form_id);
+            state.shared.candidateTemplateIds = forms.filter((f) => f.enabled !== false).slice(0, 10).map((f) => f.form_id);
             if (!state.shared.candidateTemplateIds.length) throw new Error("작성 가능한 템플릿이 없습니다. 계정에 활성화된 템플릿을 확인해 주세요.");
         } });
         if (id === "tryCreateAuto") {
