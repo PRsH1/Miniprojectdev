@@ -23,13 +23,19 @@ const handler = async (req, res) => {
         });
         const data = await tokenResponse.json();
         if (!tokenResponse.ok) {
+            const upstream = {
+                status: tokenResponse.status,
+                code: data.code || data.error_code || null,
+                message: data.message || data.ErrorMessage || data.error_message || null,
+                body: data,
+            };
             return respondError(req, res, tokenResponse.status >= 500 ? 502 : tokenResponse.status, {
                 code: 'UPSTREAM_API_ERROR',
                 message: 'eformsign 액세스 토큰 발급에 실패했습니다.',
                 reason: '외부 인증 API가 요청을 정상적으로 처리하지 못했습니다.',
                 action: '도메인, API Key, 서명 값을 확인한 뒤 다시 시도하세요.',
                 logMessage: 'Upstream token API returned non-ok response',
-                eformsignErrorMessage: data.message || 'No error message provided by eformsign',
+                upstream,
                 error: data,
             });
         }

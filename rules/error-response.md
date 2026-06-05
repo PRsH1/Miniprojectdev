@@ -9,6 +9,7 @@
 - 인증이 필요한 페이지에서 인증 없음 → 기존 로그인 리다이렉트 흐름 유지
 - 내부 예외 상세·스택·DB 세부 정보·시크릿은 응답 본문에 노출 금지
 - 서버 로그로 내부 상세를 남기고, 사용자에게는 이해 가능한 원인과 다음 액션만 전달
+- `respondError` options에 `upstream`을 넘기면 외부 API 에러 정보(`code`, `message`, `body`)를 `error.upstream`으로 응답에 포함한다(opt-in). 현재 `getToken.js`에서 eformsign 에러 전달에 사용
 
 ### HTML 에러 페이지
 

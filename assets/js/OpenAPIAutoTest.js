@@ -608,7 +608,9 @@
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok || !payload?.oauth_token?.access_token) {
-            const msg = (payload.error && (payload.error.eformsignErrorMessage || payload.error.message))
+            const up = payload.error && payload.error.upstream;
+            const msg = (up && (up.code ? `[${up.code}] ${up.message || ''}`.trim() : up.message))
+                || (payload.error && payload.error.message)
                 || payload.message || "프록시 경유 Access Token 발급에 실패했습니다.";
             throw new Error(msg);
         }

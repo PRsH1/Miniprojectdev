@@ -112,6 +112,7 @@ function buildJsonPayload(status, options = {}) {
       message: options.message || definition.message,
       reason: options.reason || definition.reason,
       action: options.action || definition.action,
+      ...(options.upstream ? { upstream: options.upstream } : {}),
     },
   };
 }

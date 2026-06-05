@@ -633,7 +633,10 @@ async function tryProxyToken({ domain, apiKey, memberId, signature, execTime }) 
         if (res.ok && data.oauth_token && data.oauth_token.access_token) {
             return { ok: true, token: data.oauth_token.access_token };
         }
-        const msg = (data.error && (data.error.eformsignErrorMessage || data.error.message)) || JSON.stringify(data);
+        const up = data.error && data.error.upstream;
+        const msg = (up && (up.code ? `[${up.code}] ${up.message || ''}`.trim() : up.message))
+            || (data.error && data.error.message)
+            || JSON.stringify(data);
         return { ok: false, message: msg };
     } catch (e) {
         return { ok: false, message: '프록시 호출 실패: ' + e.message };
