@@ -559,37 +559,53 @@ function updateMethodStyle() {
 // AUTH
 // ──────────────────────────────────────────────────────────────────────────
 async function getAccessToken() {
-    const execTime = Date.now();
-    const apiKey = $('#apiKey').val().trim();
+    const execTime  = Date.now();
+    const apiKey    = $('#apiKey').val().trim();
     const secretKey = $('#secretKey').val().trim();
-    const memberId = $('#userId').val().trim();
-    const domain = getBaseUrl();
+    const memberId  = $('#userId').val().trim();
+    const domain    = getBaseUrl();
 
     if (!domain) { showToast('환경을 선택하거나 도메인을 입력해주세요'); return; }
     if (!apiKey || !secretKey || !memberId) { showToast('API Key, 비밀 키, User ID를 모두 입력해주세요'); return; }
-
-    $('#btnGetToken').prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin fa-sm"></i> 발급 중...');
 
     let signature;
     if (state.authMethod === 'signature') {
         try {
             const keyObj = KEYUTIL.getKeyFromPlainPrivatePKCS8Hex(secretKey);
             const sig = new KJUR.crypto.Signature({ alg: 'SHA256withECDSA' });
-            sig.init(keyObj);
-            sig.updateString(execTime.toString());
+            sig.init(keyObj); sig.updateString(execTime.toString());
             signature = sig.sign();
         } catch (e) {
             showToast('서명 생성 오류: ' + e.message, 3000);
-            $('#btnGetToken').prop('disabled', false).html('<i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급');
             return;
         }
     } else {
         signature = 'Bearer ' + secretKey;
     }
 
-    const url = `${domain}/v2.0/api_auth/access_token`;
+    $('#btnGetToken').prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin fa-sm"></i> 발급 중...');
     try {
-        const res = await fetch(url, {
+        const payload = { domain, apiKey, memberId, signature, execTime };
+        let result = await tryDirectToken(payload);
+        if (result.transportFail) {
+            console.info('[token] direct 전송 실패(CORS/네트워크) /api/getToken 프록시 경유 재시도');
+            result = await tryProxyToken(payload);
+        }
+        if (result.ok) {
+            applyIssuedToken(result.token);
+            showToast('토큰이 발급되었습니다');
+        } else {
+            showToast('토큰 발급 실패: ' + (result.message || '알 수 없는 오류'), 3500);
+        }
+    } finally {
+        $('#btnGetToken').prop('disabled', false).html('<i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급');
+    }
+}
+
+async function tryDirectToken({ domain, apiKey, memberId, signature, execTime }) {
+    let res;
+    try {
+        res = await fetch(`${domain}/v2.0/api_auth/access_token`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json; charset=UTF-8',
@@ -598,25 +614,40 @@ async function getAccessToken() {
             },
             body: JSON.stringify({ execution_time: execTime, member_id: memberId })
         });
-        const data = await res.json();
-        if (data.oauth_token && data.oauth_token.access_token) {
-            state.accessToken = data.oauth_token.access_token;
-            updateAuthUI();
-            // Auto-update Authorization header in current request if open
-            $('#headersBody tr').each(function() {
-                const key = $(this).find('.header-key').val();
-                if (key === 'Authorization') {
-                    $(this).find('.header-val').val(`Bearer ${state.accessToken}`);
-                }
-            });
-            showToast('토큰이 발급되었습니다');
-        } else {
-            showToast('토큰 발급 실패: ' + JSON.stringify(data), 3000);
-        }
-    } catch (e) {
-        showToast('요청 오류: ' + e.message, 3000);
+    } catch (_) {
+        return { transportFail: true };
     }
-    $('#btnGetToken').prop('disabled', false).html('<i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급');
+    let data = {}; try { data = await res.json(); } catch (_) {}
+    if (data.oauth_token && data.oauth_token.access_token) return { ok: true, token: data.oauth_token.access_token };
+    return { ok: false, message: JSON.stringify(data) };
+}
+
+async function tryProxyToken({ domain, apiKey, memberId, signature, execTime }) {
+    try {
+        const res = await fetch('/api/getToken', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ domain, apiKey, memberId, signature, execTime })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.oauth_token && data.oauth_token.access_token) {
+            return { ok: true, token: data.oauth_token.access_token };
+        }
+        const msg = (data.error && (data.error.eformsignErrorMessage || data.error.message)) || JSON.stringify(data);
+        return { ok: false, message: msg };
+    } catch (e) {
+        return { ok: false, message: '프록시 호출 실패: ' + e.message };
+    }
+}
+
+function applyIssuedToken(token) {
+    state.accessToken = token;
+    updateAuthUI();
+    $('#headersBody tr').each(function() {
+        if ($(this).find('.header-key').val() === 'Authorization') {
+            $(this).find('.header-val').val(`Bearer ${token}`);
+        }
+    });
 }
 
 function updateAuthUI() {

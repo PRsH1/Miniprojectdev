@@ -560,26 +560,59 @@
         sig.init(keyObj);
         sig.updateString(execTime.toString());
         const signature = sig.sign();
+        const domain = baseUrl();
 
-        // 브라우저에서 eformsign로 직접 호출 (Tester ui.js 패턴과 동일).
-        // /api/getToken 서버 프록시를 쓰면 Vercel egress IP가 사내/dev 도메인에
-        // 접근하지 못해 custom 환경에서 ConnectTimeout이 발생함. request()도 직접 호출이므로 일관됨.
-        const response = await fetch(`${baseUrl()}/v2.0/api_auth/access_token`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json; charset=UTF-8",
-                "Authorization": "Bearer " + btoa(apiKey),
-                "eformsign_signature": signature
-            },
-            body: JSON.stringify({ execution_time: execTime, member_id: memberId })
-        });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.message || payload.ErrorMessage || "Access Token 발급에 실패했습니다.");
+        // 브라우저 직접 호출은 유지하고, 전송실패(CORS/네트워크)일 때만 /api/getToken 프록시로 재시도한다.
+        // 과거 b829055에서 프록시 단독 구조가 일부 on-premise 도메인 ConnectTimeout을 만들었기 때문에
+        // 직접 호출을 1차로 두고 프록시는 CORS 차단 도메인을 구제하는 fallback으로만 사용한다.
+        let payload = await fetchTokenDirect(domain, apiKey, memberId, signature, execTime);
+        if (payload === TOKEN_TRANSPORT_FAIL) {
+            console.info('[token] direct 전송 실패 /api/getToken 프록시 경유 재시도');
+            payload = await fetchTokenViaProxy(domain, apiKey, memberId, signature, execTime);
+        }
+
         state.token = must(payload?.oauth_token?.access_token, "응답에서 access_token을 찾지 못했습니다.");
         const cid = payload?.api_key?.company?.company_id;
         if (cid) state.companyId = cid;
         updateAuthPanelUI();
         return state.token;
+    }
+
+    const TOKEN_TRANSPORT_FAIL = Symbol('token_transport_fail');
+
+    async function fetchTokenDirect(domain, apiKey, memberId, signature, execTime) {
+        let response;
+        try {
+            response = await fetch(`${domain}/v2.0/api_auth/access_token`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json; charset=UTF-8",
+                    "Authorization": "Bearer " + btoa(apiKey),
+                    "eformsign_signature": signature
+                },
+                body: JSON.stringify({ execution_time: execTime, member_id: memberId })
+            });
+        } catch (_) {
+            return TOKEN_TRANSPORT_FAIL;
+        }
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || payload.ErrorMessage || "Access Token 발급에 실패했습니다.");
+        return payload;
+    }
+
+    async function fetchTokenViaProxy(domain, apiKey, memberId, signature, execTime) {
+        const response = await fetch('/api/getToken', {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ domain, apiKey, memberId, signature, execTime })
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload?.oauth_token?.access_token) {
+            const msg = (payload.error && (payload.error.eformsignErrorMessage || payload.error.message))
+                || payload.message || "프록시 경유 Access Token 발급에 실패했습니다.";
+            throw new Error(msg);
+        }
+        return payload;
     }
 
     async function request({ id, method, path, body, ok, after, headers, useToken = true }) {
