@@ -492,7 +492,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | 기능 | 설명 |
 |------|------|
 | API 사이드바 | OPA2_XXX 번호 배지, 검색, 너비 드래그 조절, **정렬 방식 토글** (그룹별 / 코드순 / Method별) |
-| 인증 패널 | Signature / Bearer 방식 선택, Access Token 자동 발급, **인증 저장/불러오기** (로그인 필요) |
+| 인증 패널 | Signature / Bearer 방식 선택, Access Token 자동 발급 (**CORS/네트워크 전송 실패 시 `/api/getToken` 서버 프록시 자동 fallback**), **인증 저장/불러오기** (로그인 필요) |
 | Path 탭 | URL 경로 파라미터 입력 (키 readonly, 배지 = 파라미터 개수) |
 | Query 탭 | Query String 입력, 체크박스 활성화, 행 추가 가능 |
 | Headers 탭 | 헤더 추가/수정, API별 필수 헤더 자동 노출 |
@@ -572,6 +572,47 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `templateDeletetool.html` | 템플릿 일괄 삭제 |
 | `saml-guide.html` | SAML 연동 가이드 |
 | `error-codes.html` | OPA2 에러 코드 모음 (43개 엔드포인트, 에러 코드·Enum·메시지 검색) |
+
+---
+
+## 2026-06-05 Update
+
+### Access Token 발급 3단계 fallback (direct → 서버 프록시)
+
+OpenAPITester · OpenAPIAutoTest가 브라우저에서 eformsign로 직접 토큰을 발급할 때, 일부 custom/on-premise 도메인이 CORS preflight에서 `eformsign_signature` 헤더를 허용하지 않아 발급이 차단되는 문제를 보완했습니다.
+
+#### 문제
+
+- 토큰 발급 요청은 `Authorization` + `eformsign_signature` 커스텀 헤더를 실어 **CORS preflight(OPTIONS)** 를 유발
+- 일부 서버의 `Access-Control-Allow-Headers`에 `eformsign_signature`가 빠져 있어 브라우저가 본 요청을 차단 (Postman·주소창 직접 호출은 CORS 미적용이라 정상 동작 → 오인 진단 유발)
+
+#### 동작 — 전송 실패 시에만 서버 프록시 재시도
+
+```
+서명·execTime 1회 계산
+ ① 브라우저 direct fetch (eformsign 도메인 직접)
+     ├ 응답 도착 + 토큰 있음 → 성공
+     ├ 응답 도착 + 토큰 없음 → 인증거부 → 즉시 최종 실패 (프록시 건너뜀)
+     └ throw(CORS/네트워크) → ②
+ ② POST /api/getToken 서버 프록시 (동일 서명·execTime 재사용)
+     ├ 200 + 토큰 → 성공 (무음)
+     └ 실패 → 최종 실패
+```
+
+- **전송 실패(CORS/네트워크)일 때만** 프록시로 재시도. 인증거부(응답 도착·토큰 없음)는 프록시 우회가 무의미하므로 즉시 최종 실패 처리 → 정상 환경의 불필요한 2차 호출·지연 방지
+- **모든 환경 적용**. 운영(SaaS)/공공(CSAP)은 ①에서 즉시 성공하므로 프록시 미진입 — 기존 동작·성능 무영향 (순수 추가형, 회귀 없음)
+- **비밀키는 브라우저를 벗어나지 않음** — 서명은 브라우저에서 jsrsasign으로 계산하고, 프록시에는 계산된 **서명값만** 전달 (기존 `controllers/getToken.js` 계약 그대로 활용)
+- 프록시 경유 성공은 **무음 처리** (사용자에게는 일반 발급 토스트만, 경유 여부는 콘솔 로그로만 기록)
+
+#### 변경 파일
+
+| 파일 | 변경 내용 |
+|---|---|
+| `assets/js/openapi/ui.js` | `getAccessToken()` 재구조화 + `tryDirectToken` / `tryProxyToken` / `applyIssuedToken` 헬퍼 분리 (Signature·Bearer 양 모드 적용) |
+| `assets/js/OpenAPIAutoTest.js` | `issueTokenFromPanel()`에 fallback 적용 + `fetchTokenDirect` / `fetchTokenViaProxy` 헬퍼 추가 (signature 모드) |
+| `controllers/getToken.js` | 변경 없음 — 기존 서버 프록시 엔드포인트 재사용 |
+
+> **참고**: 근본 해결은 대상 서버 nginx의 `Access-Control-Allow-Headers`에 `eformsign_signature` 추가입니다. 본 fallback은 서버 수정이 어렵거나 CORS가 막힌 도메인을 클라이언트 측에서 구제하기 위한 보완책입니다.
 
 ---
 
