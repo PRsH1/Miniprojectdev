@@ -56,3 +56,4 @@ tmp-*.json
 !/docs/error-response-format.md
 !/docs/codex-mcp-migration.md
 
+.env*
