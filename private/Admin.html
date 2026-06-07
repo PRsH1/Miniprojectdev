@@ -371,6 +371,14 @@
     <!-- ══════════ IP 화이트리스트 탭 ══════════ -->
     <div class="tab-content" id="tab-ipwhitelist">
       <div class="section-title">IP 화이트리스트 관리</div>
+      <div id="ipwMasterFlagWarning" class="alert warning" style="display:none">
+        <i class="fa fa-exclamation-triangle"></i>
+        <span><strong>스코프는 켜졌으나 env 마스터 플래그가 OFF라 실제로 적용되지 않습니다.</strong> <code>IP_WHITELIST_ENABLED</code>를 확인하세요.</span>
+      </div>
+      <div class="alert info">
+        <i class="fa fa-info-circle"></i>
+        <span>먼저 내 IP를 추가하고 IP 테스트로 허용을 확인한 뒤 스코프를 활성화하세요.</span>
+      </div>
 
       <!-- 스코프 설정 -->
       <div class="card">
@@ -1687,6 +1695,7 @@ $(function () {
   function loadIpWhitelist() {
     $.getJSON('/api/admin/ip-whitelist', function (data) {
       _ipwData = data;
+      renderIpwMasterStatus(data.master_enabled, data.scopes);
       renderIpwScopes(data.scopes);
       renderIpwRules(data.scopes, data.rules);
       populateScopeFilter(data.scopes);
@@ -1695,6 +1704,11 @@ $(function () {
       if (xhr.status === 401) location.href = '/auth/login.html';
       else alert('IP 화이트리스트 로드 실패');
     });
+  }
+
+  function renderIpwMasterStatus(masterEnabled, scopes) {
+    const hasEnabledScope = scopes.some(s => s.is_enabled);
+    $('#ipwMasterFlagWarning').toggle(hasEnabledScope && !masterEnabled);
   }
 
   function scopeLabel(scopes, scopeType, scopePath) {
@@ -1765,7 +1779,7 @@ $(function () {
     const bgColor = isEnabled ? '#fff5f5' : '#f8fafc';
     const warningHtml = isEnabled
       ? `<p style="margin-top:8px;font-size:11px;color:#991b1b;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:6px 10px">
-          ⚠️ 주의: 화이트리스트에 없는 모든 IP가 ${scope.scope_type === 'global' ? '전체 사이트에서' : '/app/ 접근 시'} 차단됩니다.
+          ⚠️ 주의: 화이트리스트에 없는 모든 IP가 ${scope.scope_type === 'global' ? '전체 페이지/API에서' : '/app/ 접근 시'} 차단됩니다.
         </p>` : '';
     return `<div style="background:${bgColor};border:2px solid ${borderColor};border-radius:var(--radius-card);padding:16px;box-shadow:var(--shadow-card)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -1857,7 +1871,7 @@ $(function () {
     const $select = $('#ipwScopeFilter');
     const cur = $select.val();
     $select.find('option:not(:first)').remove();
-    $select.append('<option value="global">전체 사이트 (global)</option>');
+    $select.append('<option value="global">전체 페이지/API (global)</option>');
     $select.append('<option value="protected">보호 페이지 (protected)</option>');
     scopes.filter(s => s.scope_type === 'path').forEach(function (s) {
       $select.append(`<option value="${esc(s.scope_path)}">${esc(s.scope_path)} — ${esc(s.label)}</option>`);
@@ -1868,7 +1882,7 @@ $(function () {
   function populateRuleScopeSelect(scopes) {
     const $select = $('#ipRuleScope');
     $select.empty();
-    $select.append('<option value="global">전체 사이트 (global)</option>');
+    $select.append('<option value="global">전체 페이지/API (global)</option>');
     $select.append('<option value="protected">보호 페이지 (protected)</option>');
     scopes.filter(s => s.scope_type === 'path').forEach(function (s) {
       $select.append(`<option value="path:${esc(s.scope_path)}">${esc(s.scope_path)} — ${esc(s.label)}</option>`);
@@ -1958,7 +1972,7 @@ $(function () {
             <table style="width:100%;font-size:13px">
               <thead><tr><th style="text-align:left;font-size:11px;color:var(--text-sub);padding-bottom:4px">스코프</th><th style="text-align:left;font-size:11px;color:var(--text-sub)">결과</th></tr></thead>
               <tbody>
-                ${scopeDetailHtml('전체 사이트 (global)', d.global)}
+                ${scopeDetailHtml('전체 페이지/API (global)', d.global)}
                 ${scopeDetailHtml('경로별 (path)', d.path)}
                 ${scopeDetailHtml('보호 페이지 (protected)', d.protected)}
               </tbody>

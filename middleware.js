@@ -15,6 +15,17 @@ let _cache = null;
 let _cacheAt = 0;
 const CACHE_TTL = 60_000;
 
+export function isIpWhitelistEnabled(value = process.env.IP_WHITELIST_ENABLED) {
+  return value === '1' || value === 'true';
+}
+
+export function isStaticPath(pathname) {
+  const path = pathname.split('?')[0];
+  return path.startsWith('/assets/') || path.startsWith('/img/') || path.startsWith('/file/')
+      || path === '/favicon.svg'
+      || /\.(?:css|js|png|jpe?g|svg|ico|webp|woff2?|ttf|map|pdf)$/i.test(path);
+}
+
 function ipToInt(ip) {
   return ip.split('.').reduce((acc, o) => (acc * 256 + parseInt(o, 10)) >>> 0, 0);
 }
@@ -42,6 +53,9 @@ async function loadGlobalCheck() {
 }
 
 export default async function middleware(request) {
+  if (!isIpWhitelistEnabled()) return;
+  if (isStaticPath(new URL(request.url).pathname)) return;
+
   const forwarded = request.headers.get('x-forwarded-for') || '';
   const ip = forwarded.split(',')[0].trim() || '127.0.0.1';
   const cleanIp = ip.replace(/^::ffff:/, '');

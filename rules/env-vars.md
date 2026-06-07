@@ -22,6 +22,9 @@ IDP_TEST_PAGE_PASSWORD=     # 구 IdP 테스트 비밀번호 (현재 미사용)
 # ─── 크리덴셜 암호화 ─────────────────────────────────────
 CREDENTIAL_ENCRYPTION_KEY=  # eformsign 비밀 키 AES-256-GCM 암호화 키 (openssl rand -hex 32 로 생성)
 
+# ─── IP 화이트리스트 ──────────────────────────────────────
+IP_WHITELIST_ENABLED=       # '1' 또는 'true'일 때만 적용. 미설정/그 외 값은 OFF
+
 # ─── Cron ────────────────────────────────────────────────
 CRON_SECRET=                # Cron 엔드포인트 인증 시크릿 (임의 문자열, Production/Preview/Development 모두 등록)
 

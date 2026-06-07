@@ -18,6 +18,10 @@ function invalidateCache() {
   _cacheAt = 0;
 }
 
+function isIpWhitelistEnabled(value = process.env.IP_WHITELIST_ENABLED) {
+  return value === '1' || value === 'true';
+}
+
 async function loadData() {
   if (_cache && Date.now() - _cacheAt < CACHE_TTL) return _cache;
   const sql = getDb();
@@ -58,9 +62,12 @@ function matchesPathPattern(reqPath, pattern) {
  * @param {string} clientIp
  * @param {string|null} requestPath
  * @param {'global_and_path'|'protected_only'} mode
+ * @param {Function} loadDataFn
  * @returns {Promise<{allowed: boolean, blockedBy?: 'global'|'path'|'protected'}>}
  */
-async function checkIpAllowed(clientIp, requestPath, mode = 'global_and_path') {
+async function checkIpAllowed(clientIp, requestPath, mode = 'global_and_path', loadDataFn = loadData) {
+  if (!isIpWhitelistEnabled()) return { allowed: true };
+
   // 로컬호스트(vercel dev 환경 포함)는 항상 허용
   const cleanedIp = clientIp.replace(/^::ffff:/, '');
   if (cleanedIp === '127.0.0.1' || cleanedIp === '::1' || clientIp === '::1') {
@@ -69,7 +76,7 @@ async function checkIpAllowed(clientIp, requestPath, mode = 'global_and_path') {
 
   let data;
   try {
-    data = await loadData();
+    data = await loadDataFn();
   } catch (err) {
     console.error('[ip-whitelist] DB 로드 오류 (fail-open):', err);
     return { allowed: true };
@@ -109,4 +116,10 @@ async function checkIpAllowed(clientIp, requestPath, mode = 'global_and_path') {
   return { allowed: true };
 }
 
-module.exports = { checkIpAllowed, invalidateCache };
+module.exports = {
+  checkIpAllowed,
+  invalidateCache,
+  isIpInCidr,
+  isIpWhitelistEnabled,
+  matchesPathPattern,
+};

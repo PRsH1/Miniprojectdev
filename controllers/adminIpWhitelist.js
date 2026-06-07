@@ -2,7 +2,7 @@
  * controllers/adminIpWhitelist.js
  * 관리자 IP 화이트리스트 관리 API
  *
- * GET    /api/admin/ip-whitelist              → { scopes, rules }
+ * GET    /api/admin/ip-whitelist              → { master_enabled, scopes, rules }
  * POST   /api/admin/ip-whitelist/rules        → 규칙 추가
  * PATCH  /api/admin/ip-whitelist/rules/:id    → 규칙 수정
  * DELETE /api/admin/ip-whitelist/rules/:id    → 규칙 삭제
@@ -17,7 +17,7 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { respondError } = require('./_shared/respond-error');
-const { checkIpAllowed, invalidateCache } = require('./_shared/ip-whitelist');
+const { invalidateCache, isIpWhitelistEnabled } = require('./_shared/ip-whitelist');
 
 function requireAdmin(req, res) {
   const cookies = parse(req.headers.cookie || '');
@@ -62,7 +62,7 @@ module.exports = async function handler(req, res) {
       sql`SELECT id, scope_type, scope_path, label, is_enabled, created_at FROM ip_whitelist_scopes ORDER BY scope_type, created_at`,
       sql`SELECT id, label, ip_cidr, scope_type, scope_path, is_active, created_at FROM ip_whitelist ORDER BY scope_type, created_at`,
     ]);
-    return res.status(200).json({ scopes, rules });
+    return res.status(200).json({ master_enabled: isIpWhitelistEnabled(), scopes, rules });
   }
 
   // POST /api/admin/ip-whitelist/rules
