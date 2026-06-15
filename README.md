@@ -299,7 +299,10 @@ ProjectImprove/
 - **ACS Endpoint (대상 서버 선택):**
   - Test: `https://test-kr-service.eformsign.com/v1.0/saml_redirect`
   - Dev: `https://dev-service.eformsign.com/v1.0/saml_redirect`
-  - `lib/saml.js`의 `ACS_URLS` 맵에서 관리하며, 대상 서버마다 SP 인스턴스를 분리 생성한다(ACS Location이 SAML Response의 Destination/Recipient로 삽입되므로). `idp-test.html`의 "전송 대상 서버" select로 선택, `idp-initiated-login`이 `resolveTarget()`로 처리(기본값 test)
+  - `lib/saml.js`의 `ACS_URLS` 맵에서 관리하며, 대상 서버마다 SP 인스턴스를 분리 생성한다(ACS Location이 SAML Response의 Destination/Recipient로 삽입되므로).
+- **대상 서버 라우팅:**
+  - **IdP 시작** (`idp-test.html` → `idp-initiated-login`): 폼의 "전송 대상 서버" select → `resolveTarget()` (기본값 test)
+  - **SP 시작** (`sso-login` → `auth`): 우선순위 ① 명시적 `target`(test/dev, `sso-login?target=dev`) → ② SAMLRequest의 `AssertionConsumerServiceURL`(`extractAcsUrl` + `resolveTargetByAcsUrl`, 화이트리스트 검증) → ③ test 폴백
 - SP 시작 및 IDP 시작 플로우 모두 지원
 
 ### 3. ECDSA 서명 인증

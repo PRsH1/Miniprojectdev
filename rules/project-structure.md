@@ -58,9 +58,9 @@ ProjectImprove/
 │   ├── adminPage.js            # /app/admin 라우터 등록 참조용 (실제 처리는 auth-middleware)
 │   │
 │   │   # ── SAML ────────────────────────────────────────────
-│   ├── auth.js                 # SAML 응답 생성
-│   ├── sso-login.js            # SAML SSO 로그인 폼
-│   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우
+│   ├── auth.js                 # SAML 응답 생성 (SP개시: 요청 ACS/target으로 test·dev 대상 라우팅)
+│   ├── sso-login.js            # SAML SSO 로그인 폼 (target 쿼리로 대상 서버 강제 가능)
+│   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우 (폼 target으로 test·dev 선택)
 │   ├── metadata.js             # SAML 메타데이터 엔드포인트
 │   │
 │   │   # ── Admin API (/api/admin/*) ─────────────────────────
