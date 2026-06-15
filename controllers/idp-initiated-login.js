@@ -1,7 +1,7 @@
-const { idp, sp } = require('../lib/saml');
+const { idp, resolveTarget } = require('../lib/saml');
 
 module.exports = async (req, res) => {
-  const { email, name } = req.body; 
+  const { email, name, target } = req.body;
 
   if (!email || !name) {
     return res.status(400).send("이메일과 이름이 필요합니다.");
@@ -13,6 +13,9 @@ module.exports = async (req, res) => {
     NameID: email
   };
 
+  // 대상 서버 결정 (test 기본, dev 선택 가능). SP 인스턴스와 ACS URL을 함께 가져온다.
+  const { key, acsUrl, sp } = resolveTarget(target);
+
   try {
   const { context } = await idp.createLoginResponse(
   sp,
@@ -21,8 +24,7 @@ module.exports = async (req, res) => {
   user
 );
 
-    console.log(`🚀 IdP Initiated Login: ${email} (${name})`);
-    const acsUrl = 'https://test-kr-service.eformsign.com/v1.0/saml_redirect';
+    console.log(`🚀 IdP Initiated Login: ${email} (${name}) → ${key} 서버 (${acsUrl})`);
 
     res.setHeader('Content-Type', 'text/html');
     res.send(`

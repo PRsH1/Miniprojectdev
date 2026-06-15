@@ -74,7 +74,7 @@ ProjectImprove/
 │       └── cleanup-audit.js    # 감사 로그 정리 Cron (CRON_SECRET 검증)
 │
 ├── lib/
-│   └── saml.js                 # SAML IdP/SP 설정 (samlify)
+│   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/dev 대상 서버별 SP + resolveTarget)
 │
 ├── auth/
 │   └── login.html              # 인증 보호 페이지용 로그인 UI (+ signup/change-password/403 등)

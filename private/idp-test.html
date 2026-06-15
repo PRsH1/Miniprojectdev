@@ -14,7 +14,7 @@
         h2 { color: #333; margin-bottom: 1.5rem; font-size: 1.4rem; word-break: keep-all; margin-top: 10px; }
         .form-group { margin-bottom: 1rem; text-align: left; }
         label { display: block; margin-bottom: 0.5rem; color: #666; font-size: 0.9rem; }
-        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem; background: white; }
         button { width: 100%; padding: 12px; background-color: #0070f3; color: white; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; transition: background 0.2s; font-weight: bold; }
         button:hover { background-color: #0051a2; }
         .note { margin-top: 1rem; font-size: 0.8rem; color: #888; }
@@ -74,9 +74,9 @@
     <div style="display:flex; flex-direction: column; align-items: center; width: 100%;">
         
         <div class="notice">
-            <p>ℹ️ 해당 페이지는 <b>eformsign test 서버</b>로 연결됩니다.</p>
+            <p>ℹ️ 해당 페이지는 <b>eformsign test / dev 서버</b>로 연결됩니다. (아래에서 전송 대상 서버 선택)</p>
             <p>• 현재 <b>@test.co.kr</b> 도메인만 허용되도록 설정되었습니다. (실제 연동 시에는 원하는 도메인으로 설정하실 수 있습니다.)</p>
-            <p>• 바로가기를 누르시면 https://test-kr-service.eformsign.com/v1.0/saml_redirect 로 saml response가 전송되며 eformsign 로그인 페이지로 리다이렉트 됩니다.</p>
+            <p>• 바로가기를 누르시면 선택한 서버의 <b>/v1.0/saml_redirect</b> (Test: https://test-kr-service.eformsign.com · Dev: https://dev-service.eformsign.com) 로 saml response가 전송되며 eformsign 로그인 페이지로 리다이렉트 됩니다.</p>
             <p>• 로그인 시 <b>일시적인 오류가 발생했습니다</b> 팝업 발생 후 로그인이 되는데 이는 name attribute값을 전달 안하여 발생한 현상으로 자연스러운 현상이나 <strong>실제 연동 시에는 name attribute값을 반드시 전달해야 합니다.</strong></p>
         </div>
 
@@ -99,7 +99,14 @@
                     <label>사용자 이름</label>
                     <input type="text" name="name" value="테스트유저" required>
                 </div>
-                
+                <div class="form-group">
+                    <label>전송 대상 서버</label>
+                    <select name="target">
+                        <option value="test" selected>Test 서버 (test-kr-service.eformsign.com)</option>
+                        <option value="dev">Dev 서버 (dev-service.eformsign.com)</option>
+                    </select>
+                </div>
+
                 <button type="submit">eformsign 바로가기 🚀</button>
             </form>
             
@@ -125,7 +132,7 @@
                     </div>
                     <div class="step">
                         <span class="step-num">4</span>
-                        <span>브라우저는 자바스크립트를 통해 이 폼을 <strong>이폼사인의 SAML Redirect URL( https://test-kr-service.eformsign.com/v1.0/saml_redirect)</strong>로 전송(POST)합니다.</span>
+                        <span>브라우저는 자바스크립트를 통해 이 폼을 <strong>선택한 서버의 SAML Redirect URL (Test/Dev의 /v1.0/saml_redirect)</strong>로 전송(POST)합니다.</span>
                     </div>
                     <div class="step">
                         <span class="step-num">5</span>
