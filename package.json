@@ -19,7 +19,7 @@
     "pusher": "^5.2.0",
     "samlify": "^2.10.2",
     "uuid": "^8.3.2",
-    "vercel": "^50.5.0"
+    "vercel": "^54.14.0"
   },
   "devDependencies": {
     "next": "^15.5.7"
