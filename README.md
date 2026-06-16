@@ -606,6 +606,24 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `private/OpenAPIAutoTest.html` | `.status-check` / `.report-pill.check` 주황 배지 스타일 추가 |
 | `rules/open-api-auto-test.md` | "응답 판정(PASS/CHECK/FAIL/SKIP)" 섹션 추가, OPA 판정 우선순위 갱신 |
 
+### OpenAPIAutoTest 리포트 step별 요청/응답 + 실행 이력 결과 복원
+
+리포트와 실행 이력의 활용도를 높이기 위해 두 기능을 추가했습니다.
+
+#### 동작
+
+- **리포트 step별 요청/응답 인라인 펼침**: 리포트 OPA별 결과 표의 각 step 행 아래에 표준 `<details>` 행이 추가되어 **전송한 Request Body와 Response**를 펼쳐 볼 수 있습니다. JS 없이 동작하는 `<details>`라 모달·내보낸 HTML·Markdown(GitHub 호환) 모두 동일하게 반영됩니다. 본문은 `truncateBody()`로 절단(기본 16384자)하고, 본문 없는 step은 "(본문 없음)"으로 표기합니다.
+- **프로필별 실행 이력 결과 복원**: 사이드바 "프로필별 실행 이력" 항목을 클릭하면 우측 결과 패널에 과거 실행 결과 행이 복원되고(`loadHistoryRun`), "리포트 보기"로 해당 실행 리포트를 다시 열 수 있습니다. 복원 중에는 결과 패널 상단에 과거-이력 안내 배너가 표시되고, 새 실행을 시작하면 배너가 사라지며 라이브로 복귀합니다.
+- **저장 안정성**: 이력 엔트리에 `id` + 리포트 스냅샷(`report`)을 저장합니다. `snapshotReportForHistory()`가 본문을 절단해 용량을 절감하고, `QuotaExceededError` 발생 시 가장 오래된 엔트리부터 제거하며 재시도(최소 1건)한 뒤 그래도 실패하면 `report`를 뺀 요약-only 엔트리로 저장합니다(`persistHistoryMap()`). `report`가 없는 구(舊) 엔트리는 클릭 비활성("상세 데이터 없음" 표기).
+
+#### 변경 파일
+
+| 파일 | 변경 내용 |
+|---|---|
+| `assets/js/OpenAPIAutoTest.js` | 공통 헬퍼 `truncateBody`/`stepDetailToRow`, 리포트 `<details>` 렌더(모달/HTML/MD), `loadHistoryRun`·배너·`snapshotReportForHistory`·`persistHistoryMap`, 이력 엔트리 `id`/`report` 저장 |
+| `private/OpenAPIAutoTest.html` | 이력 행 클릭 스타일(`.config-row.clickable/.selected`), `#historyViewBanner` 배너, `.report-detail-row` 스타일 추가 |
+| `rules/open-api-auto-test.md` | step별 요청/응답 펼침 + 실행 이력 복원 동작 문서화 |
+
 ---
 
 ## 2026-06-07 Update
