@@ -74,7 +74,8 @@
         companyId: "",
         authMethod: "signature",
         viewMode: "group",
-        lastReportData: null
+        lastReportData: null,
+        selectedHistoryId: null
     };
     const els = {};
     const DUMMY_PDF_BASE64 = "JVBERi0xLjEKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyMDAgMjAwXSA+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDQgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjE5OQolJUVPRg==";
@@ -695,6 +696,28 @@
         `);
     }
 
+    // 본문이 limit를 초과하면 자르고 생략 안내를 덧붙인다. 본문이 없으면 빈 문자열 반환.
+    function truncateBody(text, limit = 16384) {
+        const str = String(text == null ? "" : text);
+        if (!str) return "";
+        if (str.length <= limit) return str;
+        return `${str.slice(0, limit)}\n…(총 ${str.length}자 중 일부 생략)`;
+    }
+
+    // reportData.stepDetails 항목 → appendRow가 먹는 result 형태로 매핑한다.
+    function stepDetailToRow(detail) {
+        return {
+            statusType: detail.status,
+            responseStatus: detail.httpStatus,
+            method: detail.method,
+            label: detail.label,
+            url: detail.url,
+            duration: detail.duration,
+            requestBody: detail.requestBody,
+            responseText: detail.responseBody
+        };
+    }
+
     function globalChecks() {
         const auth = authSnapshot();
 
@@ -931,6 +954,7 @@
         state.companyId = state.companyId || "";  // 인증 패널에서 발급된 companyId는 유지
         state.lastReportData = null;
         closeReportModal();
+        hideHistoryBanner();  // 새 실행은 라이브 결과이므로 과거-이력 배너/선택 해제
         if (els.openReportBtn) els.openReportBtn.style.display = "none";
         els.resultTableBody.innerHTML = "";
         toggleButtons(true);
@@ -1021,6 +1045,7 @@
             progress(100, `완료: PASS ${pass}, FAIL ${fail}, CHECK ${check}, SKIP ${skip}`);
             if (els.openReportBtn) els.openReportBtn.style.display = "";
             saveRunHistory({
+                id: String(Date.now()),
                 when: new Date().toLocaleString("ko-KR", { hour12: false }),
                 codes: codes.slice(),
                 pass,
@@ -1028,7 +1053,8 @@
                 check,
                 skip,
                 environment: els.envSelect ? els.envSelect.value : config.defaultEnvironment,
-                authMode: config.auth && config.auth.mode ? config.auth.mode : "-"
+                authMode: config.auth && config.auth.mode ? config.auth.mode : "-",
+                report: snapshotReportForHistory(reportData)
             });
         }
     }
@@ -1326,6 +1352,15 @@
                                         <td>${esc(step.duration)}</td>
                                         <td><span class="report-pill ${reportStatusClass(step.status)}">${esc(step.status)}</span></td>
                                     </tr>
+                                    <tr class="report-detail-row"><td colspan="6">
+                                        <details>
+                                            <summary>요청 / 응답 보기</summary>
+                                            <h5>Request Body</h5>
+                                            <pre>${esc(truncateBody(step.requestBody ? JSON.stringify(step.requestBody, null, 2) : "")) || "(본문 없음)"}</pre>
+                                            <h5>Response</h5>
+                                            <pre>${esc(truncateBody(step.responseBody)) || "(본문 없음)"}</pre>
+                                        </details>
+                                    </td></tr>
                                 `).join("")}
                             </tbody>
                         </table>
@@ -1396,6 +1431,25 @@
                 lines.push(`| ${index + 1} | ${md(step.label)}${md(sharedOpaPlainText(step))} | ${md(step.method)} | ${md(step.httpStatus)} | ${md(step.duration)} | ${md(step.status)} |`);
             });
             lines.push("");
+            // step별 요청/응답을 GitHub 호환 <details>로 펼침 제공
+            opa.steps.forEach((step, index) => {
+                const reqText = step.requestBody ? JSON.stringify(step.requestBody, null, 2) : "";
+                const reqBody = reqText ? safeFence(truncateBody(reqText)) : "(본문 없음)";
+                const resBody = step.responseBody ? safeFence(truncateBody(step.responseBody)) : "(본문 없음)";
+                lines.push(`<details><summary>${opa.code} > ${index + 1}. ${step.label} (${step.method} ${step.httpStatus || "-"}) — 요청/응답</summary>`);
+                lines.push("");
+                lines.push("**Request Body**");
+                lines.push("```json");
+                lines.push(reqBody);
+                lines.push("```");
+                lines.push("**Response**");
+                lines.push("```json");
+                lines.push(resBody);
+                lines.push("```");
+                lines.push("");
+                lines.push("</details>");
+                lines.push("");
+            });
         });
         lines.push("## 실패 상세");
         lines.push("");
@@ -1463,6 +1517,11 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
 .report-pill{display:inline-flex;align-items:center;justify-content:center;min-width:70px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}.report-pill.pass{background:#e9f9ef;color:#1f9d55}.report-pill.fail{background:#fdecec;color:#d64545}.report-pill.skip{background:#fff7df;color:#c78b07}.report-pill.check{background:#ffedd5;color:#c2410c}
 .report-table{width:100%;border-collapse:collapse;font-size:13px}.report-table th,.report-table td{padding:8px 9px;border-bottom:1px solid #eef2f7;text-align:left;vertical-align:top}.report-table th{color:#475569;background:#f8fafc;font-size:12px;text-transform:uppercase}
 .report-failure-meta{color:#475569;font-size:13px;line-height:1.5;margin-bottom:8px;word-break:break-all}.report-failure-card pre{white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:12px;line-height:1.45;overflow:auto}
+.report-detail-row td{padding:0 9px 10px;border-bottom:1px solid #eef2f7}
+.report-detail-row details{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px}
+.report-detail-row summary{cursor:pointer;font-size:12px;color:#475569;font-weight:600}
+.report-detail-row h5{margin:8px 0 4px;font-size:12px;color:#334155}
+.report-detail-row pre{white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;padding:10px;border-radius:6px;font-size:12px;line-height:1.45;margin:0;overflow:auto}
 @media(max-width:760px){.report-info-grid{grid-template-columns:1fr}.report-body{padding:16px}}
 </style>
 </head>
@@ -1526,7 +1585,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
     const DEFAULT_PROFILE_NAME = "Default";
     const PROFILE_FIELD_IDS = [
         "profileSelect", "profileNameInput", "saveProfileBtn", "deleteProfileBtn", "exportProfileBtn", "importProfileBtn",
-        "importProfileFile", "clearHistoryBtn", "historyList",
+        "importProfileFile", "clearHistoryBtn", "historyList", "historyViewBanner",
         "openSettingsModalBtn", "openSettingsModalBtnInline", "closeSettingsModalBtn", "settingsModalCard", "settingsModalOverlay", "settingsSummaryText",
         "formDefaultEnvironment", "formCustomUrl", "formCustomUrlWrap", "formAuthMode", "formExternalTemplateId", "formAttachTemplateId", "formAttachFieldId",
         "formMemberId", "formPdfRecipientName", "formTargetEmail", "formTargetPhone", "formTargetName",
@@ -1706,13 +1765,58 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         const historyMap = readHistoryMap();
         const history = historyMap[currentProfileName()] || [];
         els.historyList.innerHTML = history.length
-            ? history.map((item) => `
-                <div class="config-row">
-                    <span class="config-key">${esc(item.when)}<br>${esc(item.codes.join(", "))}</span>
+            ? history.map((item) => {
+                const hasReport = !!item.report;
+                const idAttr = item.id ? ` data-history-id="${esc(String(item.id))}"` : "";
+                const rowClass = `config-row${hasReport ? " clickable" : ""}${state.selectedHistoryId && String(item.id) === String(state.selectedHistoryId) ? " selected" : ""}`;
+                const noteHint = hasReport ? "" : `<br><span class="history-no-detail">상세 데이터 없음</span>`;
+                return `
+                <div class="${rowClass}"${idAttr}>
+                    <span class="config-key">${esc(item.when)}<br>${esc(item.codes.join(", "))}${noteHint}</span>
                     <span class="config-value ${item.fail > 0 ? "missing" : "ready"}">PASS ${esc(String(item.pass))} / FAIL ${esc(String(item.fail))} / CHECK ${esc(String(item.check || 0))} / SKIP ${esc(String(item.skip))}<br>${esc(item.environment)} / ${esc(item.authMode)}</span>
-                </div>
-            `).join("")
+                </div>`;
+            }).join("")
             : `<div class="config-row"><span class="config-key">최근 실행 이력이 없습니다.</span><span class="config-value">-</span></div>`;
+        // report를 가진 행은 클릭 시 우측 결과 패널에 과거 결과를 복원
+        els.historyList.querySelectorAll(".config-row.clickable").forEach((row) => {
+            row.addEventListener("click", () => loadHistoryRun(row.getAttribute("data-history-id")));
+        });
+    }
+
+    // report를 가진 이력 엔트리는 용량이 크므로 localStorage 저장 시 본문을 절단해 보관한다.
+    function snapshotReportForHistory(report) {
+        const snap = clone(report);
+        const truncDetail = (detail) => {
+            if (!detail) return;
+            if (typeof detail.responseBody === "string") detail.responseBody = truncateBody(detail.responseBody);
+            if (detail.requestBody) {
+                const serialized = JSON.stringify(detail.requestBody);
+                if (serialized.length > 16384) detail.requestBody = truncateBody(serialized);
+            }
+        };
+        (snap.stepDetails || []).forEach(truncDetail);
+        (snap.opaSummary || []).forEach((opa) => (opa.steps || []).forEach(truncDetail));
+        (snap.failures || []).forEach((item) => { if (typeof item.responseBody === "string") item.responseBody = truncateBody(item.responseBody); });
+        (snap.checks || []).forEach((item) => { if (typeof item.responseBody === "string") item.responseBody = truncateBody(item.responseBody); });
+        return snap;
+    }
+
+    // QuotaExceededError 시 가장 오래된 엔트리부터 제거하며 재시도 (최소 1건 남을 때까지)
+    function persistHistoryMap(historyMap, profileName) {
+        while (true) {
+            try {
+                writeHistoryMap(historyMap);
+                return true;
+            } catch (error) {
+                const list = historyMap[profileName] || [];
+                if (list.length > 1) {
+                    list.pop();  // unshift로 추가하므로 배열 끝이 가장 오래된 엔트리
+                    historyMap[profileName] = list;
+                } else {
+                    return false;
+                }
+            }
+        }
     }
 
     function saveRunHistory(entry) {
@@ -1721,8 +1825,51 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         const list = historyMap[name] || [];
         list.unshift(entry);
         historyMap[name] = list.slice(0, 10);
-        writeHistoryMap(historyMap);
+        if (!persistHistoryMap(historyMap, name)) {
+            // 1건만 남겨도 실패하면 report를 제거한 요약-only 엔트리로 저장
+            const summaryOnly = { ...entry };
+            delete summaryOnly.report;
+            historyMap[name] = [summaryOnly];
+            try { writeHistoryMap(historyMap); } catch (error) {}
+        }
         renderHistory();
+    }
+
+    function loadHistoryRun(id) {
+        const historyMap = readHistoryMap();
+        const list = historyMap[currentProfileName()] || [];
+        const entry = list.find((item) => String(item.id) === String(id));
+        if (!entry || !entry.report) {
+            alert("이 이력은 상세 데이터가 없습니다.");
+            return;
+        }
+        const report = entry.report;
+        if (els.resultTableBody) els.resultTableBody.innerHTML = "";
+        let lastOpaCode = null;
+        (report.stepDetails || []).forEach((detail, index) => {
+            if (detail.opaCode && detail.opaCode !== lastOpaCode) {
+                lastOpaCode = detail.opaCode;
+                const scenario = scenarios.find((item) => item.code === detail.opaCode);
+                if (scenario) appendOpaDivider(scenario);  // 사전 준비 등 비-시나리오 코드는 divider 생략
+            }
+            appendRow(index + 1, stepDetailToRow(detail));
+        });
+        state.lastReportData = report;
+        if (els.openReportBtn) els.openReportBtn.style.display = "";
+        showHistoryBanner(entry.when);
+        state.selectedHistoryId = String(id);
+        renderHistory();
+    }
+
+    function showHistoryBanner(when) {
+        if (!els.historyViewBanner) return;
+        els.historyViewBanner.textContent = `⏱ 과거 이력 보기 — 실행: ${when} (현재 라이브 결과 아님)`;
+        els.historyViewBanner.style.display = "";
+    }
+
+    function hideHistoryBanner() {
+        state.selectedHistoryId = null;
+        if (els.historyViewBanner) els.historyViewBanner.style.display = "none";
     }
 
     function applyFormValues(targetConfig) {
@@ -1918,6 +2065,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         delete historyMap[name];
         if (Object.keys(historyMap).length) writeHistoryMap(historyMap);
         else localStorage.removeItem(HISTORY_STORAGE_KEY);
+        hideHistoryBanner();
         renderHistory();
         setSettingsStatus(`프로필 "${name}"의 실행 이력을 삭제했습니다.`);
     }
