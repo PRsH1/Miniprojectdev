@@ -113,6 +113,11 @@
         "listCompletedDocsForDownload"
     ]);
 
+    // eformsign API가 정리/삭제 등에서 반환하는 4xx 중 "의도된 동작일 수 있어 사용자 확인이 필요한" 코드.
+    // 이 코드들은 PASS가 아닌 CHECK(검토 필요)로 표시한다.
+    // 404는 포함하지 않음 — 정리 step에서 404는 실제 오류이므로 FAIL로 떨어진다.
+    const CHECK_STATUS_CODES = [400, 401, 402, 403];
+
     const scenarios = [
         { code: "OPA 003", group: "문서", method: "GET", name: "문서 정보 조회", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 기본/상세 조회를 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "docInfoBasic", "docInfoDetail", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 004", group: "문서", method: "GET", name: "문서 파일 다운로드", desc: "완료(status_type=003) 문서 목록을 조회하여 최대 5개의 문서 ID를 자동 수집한 뒤 순차적으로 다운로드를 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listCompletedDocsForDownload", "tryDownloadDocAuto"], keys: ["auth.mode"] },
@@ -393,9 +398,9 @@
         if (id === "listDocsBasic") return request({ id, method: "POST", path: "/v2.0/api/list_document", body: listBody(), ok: [200], after: (json) => { const docs = Array.isArray(json.documents) ? json.documents : []; state.shared.completedDocIds = docs.filter((doc) => doc.current_status && doc.current_status.status_type === "003").slice(0, 5).map((doc) => doc.id); } });
         if (id === "listDocsDetail") return request({ id, method: "POST", path: "/v2.0/api/list_document?include_fields=true&include_histories=true&include_previous_status=true&include_next_status=true&include_external_token=true&include_detail_template_info=true", body: listBody(), ok: [200] });
         if (id === "listMembers") return request({ id, method: "GET", path: "/v2.0/api/members", ok: [200] });
-        if (id === "createMember") return request({ id, method: "POST", path: "/v2.0/api/members?mailOption=false", body: { account: { id: must(d.memberId, "memberId가 비어 있습니다."), password: "forcs1700!@", first_name: "자동", last_name: "테스트", external_sso_info: { uuid: "123", account_id: "test" } } }, ok: [200, 400] });
+        if (id === "createMember") return request({ id, method: "POST", path: "/v2.0/api/members?mailOption=false", body: { account: { id: must(d.memberId, "memberId가 비어 있습니다."), password: "forcs1700!@", first_name: "자동", last_name: "테스트", external_sso_info: { uuid: "123", account_id: "test" } } }, ok: [200], check: CHECK_STATUS_CODES });
         if (id === "updateMember") return request({ id, method: "PATCH", path: `/v2.0/api/members/${encodeURIComponent(must(d.memberId, "memberId가 비어 있습니다."))}`, body: { account: { id: d.memberId, name: "자동수정 테스트", enabled: true, contact: { number: "010-1111-1111", tel: "02-1234-5678" }, department: "테스트팀", position: "자동화", role: ["template_manager"] } }, ok: [200] });
-        if (id === "deleteMember") return request({ id, method: "DELETE", path: `/v2.0/api/members/${encodeURIComponent(must(d.memberId, "memberId가 비어 있습니다."))}`, ok: [200, 400, 404] });
+        if (id === "deleteMember") return request({ id, method: "DELETE", path: `/v2.0/api/members/${encodeURIComponent(must(d.memberId, "memberId가 비어 있습니다."))}`, ok: [200], check: CHECK_STATUS_CODES });
         if (id === "rerequestDoc") return request({ id, method: "POST", path: `/v2.0/api/documents/${must(state.shared.lastCreatedId, "재요청 대상 문서가 없습니다.")}/re_request_outsider`, body: rerequestBody(), ok: [200] });
         if (id === "listForms") return request({ id, method: "GET", path: "/v2.0/api/forms", ok: [200] });
         if (id === "listFormsForSeed") return request({ id, method: "GET", path: "/v2.0/api/forms", ok: [200], after: (json) => {
@@ -453,13 +458,13 @@
         if (id === "listGroups") return request({ id, method: "GET", path: "/v2.0/api/groups", ok: [200] });
         if (id === "createGroup") return request({ id, method: "POST", path: "/v2.0/api/groups", body: { group: { name: "자동테스트 그룹", description: "Open API 자동 테스트", members: [must(d.memberId, "memberId가 비어 있습니다.")] } }, ok: [200], after: (json) => { if (json.group && json.group.id) state.shared.createdGroupId = json.group.id; } });
         if (id === "updateGroup") return request({ id, method: "PATCH", path: `/v2.0/api/groups/${must(state.shared.createdGroupId, "수정할 그룹 ID가 없습니다.")}`, body: { group: { name: "자동테스트 그룹 수정", description: "Open API 자동 테스트 수정", members: [must(d.memberId, "memberId가 비어 있습니다.")] } }, ok: [200] });
-        if (id === "deleteGroup") return request({ id, method: "DELETE", path: "/v2.0/api/groups", body: { group_ids: [must(state.shared.createdGroupId, "삭제할 그룹 ID가 없습니다.")] }, ok: [200, 400, 404] });
+        if (id === "deleteGroup") return request({ id, method: "DELETE", path: "/v2.0/api/groups", body: { group_ids: [must(state.shared.createdGroupId, "삭제할 그룹 ID가 없습니다.")] }, ok: [200], check: CHECK_STATUS_CODES });
         if (id === "massCreateMultiDocs") return request({ id, method: "POST", path: "/v2.0/api/forms/mass_multi_documents", body: multiMassBody(), ok: [200], after: collectDocs });
         if (id === "listStamps") return request({ id, method: "GET", path: "/v2.0/api/company_stamp", ok: [200], after: (json) => { const first = Array.isArray(json.company_stamps) ? json.company_stamps[0] : null; state.shared.companyStampId = first ? first.id : null; } });
         if (id === "stampDetail") return request({ id, method: "GET", path: `/v2.0/api/company_stamp/${must(state.shared.companyStampId, "조회할 회사 도장 ID가 없습니다.")}`, ok: [200] });
         if (id === "createStamp") return request({ id, method: "POST", path: "/v2.0/api/company_stamp", body: { company_stamp: { name: `OPA자동테스트_${Date.now()}`, description: "Open API 자동 테스트 도장", stamp: { path: makeStampImage() }, auth: { groups: [], members: [], allow_all_members: true } } }, ok: [200], after: (json) => { state.shared.companyStampId = (json && json.company_stamp && json.company_stamp.id) || null; } });
         if (id === "deleteStamp") return request({ id, method: "DELETE", path: `/v2.0/api/company_stamp/${encodeURIComponent(must(state.shared.companyStampId, "삭제할 회사 도장 ID가 없습니다."))}`, ok: [200] });
-        if (id === "bulkCreateMembers") return request({ id, method: "POST", path: "/v2.0/api/list_members", body: bulkBody(), ok: [200], after: (json) => { const failed = (json.members || []).filter((m) => m.success === false); if (failed.length) throw new Error("일괄 멤버 추가 응답에 success:false 항목이 포함되었습니다."); } });
+        if (id === "bulkCreateMembers") return request({ id, method: "POST", path: "/v2.0/api/list_members", body: bulkBody(), ok: [200], validate: (json) => { const members = Array.isArray(json.members) ? json.members : []; const failed = members.filter((m) => m.success === false); return failed.length ? `${failed.length}/${members.length}개 멤버 추가 실패 (success:false): ${failed.map((m) => m.id || m.name || "(미상)").join(", ")}` : null; } });
         if (id === "tryRefreshCompleteTokenAuto") {
             const candidates = state.shared.completedDocIds || [];
             if (!candidates.length) throw new Error("시도할 완료 문서가 없습니다. listDocsBasic 단계가 먼저 실행되어야 합니다.");
@@ -514,10 +519,10 @@
         if (id === "sendPdf") return request({ id, method: "POST", path: `/v2.0/api/companies/${encodeURIComponent(must(d.companyId, "companyId가 비어 있습니다."))}/send_multiple_completed_document`, body: sendPdfBody(), ok: [200] });
         if (id === "downloadMulti") return request({ id, method: "POST", path: "/v2.0/api/documents/download_multi_files", body: multiDownloadBody(), ok: [200] });
         if (id === "refreshCompleteToken") return request({ id, method: "POST", path: `/v2.0/api/documents/${pickCompleted()}/refresh_complete_token`, body: { step_seq: [] }, ok: [200] });
-        if (id === "cleanupBulk1") return request({ id, method: "DELETE", path: `/v2.0/api/members/${encodeURIComponent(must(state.shared.bulkMemberIds[0], "정리할 bulk member 1이 없습니다."))}`, ok: [200, 404] });
-        if (id === "cleanupBulk2") return request({ id, method: "DELETE", path: `/v2.0/api/members/${encodeURIComponent(must(state.shared.bulkMemberIds[1], "정리할 bulk member 2가 없습니다."))}`, ok: [200, 404] });
-        if (id === "cancelDocs") return request({ id, method: "POST", path: "/v2.0/api/documents/cancel", body: { input: { document_ids: must(state.shared.createdIdList, "취소할 문서가 없습니다.") } }, ok: [200, 400] });
-        if (id === "deleteDocs") return request({ id, method: "DELETE", path: "/v2.0/api/documents", body: { document_ids: must(state.shared.createdIdList, "삭제할 문서가 없습니다.") }, ok: [200, 400] });
+        if (id === "cleanupBulk1") return request({ id, method: "DELETE", path: `/v2.0/api/members/${encodeURIComponent(must(state.shared.bulkMemberIds[0], "정리할 bulk member 1이 없습니다."))}`, ok: [200], check: CHECK_STATUS_CODES });
+        if (id === "cleanupBulk2") return request({ id, method: "DELETE", path: `/v2.0/api/members/${encodeURIComponent(must(state.shared.bulkMemberIds[1], "정리할 bulk member 2가 없습니다."))}`, ok: [200], check: CHECK_STATUS_CODES });
+        if (id === "cancelDocs") return request({ id, method: "POST", path: "/v2.0/api/documents/cancel", body: { input: { document_ids: must(state.shared.createdIdList, "취소할 문서가 없습니다.") } }, ok: [200], check: CHECK_STATUS_CODES });
+        if (id === "deleteDocs") return request({ id, method: "DELETE", path: "/v2.0/api/documents", body: { document_ids: must(state.shared.createdIdList, "삭제할 문서가 없습니다.") }, ok: [200], check: CHECK_STATUS_CODES });
         throw new Error(`정의되지 않은 step: ${id}`);
     }
 
@@ -617,7 +622,7 @@
         return payload;
     }
 
-    async function request({ id, method, path, body, ok, after, headers, useToken = true }) {
+    async function request({ id, method, path, body, ok, check, after, validate, headers, useToken = true }) {
         const requestHeaders = {
             "Content-Type": "application/json",
             ...(useToken ? { Authorization: `Bearer ${await token()}` } : {}),
@@ -640,14 +645,26 @@
             text = await response.text();
             try { json = JSON.parse(text); text = JSON.stringify(json, null, 2); } catch (error) {}
         }
-        const statusType = ok.includes(response.status) ? "PASS" : "FAIL";
+        let statusType;
+        if (ok.includes(response.status)) statusType = "PASS";
+        else if (Array.isArray(check) && check.includes(response.status)) statusType = "CHECK";
+        else statusType = "FAIL";
+
+        // 200 OK여도 응답 body가 실패를 나타내면(예: 일괄 처리의 success:false) FAIL로 전환한다.
+        // body 원문은 유지하고 사유만 앞에 덧붙여, 어떤 항목이 실패했는지 확인할 수 있게 한다.
+        let validationNote = "";
+        if (statusType === "PASS" && typeof validate === "function") {
+            const problem = validate(json || {});
+            if (problem) { statusType = "FAIL"; validationNote = String(problem); }
+        }
         if (statusType === "PASS" && typeof after === "function") after(json || {});
-        return { statusType, responseStatus: response.status, method, label: stepMeta(id).label, url, duration, requestBody: body, responseText: text };
+        const responseText = validationNote ? `[검증 실패] ${validationNote}\n\n${text}` : text;
+        return { statusType, responseStatus: response.status, method, label: stepMeta(id).label, url, duration, requestBody: body, responseText };
     }
 
     function appendRow(index, result) {
         const rowId = `result-log-${index}`;
-        const statusClass = result.statusType === "PASS" ? "status-pass" : ["SKIP", "CACHE"].includes(result.statusType) ? "status-skip" : "status-fail";
+        const statusClass = result.statusType === "PASS" ? "status-pass" : result.statusType === "CHECK" ? "status-check" : ["SKIP", "CACHE"].includes(result.statusType) ? "status-skip" : "status-fail";
         els.resultTableBody.insertAdjacentHTML("beforeend", `
             <tr>
                 <td>${index}</td>
@@ -925,6 +942,7 @@
         const reportData = createReportData(codes);
         let pass = 0;
         let fail = 0;
+        let check = 0;
         let skip = 0;
         let globalStepIndex = 0;
 
@@ -980,6 +998,7 @@
                     }
 
                     if (result.statusType === "PASS" || result.statusType === "CACHE") pass += 1;
+                    else if (result.statusType === "CHECK") check += 1;
                     else if (result.statusType === "SKIP") skip += 1;
                     else fail += 1;
 
@@ -994,17 +1013,19 @@
             state.lastReportData = reportData;
             pass = reportData.totalSummary.passedSteps;
             fail = reportData.totalSummary.failedSteps;
+            check = reportData.totalSummary.checkSteps;
             skip = reportData.totalSummary.skippedSteps;
             state.running = false;
             toggleButtons(false);
-            els.lastRunSummary.textContent = `PASS ${pass} / FAIL ${fail} / SKIP ${skip}`;
-            progress(100, `완료: PASS ${pass}, FAIL ${fail}, SKIP ${skip}`);
+            els.lastRunSummary.textContent = `PASS ${pass} / FAIL ${fail} / CHECK ${check} / SKIP ${skip}`;
+            progress(100, `완료: PASS ${pass}, FAIL ${fail}, CHECK ${check}, SKIP ${skip}`);
             if (els.openReportBtn) els.openReportBtn.style.display = "";
             saveRunHistory({
                 when: new Date().toLocaleString("ko-KR", { hour12: false }),
                 codes: codes.slice(),
                 pass,
                 fail,
+                check,
                 skip,
                 environment: els.envSelect ? els.envSelect.value : config.defaultEnvironment,
                 authMode: config.auth && config.auth.mode ? config.auth.mode : "-"
@@ -1058,21 +1079,24 @@
             opaSummary: [],
             stepDetails: [],
             failures: [],
+            checks: [],
             totalSummary: {
                 totalOpa: 0,
                 passedOpa: 0,
                 failedOpa: 0,
+                checkOpa: 0,
                 skippedOpa: 0,
                 totalSteps: 0,
                 passedSteps: 0,
                 failedSteps: 0,
+                checkSteps: 0,
                 skippedSteps: 0
             }
         };
     }
 
     function addReportStep(reportData, stepId, index, result, opaCode) {
-        const error = result.statusType === "FAIL" ? parseErrorInfo(result.responseText) : null;
+        const error = (result.statusType === "FAIL" || result.statusType === "CHECK") ? parseErrorInfo(result.responseText) : null;
         const detail = {
             index,
             opaCode,
@@ -1090,6 +1114,7 @@
         };
         reportData.stepDetails.push(detail);
         if (detail.status === "FAIL") reportData.failures.push(toFailure(detail));
+        else if (detail.status === "CHECK") reportData.checks.push(toFailure(detail));
         return detail;
     }
 
@@ -1106,11 +1131,14 @@
             });
             const passed = steps.filter((step) => step.status === "PASS" || step.status === "CACHE").length;
             const failed = steps.filter((step) => step.status === "FAIL").length;
+            const checked = steps.filter((step) => step.status === "CHECK").length;
             const skipped = steps.filter((step) => step.status === "SKIP").length;
-            let result = "SKIP";
+            // 판정 우선순위: FAIL > CHECK(검토 필요) > SKIP > PASS
+            let result;
             if (failed > 0) result = "FAIL";
-            else if (passed === steps.length && steps.length > 0) result = "PASS";
-            else if (skipped === steps.length) result = "SKIP";
+            else if (checked > 0) result = "CHECK";
+            else if (steps.length > 0 && skipped === steps.length) result = "SKIP";
+            else result = "PASS";
             summaries.push({
                 code: scenario.code,
                 name: scenario.name,
@@ -1118,6 +1146,7 @@
                 totalSteps: steps.length,
                 passed,
                 failed,
+                checked,
                 skipped,
                 steps
             });
@@ -1127,10 +1156,12 @@
             totalOpa: summaries.length,
             passedOpa: summaries.filter((item) => item.result === "PASS").length,
             failedOpa: summaries.filter((item) => item.result === "FAIL").length,
+            checkOpa: summaries.filter((item) => item.result === "CHECK").length,
             skippedOpa: summaries.filter((item) => item.result === "SKIP").length,
             totalSteps: summaries.reduce((sum, item) => sum + item.totalSteps, 0) + preflightStepCount(reportData),
             passedSteps: summaries.reduce((sum, item) => sum + item.passed, 0),
             failedSteps: summaries.reduce((sum, item) => sum + item.failed, 0) + preflightFailCount(reportData),
+            checkSteps: summaries.reduce((sum, item) => sum + item.checked, 0),
             skippedSteps: summaries.reduce((sum, item) => sum + item.skipped, 0)
         };
     }
@@ -1270,8 +1301,8 @@
             <section class="report-section">
                 <h3>전체 요약</h3>
                 <div class="report-summary-card">
-                    <p>OPA: ${esc(summary.totalOpa)}개 중 ${esc(summary.passedOpa)}개 성공 (${esc(opaPercent)}%)</p>
-                    <p>Step: ${esc(summary.totalSteps)}개 중 ${esc(summary.passedSteps)}개 성공, ${esc(summary.failedSteps)}개 실패, ${esc(summary.skippedSteps)}개 스킵</p>
+                    <p>OPA: ${esc(summary.totalOpa)}개 — 성공 ${esc(summary.passedOpa)} / 실패 ${esc(summary.failedOpa)} / 검토필요 ${esc(summary.checkOpa)} / 스킵 ${esc(summary.skippedOpa)} (성공률 ${esc(opaPercent)}%)</p>
+                    <p>Step: ${esc(summary.totalSteps)}개 — 성공 ${esc(summary.passedSteps)} / 실패 ${esc(summary.failedSteps)} / 검토필요 ${esc(summary.checkSteps)} / 스킵 ${esc(summary.skippedSteps)}</p>
                     <div class="report-progress-bg"><div class="report-progress-fill" style="width:${stepPercent}%"></div></div>
                 </div>
             </section>
@@ -1315,6 +1346,21 @@
                     </div>
                 `).join("") : `<div class="report-failure-card"><div class="report-failure-meta">실패한 step이 없습니다.</div></div>`}
             </section>
+            <section class="report-section">
+                <h3>검토 필요 상세 (CHECK)</h3>
+                ${report.checks && report.checks.length ? report.checks.map((item) => `
+                    <div class="report-failure-card">
+                        <h4>${esc(item.opaCodes.join(", "))} &gt; ${esc(item.label)}</h4>
+                        <div class="report-failure-meta">
+                            ${esc(item.method)} ${esc(item.url || "(URL 없음)")}<br>
+                            HTTP ${esc(String(item.httpStatus))} | ${esc(item.duration)}<br>
+                            응답 코드: [${esc(item.errorCode)}] ${esc(item.errorMessage)}<br>
+                            <strong>의도된 응답(예: 이미 정리된 리소스)인지 실제 오류인지 확인이 필요합니다.</strong>
+                        </div>
+                        <pre>${esc(item.responseBody || "(Empty)")}</pre>
+                    </div>
+                `).join("") : `<div class="report-failure-card"><div class="report-failure-meta">검토가 필요한 step이 없습니다.</div></div>`}
+            </section>
         `;
     }
 
@@ -1335,8 +1381,8 @@
             "",
             "## 전체 요약",
             "",
-            `- **OPA**: ${summary.totalOpa}개 중 ${summary.passedOpa}개 성공 (${opaPercent}%)`,
-            `- **Step**: ${summary.totalSteps}개 중 ${summary.passedSteps}개 성공, ${summary.failedSteps}개 실패, ${summary.skippedSteps}개 스킵`,
+            `- **OPA**: ${summary.totalOpa}개 — 성공 ${summary.passedOpa} / 실패 ${summary.failedOpa} / 검토필요 ${summary.checkOpa} / 스킵 ${summary.skippedOpa} (성공률 ${opaPercent}%)`,
+            `- **Step**: ${summary.totalSteps}개 — 성공 ${summary.passedSteps} / 실패 ${summary.failedSteps} / 검토필요 ${summary.checkSteps} / 스킵 ${summary.skippedSteps}`,
             "",
             "## OPA별 결과",
             ""
@@ -1373,6 +1419,27 @@
                 lines.push("");
             });
         }
+        lines.push("## 검토 필요 상세 (CHECK)");
+        lines.push("");
+        if (!report.checks || !report.checks.length) {
+            lines.push("검토가 필요한 step이 없습니다.");
+            lines.push("");
+        } else {
+            report.checks.forEach((item) => {
+                lines.push(`### ${item.opaCodes.join(", ")} > ${item.label}`);
+                lines.push("");
+                lines.push(`- **URL**: ${item.method} ${item.url || "(URL 없음)"}`);
+                lines.push(`- **HTTP Status**: ${item.httpStatus}`);
+                lines.push(`- **응답 코드**: [${item.errorCode}] ${item.errorMessage}`);
+                lines.push(`- **확인 사항**: 의도된 응답(예: 이미 정리된 리소스)인지 실제 오류인지 확인이 필요합니다.`);
+                lines.push("");
+                lines.push("**Response:**");
+                lines.push("```json");
+                lines.push(safeFence(item.responseBody || "(Empty)"));
+                lines.push("```");
+                lines.push("");
+            });
+        }
         return lines.join("\n");
     }
 
@@ -1393,7 +1460,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
 .report-info-item span{display:block;color:#64748b;font-size:12px;margin-bottom:4px}.report-info-item strong{word-break:break-all}
 .report-progress-bg{width:100%;height:10px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:10px}.report-progress-fill{height:100%;background:#1f9d55}
 .report-opa-card+ .report-opa-card,.report-failure-card+ .report-failure-card{margin-top:12px}.report-opa-head{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px}.report-opa-title{font-weight:700}
-.report-pill{display:inline-flex;align-items:center;justify-content:center;min-width:70px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}.report-pill.pass{background:#e9f9ef;color:#1f9d55}.report-pill.fail{background:#fdecec;color:#d64545}.report-pill.skip{background:#fff7df;color:#c78b07}
+.report-pill{display:inline-flex;align-items:center;justify-content:center;min-width:70px;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:700}.report-pill.pass{background:#e9f9ef;color:#1f9d55}.report-pill.fail{background:#fdecec;color:#d64545}.report-pill.skip{background:#fff7df;color:#c78b07}.report-pill.check{background:#ffedd5;color:#c2410c}
 .report-table{width:100%;border-collapse:collapse;font-size:13px}.report-table th,.report-table td{padding:8px 9px;border-bottom:1px solid #eef2f7;text-align:left;vertical-align:top}.report-table th{color:#475569;background:#f8fafc;font-size:12px;text-transform:uppercase}
 .report-failure-meta{color:#475569;font-size:13px;line-height:1.5;margin-bottom:8px;word-break:break-all}.report-failure-card pre{white-space:pre-wrap;word-break:break-word;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:8px;font-size:12px;line-height:1.45;overflow:auto}
 @media(max-width:760px){.report-info-grid{grid-template-columns:1fr}.report-body{padding:16px}}
@@ -1642,7 +1709,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
             ? history.map((item) => `
                 <div class="config-row">
                     <span class="config-key">${esc(item.when)}<br>${esc(item.codes.join(", "))}</span>
-                    <span class="config-value ${item.fail > 0 ? "missing" : "ready"}">PASS ${esc(String(item.pass))} / FAIL ${esc(String(item.fail))} / SKIP ${esc(String(item.skip))}<br>${esc(item.environment)} / ${esc(item.authMode)}</span>
+                    <span class="config-value ${item.fail > 0 ? "missing" : "ready"}">PASS ${esc(String(item.pass))} / FAIL ${esc(String(item.fail))} / CHECK ${esc(String(item.check || 0))} / SKIP ${esc(String(item.skip))}<br>${esc(item.environment)} / ${esc(item.authMode)}</span>
                 </div>
             `).join("")
             : `<div class="config-row"><span class="config-key">최근 실행 이력이 없습니다.</span><span class="config-value">-</span></div>`;
@@ -2266,7 +2333,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 <ul>
                     <li><strong>현재 OPA만 실행</strong> — 사이드바에서 선택(클릭)된 OPA 하나만 실행합니다.</li>
                     <li><strong>선택한 OPA 실행</strong> — 체크박스로 선택된 OPA 전체를 OPA 단위로 순차 실행합니다.</li>
-                    <li><strong>PASS / FAIL / SKIP</strong> — step 단위로 결과가 표시됩니다. 선행 step 실패 시 같은 OPA의 후속 step은 자동으로 SKIP됩니다. FAIL 시 결과 보기를 클릭하면 요청 바디와 응답 전문을 확인할 수 있습니다.</li>
+                    <li><strong>PASS / CHECK / FAIL / SKIP</strong> — step 단위로 결과가 표시됩니다. <strong>CHECK(검토 필요)</strong>는 정리·삭제 단계 등에서 400~403 응답이 온 경우로, 의도된 동작인지 실제 오류인지 결과 보기로 직접 확인해야 합니다(404는 실제 오류로 보아 FAIL 처리). 200 OK여도 응답 body가 실패(예: 일괄 처리의 success:false)를 나타내면 사유와 함께 FAIL로 처리됩니다. 선행 step 실패 시 같은 OPA의 후속 step은 자동으로 SKIP됩니다. FAIL·CHECK 모두 결과 보기로 요청 바디와 응답 전문을 확인할 수 있습니다.</li>
                     <li>실행 완료 후 <strong>리포트 보기</strong> 버튼이 나타납니다. 리포트 모달에서 OPA별/Step별 결과 요약과 실패 상세를 확인할 수 있습니다.</li>
                     <li>리포트를 <strong>Markdown</strong> 또는 <strong>HTML</strong> 파일로 다운로드하여 공유할 수 있습니다.</li>
                 </ul>
