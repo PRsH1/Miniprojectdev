@@ -17,6 +17,7 @@ ProjectImprove/
 │   │   ├── auth-middleware.js         # /app/* 보호 페이지 인증·권한·리프레시 미들웨어
 │   │   ├── db.js                      # Neon serverless Postgres 클라이언트 (sql 태그)
 │   │   ├── jwt.js                     # JWT 발급/검증 헬퍼
+│   │   ├── session.js                 # resolveUser — API용 세션 해석 (verify→만료 시 리프레시 로테이션)
 │   │   ├── audit.js                   # audit_logs INSERT 공통 모듈
 │   │   ├── protected-pages-config.js  # 보호 페이지 설정 공통화
 │   │   ├── protectedPage.js           # 보호 페이지 공통 핸들러 (구 password 보호 방식)
@@ -26,7 +27,7 @@ ProjectImprove/
 │   │   # ── 인증 API ──────────────────────────────────────────
 │   ├── login.js                # 로그인 (JWT 발급 + 쿠키 세션)
 │   ├── logout.js               # 로그아웃 (쿠키/리프레시 토큰 폐기)
-│   ├── refresh.js              # 리프레시 토큰으로 액세스 토큰 갱신 (로테이션)
+│   ├── refresh.js              # 리프레시 토큰으로 액세스 토큰 갱신 (공유 tryRefreshToken 위임)
 │   ├── me.js                   # 현재 로그인 사용자 정보 (+ Pusher 설정 포함)
 │   ├── signup.js               # 회원가입 요청 (admin 알림 INSERT)
 │   ├── signupStatus.js         # 가입 요청 상태 조회
@@ -124,6 +125,7 @@ ProjectImprove/
 │   ├── migrate-ip-whitelist.js          # IP 화이트리스트 테이블 마이그레이션 (최초 1회)
 │   ├── migrate-community.js             # developer_notes / bug_reports 테이블 (최초 1회)
 │   ├── migrate-bug-reports-v2.js        # bug_reports cause/action_taken/target_user_id 컬럼 추가
+│   ├── migrate-refresh-rotation.js      # refresh_tokens.replaced_by 컬럼 추가 (로테이션 경합 처리, 코드 배포 전 실행)
 │   ├── migrate-credentials-encrypt.js   # 크리덴셜 secret_key 일괄 재암호화
 │   ├── migrate-notifications.js         # notifications 테이블 마이그레이션
 │   ├── seed-developer-notes.js          # 개발자 노트 시드

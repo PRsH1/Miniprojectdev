@@ -72,6 +72,35 @@ function showToast(msg, duration = 2000) {
     setTimeout(() => $t.removeClass('show'), duration);
 }
 
+function fetchMeBootstrap() {
+    const run = () => fetch('/api/me')
+        .then((r) => r.json())
+        .catch(() => null);
+
+    if (navigator.locks && typeof navigator.locks.request === 'function') {
+        return navigator.locks.request('eform-auth-bootstrap', run).catch(run);
+    }
+    return run();
+}
+
+function sharedMePromise() {
+    window.AUTH_STATUS_ME_PROMISE = window.AUTH_STATUS_ME_PROMISE || fetchMeBootstrap();
+    return window.AUTH_STATUS_ME_PROMISE;
+}
+
+function handleApiAuthExpired(res) {
+    if (!res || res.status !== 401) return false;
+    state.authUser = null;
+    historyCache = null;
+    if (typeof window.handleAuthExpired === 'function') {
+        window.handleAuthExpired();
+    } else {
+        alert('세션이 만료되어 로그아웃되었습니다');
+        window.location.reload();
+    }
+    return true;
+}
+
 function formatJsonSyntax(json) {
     if (typeof json !== 'string') json = JSON.stringify(json, null, 2);
     return json
@@ -156,6 +185,7 @@ async function historyCaptureAndSave(customName) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(entry),
             });
+            if (handleApiAuthExpired(res)) return null;
             if (!res.ok) {
                 showToast('요청 저장 실패 (서버 오류)', 2000);
                 return null;
@@ -180,6 +210,7 @@ async function historyDelete(id) {
     if (historyCache !== null) {
         try {
             const res = await fetch(`/api/request-history/${encodeURIComponent(id)}`, { method: 'DELETE' });
+            if (handleApiAuthExpired(res)) return false;
             if (!res.ok) {
                 showToast('삭제 실패 (서버 오류)', 2000);
                 return false;
@@ -201,6 +232,7 @@ async function historyClear() {
     if (historyCache !== null) {
         try {
             const res = await fetch('/api/request-history', { method: 'DELETE' });
+            if (handleApiAuthExpired(res)) return false;
             if (!res.ok) {
                 showToast('초기화 실패 (서버 오류)', 2000);
                 return false;
@@ -227,6 +259,7 @@ async function initHistory() {
     if (!state.authUser) return;
     try {
         const res = await fetch('/api/request-history');
+        if (handleApiAuthExpired(res)) { historyCache = null; return; }
         if (!res.ok) { historyCache = []; return; }
         const list = await res.json();
         historyCache = list.map(r => ({
@@ -253,6 +286,7 @@ async function initHistory() {
 async function loadCredentialList() {
     try {
         const res = await fetch('/api/credentials');
+        if (handleApiAuthExpired(res)) return;
         if (!res.ok) return;
         const list = await res.json();
         renderCredentialLoadModal(list);
@@ -307,6 +341,7 @@ function escHtml(str) {
 async function applyCredentialTester(id) {
     try {
         const res = await fetch(`/api/credentials/${id}`);
+        if (handleApiAuthExpired(res)) return;
         if (!res.ok) return alert('불러오기 실패');
         const c = await res.json();
 
@@ -356,8 +391,7 @@ function closeAuthRequiredModal() {
 
 async function refreshAuthUser() {
     try {
-        const r = await fetch('/api/me');
-        const data = await r.json();
+        const data = await sharedMePromise();
         state.authUser = (data && data.authenticated !== false && data.username) ? data : null;
     } catch (e) {
         state.authUser = null;
@@ -444,6 +478,7 @@ async function confirmCredentialSave() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body),
         });
+        if (handleApiAuthExpired(res)) return;
         if (!res.ok) {
             const e = await res.json().catch(() => ({}));
             alert('저장 실패: ' + (e.error?.message || res.status));
@@ -460,6 +495,7 @@ async function deleteCredentialTester(id) {
     if (!confirm('이 인증 정보를 삭제하시겠습니까?')) return;
     try {
         const res = await fetch(`/api/credentials/${id}`, { method: 'DELETE' });
+        if (handleApiAuthExpired(res)) return;
         if (!res.ok) return alert('삭제 실패');
         await loadCredentialList();
     } catch (e) {

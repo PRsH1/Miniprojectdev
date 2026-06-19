@@ -7,28 +7,15 @@
  * PATCH /api/notifications/:id/read 단건 읽음 처리
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const pusher = require('./_shared/pusher');
+const { resolveUser } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
-function requireAuth(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) {
+async function requireAuth(req, res) {
+  const decoded = await resolveUser(req, res);
+  if (!decoded) {
     respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Notifications API requires authentication' });
-    return null;
-  }
-  let decoded;
-  try {
-    decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch (error) {
-    respondError(req, res, 401, {
-      code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
-      error,
-      logMessage: 'Notifications token verification failed',
-    });
     return null;
   }
   return decoded;
@@ -68,7 +55,7 @@ async function triggerNotificationEvent(decoded, eventName, payload) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const decoded = requireAuth(req, res);
+  const decoded = await requireAuth(req, res);
   if (!decoded) return;
 
   const rawPath = req.url.split('?')[0];

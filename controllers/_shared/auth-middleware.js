@@ -177,50 +177,87 @@ async function tryRefreshToken(sql, refreshToken, res, isSecure) {
   if (!refreshToken) return null;
 
   const tokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+  const newRefreshTokenId = crypto.randomUUID();
+  const newRefreshToken = crypto.randomUUID();
+  const newHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
   let rtRows;
   try {
     rtRows = await sql`
-      SELECT rt.*, u.role, u.must_change_password, u.is_active
-      FROM refresh_tokens rt
-      JOIN users u ON u.id = rt.user_id
-      WHERE rt.token_hash = ${tokenHash}
-        AND rt.revoked_at IS NULL
-        AND rt.expires_at > now()
+      WITH claimed AS (
+        UPDATE refresh_tokens rt
+        SET revoked_at = now(), replaced_by = ${newRefreshTokenId}
+        WHERE rt.token_hash = ${tokenHash}
+          AND rt.revoked_at IS NULL
+          AND rt.expires_at > now()
+          AND EXISTS (
+            SELECT 1
+            FROM users u
+            WHERE u.id = rt.user_id AND u.is_active = true
+          )
+        RETURNING rt.id, rt.user_id
+      ),
+      active_user AS (
+        SELECT claimed.id, claimed.user_id, u.role, u.must_change_password, u.is_active
+        FROM claimed
+        JOIN users u ON u.id = claimed.user_id
+        WHERE u.is_active = true
+      ),
+      inserted AS (
+        INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at)
+        SELECT ${newRefreshTokenId}, user_id, ${newHash}, ${expiresAt.toISOString()}
+        FROM active_user
+        RETURNING id
+      )
+      SELECT active_user.id, active_user.user_id, active_user.role,
+             active_user.must_change_password, active_user.is_active
+      FROM active_user
+      JOIN inserted ON inserted.id = ${newRefreshTokenId}
       LIMIT 1
     `;
   } catch (err) {
-    console.error('refresh_token 조회 오류:', err);
+    console.error('refresh_token 로테이션 오류:', err);
     return null;
   }
 
-  if (!rtRows || rtRows.length === 0) return null;
+  if (rtRows && rtRows.length > 0) {
+    const rt = rtRows[0];
+    const payload = { sub: rt.user_id, role: rt.role, mustChangePw: rt.must_change_password };
 
-  const rt = rtRows[0];
-  if (!rt.is_active) return null;
+    res.setHeader('Set-Cookie', [
+      serialize('auth_token', sign(payload), { httpOnly: true, secure: isSecure, sameSite: 'strict', path: '/', maxAge: 3600 }),
+      serialize('refresh_token', newRefreshToken, { httpOnly: true, secure: isSecure, sameSite: 'strict', path: '/', maxAge: 7 * 24 * 3600 }),
+    ]);
 
-  // 기존 토큰 revoke
-  await sql`UPDATE refresh_tokens SET revoked_at = now() WHERE id = ${rt.id}`;
+    return payload;
+  }
 
-  // 새 리프레시 토큰 발급
-  const newRefreshToken = crypto.randomUUID();
-  const newHash = crypto.createHash('sha256').update(newRefreshToken).digest('hex');
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  await sql`
-    INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-    VALUES (${rt.user_id}, ${newHash}, ${expiresAt.toISOString()})
-  `;
+  let graceRows;
+  try {
+    graceRows = await sql`
+      SELECT rt.id, rt.user_id, u.role, u.must_change_password, u.is_active
+      FROM refresh_tokens rt
+      JOIN users u ON u.id = rt.user_id
+      WHERE rt.token_hash = ${tokenHash}
+        AND rt.expires_at > now()
+        AND rt.replaced_by IS NOT NULL
+        AND rt.revoked_at > now() - interval '30 seconds'
+        AND u.is_active = true
+      LIMIT 1
+    `;
+  } catch (err) {
+    console.error('refresh_token grace 조회 오류:', err);
+    return null;
+  }
 
-  // 새 JWT 발급
+  if (!graceRows || graceRows.length === 0) return null;
+
+  const rt = graceRows[0];
   const payload = { sub: rt.user_id, role: rt.role, mustChangePw: rt.must_change_password };
-  const newAccessToken = sign(payload);
-
-  // 쿠키 갱신
-  const newCookies = [
-    serialize('auth_token', newAccessToken, { httpOnly: true, secure: isSecure, sameSite: 'strict', path: '/', maxAge: 3600 }),
-    serialize('refresh_token', newRefreshToken, { httpOnly: true, secure: isSecure, sameSite: 'strict', path: '/', maxAge: 7 * 24 * 3600 }),
-  ];
-  res.setHeader('Set-Cookie', newCookies);
+  res.setHeader('Set-Cookie', [
+    serialize('auth_token', sign(payload), { httpOnly: true, secure: isSecure, sameSite: 'strict', path: '/', maxAge: 3600 }),
+  ]);
 
   return payload;
 }

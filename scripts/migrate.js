@@ -41,7 +41,8 @@ async function migrate() {
       token_hash  VARCHAR NOT NULL,
       expires_at  TIMESTAMPTZ NOT NULL,
       created_at  TIMESTAMPTZ DEFAULT now(),
-      revoked_at  TIMESTAMPTZ
+      revoked_at  TIMESTAMPTZ,
+      replaced_by UUID
     )
   `;
   console.log('✅ refresh_tokens 테이블 생성 완료');

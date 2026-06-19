@@ -59,8 +59,7 @@
     function _init() {
         _injectStyles();
         _injectModals();
-        fetch('/api/me')
-            .then(function (r) { return r.json(); })
+        _getSharedMePromise()
             .then(function (d) {
                 _authUser = (d && d.authenticated !== false && d.username) ? d : null;
             })
@@ -75,6 +74,42 @@
             _authUser = (d && d.authenticated !== false && d.username) ? d : null;
         } catch (e) { _authUser = null; }
         return !!_authUser;
+    }
+
+    function _fetchMeBootstrap() {
+        var run = function () {
+            return fetch('/api/me')
+                .then(function (r) { return r.json(); })
+                .catch(function () { return null; });
+        };
+
+        if (navigator.locks && typeof navigator.locks.request === 'function') {
+            return navigator.locks.request('eform-auth-bootstrap', run).catch(run);
+        }
+        return run();
+    }
+
+    function _getSharedMePromise() {
+        window.AUTH_STATUS_ME_PROMISE = window.AUTH_STATUS_ME_PROMISE || _fetchMeBootstrap();
+        return window.AUTH_STATUS_ME_PROMISE;
+    }
+
+    function _handleAuthExpired() {
+        _authUser = null;
+        if (typeof window.handleAuthExpired === 'function') {
+            window.handleAuthExpired();
+            return;
+        }
+        alert('세션이 만료되어 로그아웃되었습니다');
+        window.location.reload();
+    }
+
+    function _handleApiAuthResponse(res) {
+        if (res && res.status === 401) {
+            _handleAuthExpired();
+            return true;
+        }
+        return false;
     }
 
     // 스타일 격리 — 호스트 페이지 CSS 오염 방지
@@ -393,6 +428,7 @@
         if (!await _ensureAuth()) { _showAuthModal(); return; }
         try {
             var res = await fetch('/api/credentials');
+            if (_handleApiAuthResponse(res)) return;
             if (!res.ok) return;
             _renderList(await res.json());
             document.getElementById('_cpLoadModal').style.display = 'flex';
@@ -450,6 +486,7 @@
     window._cpApplyCredential = async function (id) {
         try {
             var res = await fetch('/api/credentials/' + id);
+            if (_handleApiAuthResponse(res)) return;
             if (!res.ok) { alert('불러오기 실패'); return; }
             _applyToPage(await res.json());
             window._cpCloseLoadModal();
@@ -459,8 +496,10 @@
     window._cpDeleteCredential = async function (id) {
         if (!confirm('이 인증 정보를 삭제하시겠습니까?')) return;
         try {
-            await fetch('/api/credentials/' + id, { method: 'DELETE' });
+            var deleteRes = await fetch('/api/credentials/' + id, { method: 'DELETE' });
+            if (_handleApiAuthResponse(deleteRes)) return;
             var res = await fetch('/api/credentials');
+            if (_handleApiAuthResponse(res)) return;
             if (res.ok) _renderList(await res.json());
         } catch (e) { _showToast('삭제 중 오류가 발생했습니다.', 2500); }
     };
@@ -498,6 +537,7 @@
                     secret_key: secretKey,
                 }),
             });
+            if (_handleApiAuthResponse(res)) return;
             if (!res.ok) {
                 var err = await res.json().catch(function () { return {}; });
                 alert('저장 실패: ' + ((err.error && err.error.message) || res.status));

@@ -33,10 +33,23 @@ const DOMAINS = {
 
 - `/app/:path*` → `auth-middleware.js` → DB에서 `protected_pages` 조회 → JWT 검증 → role 체크 → HTML 서빙
 - JWT 액세스 토큰: 1시간 (`auth_token` httpOnly 쿠키)
-- 리프레시 토큰: 7일 (`refresh_token` httpOnly 쿠키, DB 저장)
+- 리프레시 토큰: 7일 (`refresh_token` httpOnly 쿠키, DB 저장, 사용 시마다 로테이션)
 - 미인증: `/auth/login.html?next=<page>` 리다이렉트
 - 권한 부족: `/auth/403.html`
 - 강제 비밀번호 변경 필요: `/auth/change-password.html`
+
+### 세션 갱신 / 리프레시 토큰 로테이션 (경합 안전)
+
+액세스 토큰(1h)이 만료되면 `refresh_token`(7d)으로 새 액세스 토큰을 발급하며, 리프레시 토큰도 함께 로테이션한다(활성 사용자는 7일 슬라이딩 세션). 동시 갱신 경합으로 인한 오(誤)로그아웃을 막기 위해 아래 패턴을 사용한다.
+
+- **공통 함수**: `auth-middleware.js`의 `tryRefreshToken(sql, refreshToken, res, isSecure)` 가 정본. `me.js`, `auth-middleware`(/app/*), `refresh.js`(/api/refresh), `_shared/session.js`가 모두 이 함수를 공유한다. (`refresh.js`는 자체 로테이션 로직 없이 위임만)
+- **원자적 단일 승자(claim)**: 단일 SQL문(CTE)으로 `UPDATE … SET revoked_at=now(), replaced_by=<신규ID> WHERE token_hash=:h AND revoked_at IS NULL AND expires_at>now()` 후 신규 토큰 INSERT까지 한 번에 처리. 행을 반환받은 요청만 "승자"가 되어 `auth_token`+`refresh_token` 두 쿠키를 모두 세팅한다. (Neon http 드라이버는 autocommit이라 다중 statement 트랜잭션이 없으므로, 정확성은 이 단일 원자적 UPDATE에 의존)
+- **grace 패자**: claim 0행이면 재조회 — `replaced_by IS NOT NULL AND revoked_at > now() - interval '30 seconds'`(=형제 갱신에 30초 내 진 경우)면 **새 액세스 JWT만 발급하고 refresh 쿠키는 건드리지 않는다**(승자가 이미 세팅 → 쿠키 클로버링 방지). 그 외(없음/만료/`replaced_by IS NULL`)는 `null`.
+- **로그아웃 토큰 차단**: `logout.js`는 `replaced_by` 없이 `revoked_at`만 세팅하므로, grace 조건의 `replaced_by IS NOT NULL`이 로그아웃된 토큰의 재인증을 자동 차단한다.
+- **데이터 API 갱신-인지(refresh-aware)**: `_shared/session.js`의 `resolveUser(req, res)` 는 `auth_token` 검증 → 만료 시 `tryRefreshToken` 호출. `credentials.js`/`requestHistory.js`/`notifications.js`가 직접 `jwt.verify` 대신 이 헬퍼를 쓰므로, 액세스 토큰 만료 후에도 리프레시 유효 기간 내에는 401 없이 동작한다.
+- **클라이언트 single-flight**: `auth-status.js`/`credential-panel.js`/`openapi/state.js`가 `window.AUTH_STATUS_ME_PROMISE = window.AUTH_STATUS_ME_PROMISE || …` 멱등 가드로 `/api/me` 부트스트랩을 1회로 공유하고, `navigator.locks.request('eform-auth-bootstrap', …)`로 탭 간 직렬화한다(미지원 시 lock 없이 진행 — 서버 원자성이 정확성 보장).
+- **로그아웃 graceful 처리**: 같은-오리진 `/api/*` 호출이 갱신 후에도 401이거나(=리프레시 만료) `visibilitychange`/`focus` 재확인에서 `authenticated:false`면 `window.handleAuthExpired()`(auth-status.js)가 1회 안내 후 `location.reload()`. (interval 폴링은 쓰지 않음 — Neon idle suspend 유지)
+- **마이그레이션**: `refresh_tokens.replaced_by UUID` 컬럼 필요. `scripts/migrate-refresh-rotation.js`로 추가(멱등). **반드시 코드 배포 전에 실행** — 없으면 claim/grace 쿼리가 실패해 갱신 전체가 막힌다.
 
 ```javascript
 // controllers/_shared/auth-middleware.js 처리 흐름

@@ -3,26 +3,14 @@
  * OpenAPITester 요청 히스토리 저장/조회/삭제 (로그인 사용자 전용)
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
+const { resolveUser } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
-
-function getUser(req) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) return null;
-  try {
-    return jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch {
-    return null;
-  }
-}
 
 const HISTORY_MAX = 100;
 
 module.exports = async function requestHistoryController(req, res) {
-  const decoded = getUser(req);
+  const decoded = await resolveUser(req, res);
   if (!decoded) {
     return respondError(req, res, 401, {
       code: 'AUTH_REQUIRED',

@@ -18,6 +18,8 @@
     var notifUnreadCount = 0;
     var notifFallbackTimer = null;
     var notifPusher = null;
+    var authExpiredHandled = false;
+    var authStatusCurrentUser = null;
 
     // ─── CSS 주입 ────────────────────────────────────────────
     var barCss;
@@ -201,6 +203,7 @@
     function render(user) {
         var el = document.getElementById('authStatusBar');
         if (!el) return;
+        authStatusCurrentUser = user || null;
 
         if (!user) {
             if (CORNER) {
@@ -306,6 +309,49 @@
         }
     }
 
+    function showAuthExpiredNotice() {
+        var msg = '세션이 만료되어 로그아웃되었습니다';
+        if (typeof window.showToast === 'function') {
+            window.showToast(msg, 2500);
+            return;
+        }
+
+        var toast = document.getElementById('asbAuthExpiredToast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'asbAuthExpiredToast';
+            toast.style.cssText = [
+                'position:fixed', 'left:50%', 'top:56px', 'transform:translateX(-50%)',
+                'z-index:1000000', 'background:rgba(20,30,45,0.96)', 'color:#fff',
+                'padding:12px 18px', 'border-radius:8px', 'box-shadow:0 8px 24px rgba(0,0,0,.25)',
+                'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+                'font-size:13px', 'font-weight:600',
+            ].join(';');
+            document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+    }
+
+    function handleAuthExpired() {
+        if (authExpiredHandled) return;
+        authExpiredHandled = true;
+        stopNotificationFallbackPolling();
+        showAuthExpiredNotice();
+        setTimeout(function () {
+            window.location.reload();
+        }, 1200);
+    }
+
+    window.handleAuthExpired = handleAuthExpired;
+
+    function handleApiAuthResponse(r) {
+        if (r && r.status === 401) {
+            handleAuthExpired();
+            return true;
+        }
+        return false;
+    }
+
     function startNotificationFallbackPolling() {
         if (notifFallbackTimer) return;
         notifFallbackTimer = setInterval(function () {
@@ -384,15 +430,22 @@
     // 전체 읽음 처리 후 패널 새로고침
     function markAllRead() {
         fetch('/api/notifications/read', { method: 'PATCH' })
-            .then(function () { openNotifPanel(); })
+            .then(function (r) {
+                if (handleApiAuthResponse(r)) return;
+                openNotifPanel();
+            })
             .catch(function () {});
     }
 
     // 단건 삭제
     function deleteNotifOne(id, itemEl) {
         fetch('/api/notifications/' + id, { method: 'DELETE' })
-            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(function (r) {
+                if (handleApiAuthResponse(r)) return null;
+                return r.ok ? r.json() : Promise.reject();
+            })
             .then(function () {
+                if (authExpiredHandled) return;
                 if (itemEl) itemEl.remove();
                 // 삭제된 항목이 unread였으면 배지 감소
                 if (itemEl && itemEl.classList.contains('unread')) {
@@ -415,7 +468,10 @@
     // 전체 삭제
     function deleteNotifAll() {
         fetch('/api/notifications', { method: 'DELETE' })
-            .then(function () { openNotifPanel(); })
+            .then(function (r) {
+                if (handleApiAuthResponse(r)) return;
+                openNotifPanel();
+            })
             .catch(function () {});
     }
 
@@ -487,9 +543,14 @@
                 item.addEventListener('click', function () {
                     var notifId = item.getAttribute('data-notif-id');
                     var dest = item.getAttribute('data-dest');
+                    var shouldNavigate = true;
                     fetch('/api/notifications/' + notifId + '/read', { method: 'PATCH' })
+                        .then(function (r) {
+                            if (handleApiAuthResponse(r)) shouldNavigate = false;
+                        })
+                        .catch(function () {})
                         .finally(function () {
-                            window.location.href = dest;
+                            if (shouldNavigate) window.location.href = dest;
                         });
                 });
             })(items[j]);
@@ -520,7 +581,10 @@
     // 미읽음 count만 갱신 (폴링용)
     function fetchUnreadCount() {
         fetch('/api/notifications')
-            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (r) {
+                if (handleApiAuthResponse(r)) return null;
+                return r.ok ? r.json() : null;
+            })
             .then(function (data) {
                 if (!data) return;
                 updateNotifBadge(data.unread_count || 0);
@@ -531,7 +595,10 @@
     // 패널 열기
     function openNotifPanel() {
         fetch('/api/notifications')
-            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (r) {
+                if (handleApiAuthResponse(r)) return null;
+                return r.ok ? r.json() : null;
+            })
             .then(function (data) {
                 if (!data) return;
                 notifUnreadCount = data.unread_count || 0;
@@ -550,15 +617,45 @@
         if (panel) panel.style.display = 'none';
     }
 
+    function fetchMeBootstrap() {
+        var run = function () {
+            return fetch('/api/me')
+                .then(function (r) { return r.json(); })
+                .catch(function () { return null; });
+        };
+
+        if (navigator.locks && typeof navigator.locks.request === 'function') {
+            return navigator.locks.request('eform-auth-bootstrap', run).catch(run);
+        }
+        return run();
+    }
+
+    function authBarShowsLoggedIn() {
+        return !!authStatusCurrentUser || !!document.getElementById('asbBtnLogout');
+    }
+
+    function recheckAuthOnReturn() {
+        if (authExpiredHandled || !authBarShowsLoggedIn()) return;
+        fetch('/api/me')
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (data) {
+                if (data && data.authenticated === false && authBarShowsLoggedIn()) handleAuthExpired();
+            })
+            .catch(function () {});
+    }
+
     // ─── /api/me 호출 ────────────────────────────────────────
-    window.AUTH_STATUS_ME_PROMISE = window.AUTH_STATUS_ME_PROMISE || fetch('/api/me')
-        .then(function (r) { return r.json(); })
-        .catch(function () { return null; });
+    window.AUTH_STATUS_ME_PROMISE = window.AUTH_STATUS_ME_PROMISE || fetchMeBootstrap();
 
     window.AUTH_STATUS_ME_PROMISE.then(function (data) {
         var isAuth = data && data.authenticated !== false && data.username;
         render(isAuth ? data : null);
     });
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') recheckAuthOnReturn();
+    });
+    window.addEventListener('focus', recheckAuthOnReturn);
 
     // 드롭다운 바깥 클릭 시 패널 닫기
     document.addEventListener('click', function (e) {

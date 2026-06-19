@@ -45,7 +45,8 @@ ProjectImprove/
 │   ├── _shared/
 │   │   ├── db.js                      # Neon DB 커넥션 풀
 │   │   ├── jwt.js                     # JWT sign/verify 유틸
-│   │   ├── auth-middleware.js         # JWT 검증 + 리프레시 + role 체크 통합
+│   │   ├── session.js                 # resolveUser — API용 세션 해석 (만료 시 리프레시 로테이션)
+│   │   ├── auth-middleware.js         # JWT 검증 + 리프레시(원자적 로테이션) + role 체크 통합
 │   │   ├── audit.js                   # audit_logs INSERT 헬퍼
 │   │   ├── respond-error.js           # HTML/JSON 에러 응답 표준화
 │   │   ├── protected-pages-config.js  # (레거시) 구 보호 페이지 설정 — seed 참조용
@@ -54,7 +55,7 @@ ProjectImprove/
 │   │   └── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
 │   ├── login.js                  # DB 기반 로그인 (JWT 발급)
 │   ├── logout.js                 # 리프레시 토큰 revoke + 쿠키 만료
-│   ├── refresh.js                # 리프레시 토큰 → 새 JWT 발급
+│   ├── refresh.js                # 리프레시 토큰 → 새 JWT 발급 (공유 tryRefreshToken 위임)
 │   ├── me.js                     # 현재 로그인 사용자 정보 반환
 │   ├── signup.js                 # 회원가입 요청 생성
 │   ├── signupStatus.js           # 회원가입 요청 상태 조회
@@ -281,9 +282,17 @@ ProjectImprove/
 |------|------|
 | 저장소 | Vercel Postgres (Neon) |
 | 액세스 토큰 | JWT, 1시간, `auth_token` httpOnly 쿠키 |
-| 리프레시 토큰 | 7일, SHA-256 해시 후 DB 저장, `refresh_token` httpOnly 쿠키 |
+| 리프레시 토큰 | 7일, SHA-256 해시 후 DB 저장, `refresh_token` httpOnly 쿠키, 사용 시마다 로테이션 |
+| 세션 유지 | 액세스 토큰 만료 시 리프레시 토큰으로 자동 갱신 → 활성 사용자는 최대 7일 슬라이딩 세션 |
 | 비밀번호 해싱 | Node.js 내장 `crypto.scrypt` |
 | 계정 잠금 | 로그인 5회 실패 → 30분 잠금 (관리자 수동 해제 가능) |
+
+**리프레시 토큰 로테이션 (경합 안전)**
+
+- 갱신은 `auth-middleware.js`의 `tryRefreshToken`이 정본이며 `me.js`·`/app/*`·`refresh.js`·`_shared/session.js`가 공유한다.
+- 동시 갱신 경합을 막기 위해 **원자적 단일 statement(CTE)로 토큰을 claim**(`revoked_at`·`replaced_by` 세팅 + 신규 토큰 INSERT)한다. 행을 얻은 요청만 두 쿠키를 모두 발급하고, 30초 grace 내 "진" 요청은 새 액세스 토큰만 받는다(쿠키 클로버링 방지). 로그아웃된 토큰(`replaced_by IS NULL`)은 grace에서 제외된다.
+- 데이터 API(`credentials`/`request-history`/`notifications`)는 `resolveUser`로 갱신-인지 처리되어 액세스 토큰 만료 후에도 401 없이 동작한다. 클라이언트는 `/api/me` 부트스트랩을 `navigator.locks`로 탭 간 직렬화하며, 리프레시까지 만료되면 안내 후 페이지를 재로딩한다.
+- **DB 요구사항**: `refresh_tokens.replaced_by UUID` — `scripts/migrate-refresh-rotation.js`로 추가하며 **코드 배포 전에 실행**해야 한다.
 
 **역할(Role) 체계**
 

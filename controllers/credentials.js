@@ -4,10 +4,9 @@
  * 모든 요청은 JWT 인증 필요 (auth_token 쿠키)
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { getDb } = require('./_shared/db');
+const { resolveUser } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 // ─── AES-256-GCM 암호화 유틸 ──────────────────────────────────────────────
@@ -46,19 +45,8 @@ function decrypt(stored) {
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
 }
 
-function getUser(req) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) return null;
-  try {
-    return jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch {
-    return null;
-  }
-}
-
 module.exports = async function credentialsController(req, res) {
-  const decoded = getUser(req);
+  const decoded = await resolveUser(req, res);
   if (!decoded) {
     return respondError(req, res, 401, {
       code: 'AUTH_REQUIRED',
