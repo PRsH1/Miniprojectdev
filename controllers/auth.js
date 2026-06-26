@@ -29,6 +29,38 @@ module.exports = async (req, res) => {
     const hasAttributes = context.includes('AttributeStatement');
     console.log(`🚀 SAML Response Generated → ${key} 서버 (${acsUrl}) | 결정: ${explicit ? 'target=' + explicit : '요청ACS'} | 요청 ACS: ${requestedAcs || '없음'} | Has Attributes? ${hasAttributes}`);
 
+    // 진단용: ?debug=1 일 때만 서버가 직접 ACS로 POST 하여 eformsign 응답을 콘솔에 로깅한다.
+    // 주의: SAML Assertion 은 보통 일회성(replay 방지)이므로, 여기서 consume 하면
+    //       이어지는 브라우저 auto-submit 이 거부될 수 있다. 평상시 로그인에는 영향이 없도록 flag 로 격리.
+    const debugProbe = req.query && (req.query.debug === '1' || req.query.debug === 'true');
+    if (debugProbe) {
+      try {
+        const form = new URLSearchParams();
+        form.set('SAMLResponse', context);
+        form.set('RelayState', RelayState || '');
+
+        const probeRes = await fetch(acsUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: form.toString(),
+          redirect: 'manual', // 302 등 리다이렉트를 따라가지 않고 그대로 확인
+        });
+
+        const probeHeaders = {};
+        probeRes.headers.forEach((v, k) => { probeHeaders[k] = v; });
+        const probeBody = await probeRes.text();
+
+        console.log('📥 eformsign ACS 응답 (debug probe) ↓');
+        console.log(`   → URL        : ${acsUrl}`);
+        console.log(`   → Status     : ${probeRes.status} ${probeRes.statusText}`);
+        console.log(`   → Location   : ${probeRes.headers.get('location') || '(없음)'}`);
+        console.log(`   → Headers    : ${JSON.stringify(probeHeaders)}`);
+        console.log(`   → Body(앞 2KB): ${probeBody.slice(0, 2048)}`);
+      } catch (probeErr) {
+        console.error('❌ eformsign ACS 응답 로깅 실패 (debug probe):', probeErr);
+      }
+    }
+
     res.setHeader('Content-Type', 'text/html');
     res.send(`
       <!DOCTYPE html>
