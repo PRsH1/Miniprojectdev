@@ -32,10 +32,7 @@ module.exports = async (req, res) => {
     // 진단용: ?debug=1 일 때만 서버가 직접 ACS로 POST 하여 eformsign 응답을 콘솔에 로깅한다.
     // 주의: SAML Assertion 은 보통 일회성(replay 방지)이므로, 여기서 consume 하면
     //       이어지는 브라우저 auto-submit 이 거부될 수 있다. 평상시 로그인에는 영향이 없도록 flag 로 격리.
-    // form POST 흐름에서는 query 가 비므로 body 로도 debug 플래그를 받는다.
-    const isDebugFlag = (v) => v === '1' || v === 'true';
-    const debugProbe = (req.query && isDebugFlag(req.query.debug))
-      || (req.body && isDebugFlag(req.body.debug));
+    const debugProbe = req.query && (req.query.debug === '1' || req.query.debug === 'true');
     if (debugProbe) {
       try {
         const form = new URLSearchParams();
