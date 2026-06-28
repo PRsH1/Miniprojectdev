@@ -1,4 +1,4 @@
-const { idp, resolveTarget } = require('../lib/saml');
+const { idp, resolveTarget, createTemplateCallback, debugDeliver } = require('../lib/saml');
 
 module.exports = async (req, res) => {
   const { email, name, target } = req.body;
@@ -17,14 +17,26 @@ module.exports = async (req, res) => {
   const { key, acsUrl, sp } = resolveTarget(target);
 
   try {
-  const { context } = await idp.createLoginResponse(
-  sp,
-  { extract: { request: { id: 'idp_initiated' } } }, // 더미 ID 제공
-  'post',
-  user
-);
+    const { context } = await idp.createLoginResponse(
+      sp,
+      { extract: { request: { id: 'idp_initiated' } } }, // 더미 ID 제공
+      'post',
+      user,
+      createTemplateCallback(acsUrl, user, 'idp_initiated')
+    );
 
     console.log(`🚀 IdP Initiated Login: ${email} (${name}) → ${key} 서버 (${acsUrl})`);
+
+    const debugOn = process.env.SAML_DEBUG === '1' && req.body?.debug === '1';
+    await debugDeliver({
+      enabled: debugOn,
+      key,
+      acsUrl,
+      decision: 'idp-initiated',
+      requestedAcs: null,
+      context,
+      relayState: '',
+    });
 
     res.setHeader('Content-Type', 'text/html');
     res.send(`

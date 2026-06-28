@@ -312,6 +312,8 @@ ProjectImprove/
 - **대상 서버 라우팅:**
   - **IdP 시작** (`idp-test.html` → `idp-initiated-login`): 폼의 "전송 대상 서버" select → `resolveTarget()` (기본값 test)
   - **SP 시작** (`sso-login` → `auth`): 우선순위 ① 명시적 `target`(test/dev, `sso-login?target=dev`) → ② SAMLRequest의 `AssertionConsumerServiceURL`(`extractAcsUrl` + `resolveTargetByAcsUrl`, 화이트리스트 검증) → ③ test 폴백
+- **AttributeStatement (email/name):** SAML 응답에 Azure AD 호환 클레임(`.../claims/emailaddress`, `.../claims/name`)을 담아 eformsign이 사용자 이름을 읽을 수 있게 한다. samlify는 `loginResponseTemplate`에 `context`(XML 템플릿)와 `attributes`를 **둘 다** 요구하며, per-user 값은 `createLoginResponse`의 5번째 인자 `customTagReplacement`(= `lib/saml.js`의 `createTemplateCallback`)로 채운다. (둘 중 하나라도 빠지면 `Invalid login response template` 경고와 함께 속성 없는 기본 템플릿으로 폴백됨)
+- **진단 로깅 (`SAML_DEBUG`):** `SAML_DEBUG=1` **이면서** 요청에 `debug=1`(SP 시작은 `sso-login?debug=1` → 폼 전달, IdP 시작은 body)인 경우에만, 생성한 SAMLResponse XML과 ACS로 직접 POST한 eformsign 응답(status/location/body)을 Vercel 콘솔에 `[SAML-DEBUG]` 프리픽스로 기록한다(`lib/saml.js`의 `debugDeliver`). 이중 게이트라 평상시 로그인 흐름에는 영향이 없다.
 - SP 시작 및 IDP 시작 플로우 모두 지원
 
 ### 3. ECDSA 서명 인증
@@ -334,6 +336,7 @@ BASE_URL=                # 예: https://eformproj.vercel.app
 # ─── SAML 인증 ────────────────────────────────────────────
 SAML_PRIVATE_KEY=        # base64 인코딩된 개인 키
 SAML_PUBLIC_CERT=        # base64 인코딩된 공개 인증서
+SAML_DEBUG=              # '1'일 때 요청 debug=1과 함께 SAML 진단 로깅 활성화. 평상시 미설정
 
 # ─── 크리덴셜 암호화 ─────────────────────────────────────
 CREDENTIAL_ENCRYPTION_KEY=  # eformsign 비밀 키 AES-256-GCM 암호화 키 (openssl rand -hex 32 로 생성)
@@ -591,6 +594,38 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `templateDeletetool.html` | 템플릿 일괄 삭제 |
 | `saml-guide.html` | SAML 연동 가이드 |
 | `error-codes.html` | OPA2 에러 코드 모음 (43개 엔드포인트, 에러 코드·Enum·메시지 검색) |
+
+---
+
+## 2026-06-28 Update
+
+### SAML 응답 AttributeStatement(email/name) 포함 + 진단 로깅
+
+eformsign(SP)으로 보내던 SAML 응답에 **AttributeStatement가 누락**되어, eformsign이 사용자 이름을 읽지 못하고 NameID(email)를 이름으로 표시하던 문제를 수정했습니다.
+
+#### 원인
+
+`lib/saml.js`의 `loginResponseTemplate`이 `attributes`만 지정하고 `context`(XML 템플릿 문자열)를 누락 → samlify(`entity-idp.js`)가 템플릿을 무효 처리(`Invalid login response template` 경고)하고 **속성 없는 기본 템플릿으로 폴백**했습니다. 또한 per-user 속성값을 채우는 `createLoginResponse`의 5번째 인자 `customTagReplacement` 콜백도 없었습니다. samlify 라이브러리 자체 결함이 아닌 **설정 누락**입니다(대체 라이브러리 교체 불필요).
+
+#### 동작
+
+- `loginResponseTemplate.context`(`{AuthnStatement}{AttributeStatement}` 포함 기본 템플릿) 추가 + `attributes`(Azure AD 클레임 `.../claims/emailaddress`, `.../claims/name`) 유지.
+- `lib/saml.js`에 공유 `createTemplateCallback(acsUrl, user, requestId)` 추가 — 표준 태그(ID·시간·Destination·NameID 등) + 속성 placeholder(`{attrEmail}`/`{attrName}`)를 `SamlLib.replaceTagsByValue`로 채워 `{ id, context }` 반환. `auth.js`·`idp-initiated-login.js`가 5번째 인자로 전달.
+- 생성 XML은 기존 동작 형태와 동일(`ds:` prefix, **Response 레벨 서명**, `NameFormat=...attrname-format:basic`) → eformsign 회귀 위험 최소.
+- **진단 로깅**: `lib/saml.js`의 `debugDeliver`가 `SAML_DEBUG=1` **AND** 요청 `debug=1` 이중 게이트에서만 동작 — 생성 SAMLResponse XML + ACS로 직접 POST한 eformsign 응답(status/location/headers/body)을 Vercel 콘솔에 `[SAML-DEBUG]` 프리픽스로 기록. 평상시 로그인 흐름 무영향.
+
+#### 변경 파일
+
+| 파일 | 변경 내용 |
+|---|---|
+| `lib/saml.js` | `RESPONSE_CONTEXT` + `loginResponseTemplate.context`, 공유 `createTemplateCallback`·`debugDeliver` 추가·export |
+| `controllers/auth.js` | `createLoginResponse` 5번째 인자 콜백 전달 + `SAML_DEBUG` 이중 게이트 로깅 |
+| `controllers/idp-initiated-login.js` | 동일 — 콜백 전달 + body 기준 `SAML_DEBUG` 게이트 로깅 |
+| `controllers/sso-login.js` | `debug=1` 게이트 플래그를 폼 hidden 필드로 `/api/auth`에 전달 |
+| `rules/env-vars.md` · `rules/project-structure.md` | `SAML_DEBUG` 환경변수 및 SAML 파일 설명 갱신 |
+
+> **CouchDB(eformsign) SAML 설정 정합성**: `issuer`·`entity_id`는 `${BASE_URL}/api/metadata`, `redirect_url`은 `ACS_URLS.test`, `attribute.name`/`email`은 위 Azure 클레임 URI, `idp_type`는 `azure`와 일치해야 한다. **배포 환경 `BASE_URL`이 정확히 해당 호스트**여야 Issuer가 일치한다.
+> **최종 검증 보류**: eformsign test 서버 복구 후 `@도메인` 사용자 + 이름 입력으로 SSO를 태우고 `[SAML-DEBUG]` 로그로 ACS 응답을 확인하는 E2E 검증이 남아 있다.
 
 ---
 

@@ -11,6 +11,7 @@ BASE_URL=                   # 배포 기본 주소 (예: https://eformproj.verce
 # ─── SAML ─────────────────────────────────────────────────
 SAML_PRIVATE_KEY=           # Base64 인코딩된 EC 개인키
 SAML_PUBLIC_CERT=           # Base64 인코딩된 공개 인증서
+SAML_DEBUG=                 # '1'일 때 요청 debug=1과 함께 SAML 디버그 로깅 활성화. 평상시 미설정
 
 # ─── 레거시 인증 (구 시스템 — 신규 DB 인증으로 대체됨, 제거 예정) ──
 AUTH_COOKIE_VALUE=          # 구 세션 토큰 값 (현재 미사용)
