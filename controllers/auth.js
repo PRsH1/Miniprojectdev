@@ -40,7 +40,6 @@ module.exports = async (req, res) => {
       try {
         const form = new URLSearchParams();
         form.set('SAMLResponse', context);
-        console.log("SamlResponse length:", context);
         form.set('RelayState', RelayState || '');
 
         const probeRes = await fetch(acsUrl, {
