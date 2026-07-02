@@ -20,6 +20,8 @@ fetch(`${domain}/v2.0/api_auth/access_token`, {
 });
 ```
 
+> **브라우저 도구에서 토큰 발급 시**: 위 direct fetch를 그대로 복사하지 말고 공유 모듈 `assets/js/token-issuer.js`의 `window.issueAccessToken({ domain, apiKey, memberId, signature, execTime })`를 사용한다. CORS/네트워크 전송 실패 시에만 `/api/getToken` 서버 프록시로 자동 fallback하며(인증거부는 즉시 최종 실패), 반환값 `{ ok, token, data, message, via }`의 `data`로 `refresh_token`·`company_id` 등 원본 응답을 추출할 수 있다. 서명 생성은 각 페이지가 담당하고 모듈에는 계산된 서명값만 전달한다(비밀키 브라우저 이탈 없음).
+
 ### 환경 도메인
 
 ```javascript

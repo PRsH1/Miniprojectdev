@@ -670,6 +670,39 @@ eformsign(SP)으로 보내던 SAML 응답에 **AttributeStatement가 누락**되
 
 ---
 
+## 2026-07-02 Update
+
+### Access Token 발급 fallback 공유 모듈화 (`assets/js/token-issuer.js`) + 임베딩·API 테스트 도구 확산
+
+기존에 OpenAPITester·OpenAPIAutoTest에만 적용돼 있던 **direct → 서버 프록시 fallback** 토큰 발급 로직(→ 아래 [2026-06-05 Update](#2026-06-05-update) 참고)을 재사용 가능한 공유 모듈로 추출하고, 임베딩·API 테스트 도구 전반으로 확산했습니다.
+
+#### 동작 — 기존 fallback 불변식 그대로 계승
+
+- **공유 모듈** `assets/js/token-issuer.js`(IIFE): `window.issueAccessToken({ domain, apiKey, memberId, signature, execTime })` → `{ ok, token, data, message, via }` 반환.
+- **불변식 유지**: ① 브라우저 direct fetch → ② **CORS/네트워크 전송 실패(throw)일 때만** `/api/getToken` 서버 프록시 재시도. 인증거부(응답 도착·토큰 없음)는 즉시 최종 실패(프록시 우회 무의미 → 2차 호출·지연 방지).
+- **`data` 원본 전체 반환**: 호출부가 `oauth_token.refresh_token`·`api_key.company.company_id` 등을 그대로 추출 가능(임베딩 도구가 사용).
+- **도메인 정규화**: `normalizeDomain()`이 trailing slash·`/v2.0/api`·`/v2.0/api_auth/access_token` 접미사를 방어적으로 제거 → 호출부가 base URL이든 full URL이든 안전.
+- **서버 무변경**: `controllers/getToken.js` 계약(서명값만 전달, 비밀키 브라우저 이탈 없음)을 그대로 재사용.
+- 각 도구의 필드 읽기·서명 생성·결과 렌더링(성공/에러 UI)은 유지하고 **네트워크 호출부만** 모듈 호출로 교체 → diff 국소화, 성공 경로 회귀 없음.
+
+#### 변경 파일
+
+| 파일 | 변경 내용 |
+|---|---|
+| `assets/js/token-issuer.js` | 신규 — 공유 fallback 발급 모듈 (IIFE → `window.issueAccessToken`) |
+| `API(JS,HTML)/DocumentDownload.html` | 토큰 발급부를 `issueAccessToken`으로 교체 (`getAccessToken` async 전환) |
+| `API(JS,HTML)/DocumentInfo.html` | 〃 |
+| `API(JS,HTML)/listdocuments.html` | 〃 |
+| `API(JS,HTML)/DocumentSendImprove.html` | 〃 (기존 fetch 흐름 치환) |
+| `API(JS,HTML)/KogasDocumentSend.html` | 〃 (KOGAS 커스텀 도메인) |
+| `Embedding/embedding_doc_Integration.html` | 〃 + `refresh_token`·`company_id` 추출 유지 |
+| `Embedding/embedding_template_intergration.html` | 〃 + `refresh_token`·`company_id` 추출 유지 |
+| `controllers/getToken.js` | 변경 없음 — 기존 서버 프록시 재사용 |
+
+> **참고**: `OpenAPITesterProd.html`은 이미 `assets/js/openapi/ui.js` 경유로 fallback이 적용돼 있어 이번 확산 대상에서 제외됩니다.
+
+---
+
 ## 2026-06-07 Update
 
 ### IP 화이트리스트 DB Compute 절감 (마스터 플래그 + 미들웨어 정적 제외)

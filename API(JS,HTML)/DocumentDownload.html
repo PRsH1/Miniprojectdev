@@ -112,6 +112,7 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+    <script src="/assets/js/token-issuer.js"></script>
     <script>
         const DOMAINS = { 
             op_saas: 'https://kr-api.eformsign.com', 
@@ -138,7 +139,7 @@
             $('#documentDownloadSection .base-url').text(`${displayDomain}/v2.0/api/documents/`);
         }
 
-        function getAccessToken() {
+        async function getAccessToken() {
             const execTime = Date.now();
             const apiKey = $('#apiKey').val().trim();
             const privateKey = $('#privateKeyHex').val().trim();
@@ -169,25 +170,15 @@
             } else {
                 signature = 'Bearer ' + privateKey;
             }
-            // [수정됨] domain 변수 사용
-            const url = `${domain}/v2.0/api_auth/access_token`;
             $('#tokenResult').html('<pre>토큰 발급 중...</pre>');
-            $.ajax({
-                url: url,
-                method: 'POST',
-                contentType: 'application/json; charset=UTF-8',
-                headers: { 'Authorization': 'Bearer ' + btoa(apiKey), 'eformsign_signature': signature },
-                data: JSON.stringify({ execution_time: execTime, member_id: memberId }),
-                success(data) {
-                    $('#accessToken').val(data.oauth_token.access_token);
-                    $('#tokenResult').html('<pre>' + JSON.stringify(data, null, 2) + '</pre>');
-                },
-                error(xhr) {
-                    let msg;
-                    try { msg = JSON.parse(xhr.responseText); } catch { msg = { error: xhr.statusText }; }
-                    $('#tokenResult').html(`<pre>에러(${xhr.status}): ${JSON.stringify(msg, null, 2)}</pre>`);
-                }
-            });
+
+            const result = await window.issueAccessToken({ domain, apiKey, memberId, signature, execTime });
+            if (result.ok) {
+                $('#accessToken').val(result.token);
+                $('#tokenResult').html('<pre>' + JSON.stringify(result.data, null, 2) + '</pre>');
+            } else {
+                $('#tokenResult').html(`<pre>에러: ${result.message || '알 수 없는 오류'}</pre>`);
+            }
         }
 
         function parseContentDisposition(dispositionHeader) {

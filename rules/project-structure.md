@@ -106,6 +106,7 @@ ProjectImprove/
 │   ├── auth-status.js          # 전 페이지 공통 로그인 상태 상단 바 + 알림 벨 (IIFE, /api/me 호출)
 │   ├── notification-bell.js    # index.html 전용 알림 벨 모듈 (IIFE → window.NotifBell)
 │   ├── credential-panel.js     # 크리덴셜 저장/불러오기 공유 모달 모듈 (IIFE)
+│   ├── token-issuer.js         # Access Token 발급 공유 모듈 (IIFE → window.issueAccessToken, direct→CORS 실패 시 /api/getToken 프록시 fallback)
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── OpenAPITester.js        # 원본 보존용 (롤백 시 참고) — 직접 편집 금지
 │   ├── ApiAutoTestStart.js     # (deprecated) 구 자동 테스트 로직

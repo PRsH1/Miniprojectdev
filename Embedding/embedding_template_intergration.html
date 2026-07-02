@@ -7,6 +7,7 @@
     <title>eformsign 템플릿 관리 임베딩 (통합 환경)</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js"></script>
+    <script src="/assets/js/token-issuer.js"></script>
     <style>
         /* --- 기본 레이아웃 --- */
         body { width: 100%; margin: 0; font-family: Arial, sans-serif; background-color: #e9ecef; color: #333; display: flex; justify-content: center; box-sizing: border-box; }
@@ -502,7 +503,7 @@
             eformsign.sendAction({ type: '02', code: code });
         }
 
-        function getAccessToken(){
+        async function getAccessToken(){
             var method  = $('#tokenMethodSelect').val();
             execution_time = Date.now() + "";
             var apiKey  = $('#apiKey').val();
@@ -538,28 +539,24 @@
 
             showMsg('tokenMsgBox', 'info', '토큰 발급 요청 중...');
 
-            $.ajax({
-                url: currentApiUrl, type: 'POST', contentType: 'application/json',
-                data: JSON.stringify({ execution_time: parseInt(execution_time), member_id: user_id }),
-                beforeSend: function(req){
-                    req.setRequestHeader('eformsign_signature', sig);
-                    req.setRequestHeader('Authorization', 'Bearer ' + btoa(apiKey));
-                },
-                success: function(data){
-                    $('#access_token').val(data.oauth_token.access_token);
-                    $('#refresh_token').val(data.oauth_token.refresh_token);
-                    $('#company_id').val(data.api_key.company.company_id);
-                    showMsg('tokenMsgBox', 'success', '토큰 발급 성공 (' + currentEnv + ')');
-                },
-                error: function(xhr){
-                    try {
-                        var err = JSON.parse(xhr.responseText);
-                        showMsg('tokenMsgBox', 'error', '발급 실패: ' + (err.ErrorMessage || xhr.responseText));
-                    } catch(e) {
-                        showMsg('tokenMsgBox', 'error', '토큰 발급 실패:\n' + xhr.responseText);
-                    }
-                }
+            var tokenDomain = currentApiUrl.replace(/\/v2\.0\/api_auth\/access_token$/, '');
+            var result = await window.issueAccessToken({
+                domain: tokenDomain,
+                apiKey: apiKey,
+                memberId: user_id,
+                signature: sig,
+                execTime: parseInt(execution_time, 10)
             });
+
+            if(result.ok) {
+                var data = result.data;
+                $('#access_token').val(data.oauth_token.access_token);
+                $('#refresh_token').val(data.oauth_token.refresh_token);
+                $('#company_id').val(data.api_key.company.company_id);
+                showMsg('tokenMsgBox', 'success', '토큰 발급 성공 (' + currentEnv + ')');
+            } else {
+                showMsg('tokenMsgBox', 'error', '발급 실패: ' + (result.message || '알 수 없는 오류'));
+            }
         }
 
         function createTemplate(){

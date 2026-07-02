@@ -188,6 +188,7 @@
     <template id="tpl-notify"><div class="list-item"><span class="remove-btn">✕</span><label>이름:<input name="notify_name" required/></label><label>이메일:<input name="notify_email" required/></label><label>국가코드:<input name="notify_cc"/></label><label>번호:<input name="notify_num"/></label><label>기한 (일):<input name="notify_day" type="number" value="0"/></label><label>기한 (시간):<input name="notify_hour" type="number" value="0"/></label><label>비밀번호:<input name="notify_pwd"/></label></div></template>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+    <script src="/assets/js/token-issuer.js"></script>
     <script>
         // 기본 URL 맵
         const tokenUrlMap = { op_saas: 'https://kr-api.eformsign.com/v2.0/api_auth/access_token', csap: 'https://www.gov-eformsign.com/Service/v2.0/api_auth/access_token' };
@@ -407,32 +408,18 @@
 
             try {
                 const endpoints = getEndpoints(); 
-                const url = endpoints.tokenUrl;
-
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + btoa(apiKey),
-                        'eformsign_signature': signature
-                    },
-                    body: JSON.stringify({ execution_time: parseInt(execTime), member_id: userId })
+                const domain = endpoints.apiBase.replace(/\/v2\.0\/api$/, '');
+                const result = await window.issueAccessToken({
+                    domain,
+                    apiKey,
+                    memberId: userId,
+                    signature,
+                    execTime: parseInt(execTime, 10)
                 });
-                const txt  = await res.text();
-                const data = JSON.parse(txt || '{}');
 
-                if (!res.ok) {
-                    const code = data.code || res.status;
-                    const msg  = data.ErrorMessage || res.statusText;
-                    throw new Error(`${code}: ${msg}`);
-                }
-                if (!data.oauth_token?.access_token) {
-                    const code = data.code || 'UNKNOWN';
-                    const msg  = data.ErrorMessage || 'access_token 없음';
-                    throw new Error(`${code}: ${msg}`);
-                }
+                if (!result.ok) throw new Error(result.message || 'access_token 없음');
 
-                document.getElementById('accessToken').value = data.oauth_token.access_token;
+                document.getElementById('accessToken').value = result.token;
                 tokenMsg.textContent = '토큰 발급 성공';
             } catch (e) {
                 tokenMsg.textContent = `발급 오류: ${e.message}`;
