@@ -51,9 +51,7 @@ ProjectImprove/
 │   │
 │   │   # ── 보호 페이지 컨트롤러 (경로는 /app/* 으로 이전됨) ──
 │   ├── memberV2Page.js         # 멤버/그룹 관리 V2 페이지 (인증 보호, 현행)
-│   ├── memberPage.js           # (deprecated) 구 멤버 관리 페이지 (인증 보호)
 │   ├── OpenAPIAutoTest.js      # OPA 번호 기준 자동 테스트 페이지 (인증 보호)
-│   ├── ApiAutoTest.js          # (deprecated) 구 자동 테스트 페이지 (인증 보호)
 │   ├── templatecopy.js         # 템플릿 복제 도구 (인증 보호)
 │   ├── idptestauth.js          # IdP 테스트 페이지 (인증 보호)
 │   ├── adminPage.js            # /app/admin 라우터 등록 참조용 (실제 처리는 auth-middleware)
@@ -83,8 +81,9 @@ ProjectImprove/
 ├── errors/                     # HTML 에러 페이지 (403/404/405/500)
 │
 ├── private/                    # 보호 콘텐츠 (컨트롤러에서 서빙, 직접 URL 차단)
-│   └── Admin.html / OpenAPIAutoTest.html / MemberV2.html / Member.html
-│       / templatecopy.html / idp-test.html / OpenAPITesterFull.html / ApiAutoTest.html
+│   └── Admin.html / OpenAPIAutoTest.html / MemberV2.html
+│       / templatecopy.html / idp-test.html / OpenAPITesterFull.html
+│       / MassDocumentDowmload.html
 │
 ├── community/                  # 커뮤니티 페이지 (utils/*.html 은 리디렉트 스텁)
 │   └── bug-report.html / developer-notes.html
@@ -108,8 +107,6 @@ ProjectImprove/
 │   ├── credential-panel.js     # 크리덴셜 저장/불러오기 공유 모달 모듈 (IIFE)
 │   ├── token-issuer.js         # Access Token 발급 공유 모듈 (IIFE → window.issueAccessToken, direct→CORS 실패 시 /api/getToken 프록시 fallback)
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
-│   ├── OpenAPITester.js        # 원본 보존용 (롤백 시 참고) — 직접 편집 금지
-│   ├── ApiAutoTestStart.js     # (deprecated) 구 자동 테스트 로직
 │   ├── member/                 # MemberV2 분할 모듈 (로드 순서 중요)
 │   │   ├── api.js              #   API 호출, 엑셀 처리 (전역 함수)
 │   │   ├── ui.js              #   렌더링 전담 (섹션 전환, 사이드바, URL 표시)
@@ -131,7 +128,6 @@ ProjectImprove/
 │   ├── migrate-notifications.js         # notifications 테이블 마이그레이션
 │   ├── seed-developer-notes.js          # 개발자 노트 시드
 │   ├── create-admin.js                  # 최초 admin 계정 생성
-│   ├── add-mass-download-page.js        # 대량 다운로드 보호 페이지 등록 스크립트
 │   ├── check-protected-pages.js         # 보호 페이지 정합성 점검 (npm run check:pages)
 │   ├── check-secrets.js                 # 시크릿 누출 점검 (npm run security:secrets)
 │   └── mcp/                             # MCP 서버 실행 스크립트 (brave-search.ps1, tavily.ps1)

@@ -83,7 +83,6 @@ ProjectImprove/
 │   ├── metadata.js               # SAML 메타데이터 엔드포인트
 │   ├── send.js                   # SMTP 이메일 테스트
 │   ├── memberV2Page.js           # ★ 멤버/그룹 관리 V2 페이지
-│   ├── memberPage.js             # (deprecated) 구 멤버 관리 페이지
 │   ├── OpenAPIAutoTest.js        # OPA 번호 기준 자동 테스트 페이지
 │   └── templatecopy.js           # 템플릿 복사 유틸리티
 ├── lib/
@@ -112,13 +111,11 @@ ProjectImprove/
 │   ├── OpenAPIAutoTest.html      # OPA 자동 테스트 UI (뼈대만, 내용은 JS에서 주입)
 │   ├── idp-test.html             # IdP 테스트 UI
 │   ├── templatecopy.html         # 템플릿 복제 UI
-│   └── Member.html               # (deprecated) 구 멤버 관리 UI
 ├── assets/js/
 │   ├── auth-status.js            # ★ 전 페이지 공통 로그인 상태 상단 바 (IIFE, 알림 벨 내장 — Pusher 실시간 푸시)
 │   ├── notification-bell.js      # ★ 알림 벨 독립 모듈 (IIFE → window.NotifBell, index.html 전용)
 │   ├── credential-panel.js       # ★ eformsign 인증 저장/불러오기 공유 모듈 (IIFE, window.CREDENTIAL_CONFIG 필요)
 │   ├── OpenAPIAutoTest.js        # ★ OPA 자동 테스트 전체 로직 (단일 파일)
-│   ├── OpenAPITester.js          # 원본 보존용 (롤백 시 참고) — 직접 편집 금지
 │   ├── member/                   # ★ 멤버/그룹 관리 V2 분할 모듈 (로드 순서 중요)
 │   │   ├── api.js                #   API 호출, 엑셀 처리 (전역 함수)
 │   │   ├── ui.js                 #   렌더링 전담 (섹션 전환, 사이드바, URL 표시)
@@ -509,7 +506,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 - **OpenAPITesterProd** — 멤버 관련 API(그룹 '멤버') 비공개 처리된 배포 버전. `index.html`에서 기본 링크 제공.
 - **OpenAPITesterFull** — 멤버 API 포함 전체 버전. `private/`에서 서빙, manager 이상 접근 가능. `index.html` "Open API Tester Full" 카드로 진입.
 
-> **모듈 구조**: 기존 단일 파일(`OpenAPITester.js`)을 5개 파일로 분할하여 유지보수성 개선.
+> **모듈 구조**: 과거 단일 파일이었던 로직을 5개 파일로 분할하여 유지보수성 개선.
 > 로드 순서: `api-list.js` → `api-specs.js` → `state.js` → `ui.js` → `init.js`
 
 ### 주요 기능
@@ -593,7 +590,6 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `base64.html` | Base64 인코딩/디코딩 |
 | `JsonToPretty.html` | JSON/XML 포맷 정리 |
 | `DocumentDelete.html` | 문서 일괄 삭제 |
-| `MassDocumentDowmload.html` | 문서 일괄 다운로드 |
 | `templateDeletetool.html` | 템플릿 일괄 삭제 |
 | `saml-guide.html` | SAML 연동 가이드 |
 | `error-codes.html` | OPA2 에러 코드 모음 (43개 엔드포인트, 에러 코드·Enum·메시지 검색) |

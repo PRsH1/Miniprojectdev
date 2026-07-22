@@ -26,11 +26,9 @@ const controllers = {
   'webhook-receiver':         () => require('../controllers/webhook-receiver'),
 
   // ─── 레거시 페이지 컨트롤러 (경로는 /app/* 으로 이전됨) ──────
-  'memberPage':               () => require('../controllers/memberPage'),
   'memberV2Page':             () => require('../controllers/memberV2Page'),
   'templatecopy':             () => require('../controllers/templatecopy'),
   'idptestauth':              () => require('../controllers/idptestauth'),
-  'ApiAutoTest':              () => require('../controllers/ApiAutoTest'),
   'OpenAPIAutoTest':          () => require('../controllers/OpenAPIAutoTest'),
 };
 
