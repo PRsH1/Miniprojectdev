@@ -2,7 +2,7 @@ module.exports = (req, res) => {
   const { SAMLRequest, RelayState } = req.query;
   // 명시적 대상 서버 오버라이드 (test/dev만 허용 — 그 외 값은 무시하여 XSS/오용 방지).
   // CouchDB login_url을 `.../api/sso-login?target=dev` 로 설정하면 dev로 강제 라우팅됨.
-  const target = (req.query.target === 'dev' || req.query.target === 'test') ? req.query.target : '';
+  const target = (req.query.target === 'dev' || req.query.target === 'test' || req.query.target === 'test2') ? req.query.target : '';
   const debug = req.query.debug === '1' ? '1' : '';
 
   const html = `
