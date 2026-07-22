@@ -310,10 +310,11 @@ ProjectImprove/
   - Test2: `https://test-service.eformsign.com/v1.0/saml_redirect`
   - TestJP: `https://test-jp-service.eformsign.com/v1.0/saml_redirect`
   - Dev: `https://dev-service.eformsign.com/v1.0/saml_redirect`
+  - Prod: `https://service.eformsign.com/v1.0/saml_redirect`
   - `lib/saml.js`의 `ACS_URLS` 맵에서 관리하며, 대상 서버마다 SP 인스턴스를 분리 생성한다(ACS Location이 SAML Response의 Destination/Recipient로 삽입되므로). `sps`는 `ACS_URLS`에서 자동 생성되므로, **대상 서버 추가 시 `ACS_URLS`에 한 줄만 추가하면 SP 인스턴스가 자동 반영된다.** 단, 명시적 `target` 쿼리로 강제 라우팅하려면 `auth.js`/`sso-login.js`의 target 화이트리스트에도 키를 추가해야 한다.
 - **대상 서버 라우팅:**
   - **IdP 시작** (`idp-test.html` → `idp-initiated-login`): 폼의 "전송 대상 서버" select → `resolveTarget()` (기본값 test)
-  - **SP 시작** (`sso-login` → `auth`): 우선순위 ① 명시적 `target`(test/test2/testjp/dev, `sso-login?target=dev`) → ② SAMLRequest의 `AssertionConsumerServiceURL`(`extractAcsUrl` + `resolveTargetByAcsUrl`, 화이트리스트 검증) → ③ test 폴백
+  - **SP 시작** (`sso-login` → `auth`): 우선순위 ① 명시적 `target`(test/test2/testjp/dev/prod, `sso-login?target=dev`) → ② SAMLRequest의 `AssertionConsumerServiceURL`(`extractAcsUrl` + `resolveTargetByAcsUrl`, 화이트리스트 검증) → ③ test 폴백
 - **AttributeStatement (email/name):** SAML 응답에 Azure AD 호환 클레임(`.../claims/emailaddress`, `.../claims/name`)을 담아 eformsign이 사용자 이름을 읽을 수 있게 한다. samlify는 `loginResponseTemplate`에 `context`(XML 템플릿)와 `attributes`를 **둘 다** 요구하며, per-user 값은 `createLoginResponse`의 5번째 인자 `customTagReplacement`(= `lib/saml.js`의 `createTemplateCallback`)로 채운다. (둘 중 하나라도 빠지면 `Invalid login response template` 경고와 함께 속성 없는 기본 템플릿으로 폴백됨)
 - **진단 로깅 (`SAML_DEBUG`):** `SAML_DEBUG=1` **이면서** 요청에 `debug=1`(SP 시작은 `sso-login?debug=1` → 폼 전달, IdP 시작은 body)인 경우에만, 생성한 SAMLResponse XML과 ACS로 직접 POST한 eformsign 응답(status/location/body)을 Vercel 콘솔에 `[SAML-DEBUG]` 프리픽스로 기록한다(`lib/saml.js`의 `debugDeliver`). 이중 게이트라 평상시 로그인 흐름에는 영향이 없다.
 - SP 시작 및 IDP 시작 플로우 모두 지원
