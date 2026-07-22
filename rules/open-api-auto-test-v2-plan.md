@@ -1,7 +1,10 @@
 ## OpenAPIAutoTest v2 기획서 — 구현자 참조용
 
 작성일: 2026-05-27
-상태: Feature 1~3 구현 완료, Hotfix 4 구현 대기
+상태: **Feature 1~3 + Hotfix 4 전부 구현 완료 (2026-07-23 확인)**
+
+> 이 문서는 구현이 끝난 기획서다. 현행 동작의 정본은 `rules/open-api-auto-test.md`이며,
+> 아래 내용은 설계 의도와 배경을 남기기 위한 기록이다. 코드와 어긋나면 `open-api-auto-test.md`를 따른다.
 
 ---
 
@@ -12,7 +15,10 @@
 | 1 | Custom URL 환경 추가 | 낮음 | ✅ 완료 |
 | 2 | OPA 006 파이프라인 변경 | 중간 | ✅ 완료 |
 | 3 | 테스트 리포트 | 중간 | ✅ 완료 |
-| 4 | runSet OPA 단위 실행 전환 | 중간 | 구현 대기 |
+| 4 | runSet OPA 단위 실행 전환 | 중간 | ✅ 완료 |
+
+> Hotfix 4 구현 위치: `assets/js/OpenAPIAutoTest.js`의 `SEED_STEPS`(상수),
+> `extractSeedData()` / `restoreSeedCache()`, `runSet()`의 OPA 이중 루프 + `opaFailed` SKIP 처리.
 
 ---
 

@@ -88,12 +88,12 @@ ProjectImprove/
 ├── community/                  # 커뮤니티 페이지 (utils/*.html 은 리디렉트 스텁)
 │   └── bug-report.html / developer-notes.html
 │
-├── API(JS,HTML)/
-│   ├── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버 API 비공개, public)
-│   └── OpenAPITester.html      # (deprecated → private/OpenAPITesterFull.html 으로 이동됨)
+├── API(JS,HTML)/               # 개별 도구 HTML (문서 발송/조회/다운로드 등) + js/ css/
+│   └── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버 API 비공개, public)
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구 (HTML)
-├── Webhook/                    # Webhook 관련 공개 도구
+├── Webhook/webhook/demo/       # Webhook 수신 예제 — Java Spring Boot + Gradle (이 저장소에서 유일한 비(非)Node 코드)
+│                               # 배포 대상 아님. 고객 연동 참고용 샘플로만 보관 (빌드 산출물은 하위 .gitignore로 제외)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
 │   └── error-codes.html        # OPA2 에러 코드 모음 (43개 엔드포인트 전체, 검색 가능)
 │
@@ -132,6 +132,9 @@ ProjectImprove/
 │   ├── check-secrets.js                 # 시크릿 누출 점검 (npm run security:secrets)
 │   └── mcp/                             # MCP 서버 실행 스크립트 (brave-search.ps1, tavily.ps1)
 │
-└── docs/
-    └── openapi-response-status.md  # 예시 응답 현황
+└── docs/                       # .gitignore로 대부분 제외 — 아래 4개만 추적됨
+    ├── openapi-response-status.md   # 예시 응답 현황
+    ├── error-response-format.md     # 에러 응답 포맷 상세
+    ├── codex-mcp-migration.md       # Codex MCP 마이그레이션 기록
+    └── embedding-sendaction-faq.md  # 임베딩 sendAction FAQ
 ```

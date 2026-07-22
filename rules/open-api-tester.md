@@ -3,7 +3,8 @@
 Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 
 **파일:**
-- `API(JS,HTML)/OpenAPITester.html` — HTML/CSS (UI 구조)
+- `API(JS,HTML)/OpenAPITesterProd.html` — 공개 배포판 UI (멤버 API 비공개)
+- `private/OpenAPITesterFull.html` — 전체판 UI (`/app/OpenAPITesterFull`, manager 이상)
 - `assets/js/openapi/api-list.js` — API_LIST 데이터
 - `assets/js/openapi/api-specs.js` — API_SPECS 데이터
 - `assets/js/openapi/state.js` — 상태·상수·헬퍼
@@ -12,6 +13,11 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 
 > **로드 순서**: `api-list.js` → `api-specs.js` → `state.js` → `ui.js` → `init.js`
 > 전역 변수로 공유되므로 `<script>` 태그 순서를 변경하면 안 됨.
+
+> **Prod와 Full은 거의 동일한 복제본이다.** 두 HTML의 실질적 차이는 Prod에만 있는
+> 인라인 스크립트 한 블록(`api-list.js` 로드 직후, `API_LIST`에서 `group === '멤버'` 항목을
+> `splice`로 제거)뿐이다. **UI를 수정할 때는 반드시 두 파일 모두 고쳐야 한다** — 한쪽만
+> 고치면 조용히 갈라진다. JS 모듈은 공유하므로 로직 수정은 한 번으로 충분하다.
 
 ### 파일 역할 및 편집 가이드
 

@@ -353,12 +353,12 @@ PUSHER_KEY=
 PUSHER_SECRET=
 PUSHER_CLUSTER=
 
-# ─── 레거시 (현재 미사용, 제거 예정) ──────────────────────
-AUTH_COOKIE_VALUE=
+# ─── 레거시 비밀번호 방식 (제거 예정) ─────────────────────
+# 아래 3개는 protected-pages-config.js가 참조 — 레거시 컨트롤러 경로에서만 사용
 MEMBER_PAGE_PASSWORD=
-APIAUTOTEST_PAGE_PASSWORD=
 TEMPLATECOPY_PAGE_PASSWORD=
 IDP_TEST_PAGE_PASSWORD=
+AUTH_COOKIE_VALUE=          # 코드 참조 없음, 삭제 가능
 ```
 
 
@@ -1381,9 +1381,7 @@ OpenAPITester에서 API 요청 저장 기능을 로그인 사용자와 비로그
 
 - `vercel dev`는 `Development` 환경 변수를 사용합니다.
 - 보호 페이지 로그인 테스트 시 아래 값이 `Development` 대상에도 등록되어 있어야 합니다.
-  - `AUTH_COOKIE_VALUE`
   - `MEMBER_PAGE_PASSWORD`
-  - `APIAUTOTEST_PAGE_PASSWORD`
   - `TEMPLATECOPY_PAGE_PASSWORD`
   - `IDP_TEST_PAGE_PASSWORD`
 

@@ -13,12 +13,13 @@ SAML_PRIVATE_KEY=           # Base64 인코딩된 EC 개인키
 SAML_PUBLIC_CERT=           # Base64 인코딩된 공개 인증서
 SAML_DEBUG=                 # '1'일 때 요청 debug=1과 함께 SAML 디버그 로깅 활성화. 평상시 미설정
 
-# ─── 레거시 인증 (구 시스템 — 신규 DB 인증으로 대체됨, 제거 예정) ──
-AUTH_COOKIE_VALUE=          # 구 세션 토큰 값 (현재 미사용)
-MEMBER_PAGE_PASSWORD=       # 구 멤버 페이지 비밀번호 (현재 미사용)
-APIAUTOTEST_PAGE_PASSWORD=  # 구 자동 테스트 비밀번호 (현재 미사용)
-TEMPLATECOPY_PAGE_PASSWORD= # 구 템플릿 복제 비밀번호 (현재 미사용)
-IDP_TEST_PAGE_PASSWORD=     # 구 IdP 테스트 비밀번호 (현재 미사용)
+# ─── 레거시 인증 (구 비밀번호 방식 — /app/* 은 DB 인증으로 대체됨, 제거 예정) ──
+# 아래 3개는 protected-pages-config.js가 여전히 참조한다.
+# 레거시 컨트롤러 경로(/api/memberV2Page 등)로 접근할 때만 쓰이며, /app/* 경로와는 무관하다.
+MEMBER_PAGE_PASSWORD=       # memberV2 레거시 경로 비밀번호
+TEMPLATECOPY_PAGE_PASSWORD= # templatecopy 레거시 경로 비밀번호
+IDP_TEST_PAGE_PASSWORD=     # idptestauth 레거시 경로 비밀번호
+AUTH_COOKIE_VALUE=          # 구 세션 토큰 값 — 코드 참조 없음, 삭제 가능
 
 # ─── 크리덴셜 암호화 ─────────────────────────────────────
 CREDENTIAL_ENCRYPTION_KEY=  # eformsign 비밀 키 AES-256-GCM 암호화 키 (openssl rand -hex 32 로 생성)

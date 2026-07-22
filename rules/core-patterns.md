@@ -134,7 +134,9 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 ```
 
 ```
-적용 제외 페이지: auth/login.html, auth/signup.html, auth/change-password.html, auth/403.html, index.html
+적용 제외: auth/ 전체 (login·signup·signup-status·change-password·403), errors/ 전체,
+index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 스텁 2종
+
 ```
 
 **3가지 모드:**
