@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
   // 대상 서버 결정 우선순위: ① 명시적 target(test/dev) → ② 요청의 AssertionConsumerServiceURL → ③ test 폴백.
   // 요청 ACS는 화이트리스트(ACS_URLS)에 일치하는 값만 허용(서명된 Assertion 유출 방지).
   const requestedAcs = extractAcsUrl(SAMLRequest);
-  const explicit = (target === 'test' || target === 'test2' || target === 'dev') ? target : null;
+  const explicit = (target === 'test' || target === 'test2' || target === 'testjp' || target === 'dev') ? target : null;
   const { key, acsUrl, sp } = explicit
     ? resolveTarget(explicit)
     : resolveTargetByAcsUrl(requestedAcs);

@@ -59,8 +59,8 @@ ProjectImprove/
 │   ├── adminPage.js            # /app/admin 라우터 등록 참조용 (실제 처리는 auth-middleware)
 │   │
 │   │   # ── SAML ────────────────────────────────────────────
-│   ├── auth.js                 # SAML 응답 생성 (SP개시: 요청 ACS/target으로 test·test2·dev 대상 라우팅, createTemplateCallback로 email/name 속성 채움, SAML_DEBUG 게이트 로깅)
-│   ├── sso-login.js            # SAML SSO 로그인 폼 (target 쿼리로 대상 서버 강제 가능 — test·test2·dev, debug=1 게이트 플래그 폼 전달)
+│   ├── auth.js                 # SAML 응답 생성 (SP개시: 요청 ACS/target으로 test·test2·testjp·dev 대상 라우팅, createTemplateCallback로 email/name 속성 채움, SAML_DEBUG 게이트 로깅)
+│   ├── sso-login.js            # SAML SSO 로그인 폼 (target 쿼리로 대상 서버 강제 가능 — test·test2·testjp·dev, debug=1 게이트 플래그 폼 전달)
 │   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우 (폼 target으로 test·dev 선택, createTemplateCallback + SAML_DEBUG 게이트 로깅)
 │   ├── metadata.js             # SAML 메타데이터 엔드포인트
 │   │
@@ -75,7 +75,7 @@ ProjectImprove/
 │       └── cleanup-audit.js    # 감사 로그 정리 Cron (CRON_SECRET 검증)
 │
 ├── lib/
-│   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/dev 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, loginResponseTemplate.context + createTemplateCallback로 AttributeStatement 생성, debugDeliver 진단 헬퍼)
+│   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/testjp/dev 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, loginResponseTemplate.context + createTemplateCallback로 AttributeStatement 생성, debugDeliver 진단 헬퍼)
 │
 ├── auth/
 │   └── login.html              # 인증 보호 페이지용 로그인 UI (+ signup/change-password/403 등)
