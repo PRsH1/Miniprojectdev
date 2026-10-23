@@ -13,13 +13,19 @@ SAML_PRIVATE_KEY=           # Base64 인코딩된 EC 개인키
 SAML_PUBLIC_CERT=           # Base64 인코딩된 공개 인증서
 SAML_DEBUG=                 # '1'일 때 요청 debug=1과 함께 SAML 디버그 로깅 활성화. 평상시 미설정
 
-# ─── 레거시 인증 (구 비밀번호 방식 — /app/* 은 DB 인증으로 대체됨, 제거 예정) ──
-# 아래 3개는 protected-pages-config.js가 여전히 참조한다.
-# 레거시 컨트롤러 경로(/api/memberV2Page 등)로 접근할 때만 쓰이며, /app/* 경로와는 무관하다.
-MEMBER_PAGE_PASSWORD=       # memberV2 레거시 경로 비밀번호
-TEMPLATECOPY_PAGE_PASSWORD= # templatecopy 레거시 경로 비밀번호
-IDP_TEST_PAGE_PASSWORD=     # idptestauth 레거시 경로 비밀번호
-AUTH_COOKIE_VALUE=          # 구 세션 토큰 값 — 코드 참조 없음, 삭제 가능
+# ─── 최초 admin 계정 (scripts/create-admin.js 전용, 런타임 미사용) ──
+ADMIN_USERNAME=             # 생성할 admin 아이디
+ADMIN_PASSWORD=             # 생성할 admin 초기 비밀번호
+ADMIN_EMAIL=                # 생성할 admin 이메일
+
+# ─── 런타임 자동 설정 ─────────────────────────────────────
+# NODE_ENV — Vercel이 자동 설정. 쿠키 Secure 플래그 등 분기에 사용 (직접 등록 불필요)
+
+# ─── 레거시 인증 (구 비밀번호 방식) — 전부 미사용, Vercel에서 삭제 가능 ──
+# protected-pages-config.js에 이름만 남아 있으나 protectedPage.js가 config를 무시하고
+# auth-middleware(DB 기반)로 위임하므로 어떤 코드도 이 값을 읽지 않는다.
+# MEMBER_PAGE_PASSWORD / TEMPLATECOPY_PAGE_PASSWORD / IDP_TEST_PAGE_PASSWORD
+# APIAUTOTEST_PAGE_PASSWORD / AUTH_COOKIE_VALUE
 
 # ─── 크리덴셜 암호화 ─────────────────────────────────────
 CREDENTIAL_ENCRYPTION_KEY=  # eformsign 비밀 키 AES-256-GCM 암호화 키 (openssl rand -hex 32 로 생성)

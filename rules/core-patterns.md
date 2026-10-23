@@ -94,9 +94,10 @@ user    → required_role이 'user'인 페이지만
 카드 가시성은 3단계로 처리된다. (`applyRoleFilter()` — `/api/me` 응답 수신 후 실행)
 
 ```
-Step 1. 자동 매칭 (data-original-url ↔ protected_pages.file_path)
+Step 1. 자동 매칭 (SHA-256(data-original-url) ↔ protected_pages.file_path_hash)
   → data-protected-path 없고 data-original-url 있는 카드
-  → DB의 file_path와 비교 (앞 슬래시 정규화 후 대소문자 구분 비교)
+  → /api/me가 file_path 대신 SHA-256 해시(file_path_hash)만 내려줌 (실제 경로 비노출, me.js)
+  → 클라이언트가 normalizeFilePath(data-original-url)를 Web Crypto로 해시해 비교 (대소문자 구분)
   → 매칭 성공 시: data-protected-path 동적 주입, onclick → navigateCard
 
 Step 2. data-protected-path 카드 처리 (Step 1 주입 카드 포함)

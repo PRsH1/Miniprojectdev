@@ -7,7 +7,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 - `private/OpenAPIAutoTest.html` — UI 구조 (모달 뼈대만 포함, 내용은 JS에서 주입)
 - `assets/js/OpenAPIAutoTest.js` — 전체 로직 (시나리오 정의, step 핸들러, UI 렌더링, 가이드)
 
-**접근 경로:** `/api/OpenAPIAutoTest` (쿠키 인증 보호)
+**접근 경로:** `/app/OpenAPIAutoTest` (DB 기반 인증 보호, 시드 기준 manager 이상). 레거시 `/api/OpenAPIAutoTest`는 404
 
 ### 시나리오 데이터 구조
 
@@ -99,7 +99,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 
 ### 비(非)자명한 동작 — 수정 시 주의
 
-- **완료 문서 판별 기준**: `doc.current_status.status_type === "003"` — 문자열이 아닌 숫자 코드
+- **완료 문서 판별 기준**: `doc.current_status.status_type === "003"` — 숫자 3이 아닌 **문자열** `"003"`으로 엄격 비교
 - **토큰 발급 3단계 fallback**: `issueTokenFromPanel()`은 direct 호출 후 전송실패(CORS/네트워크) 시에만 `/api/getToken` 프록시를 재시도하고, 인증거부 응답은 즉시 최종 실패 처리
 - **OPA 037 pdfTargetPhone은 선택**: email 또는 phone 중 하나만 있으면 실행 가능. `keys`에는 `data.pdfTargetEmail`만 포함
 - **`freshShared()`**: 실행 시마다 초기화되는 step 간 공유 상태. 새 공유 변수 추가 시 이 함수에도 추가할 것

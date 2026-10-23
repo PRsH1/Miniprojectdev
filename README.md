@@ -214,11 +214,14 @@ ProjectImprove/
 | `GET /app/memberV2` | manager | 멤버/그룹 관리 V2 |
 | `GET /app/templatecopy` | manager | 템플릿 복제 도구 |
 | `GET /app/OpenAPIAutoTest` | manager | OPA 자동 테스트 |
-| `GET /app/ApiAutoTest` | admin | API 자동 테스트 (구버전) |
+| `GET /app/OpenAPITesterFull` | manager | Open API Tester 전체판 (멤버 API 포함) |
+| `GET /app/MassDocumentDowmload` | manager | 문서 일괄 다운로드 |
 | `GET /app/idptestauth` | admin | IdP 테스트 |
 
-> 기존 경로(`/memberV2`, `/templatecopy` 등)는 `/app/*`으로 301 리다이렉트됨.
-> 보호 페이지는 Admin 콘솔에서 동적으로 추가/관리 가능.
+> 위 표는 `scripts/migrate.js` 시드 기준이다. 실제 역할은 DB(`protected_pages`)가 정본이며
+> Admin 콘솔에서 동적으로 추가/변경할 수 있다.
+> 기존 경로(`/memberV2`, `/templatecopy`, `/OpenAPIAutoTest`, `/idptestauth`)는 `/app/*`으로 301 리다이렉트됨.
+> `/api/memberV2Page` 등 레거시 컨트롤러 경로는 `protected_pages`에 해당 행이 없어 404를 반환한다.
 
 ### 문서 관리
 
@@ -296,8 +299,8 @@ ProjectImprove/
 | 역할 | 접근 범위 |
 |------|----------|
 | `admin` | 모든 보호 페이지 + 관리자 콘솔 |
-| `manager` | `/app/memberV2`, `/app/templatecopy`, `/app/OpenAPIAutoTest` |
-| `user` | `/app/OpenAPIAutoTest` |
+| `manager` | `required_role`이 `manager`·`user`인 페이지 (시드 기준: memberV2, templatecopy, OpenAPIAutoTest, OpenAPITesterFull, MassDocumentDowmload) |
+| `user` | `required_role`이 `user`인 페이지 (시드 기준 없음 — Admin 콘솔에서 지정) |
 
 ### 2. SAML 2.0 SSO
 - **라이브러리:** `samlify`
@@ -524,7 +527,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | Send and Download | 응답을 파일로 강제 저장 (Content-Type 기반 확장자 자동 결정) |
 | Code Snippet | cURL / JS(fetch) / JS(jQuery) / Python / Java 코드 자동 생성 |
 | **API 명세** | 각 API의 Request/Response 필드 명세 조회 모달 — 헤더·Path/Query 파라미터·Body·응답 필드·에러 코드, **비고 컬럼** 지원 (`note` 필드가 있는 경우 자동 표시) |
-| **에러 코드 모음** | 헤더 버튼으로 `utils/error-codes.html` 연결 — 43개 엔드포인트 전체 에러 코드 검색 가능 |
+| **에러 코드 모음** | 헤더 버튼으로 `utils/error-codes.html` 연결 — OPA2 에러 코드 검색 가능 (OPA2_021·061 카드 없음) |
 | 사용 가이드 | 7단계 스텝 카드 형식 사용법 안내 모달 |
 
 ### 등록된 API (OPA2_XXX) 및 예시 응답 현황
@@ -592,7 +595,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `DocumentDelete.html` | 문서 일괄 삭제 |
 | `templateDeletetool.html` | 템플릿 일괄 삭제 |
 | `saml-guide.html` | SAML 연동 가이드 |
-| `error-codes.html` | OPA2 에러 코드 모음 (43개 엔드포인트, 에러 코드·Enum·메시지 검색) |
+| `error-codes.html` | OPA2 에러 코드 모음 (OPA2 엔드포인트별 에러 코드·Enum·메시지 검색) |
 
 ---
 

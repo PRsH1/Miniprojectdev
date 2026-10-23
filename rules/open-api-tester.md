@@ -53,7 +53,7 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
         errors: [
             { title: '한글 설명 (코드)', body: { code, ErrorMessage } }
             // title 형식: '유효하지 않은 서명 (4030004)' — 항상 한글로 작성
-            // 소스 기준: utils/error-codes.html (43개 엔드포인트 전체 에러 코드 레퍼런스)
+            // 소스 기준: utils/error-codes.html (OPA2 에러 코드 레퍼런스 — OPA2_021·061 카드는 아직 없음)
         ]
     }
 }

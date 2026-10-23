@@ -7,6 +7,10 @@ ProjectImprove/
 ├── middleware.js               # Vercel Edge Middleware — IP 화이트리스트 global scope 체크
 ├── vercel.json                 # Vercel 배포 라우팅 설정
 ├── package.json
+├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
+├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
+├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
+├── test/                       # node:test 단위 테스트 (ip-whitelist, refresh-rotation)
 │
 ├── api/
 │   └── index.js                # 메인 API 라우터 (lazy-loading) + IP 화이트리스트 path/protected 체크
@@ -19,8 +23,8 @@ ProjectImprove/
 │   │   ├── jwt.js                     # JWT 발급/검증 헬퍼
 │   │   ├── session.js                 # resolveUser — API용 세션 해석 (verify→만료 시 리프레시 로테이션)
 │   │   ├── audit.js                   # audit_logs INSERT 공통 모듈
-│   │   ├── protected-pages-config.js  # 보호 페이지 설정 공통화
-│   │   ├── protectedPage.js           # 보호 페이지 공통 핸들러 (구 password 보호 방식)
+│   │   ├── protected-pages-config.js  # 구 password 방식 설정 잔재 — 현재 어떤 코드도 값을 읽지 않음
+│   │   ├── protectedPage.js           # 레거시 핸들러 팩토리 — config 무시, auth-middleware에 위임
 │   │   ├── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
 │   │   └── pusher.js                  # Pusher 인스턴스 공통 모듈 (알림 + Webhook 공용)
 │   │
@@ -35,7 +39,7 @@ ProjectImprove/
 │   ├── change-password.js      # 비밀번호 변경
 │   │
 │   │   # ── eformsign 도구 API ────────────────────────────────
-│   ├── credentials.js          # eformsign 인증 정보 저장/조회/수정/삭제 (사용자별 크리덴셜 CRUD)
+│   ├── credentials.js          # eformsign 인증 정보 저장/조회/삭제 (GET·POST·DELETE — 수정 엔드포인트 없음)
 │   ├── getToken.js             # ECDSA 서명으로 Access Token 발급 (eformsign 에러 → error.upstream)
 │   ├── downloadDocument.js     # 문서 파일 프록시 다운로드
 │   ├── getDocumentInfo.js      # 문서 메타데이터 조회
@@ -49,11 +53,12 @@ ProjectImprove/
 │   ├── developer-notes.js      # 개발자 노트 CRUD (목록 public, 작성 admin)
 │   ├── bug-reports.js          # 버그 리포트 CRUD (제보 로그인, 관리 admin)
 │   │
-│   │   # ── 보호 페이지 컨트롤러 (경로는 /app/* 으로 이전됨) ──
-│   ├── memberV2Page.js         # 멤버/그룹 관리 V2 페이지 (인증 보호, 현행)
-│   ├── OpenAPIAutoTest.js      # OPA 번호 기준 자동 테스트 페이지 (인증 보호)
-│   ├── templatecopy.js         # 템플릿 복제 도구 (인증 보호)
-│   ├── idptestauth.js          # IdP 테스트 페이지 (인증 보호)
+│   │   # ── 레거시 페이지 컨트롤러 (실제 페이지는 /app/* + auth-middleware가 서빙) ──
+│   │   # /api/<이름> 으로 라우팅되지만 protected_pages에 /api/* 행이 없어 현재 404를 반환한다. 제거 대상.
+│   ├── memberV2Page.js         # 레거시 — /app/memberV2 가 현행
+│   ├── OpenAPIAutoTest.js      # 레거시 — /app/OpenAPIAutoTest 가 현행 (존재하지 않는 PROTECTED_PAGES.apiautotest 참조)
+│   ├── templatecopy.js         # 레거시 — /app/templatecopy 가 현행
+│   ├── idptestauth.js          # 레거시 — /app/idptestauth 가 현행
 │   ├── adminPage.js            # /app/admin 라우터 등록 참조용 (실제 처리는 auth-middleware)
 │   │
 │   │   # ── SAML ────────────────────────────────────────────
@@ -95,7 +100,7 @@ ProjectImprove/
 ├── Webhook/webhook/demo/       # Webhook 수신 예제 — Java Spring Boot + Gradle (이 저장소에서 유일한 비(非)Node 코드)
 │                               # 배포 대상 아님. 고객 연동 참고용 샘플로만 보관 (빌드 산출물은 하위 .gitignore로 제외)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
-│   └── error-codes.html        # OPA2 에러 코드 모음 (43개 엔드포인트 전체, 검색 가능)
+│   └── error-codes.html        # OPA2 에러 코드 모음 (검색 가능 — OPA2_021·OPA2_061 카드는 아직 없음)
 │
 ├── design-preview-member.html  # MemberV2 디자인 시스템 확인용 (프로덕션 미사용)
 ├── img/                        # 정적 이미지 (sso_flow.png 등)
@@ -122,7 +127,7 @@ ProjectImprove/
 │   ├── migrate.js                       # DB 스키마 초기화 + 시드 (최초 1회)
 │   ├── migrate-ip-whitelist.js          # IP 화이트리스트 테이블 마이그레이션 (최초 1회)
 │   ├── migrate-community.js             # developer_notes / bug_reports 테이블 (최초 1회)
-│   ├── migrate-bug-reports-v2.js        # bug_reports cause/action_taken/target_user_id 컬럼 추가
+│   ├── migrate-bug-reports-v2.js        # bug_reports cause/action_taken + notifications.target_user_id 추가 (migrate-notifications 이후 실행)
 │   ├── migrate-refresh-rotation.js      # refresh_tokens.replaced_by 컬럼 추가 (로테이션 경합 처리, 코드 배포 전 실행)
 │   ├── migrate-credentials-encrypt.js   # 크리덴셜 secret_key 일괄 재암호화
 │   ├── migrate-notifications.js         # notifications 테이블 마이그레이션
@@ -133,6 +138,8 @@ ProjectImprove/
 │   └── mcp/                             # MCP 서버 실행 스크립트 (brave-search.ps1, tavily.ps1)
 │
 └── docs/                       # .gitignore로 대부분 제외 — 아래 4개만 추적됨
+                                # (.gitignore 예외는 error-response-format·codex-mcp-migration 2개뿐,
+                                #  나머지 2개는 강제 추가로 추적 중. docs/plans/ 등 신규 파일은 커밋되지 않음)
     ├── openapi-response-status.md   # 예시 응답 현황
     ├── error-response-format.md     # 에러 응답 포맷 상세
     ├── codex-mcp-migration.md       # Codex MCP 마이그레이션 기록
