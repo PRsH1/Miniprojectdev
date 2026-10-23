@@ -5,7 +5,6 @@
   — `controllers/` 44개 = 라우트 컨트롤러 33 + `_shared/` 공용 모듈 10 + `cron/` 1
 - **테스트:** `node --test` (`npm test`) — 현재 `test/ip-whitelist.test.js`,
   `test/refresh-rotation.test.js` 2개 파일뿐. 프론트엔드 테스트는 없음
-- **예외:** `Webhook/webhook/demo/`는 Java Spring Boot 샘플 (배포 대상 아님)
 - **프론트엔드:** 순수 HTML/CSS/JS + jQuery + jsrsasign
 - **DB:** Postgres (Neon) — `@neondatabase/serverless` ^0.10.4, `controllers/_shared/db.js`의 `sql` 태그 사용
 - **인증:** JWT (`jsonwebtoken` ^9.0.2) — 액세스/리프레시 토큰 + httpOnly 쿠키

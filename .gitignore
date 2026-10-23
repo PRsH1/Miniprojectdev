@@ -57,3 +57,7 @@ tmp-*.json
 !/docs/codex-mcp-migration.md
 
 .env*
+
+# JVM 크래시 덤프 (구 Java 웹훅 샘플을 VS Code Java 확장·Gradle이 열 때 메모리 부족으로 생성됨)
+hs_err_pid*.log
+replay_pid*.log

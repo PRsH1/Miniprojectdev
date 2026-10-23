@@ -97,8 +97,6 @@ ProjectImprove/
 │   └── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버 API 비공개, public)
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구 (HTML)
-├── Webhook/webhook/demo/       # Webhook 수신 예제 — Java Spring Boot + Gradle (이 저장소에서 유일한 비(非)Node 코드)
-│                               # 배포 대상 아님. 고객 연동 참고용 샘플로만 보관 (빌드 산출물은 하위 .gitignore로 제외)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
 │   └── error-codes.html        # OPA2 에러 코드 모음 (검색 가능 — OPA2_021·OPA2_061 카드는 아직 없음)
 │
