@@ -137,7 +137,8 @@ module.exports = async function authMiddleware(req, res) {
 
   // 3. must_change_password 체크 (DB 기준)
   if (user.must_change_password) {
-    return res.redirect(302, '/auth/change-password.html');
+    // 변경 완료 후 원래 페이지로 돌아오도록 next 전달 (change-password.html이 safeNext로 재검증)
+    return res.redirect(302, `/auth/change-password.html?next=${encodeURIComponent(pagePath)}`);
   }
 
   // 4. role 체크 (DB 기준)

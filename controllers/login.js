@@ -10,6 +10,7 @@ const { serialize } = require('cookie');
 const { getDb } = require('./_shared/db');
 const { sign } = require('./_shared/jwt');
 const { insertAuditLog } = require('./_shared/audit');
+const { respondError } = require('./_shared/respond-error');
 const { safeNext } = require('../lib/safe-next');
 
 const scryptAsync = promisify(crypto.scrypt);
@@ -31,7 +32,7 @@ async function verifyPassword(password, stored) {
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).send('Method Not Allowed');
+    return respondError(req, res, 405, { code: 'METHOD_NOT_ALLOWED' });
   }
 
   const body = req.body || {};
@@ -56,8 +57,7 @@ module.exports = async function handler(req, res) {
   try {
     users = await sql`SELECT * FROM users WHERE username = ${username} LIMIT 1`;
   } catch (err) {
-    console.error('사용자 조회 오류:', err);
-    return res.status(500).send('Internal Server Error');
+    return respondError(req, res, 500, { code: 'DATABASE_ERROR', logMessage: '사용자 조회 오류', error: err });
   }
 
   if (!users || users.length === 0) {
@@ -94,8 +94,7 @@ module.exports = async function handler(req, res) {
   try {
     isValid = await verifyPassword(password, user.password_hash);
   } catch (err) {
-    console.error('비밀번호 검증 오류:', err);
-    return res.status(500).send('Internal Server Error');
+    return respondError(req, res, 500, { code: 'INTERNAL_ERROR', logMessage: '비밀번호 검증 오류', error: err });
   }
 
   if (!isValid) {
