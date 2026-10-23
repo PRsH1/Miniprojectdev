@@ -21,7 +21,9 @@ ProjectImprove/
 │   │   ├── auth-middleware.js         # /app/* 보호 페이지 인증·권한·리프레시 미들웨어
 │   │   ├── db.js                      # Neon serverless Postgres 클라이언트 (sql 태그)
 │   │   ├── jwt.js                     # JWT 발급/검증 헬퍼
-│   │   ├── session.js                 # resolveUser — API용 세션 해석 (verify→만료 시 리프레시 로테이션)
+│   │   ├── session.js                 # resolveUser(세션 해석, 만료 시 리프레시 로테이션) + requireRole(DB role 기반 API 인가)
+│   │   ├── roles.js                   # 역할 계층(hasRole) + users 현재 상태 조회(loadUserState)
+│   │   ├── validate.js                # 입력 사전 검증 (UUID/INTEGER id, page, 날짜) — 형식 오류를 400으로
 │   │   ├── audit.js                   # audit_logs INSERT 공통 모듈
 │   │   ├── protected-pages-config.js  # 구 password 방식 설정 잔재 — 현재 어떤 코드도 값을 읽지 않음
 │   │   ├── protectedPage.js           # 레거시 핸들러 팩토리 — config 무시, auth-middleware에 위임

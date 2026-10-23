@@ -8,6 +8,7 @@
  *     - 유효: role 체크
  *     - 만료: refresh_token으로 토큰 로테이션 시도
  *     - 없음/무효: /auth/login.html?next=현재경로 리다이렉트
+ *     - 이후 users 테이블에서 role / is_active / must_change_password 재조회 (JWT 값은 판단에 쓰지 않음)
  *  3. must_change_password → /auth/change-password 리다이렉트
  *  4. role 체크 실패 → /auth/403.html (audit: access_denied)
  *  5. file_path HTML 서빙 (audit: page_access)
@@ -23,12 +24,11 @@ const { sign } = require('./jwt');
 const { insertAuditLog } = require('./audit');
 const { respondError } = require('./respond-error');
 
-// role 접근 권한 계층 체크
+const { hasRole, loadUserState } = require('./roles');
+
+// role 접근 권한 계층 체크 (admin > manager > user)
 function hasAccess(userRole, requiredRole) {
-  if (requiredRole === 'user') return true;
-  if (requiredRole === 'manager') return userRole === 'admin' || userRole === 'manager';
-  if (requiredRole === 'admin') return userRole === 'admin';
-  return false;
+  return hasRole(userRole, requiredRole);
 }
 
 module.exports = async function authMiddleware(req, res) {
@@ -117,13 +117,32 @@ module.exports = async function authMiddleware(req, res) {
     return res.redirect(302, loginRedirect);
   }
 
-  // 3. must_change_password 체크
-  if (decoded.mustChangePw) {
+  // 2-1. DB에서 현재 계정 상태 재확인 — JWT의 role/mustChangePw는 최대 1시간 낡을 수 있으므로
+  //      강등·비활성화·임시 비밀번호 전환을 즉시 반영한다
+  let user;
+  try {
+    user = await loadUserState(sql, decoded.sub);
+  } catch (err) {
+    return respondError(req, res, 500, {
+      code: 'DATABASE_ERROR',
+      message: '계정 정보를 확인하는 중 오류가 발생했습니다.',
+      reason: '사용자 권한을 조회하지 못했습니다.',
+      action: '잠시 후 다시 시도하세요.',
+      error: err,
+      logMessage: 'auth-middleware user lookup failed',
+    });
+  }
+  if (!user || !user.is_active) {
+    return res.redirect(302, loginRedirect);
+  }
+
+  // 3. must_change_password 체크 (DB 기준)
+  if (user.must_change_password) {
     return res.redirect(302, '/auth/change-password.html');
   }
 
-  // 4. role 체크
-  if (!hasAccess(decoded.role, page.required_role)) {
+  // 4. role 체크 (DB 기준)
+  if (!hasAccess(user.role, page.required_role)) {
     await insertAuditLog({
       userId: decoded.sub,
       action: 'access_denied',

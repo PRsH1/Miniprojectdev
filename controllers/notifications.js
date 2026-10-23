@@ -9,7 +9,7 @@
 
 const { getDb } = require('./_shared/db');
 const pusher = require('./_shared/pusher');
-const { resolveUser } = require('./_shared/session');
+const { requireRole } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 const { isPgIntId } = require('./_shared/validate');
 
@@ -24,13 +24,12 @@ function respondNotificationNotFound(req, res, rawId) {
   });
 }
 
-async function requireAuth(req, res) {
-  const decoded = await resolveUser(req, res);
-  if (!decoded) {
-    respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Notifications API requires authentication' });
-    return null;
-  }
-  return decoded;
+/**
+ * 로그인 확인 + DB 현재 role 반영 (강등된 admin이 admin 알림을 계속 보지 않도록)
+ * 알림은 본인 데이터 읽기 위주라 임시 비밀번호 상태에서도 허용
+ */
+function requireAuth(req, res) {
+  return requireRole(req, res, 'user', { allowMustChangePassword: true });
 }
 
 function getNotificationChannel(decoded) {

@@ -12,34 +12,12 @@
  * POST   /api/admin/ip-whitelist/test         → IP 허용 여부 테스트
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { respondError } = require('./_shared/respond-error');
+const { requireRole } = require('./_shared/session');
 const { requireUuid } = require('./_shared/validate');
 const { invalidateCache, isIpWhitelistEnabled } = require('./_shared/ip-whitelist');
-
-function requireAdmin(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) {
-    respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Admin ip-whitelist API requires authentication' });
-    return null;
-  }
-  let decoded;
-  try {
-    decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch (error) {
-    respondError(req, res, 401, { code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', error, logMessage: 'Admin ip-whitelist token verification failed' });
-    return null;
-  }
-  if (decoded.role !== 'admin') {
-    respondError(req, res, 403, { code: 'FORBIDDEN', message: '관리자 권한이 필요합니다.', reason: '현재 계정은 IP 화이트리스트 관리 API를 사용할 수 없습니다.', action: '관리자 계정으로 로그인하세요.', logMessage: 'Admin role required for ip-whitelist API' });
-    return null;
-  }
-  return decoded;
-}
 
 function isValidIpCidr(value) {
   const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}(\/([0-9]|[12]\d|3[0-2]))?$/;
@@ -50,7 +28,7 @@ function isValidIpCidr(value) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const decoded = requireAdmin(req, res);
+  const decoded = await requireRole(req, res, 'admin');
   if (!decoded) return;
 
   const rawPath = req.url.split('?')[0];

@@ -13,11 +13,10 @@
 
 const crypto = require('crypto');
 const { promisify } = require('util');
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { requireRole } = require('./_shared/session');
 const { requireUuid } = require('./_shared/validate');
 
 const scryptAsync = promisify(crypto.scrypt);
@@ -41,46 +40,11 @@ function generateTempPassword(length = 8) {
   return result;
 }
 
-/** admin 역할 검증 */
-function requireAdmin(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) {
-    respondError(req, res, 401, {
-      code: 'AUTH_REQUIRED',
-      logMessage: 'Admin API requires authentication',
-    });
-    return null;
-  }
-  let decoded;
-  try {
-    decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch (error) {
-    respondError(req, res, 401, {
-      code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
-      error,
-      logMessage: 'Admin token verification failed',
-    });
-    return null;
-  }
-  if (decoded.role !== 'admin') {
-    respondError(req, res, 403, {
-      code: 'FORBIDDEN',
-      message: '관리자 권한이 필요합니다.',
-      reason: '현재 계정은 관리자 전용 API를 사용할 수 없습니다.',
-      action: '관리자 계정으로 로그인하거나 권한을 요청하세요.',
-      logMessage: 'Admin role required',
-    });
-    return null;
-  }
-  return decoded;
-}
-
 // ─── 메인 핸들러 ──────────────────────────────────────────────
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const decoded = requireAdmin(req, res);
+  const decoded = await requireRole(req, res, 'admin');
   if (!decoded) return;
 
   const rawPath = req.url.split('?')[0]; // e.g. /api/admin/users/123/reset-password
@@ -180,7 +144,8 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
       action: '관리자 콘솔에서 사용하는 경로인지 확인하세요.',
     });
   }
-  const userId = match[1];
+  // 본인 여부 비교(decoded.sub는 DB의 소문자 UUID)가 대소문자로 우회되지 않도록 정규화
+  const userId = match[1].toLowerCase();
   const subAction = match[2] || '';
 
   // 잘못된 UUID가 DB 예외(500)로 번지지 않도록 사전 검증
@@ -280,8 +245,6 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
   // PUT/PATCH /api/admin/users/:id — 역할/활성여부 변경
   if ((req.method === 'PUT' || req.method === 'PATCH') && subAction === '') {
     const body = req.body || {};
-    const updates = [];
-    const params = [];
 
     if (body.role !== undefined) {
       if (!['admin', 'manager', 'user'].includes(body.role)) {
@@ -316,19 +279,67 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
       });
     }
 
+    // 대상 사용자 현재 상태 조회 (존재 확인 + 안전 장치 판단)
+    const targetRows = await sql`SELECT id, role, is_active FROM users WHERE id = ${userId} LIMIT 1`;
+    if (!targetRows || targetRows.length === 0) {
+      return respondError(req, res, 404, {
+        code: 'RESOURCE_NOT_FOUND',
+        message: '사용자를 찾을 수 없습니다.',
+        reason: '대상 사용자 ID가 없거나 이미 삭제되었습니다.',
+        action: '사용자 목록을 새로고침한 뒤 다시 시도하세요.',
+      });
+    }
+    const target = targetRows[0];
+    const nextRole = body.role !== undefined ? body.role : target.role;
+    const nextActive = body.is_active !== undefined ? body.is_active : target.is_active;
+    const roleChanged = nextRole !== target.role;
+    const deactivating = target.is_active && nextActive === false;
+    // 활성 admin이 admin이 아니게 되거나 비활성화되는 변경
+    const losesAdmin = target.role === 'admin' && target.is_active && (nextRole !== 'admin' || !nextActive);
+
+    // 안전 장치 1: 본인 계정 강등·비활성화 방지 (DELETE와 동일한 정책)
+    if (userId === decoded.sub && losesAdmin) {
+      return respondError(req, res, 400, {
+        code: 'VALIDATION_FAILED',
+        message: '본인 계정의 관리자 권한은 해제할 수 없습니다.',
+        reason: '현재 로그인한 관리자 본인을 강등하거나 비활성화하면 관리 권한이 즉시 손실됩니다.',
+        action: '다른 관리자 계정에서 작업하세요.',
+      });
+    }
+
+    // 안전 장치 2: 마지막 활성 admin 강등·비활성화 방지
+    if (losesAdmin) {
+      const adminCount = await sql`SELECT COUNT(*) AS cnt FROM users WHERE role = 'admin' AND is_active = true`;
+      if (parseInt(adminCount[0].cnt, 10) <= 1) {
+        return respondError(req, res, 400, {
+          code: 'VALIDATION_FAILED',
+          message: '마지막 관리자 계정은 강등하거나 비활성화할 수 없습니다.',
+          reason: '활성 관리자 계정이 하나도 남지 않으면 운영이 불가능해집니다.',
+          action: '다른 관리자를 먼저 추가하거나 활성화한 뒤 다시 시도하세요.',
+        });
+      }
+    }
+
     // 개별 필드 업데이트 (동적 SQL 한계로 인해 분기 처리)
     if (body.role !== undefined && body.is_active !== undefined) {
       await sql`UPDATE users SET role = ${body.role}, is_active = ${body.is_active}, updated_at = now() WHERE id = ${userId}`;
     } else if (body.role !== undefined) {
       await sql`UPDATE users SET role = ${body.role}, updated_at = now() WHERE id = ${userId}`;
-    } else if (body.is_active !== undefined) {
-      const action = body.is_active ? 'user_updated' : 'user_deactivated';
+    } else {
       await sql`UPDATE users SET is_active = ${body.is_active}, updated_at = now() WHERE id = ${userId}`;
-      await insertAuditLog({ userId: decoded.sub, action, target: userId, ipAddress: ip, result: 'success' });
-      return res.status(200).json({ ok: true });
     }
 
-    await insertAuditLog({ userId: decoded.sub, action: 'user_updated', target: userId, ipAddress: ip, result: 'success', metadata: allowedFields });
+    // 역할 변경·비활성화 시 대상의 refresh 토큰 폐기
+    // - API 권한은 requireRole이 매 요청 DB role로 판단하므로 즉시 반영된다
+    // - refresh 폐기로 액세스 토큰(최대 1h) 만료 후에는 재로그인을 요구해 JWT role도 갱신된다
+    // - replaced_by 없이 revoked_at만 세팅 → grace 재인증도 차단 (logout과 동일)
+    if (roleChanged || deactivating) {
+      await sql`UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = ${userId} AND revoked_at IS NULL`;
+      await insertAuditLog({ userId: decoded.sub, action: 'session_revoked_by_admin', target: userId, ipAddress: ip, result: 'success', metadata: { reason: roleChanged ? 'role_changed' : 'deactivated' } });
+    }
+
+    const action = deactivating ? 'user_deactivated' : 'user_updated';
+    await insertAuditLog({ userId: decoded.sub, action, target: userId, ipAddress: ip, result: 'success', metadata: allowedFields });
     return res.status(200).json({ ok: true });
   }
 

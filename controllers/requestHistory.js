@@ -4,7 +4,7 @@
  */
 
 const { getDb } = require('./_shared/db');
-const { resolveUser } = require('./_shared/session');
+const { requireRole } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 const HISTORY_MAX = 100;
@@ -15,13 +15,9 @@ function isValidEntryId(value) {
 }
 
 module.exports = async function requestHistoryController(req, res) {
-  const decoded = await resolveUser(req, res);
-  if (!decoded) {
-    return respondError(req, res, 401, {
-      code: 'AUTH_REQUIRED',
-      logMessage: 'RequestHistory API requires authentication',
-    });
-  }
+  // refresh 인지 + 비활성화·임시 비밀번호 계정 즉시 차단 (실패 시 401/403 응답 완료)
+  const decoded = await requireRole(req, res, 'user');
+  if (!decoded) return undefined;
 
   const userId = decoded.sub;
   const sql = getDb();

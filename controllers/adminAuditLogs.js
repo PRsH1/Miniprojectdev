@@ -4,21 +4,10 @@
  * GET /api/admin/audit-logs
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { requireRole } = require('./_shared/session');
 const { PG_INT_MAX, isIsoDate, parsePositiveInt } = require('./_shared/validate');
-
-function requireAdmin(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) { respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Admin audit API requires authentication' }); return null; }
-  let decoded;
-  try { decoded = jwt.verify(authToken, process.env.JWT_SECRET); } catch (error) { respondError(req, res, 401, { code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', error, logMessage: 'Admin audit token verification failed' }); return null; }
-  if (decoded.role !== 'admin') { respondError(req, res, 403, { code: 'FORBIDDEN', message: '관리자 권한이 필요합니다.', reason: '현재 계정은 감사 로그 조회 API를 사용할 수 없습니다.', action: '관리자 계정으로 로그인하세요.', logMessage: 'Admin role required for audit API' }); return null; }
-  return decoded;
-}
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -26,7 +15,7 @@ module.exports = async function handler(req, res) {
     return methodNotAllowed(req, res, ['GET']);
   }
 
-  const decoded = requireAdmin(req, res);
+  const decoded = await requireRole(req, res, 'admin');
   if (!decoded) return;
 
   const sql = getDb();
