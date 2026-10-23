@@ -765,6 +765,9 @@
             });
 
             updateSectionCounts();
+            roleFilterApplied = true;
+            // role 필터 완료 전에 입력된 검색어가 있으면 최종 카드 기준으로 다시 적용
+            runSearch();
         }
 
         // 섹션별 카드 수 갱신
@@ -773,7 +776,9 @@
                 var count = section.querySelectorAll('[data-card]').length;
                 var span = section.querySelector('.section-count');
                 if (span) span.textContent = '(' + count + ')';
-                // 섹션에 카드가 없으면 섹션 자체 숨김
+                // 섹션에 카드가 없으면 섹션 자체 숨김 — data-empty로 표시해 검색 로직이 건너뛰게 함
+                if (count > 0) section.removeAttribute('data-empty');
+                else section.setAttribute('data-empty', '1');
                 section.style.display = count > 0 ? '' : 'none';
             });
         }
@@ -824,6 +829,7 @@
         var searchInput = document.getElementById('searchInput');
         var searchClear = document.getElementById('searchClear');
         var noResults = document.getElementById('noResults');
+        var roleFilterApplied = false; // applyRoleFilter 완료 여부
 
         function runSearch() {
             var query = searchInput.value.toLowerCase().trim();
@@ -832,21 +838,29 @@
             var totalVisible = 0;
 
             sections.forEach(function(section) {
-                if (section.style.display === 'none') return;
+                // role 필터로 카드가 하나도 남지 않은 섹션만 건너뜀
+                // (검색으로 숨긴 섹션은 매번 다시 평가 → 검색어 삭제 시 복원)
+                if (section.getAttribute('data-empty') === '1') return;
                 var cards = section.querySelectorAll('[data-card]');
                 var visibleInSection = 0;
                 cards.forEach(function(card) {
-                    var title = card.querySelector('.card-title').textContent.toLowerCase();
-                    var desc = card.querySelector('.card-desc').textContent.toLowerCase();
+                    // role 필터 통과 카드만 대상 — 미판정(로딩 중) 카드는 FOUC CSS로 숨겨진 상태 유지
+                    if (card.dataset.roleVisible !== '1') return;
+                    var titleEl = card.querySelector('.card-title');
+                    var descEl = card.querySelector('.card-desc');
+                    var title = titleEl ? titleEl.textContent.toLowerCase() : '';
+                    var desc = descEl ? descEl.textContent.toLowerCase() : '';
                     var match = !query || title.indexOf(query) !== -1 || desc.indexOf(query) !== -1;
-                    card.style.display = match ? '' : 'none';
+                    // '' 로 되돌리면 FOUC 규칙(.card[data-min-role]{display:none})이 다시 적용되므로 'flex' 명시
+                    card.style.display = match ? 'flex' : 'none';
                     if (match) visibleInSection++;
                 });
-                section.style.display = visibleInSection > 0 ? '' : 'none';
+                // role 필터 완료 전에는 섹션 표시 상태를 건드리지 않음
+                if (roleFilterApplied) section.style.display = visibleInSection > 0 ? '' : 'none';
                 totalVisible += visibleInSection;
             });
 
-            noResults.style.display = totalVisible === 0 && query ? 'block' : 'none';
+            noResults.style.display = roleFilterApplied && totalVisible === 0 && query ? 'block' : 'none';
         }
 
         searchInput.addEventListener('input', runSearch);
