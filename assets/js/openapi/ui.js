@@ -126,10 +126,10 @@ function _makeEndpointWrap(ep) {
         const $saves = $('<div class="endpoint-saves">').toggle(isExpanded);
         saves.forEach(entry => {
             const $saveItem = $(`
-                <div class="save-item" data-history-id="${entry.id}">
+                <div class="save-item" data-history-id="${escHtml(entry.id)}">
                     <i class="fa-solid fa-floppy-disk fa-xs save-item-icon"></i>
-                    <span class="save-item-name">${entry.name}</span>
-                    <button class="save-item-delete" data-id="${entry.id}" title="삭제">
+                    <span class="save-item-name">${escHtml(entry.name)}</span>
+                    <button class="save-item-delete" data-id="${escHtml(entry.id)}" title="삭제">
                         <i class="fa-solid fa-xmark fa-xs"></i>
                     </button>
                 </div>`);
@@ -286,10 +286,10 @@ function buildParamsTable(ep) {
 function makePathRow(key = '', value = '', desc = '', required = false) {
     const $tr = $(`<tr>
         <td class="col-key">
-            <input class="kv-input param-key" value="${key}" readonly>
+            <input class="kv-input param-key" value="${escHtml(key)}" readonly>
             ${desc ? `<div class="param-desc">${desc}${required ? '<span class="required-star">*</span>' : ''}</div>` : ''}
         </td>
-        <td class="col-value"><input class="kv-input param-val" value="${value}" placeholder="값 입력"></td>
+        <td class="col-value"><input class="kv-input param-val" value="${escHtml(value)}" placeholder="값 입력"></td>
     </tr>`);
     $tr.find('.param-val').on('input', () => { updateUrlPreview(); updateParamsBadge(); });
     return $tr;
@@ -298,8 +298,8 @@ function makePathRow(key = '', value = '', desc = '', required = false) {
 function makeQueryRow(key = '', value = '', desc = '', required = false, enabled = true, userAdded = false) {
     const checkedAttr = enabled ? 'checked' : '';
     const keyField = userAdded
-        ? `<input class="kv-input param-key" value="${key}" placeholder="키">`
-        : `<input class="kv-input param-key" value="${key}" readonly>`;
+        ? `<input class="kv-input param-key" value="${escHtml(key)}" placeholder="키">`
+        : `<input class="kv-input param-key" value="${escHtml(key)}" readonly>`;
     const deleteBtn = userAdded ? `<button class="btn-icon" onclick="removeRow(this)" title="삭제"><i class="fa-solid fa-xmark"></i></button>` : '';
 
     const $tr = $(`<tr data-user-added="${userAdded}">
@@ -308,7 +308,7 @@ function makeQueryRow(key = '', value = '', desc = '', required = false, enabled
             ${keyField}
             ${desc ? `<div class="param-desc">${desc}${required ? '<span class="required-star">*</span>' : ''}</div>` : ''}
         </td>
-        <td class="col-value"><input class="kv-input param-val" value="${value}" placeholder="값"></td>
+        <td class="col-value"><input class="kv-input param-val" value="${escHtml(value)}" placeholder="값"></td>
         <td class="col-action">${deleteBtn}</td>
     </tr>`);
 
@@ -368,10 +368,10 @@ function makeHeaderRow(key = '', value = '', userAdded = true, description = '')
     const $tr = $(`<tr data-user-added="${userAdded}">
         <td class="col-check"><input type="checkbox" class="header-enabled" checked></td>
         <td class="col-key">
-            <input class="kv-input header-key" value="${key}" ${readonlyKey} placeholder="키">
+            <input class="kv-input header-key" value="${escHtml(key)}" ${readonlyKey} placeholder="키">
             ${descHtml}
         </td>
-        <td class="col-value"><input class="kv-input header-val" value="${value}" placeholder="값"></td>
+        <td class="col-value"><input class="kv-input header-val" value="${escHtml(value)}" placeholder="값"></td>
         <td class="col-action">${deleteBtn}</td>
     </tr>`);
     $tr.find('.header-val, .header-key').on('input', updateHeadersBadge);
@@ -495,7 +495,7 @@ function showBodyError(msg) {
 
     $('#bodyEditor').removeClass('is-valid').addClass('has-error');
     $('#bodyErrorMsg')
-        .html('<i class="fa-solid fa-circle-exclamation fa-xs"></i><span>' + clean + '</span>')
+        .html('<i class="fa-solid fa-circle-exclamation fa-xs"></i><span>' + _escapeHtml(clean) + '</span>')
         .show();
 }
 
@@ -1083,15 +1083,15 @@ function buildHistoryPanel() {
             + ' ' + date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
 
         const statusHtml = entry.response
-            ? `<span class="history-status ${entry.response.statusClass.includes('2xx') ? 'ok' : 'err'}">${entry.response.statusText}</span>`
+            ? `<span class="history-status ${entry.response.statusClass.includes('2xx') ? 'ok' : 'err'}">${escHtml(entry.response.statusText)}</span>`
             : '';
 
         const $item = $(`
-            <div class="history-item" data-history-id="${entry.id}">
+            <div class="history-item" data-history-id="${escHtml(entry.id)}">
                 <div class="history-item-top">
                     ${methodBadge(entry.method)}
-                    <span class="history-item-name">${entry.name}</span>
-                    <button class="history-delete-btn" data-id="${entry.id}" title="삭제">
+                    <span class="history-item-name">${escHtml(entry.name)}</span>
+                    <button class="history-delete-btn" data-id="${escHtml(entry.id)}" title="삭제">
                         <i class="fa-solid fa-xmark fa-xs"></i>
                     </button>
                 </div>

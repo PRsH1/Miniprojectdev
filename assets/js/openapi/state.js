@@ -63,7 +63,7 @@ function methodClass(method) {
 }
 
 function methodBadge(method) {
-    return `<span class="m-badge ${methodClass(method)}">${method}</span>`;
+    return `<span class="m-badge ${escHtml(methodClass(method))}">${escHtml(method)}</span>`;
 }
 
 function showToast(msg, duration = 2000) {
@@ -334,8 +334,10 @@ function renderCredentialLoadModal(list) {
     `).join('');
 }
 
+// 서버·사용자 문자열을 HTML 조립에 넣을 때 반드시 거친다 (속성값 포함)
 function escHtml(str) {
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    if (str === undefined || str === null) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 async function applyCredentialTester(id) {
