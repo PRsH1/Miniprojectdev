@@ -97,8 +97,17 @@ user    → required_role이 'user'인 페이지만
 ```
 
 **file_path 등록 시 주의:**
-- `private/`로 시작하면 직접 URL 차단 — Admin UI에서 초록 안내 표시
-- `utils/` 등 다른 경로는 직접 URL로도 접근 가능 — Admin UI에서 노란 경고 표시
+- **허용 디렉터리는 `private/`, `utils/` 두 곳뿐**이며 `.html` 파일만 등록할 수 있다
+  (`controllers/_shared/page-file.js`의 `normalizePageFilePath` — 등록 시 `adminPages.js`와 서빙 시 `auth-middleware.js`가 같은 규칙 사용).
+  `../`, 절대 경로, 드라이브 문자, 역슬래시, `./`·빈 구간은 400으로 거부하고, DB에 직접 넣은 잘못된 값도 `/app/*` 서빙 시 404로 숨긴다.
+  서빙 시 `realpath`로 심볼릭 링크를 통한 디렉터리 이탈도 차단한다.
+  - 이유: 함수 번들에 포함되는 디렉터리는 `vercel.json`의 `includeFiles: {private,utils,errors}/**` 뿐이다.
+    `API(JS,HTML)/`, `Embedding/` 등은 번들에 없어 등록해도 서빙할 수 없으므로(500) 등록 단계에서 막는다.
+    (`errors/`는 번들에 있지만 보호 페이지 대상이 아니므로 제외)
+  - 앞 슬래시(`/utils/x.html`)는 제거한 형태(`utils/x.html`)로 저장된다.
+- `private/`로 시작하면 직접 URL 차단 — `middleware.js`가 `/private/*` 정적 요청을 **항상 404**로 차단한다
+  (IP 화이트리스트 마스터 플래그와 무관, 퍼센트 인코딩·대소문자·중복 슬래시 정규화). Admin UI에서 초록 안내 표시
+- `utils/` 경로는 직접 URL로도 접근 가능 — Admin UI에서 노란 경고 표시, 허용 외 경로는 빨간 경고
 - 등록한 `file_path`가 `index.html` 카드의 `data-original-url`과 일치하면 해당 카드가 자동으로 권한 제어를 받음 (배포 불필요)
 
 ### index.html 카드 가시성 시스템

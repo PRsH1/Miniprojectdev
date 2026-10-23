@@ -15,8 +15,6 @@
  */
 
 const crypto = require('crypto');
-const { promises: fs } = require('fs');
-const path = require('path');
 const { parse, serialize } = require('cookie');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('./db');
@@ -25,6 +23,7 @@ const { insertAuditLog } = require('./audit');
 const { respondError } = require('./respond-error');
 
 const { hasRole, loadUserState } = require('./roles');
+const { readProtectedPageFile, resolvePageFilePath } = require('./page-file');
 
 // role 접근 권한 계층 체크 (admin > manager > user)
 function hasAccess(userRole, requiredRole) {
@@ -159,10 +158,20 @@ module.exports = async function authMiddleware(req, res) {
     });
   }
 
-  // 5. HTML 서빙
+  // 5. HTML 서빙 — file_path는 private/·utils/ 아래 .html만 허용 (../ 등 경로 탈출 차단)
+  if (!resolvePageFilePath(page.file_path).ok) {
+    console.error(`보호 페이지 file_path 거부 (${pagePath}): 허용되지 않는 경로`);
+    return respondError(req, res, 404, {
+      code: 'PAGE_NOT_FOUND',
+      message: '요청한 페이지를 찾을 수 없습니다.',
+      reason: '페이지 파일 설정이 올바르지 않습니다.',
+      action: '관리자에게 문의하세요.',
+      logMessage: `Protected page file_path rejected: ${pagePath}`,
+    });
+  }
+
   try {
-    const fullPath = path.join(process.cwd(), page.file_path);
-    const html = await fs.readFile(fullPath, 'utf8');
+    const html = await readProtectedPageFile(page.file_path);
 
     await insertAuditLog({
       userId: decoded.sub,
@@ -176,6 +185,16 @@ module.exports = async function authMiddleware(req, res) {
     return res.status(200).send(html);
   } catch (err) {
     console.error(`페이지 파일 읽기 오류 (${page.file_path}):`, err);
+    // 심볼릭 링크 이탈(PAGE_PATH_INVALID)은 설정 오류 → 404로 숨긴다
+    if (err && err.code === 'PAGE_PATH_INVALID') {
+      return respondError(req, res, 404, {
+        code: 'PAGE_NOT_FOUND',
+        message: '요청한 페이지를 찾을 수 없습니다.',
+        reason: '페이지 파일 설정이 올바르지 않습니다.',
+        action: '관리자에게 문의하세요.',
+        logMessage: `Protected page real path rejected: ${pagePath}`,
+      });
+    }
     return respondError(req, res, 500, {
       code: 'INTERNAL_ERROR',
       message: '페이지를 불러오는 중 오류가 발생했습니다.',

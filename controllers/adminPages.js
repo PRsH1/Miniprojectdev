@@ -12,6 +12,7 @@ const { insertAuditLog } = require('./_shared/audit');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 const { requireRole } = require('./_shared/session');
 const { requireUuid } = require('./_shared/validate');
+const { ALLOWED_PAGE_DIRS, normalizePageFilePath } = require('./_shared/page-file');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -44,11 +45,17 @@ module.exports = async function handler(req, res) {
       return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 required_role입니다.', reason: 'required_role은 admin, manager, user 중 하나여야 합니다.', action: '권한 값을 다시 선택하세요.' });
     }
 
+    // file_path 경로 탈출(../, 절대경로 등) 차단 — 서빙 시(auth-middleware)와 같은 규칙
+    const normalizedFile = normalizePageFilePath(file_path);
+    if (!normalizedFile.ok) {
+      return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 file_path입니다.', reason: normalizedFile.reason, action: `${ALLOWED_PAGE_DIRS.map((d) => `${d}/`).join(' 또는 ')} 아래의 .html 파일 경로(예: private/pageName.html)를 입력하세요.` });
+    }
+
     let newPage;
     try {
       const rows = await sql`
         INSERT INTO protected_pages (path, name, description, required_role, file_path)
-        VALUES (${pagePath}, ${name}, ${description || null}, ${required_role}, ${file_path})
+        VALUES (${pagePath}, ${name}, ${description || null}, ${required_role}, ${normalizedFile.relPath})
         RETURNING id, path, name, required_role, file_path, is_active
       `;
       newPage = rows[0];

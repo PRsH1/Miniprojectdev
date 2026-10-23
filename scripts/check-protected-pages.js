@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const { normalizePageFilePath } = require('../controllers/_shared/page-file');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 const MIGRATE_PATH = path.join(ROOT_DIR, 'scripts', 'migrate.js');
@@ -324,6 +325,13 @@ function main() {
 
   for (const page of seedPages) {
     if (!page.file_path) {
+      continue;
+    }
+
+    // 서버 서빙 규칙(private/·utils/ 아래 .html만)과 일치하는지 확인 — 어긋나면 /app/* 가 404가 된다
+    const pathRule = normalizePageFilePath(page.file_path);
+    if (!pathRule.ok) {
+      errors.push(`seed file_path가 보호 페이지 경로 규칙에 맞지 않습니다: ${page.path} -> ${page.file_path} (${pathRule.reason})`);
       continue;
     }
 

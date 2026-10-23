@@ -121,6 +121,7 @@ POSTGRES_URL="..." node scripts/migrate-ip-whitelist.js
 
 ### 비(非)자명한 동작 — 수정 시 주의
 
+- **`/private/*` 차단이 IP 체크보다 먼저**: `middleware.js`는 마스터 플래그와 무관하게 `/private/*` 정적 직접 접근을 404로 먼저 차단한다(P0-09). 그 외 요청은 플래그 OFF면 IP 헤더·DB를 건드리지 않고 즉시 통과
 - **Edge Middleware가 global scope 전담**: matcher는 넓게 유지하지만 `middleware.js` 내부에서 정적 경로를 제외함. `api/index.js`의 IP 체크는 `/api/*`, `/app/*` 경로에 대한 2차 방어선
 - **path 스코프 삭제 시 해당 스코프의 규칙도 함께 삭제**: ON DELETE CASCADE 없이 명시적 DELETE로 처리 (`adminIpWhitelist.js`)
 - **`ip_whitelist_scopes` 시드 레코드 삭제 시**: global/protected 스코프 카드가 Admin UI에서 사라짐. `node scripts/migrate-ip-whitelist.js` 재실행으로 복원

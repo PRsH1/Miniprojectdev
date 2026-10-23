@@ -4,7 +4,7 @@
 ProjectImprove/
 ├── index.html                  # 메인 허브 페이지 (모든 도구 링크 모음)
 ├── favicon.svg                 # 공통 파비콘 (플러그 아이콘, #1a73e8)
-├── middleware.js               # Vercel Edge Middleware — IP 화이트리스트 global scope 체크
+├── middleware.js               # Vercel Edge Middleware — /private/* 직접 접근 404 차단 + IP 화이트리스트 global scope 체크
 ├── vercel.json                 # Vercel 배포 라우팅 설정
 ├── package.json
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
@@ -24,6 +24,7 @@ ProjectImprove/
 │   │   ├── session.js                 # resolveUser(세션 해석, 만료 시 리프레시 로테이션) + requireRole(DB role 기반 API 인가)
 │   │   ├── roles.js                   # 역할 계층(hasRole) + users 현재 상태 조회(loadUserState)
 │   │   ├── validate.js                # 입력 사전 검증 (UUID/INTEGER id, page, 날짜) — 형식 오류를 400으로
+│   │   ├── page-file.js               # 보호 페이지 file_path 검증 (private/·utils/ 아래 .html만, 경로 탈출 차단)
 │   │   ├── audit.js                   # audit_logs INSERT 공통 모듈
 │   │   ├── protected-pages-config.js  # 구 password 방식 설정 잔재 — 현재 어떤 코드도 값을 읽지 않음
 │   │   ├── protectedPage.js           # 레거시 핸들러 팩토리 — config 무시, auth-middleware에 위임
