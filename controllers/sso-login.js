@@ -1,5 +1,29 @@
+const { escapeHtml } = require('../lib/html-escape');
+const { isValidSamlRequest, isValidRelayState, MAX_RELAY_STATE_LENGTH } = require('../lib/saml-input');
+const { respondError } = require('./_shared/respond-error');
+
 module.exports = (req, res) => {
   const { SAMLRequest, RelayState } = req.query;
+
+  // 반사형 XSS 방지: 형식이 맞지 않는 값은 폼에 반영하지 않고 400
+  if (!isValidSamlRequest(SAMLRequest)) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: 'SAMLRequest 형식이 올바르지 않습니다.',
+      reason: 'SAMLRequest는 base64 문자열이어야 합니다.',
+      action: 'SP(eformsign)에서 SSO 로그인을 다시 시작하세요.',
+      logMessage: 'sso-login: invalid SAMLRequest format',
+    });
+  }
+  if (!isValidRelayState(RelayState)) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: 'RelayState 값이 올바르지 않습니다.',
+      reason: `RelayState는 ${MAX_RELAY_STATE_LENGTH}자 이하의 단일 문자열이어야 합니다.`,
+      action: 'SP(eformsign)에서 SSO 로그인을 다시 시작하세요.',
+      logMessage: 'sso-login: invalid RelayState',
+    });
+  }
   // 명시적 대상 서버 오버라이드 (test/dev만 허용 — 그 외 값은 무시하여 XSS/오용 방지).
   // CouchDB login_url을 `.../api/sso-login?target=dev` 로 설정하면 dev로 강제 라우팅됨.
   const target = (req.query.target === 'dev' || req.query.target === 'test' || req.query.target === 'test2' || req.query.target === 'testjp' || req.query.target === 'prod') ? req.query.target : '';
@@ -29,10 +53,10 @@ module.exports = (req, res) => {
             <label>이름</label>
             <input type="text" name="name" placeholder="테스트유저" required>
 
-            <input type="hidden" name="SAMLRequest" value="${SAMLRequest || ''}">
-            <input type="hidden" name="RelayState" value="${RelayState || ''}">
-            <input type="hidden" name="target" value="${target}">
-            <input type="hidden" name="debug" value="${debug}">
+            <input type="hidden" name="SAMLRequest" value="${escapeHtml(SAMLRequest || '')}">
+            <input type="hidden" name="RelayState" value="${escapeHtml(RelayState || '')}">
+            <input type="hidden" name="target" value="${escapeHtml(target)}">
+            <input type="hidden" name="debug" value="${escapeHtml(debug)}">
             
             <button type="submit">로그인 및 eformsign 이동</button>
           </form>

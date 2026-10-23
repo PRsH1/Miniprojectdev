@@ -10,6 +10,7 @@ const { serialize } = require('cookie');
 const { getDb } = require('./_shared/db');
 const { sign } = require('./_shared/jwt');
 const { insertAuditLog } = require('./_shared/audit');
+const { safeNext } = require('../lib/safe-next');
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -36,7 +37,8 @@ module.exports = async function handler(req, res) {
   const body = req.body || {};
   const username = (body.username || '').trim();
   const password = body.password || '';
-  const next = body.next || '';
+  // open redirect 차단: 같은 오리진 상대 경로만 허용, 그 외는 '' (→ 최종 '/')
+  const next = safeNext(body.next, '');
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress;
 
   const errorRedirect = (code) => {
@@ -146,7 +148,11 @@ module.exports = async function handler(req, res) {
 
   // 9. 리다이렉트
   if (user.must_change_password) {
-    return res.redirect(302, '/auth/change-password.html');
+    // 비밀번호 변경 완료 후 원래 가려던 경로로 돌아가도록 검증된 next를 전달
+    const changePwUrl = next
+      ? `/auth/change-password.html?${new URLSearchParams({ next }).toString()}`
+      : '/auth/change-password.html';
+    return res.redirect(302, changePwUrl);
   }
   return res.redirect(302, next || '/');
 };
