@@ -8,6 +8,7 @@ const { parse } = require('cookie');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { PG_INT_MAX, isIsoDate, parsePositiveInt } = require('./_shared/validate');
 
 function requireAdmin(req, res) {
   const cookies = parse(req.headers.cookie || '');
@@ -31,14 +32,33 @@ module.exports = async function handler(req, res) {
   const sql = getDb();
   const qs = new URL(req.url, 'http://localhost').searchParams;
 
-  const page = Math.max(1, parseInt(qs.get('page') || '1', 10));
   const limit = 20;
+  // page는 양의 정수만 허용 — 'abc' 등은 NaN OFFSET → SQL 오류(500)가 되므로 400으로 차단
+  // 상한은 OFFSET이 INTEGER 범위를 넘지 않도록 제한
+  const page = parsePositiveInt(qs.get('page'), 1, Math.floor(PG_INT_MAX / limit));
+  if (page === null) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: 'page 값이 올바르지 않습니다.',
+      reason: 'page는 1 이상의 정수여야 합니다.',
+      action: 'page 파라미터를 확인한 뒤 다시 시도하세요.',
+    });
+  }
   const offset = (page - 1) * limit;
 
   const usernameFilter = qs.get('username') || '';
   const actionFilter = qs.get('action') || '';
   const dateFrom = qs.get('from') || '';
   const dateTo = qs.get('to') || '';
+
+  if ((dateFrom && !isIsoDate(dateFrom)) || (dateTo && !isIsoDate(dateTo))) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: '날짜 필터 형식이 올바르지 않습니다.',
+      reason: 'from/to는 YYYY-MM-DD 형식의 실제 날짜여야 합니다.',
+      action: '날짜를 다시 선택한 뒤 조회하세요.',
+    });
+  }
 
   // 동적 필터 조건 (neon 태그드 템플릿 리터럴 한계로 조건 분기)
   // 조건 조합: username, action, date_from, date_to 각각 선택적 적용

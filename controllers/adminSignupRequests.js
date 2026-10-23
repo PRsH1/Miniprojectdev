@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { requireUuid } = require('./_shared/validate');
 
 function requireAdmin(req, res) {
   const cookies = parse(req.headers.cookie || '');
@@ -55,6 +56,7 @@ module.exports = async function handler(req, res) {
   const approveMatch = rawPath.match(/^\/api\/admin\/signup-requests\/([^/]+)\/approve$/);
   if (req.method === 'POST' && approveMatch) {
     const requestId = approveMatch[1];
+    if (!requireUuid(req, res, requestId, '가입 요청 ID')) return undefined;
     const body = req.body || {};
     const role = body.role || 'user';
 
@@ -111,6 +113,7 @@ module.exports = async function handler(req, res) {
   const rejectMatch = rawPath.match(/^\/api\/admin\/signup-requests\/([^/]+)\/reject$/);
   if (req.method === 'POST' && rejectMatch) {
     const requestId = rejectMatch[1];
+    if (!requireUuid(req, res, requestId, '가입 요청 ID')) return undefined;
     const body = req.body || {};
     const rejectReason = (body.reject_reason || '').trim() || null;
 

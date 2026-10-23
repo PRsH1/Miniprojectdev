@@ -12,6 +12,7 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { requireUuid } = require('./_shared/validate');
 
 function requireAdmin(req, res) {
   const cookies = parse(req.headers.cookie || '');
@@ -77,6 +78,7 @@ module.exports = async function handler(req, res) {
   const deleteMatch = rawPath.match(/^\/api\/admin\/pages\/([^/]+)$/);
   if (req.method === 'DELETE' && deleteMatch) {
     const pageId = deleteMatch[1];
+    if (!requireUuid(req, res, pageId, '페이지 ID')) return undefined;
     const rows = await sql`
       DELETE FROM protected_pages WHERE id = ${pageId}
       RETURNING path, file_path
@@ -95,7 +97,12 @@ module.exports = async function handler(req, res) {
   const match = rawPath.match(/^\/api\/admin\/pages\/([^/]+)$/);
   if (req.method === 'PUT' && match) {
     const pageId = match[1];
+    if (!requireUuid(req, res, pageId, '페이지 ID')) return undefined;
     const body = req.body || {};
+
+    if (body.is_active !== undefined && typeof body.is_active !== 'boolean') {
+      return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: 'is_active는 true 또는 false여야 합니다.', reason: '활성 여부 값의 형식이 올바르지 않습니다.', action: 'is_active 값을 boolean으로 전달하세요.' });
+    }
 
     if (body.required_role !== undefined) {
       if (!['admin', 'manager', 'user'].includes(body.required_role)) {

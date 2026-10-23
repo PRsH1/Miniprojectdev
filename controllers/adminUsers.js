@@ -18,6 +18,7 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { requireUuid } = require('./_shared/validate');
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -182,6 +183,9 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
   const userId = match[1];
   const subAction = match[2] || '';
 
+  // 잘못된 UUID가 DB 예외(500)로 번지지 않도록 사전 검증
+  if (!requireUuid(req, res, userId, '사용자 ID')) return undefined;
+
   // POST /api/admin/users/:id/unlock
   if (req.method === 'POST' && subAction === '/unlock') {
     await sql`
@@ -290,6 +294,15 @@ async function handleUsers(req, res, decoded, rawPath, ip) {
       }
     }
 
+    if (body.is_active !== undefined && typeof body.is_active !== 'boolean') {
+      return respondError(req, res, 400, {
+        code: 'VALIDATION_FAILED',
+        message: 'is_active는 true 또는 false여야 합니다.',
+        reason: '활성 여부 값의 형식이 올바르지 않습니다.',
+        action: 'is_active 값을 boolean으로 전달하세요.',
+      });
+    }
+
     // 업데이트할 필드 동적 구성
     const allowedFields = { role: body.role, is_active: body.is_active };
     const setKeys = Object.entries(allowedFields).filter(([, v]) => v !== undefined);
@@ -342,7 +355,7 @@ async function handlePasswordResetRequests(req, res, decoded, rawPath, ip) {
   const match = rawPath.match(/^\/api\/admin\/password-reset-requests\/([^/]+)\/resolve$/);
   if (req.method === 'POST' && match) {
     const requestId = match[1];
-    const body = req.body || {};
+    if (!requireUuid(req, res, requestId, '요청 ID')) return undefined;
 
     const rows = await sql`
       UPDATE password_reset_requests
