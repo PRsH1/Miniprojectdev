@@ -67,19 +67,47 @@ test('isStaticPath excludes known static directories and file extensions only', 
   assert.equal(isStaticPath('/app/admin'), false);
 });
 
-test('middleware returns before request inspection and DB loading when master flag is unset', async () => {
+test('middleware returns before IP header inspection and DB loading when master flag is unset', async () => {
   const { default: middleware } = await loadMiddlewareModule();
 
   await withIpWhitelistEnv(undefined, async () => {
-    const request = {};
-    Object.defineProperty(request, 'url', {
+    // URL은 /private/ 차단 판별에만 읽고, IP 헤더·DB는 마스터 플래그 OFF면 건드리지 않는다
+    const request = { url: 'https://example.com/app/admin' };
+    Object.defineProperty(request, 'headers', {
       get() {
-        throw new Error('request must not be inspected while the master flag is off');
+        throw new Error('IP headers must not be inspected while the master flag is off');
       },
     });
 
     assert.equal(await middleware(request), undefined);
   });
+});
+
+test('middleware blocks direct /private/ access with 404 regardless of the master flag (P0-09)', async () => {
+  const { default: middleware, isPrivatePath } = await loadMiddlewareModule();
+
+  assert.equal(isPrivatePath('/private/Admin.html'), true);
+  assert.equal(isPrivatePath('/PRIVATE/Admin.html'), true);
+  assert.equal(isPrivatePath('//private/Admin.html'), true);
+  assert.equal(isPrivatePath('/%70rivate/Admin.html'), true);
+  assert.equal(isPrivatePath('/private'), true);
+  assert.equal(isPrivatePath('/privateer/x.html'), false);
+  assert.equal(isPrivatePath('/app/admin'), false);
+  assert.equal(isPrivatePath('/utils/webhook.html'), false);
+
+  for (const flag of [undefined, 'true']) {
+    await withIpWhitelistEnv(flag, async () => {
+      const request = { url: 'https://example.com/private/Admin.html' };
+      Object.defineProperty(request, 'headers', {
+        get() {
+          throw new Error('private block must happen before IP inspection');
+        },
+      });
+      const response = await middleware(request);
+      assert.ok(response, `flag=${flag}: Response expected`);
+      assert.equal(response.status, 404);
+    });
+  }
 });
 
 test('middleware skips static paths before IP inspection when master flag is on', async () => {

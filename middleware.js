@@ -2,7 +2,8 @@
  * middleware.js — Vercel Edge Middleware
  *
  * 모든 요청에서 정적 파일 서빙 이전에 실행됩니다.
- * global scope IP 화이트리스트만 여기서 체크합니다.
+ * 1) /private/* 정적 직접 접근을 항상 404로 차단합니다 (보호 페이지 원본 노출 방지).
+ * 2) global scope IP 화이트리스트만 여기서 체크합니다.
  * (path/protected scope는 api/index.js, auth-middleware.js에서 처리)
  */
 import { neon } from '@neondatabase/serverless';
@@ -52,9 +53,34 @@ async function loadGlobalCheck() {
   return _cache;
 }
 
+/**
+ * private/ 디렉터리 직접 접근 여부
+ * private/*.html 은 /app/* 경로에서 auth-middleware가 인증 후에만 서빙한다(함수 번들 includeFiles).
+ * 정적 URL(/private/Admin.html 등)로는 열리지 않도록 퍼센트 인코딩·대소문자·중복 슬래시를 정규화해 판별한다.
+ */
+export function isPrivatePath(pathname) {
+  let p = String(pathname || '').split('?')[0];
+  try {
+    p = decodeURIComponent(p);
+  } catch {
+    // 잘못된 인코딩은 원문 그대로 판별
+  }
+  p = p.replace(/\\/g, '/').replace(/\/{2,}/g, '/').toLowerCase();
+  return p === '/private' || p.startsWith('/private/');
+}
+
 export default async function middleware(request) {
+  // ─── private/ 직접 접근 차단 (IP 화이트리스트 마스터 플래그와 무관하게 항상) ───
+  const pathname = new URL(request.url).pathname;
+  if (isPrivatePath(pathname)) {
+    return new Response('Not Found', {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+    });
+  }
+
   if (!isIpWhitelistEnabled()) return;
-  if (isStaticPath(new URL(request.url).pathname)) return;
+  if (isStaticPath(pathname)) return;
 
   const forwarded = request.headers.get('x-forwarded-for') || '';
   const ip = forwarded.split(',')[0].trim() || '127.0.0.1';

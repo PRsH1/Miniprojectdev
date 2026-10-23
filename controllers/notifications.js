@@ -9,16 +9,27 @@
 
 const { getDb } = require('./_shared/db');
 const pusher = require('./_shared/pusher');
-const { resolveUser } = require('./_shared/session');
+const { requireRole } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { isPgIntId } = require('./_shared/validate');
 
-async function requireAuth(req, res) {
-  const decoded = await resolveUser(req, res);
-  if (!decoded) {
-    respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Notifications API requires authentication' });
-    return null;
-  }
-  return decoded;
+/** INTEGER 범위를 벗어난 id는 DB 예외 대신 404로 응답 (존재할 수 없는 알림) */
+function respondNotificationNotFound(req, res, rawId) {
+  return respondError(req, res, 404, {
+    code: 'RESOURCE_NOT_FOUND',
+    message: '요청한 알림을 찾을 수 없습니다.',
+    reason: '대상 알림이 없거나 이미 삭제되었을 수 있습니다.',
+    action: '입력값을 다시 확인한 뒤 다시 시도하세요.',
+    logMessage: `Notification id out of range: ${String(rawId).slice(0, 32)}`,
+  });
+}
+
+/**
+ * 로그인 확인 + DB 현재 role 반영 (강등된 admin이 admin 알림을 계속 보지 않도록)
+ * 알림은 본인 데이터 읽기 위주라 임시 비밀번호 상태에서도 허용
+ */
+function requireAuth(req, res) {
+  return requireRole(req, res, 'user', { allowMustChangePassword: true });
 }
 
 function getNotificationChannel(decoded) {
@@ -128,6 +139,7 @@ module.exports = async function handler(req, res) {
   // PATCH /api/notifications/:id/read (단건 읽음)
   const singleReadMatch = rawPath.match(/^\/api\/notifications\/(\d+)\/read$/);
   if (req.method === 'PATCH' && singleReadMatch) {
+    if (!isPgIntId(singleReadMatch[1])) return respondNotificationNotFound(req, res, singleReadMatch[1]);
     const id = parseInt(singleReadMatch[1], 10);
     const existing = isAdmin
       ? await sql`SELECT id FROM notifications WHERE id = ${id} AND target_role = 'admin' AND target_user_id IS NULL`
@@ -162,6 +174,7 @@ module.exports = async function handler(req, res) {
   // DELETE /api/notifications/:id (단건 삭제)
   const singleDeleteMatch = rawPath.match(/^\/api\/notifications\/(\d+)$/);
   if (req.method === 'DELETE' && singleDeleteMatch) {
+    if (!isPgIntId(singleDeleteMatch[1])) return respondNotificationNotFound(req, res, singleDeleteMatch[1]);
     const id = parseInt(singleDeleteMatch[1], 10);
     const existing = isAdmin
       ? await sql`SELECT id FROM notifications WHERE id = ${id} AND target_role = 'admin' AND target_user_id IS NULL`

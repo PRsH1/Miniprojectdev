@@ -5,33 +5,9 @@
  * POST /api/pusher/auth
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const pusher = require('./_shared/pusher');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
-
-function requireAuth(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies.auth_token;
-  if (!authToken) {
-    respondError(req, res, 401, {
-      code: 'AUTH_REQUIRED',
-      logMessage: 'Pusher auth requires authentication',
-    });
-    return null;
-  }
-
-  try {
-    return jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch (error) {
-    respondError(req, res, 401, {
-      code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
-      error,
-      logMessage: 'Pusher auth token verification failed',
-    });
-    return null;
-  }
-}
+const { requireRole } = require('./_shared/session');
 
 async function readBody(req) {
   if (Buffer.isBuffer(req.body)) {
@@ -80,7 +56,9 @@ module.exports = async function handler(req, res) {
     return methodNotAllowed(req, res, ['POST']);
   }
 
-  const decoded = requireAuth(req, res);
+  // DB의 현재 role로 채널 권한을 판단 (강등된 admin은 즉시 admin 채널 구독 불가)
+  // 알림 구독은 읽기 전용이므로 임시 비밀번호 상태에서도 허용
+  const decoded = await requireRole(req, res, 'user', { allowMustChangePassword: true });
   if (!decoded) return;
 
   const body = await readBody(req);

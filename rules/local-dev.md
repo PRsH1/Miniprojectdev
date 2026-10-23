@@ -1,6 +1,7 @@
 ## 로컬 개발
 
 `vercel dev`는 Vercel `Development` 환경 변수를 사용한다.
+Vercel CLI는 프로젝트 의존성에 포함하지 않으므로 전역으로 설치한다(`npm i -g vercel`).
 
 ### 필수 환경변수 (Development 등록 필요)
 
