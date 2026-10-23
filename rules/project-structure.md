@@ -11,7 +11,7 @@ ProjectImprove/
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
 ├── test/                       # node:test 단위 테스트 (ip-whitelist, refresh-rotation, router-errors,
-│                               #   require-role, page-file) + helpers/http-mocks.js (req/res/sql 목)
+│                               #   require-role, page-file, saml-response) + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
 │   └── index.js                # 메인 API 라우터 (lazy-loading) + IP 화이트리스트 path/protected 체크

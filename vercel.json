@@ -4,6 +4,16 @@
       "includeFiles": "{private,utils,errors}/**"
     }
   },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    }
+  ],
   "redirects": [
     { "source": "/memberV2",        "destination": "/app/memberV2",        "permanent": true },
     { "source": "/templatecopy",    "destination": "/app/templatecopy",    "permanent": true },
