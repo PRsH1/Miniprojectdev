@@ -1149,16 +1149,9 @@ function loadHistoryEntry(entry) {
             });
         }
 
-        if (entry.headers?.length) {
-            const authHeader = entry.headers.find(h => h.key === 'Authorization');
-            if (authHeader) {
-                $('#headersBody tr').each(function() {
-                    if ($(this).find('.header-key').val() === 'Authorization') {
-                        $(this).find('.header-val').val(authHeader.value);
-                    }
-                });
-            }
-        }
+        // 인증 헤더(Authorization, eformsign_signature 등)는 저장 항목 값으로 덮어쓰지 않는다.
+        // selectEndpoint()가 현재 발급된 토큰으로 헤더를 채우므로 그대로 유지한다 (P0-08).
+        // (과거에는 저장 당시 토큰으로 덮어써서 재발급 후 불러오면 401이 났다)
 
         if (entry.body) {
             $('#bodyEditor').val(entry.body);

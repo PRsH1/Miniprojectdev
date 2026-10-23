@@ -122,10 +122,38 @@ const HISTORY_MAX = 100;
 // null = 미초기화(비로그인 또는 로드 전), [] = 빈 목록
 let historyCache = null;
 
+// ── 민감 헤더 마스킹 (P0-08) ────────────────────────────────────────────
+// 요청 저장 시 Authorization(Bearer 토큰, OPA2_007/048은 base64 회사 API Key)과
+// eformsign_signature 등 인증 헤더는 키만 남기고 값은 ''로 저장한다.
+// 불러올 때는 현재 인증 패널의 토큰을 유지한다(저장 당시 토큰으로 덮어쓰지 않음).
+const SENSITIVE_HEADER_RE = /^(authorization|cookie|x-api-key)$|signature|token|secret/i;
+
+function isSensitiveHeaderKey(key) {
+    return SENSITIVE_HEADER_RE.test(String(key || '').trim());
+}
+
+function maskSensitiveHeaders(headers) {
+    if (!Array.isArray(headers)) return [];
+    return headers.map(h => (h && isSensitiveHeaderKey(h.key)) ? Object.assign({}, h, { value: '' }) : h);
+}
+
+function hasSensitiveHeaderValue(entry) {
+    return !!(entry && Array.isArray(entry.headers)
+        && entry.headers.some(h => h && isSensitiveHeaderKey(h.key) && h.value));
+}
+
 function historyLoad() {
     if (historyCache !== null) return historyCache;
     try {
-        return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        const list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        if (!Array.isArray(list)) return [];
+        // 이전 버전이 평문으로 저장한 인증 헤더 값을 제거하고 다시 기록 (1회 마이그레이션)
+        if (list.some(hasSensitiveHeaderValue)) {
+            const cleaned = list.map(e => Object.assign({}, e, { headers: maskSensitiveHeaders(e.headers) }));
+            try { historySave(cleaned); } catch (e) {}
+            return cleaned;
+        }
+        return list;
     } catch { return []; }
 }
 
@@ -150,7 +178,10 @@ async function historyCaptureAndSave(customName) {
 
     const headers = [];
     $('#headersBody tr').each(function() {
-        headers.push({ enabled: $(this).find('.header-enabled').is(':checked'), key: $(this).find('.header-key').val(), value: $(this).find('.header-val').val() });
+        const key = $(this).find('.header-key').val();
+        // 인증 헤더는 키만 저장 (값은 '')
+        const value = isSensitiveHeaderKey(key) ? '' : $(this).find('.header-val').val();
+        headers.push({ enabled: $(this).find('.header-enabled').is(':checked'), key, value });
     });
 
     let response = null;
@@ -272,7 +303,8 @@ async function initHistory() {
             url:         r.url,
             pathParams:  r.path_params || [],
             queryParams: r.query_params || [],
-            headers:     r.headers || [],
+            // 구버전에서 DB에 저장된 인증 헤더 값은 화면·메모리에서 사용하지 않는다
+            headers:     maskSensitiveHeaders(r.headers || []),
             body:        r.body || '',
             response:    r.response || null,
         }));
