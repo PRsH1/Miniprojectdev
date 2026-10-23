@@ -6,11 +6,25 @@ const {
   createTemplateCallback,
   debugDeliver,
 } = require('../lib/saml');
+const { escapeHtml } = require('../lib/html-escape');
+const { isValidRelayState, MAX_RELAY_STATE_LENGTH } = require('../lib/saml-input');
+const { respondError } = require('./_shared/respond-error');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-  const { email, name, SAMLRequest, RelayState, target } = req.body;
+  const { email, name, SAMLRequest, RelayState, target } = req.body || {};
+
+  // RelayState는 자동 제출 폼에 그대로 반영되므로 형식·길이 검증 (반영 시 이스케이프)
+  if (!isValidRelayState(RelayState)) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: 'RelayState 값이 올바르지 않습니다.',
+      reason: `RelayState는 ${MAX_RELAY_STATE_LENGTH}자 이하의 단일 문자열이어야 합니다.`,
+      action: 'SP(eformsign)에서 SSO 로그인을 다시 시작하세요.',
+      logMessage: 'auth: invalid RelayState',
+    });
+  }
 
   const user = {
     email: email,
@@ -55,9 +69,9 @@ module.exports = async (req, res) => {
       <!DOCTYPE html>
       <html>
       <body onload="document.forms[0].submit()">
-        <form method="POST" action="${acsUrl}">
-          <input type="hidden" name="SAMLResponse" value="${context}">
-          <input type="hidden" name="RelayState" value="${RelayState || ''}">
+        <form method="POST" action="${escapeHtml(acsUrl)}">
+          <input type="hidden" name="SAMLResponse" value="${escapeHtml(context)}">
+          <input type="hidden" name="RelayState" value="${escapeHtml(RelayState || '')}">
         </form>
         <p>eformsign으로 이동 중입니다...</p>
       </body>
@@ -66,6 +80,13 @@ module.exports = async (req, res) => {
 
   } catch (e) {
     console.error("❌ SAML Error:", e);
-    res.status(500).send('SAML Error: ' + e.message);
+    // 예외 메시지·스택은 서버 로그에만 남기고 응답에는 일반 문구만 반환
+    return respondError(req, res, 500, {
+      code: 'INTERNAL_ERROR',
+      message: 'SAML 응답을 생성하지 못했습니다.',
+      reason: '요청 처리 중 서버 내부 오류가 발생했습니다.',
+      action: 'SP(eformsign)에서 SSO 로그인을 다시 시작하세요. 문제가 계속되면 관리자에게 문의하세요.',
+      logMessage: 'auth: SAML login response generation failed',
+    });
   }
 };
