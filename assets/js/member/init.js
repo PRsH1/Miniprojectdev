@@ -95,7 +95,8 @@ $(document).ready(function () {
       const $input = $(this).detach(); // label.html() 전에 분리해야 DOM에서 파괴되지 않음
       const iconHtml = '<span style="display:block;font-size:20px;margin-bottom:6px;"><i class="fa-solid fa-file-excel"></i></span>';
       if (this.files && this.files.length) {
-        label.html(iconHtml + '<strong>' + this.files[0].name + '</strong>');
+        // 파일명은 사용자 환경에서 온 문자열이므로 텍스트로만 삽입
+        label.html(iconHtml).append($('<strong>').text(this.files[0].name));
         label.css({ borderColor: 'var(--primary)', background: '#f0f6ff', color: 'var(--primary)' });
       } else {
         label.html(iconHtml + '클릭하여 엑셀 파일 선택 (.xlsx, .xls)');

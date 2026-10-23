@@ -108,7 +108,7 @@ function getAccessToken(button) {
   }
 
   const requestBody = { execution_time: parseInt(execution_time), member_id: user_id };
-  $('#tokenResult').html('Access Token 발급 요청 중...');
+  $('#tokenResult').text('Access Token 발급 요청 중...');
 
   $.ajax({
     url: requestURL,
@@ -123,7 +123,7 @@ function getAccessToken(button) {
       $('#accessToken').val(data.oauth_token.access_token);
       $('#refreshToken').val(data.oauth_token.refresh_token);
       $('#companyId').val(data.api_key.company.company_id);
-      $('#tokenResult').html('Access Token 발급 성공.\n' + JSON.stringify(data, null, 2));
+      $('#tokenResult').text('Access Token 발급 성공.\n' + JSON.stringify(data, null, 2));
       setResultBadge('tokenResultBadge', true);
       // 사이드바 토큰 상태 업데이트
       updateTokenStatus(data.oauth_token.access_token, env);
@@ -134,7 +134,7 @@ function getAccessToken(button) {
       const code = resp.code || jqXHR.status || 'Unknown';
       const msg = resp.ErrorMessage || jqXHR.statusText;
       alert(`발급 실패:\n코드: ${code}\n메시지: ${msg}`);
-      $('#tokenResult').html(`Access Token 발급 실패.\n코드: ${code}\n응답:\n${JSON.stringify(resp, null, 2)}`);
+      $('#tokenResult').text(`Access Token 발급 실패.\n코드: ${code}\n응답:\n${JSON.stringify(resp, null, 2)}`);
       setResultBadge('tokenResultBadge', false);
     },
     complete: () => hideLoading(button),
@@ -183,15 +183,15 @@ function addMember(button) {
   let url = baseUrl;
   if ($('input[name="mailOption"]:checked').val() === 'false') url += '?mailOption=false';
 
-  $('#result').html(`실행 URL: ${url}\n멤버 추가 중...`);
+  $('#result').text(`실행 URL: ${url}\n멤버 추가 중...`);
   fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ account }),
   })
     .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(`${res.status}: ${t}`); }); return res.json(); })
-    .then(data => { $('#result').html('멤버 추가 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('addResultBadge', true); })
-    .catch(err => { $('#result').html('Error: ' + err); setResultBadge('addResultBadge', false); })
+    .then(data => { $('#result').text('멤버 추가 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('addResultBadge', true); })
+    .catch(err => { $('#result').text('Error: ' + err); setResultBadge('addResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -211,15 +211,15 @@ function deleteMember(button) {
   let url = `${baseUrl}/${encodeURIComponent(memberId)}`;
   if ($('input[name="mailOptionDelete"]:checked').val() === 'false') url += '?mailOption=false';
 
-  $('#deleteResult').html(`실행 URL: ${url}\n삭제 중...`);
+  $('#deleteResult').text(`실행 URL: ${url}\n삭제 중...`);
   fetch(url, {
     method: 'DELETE',
     headers: { 'Accept': '*/*', 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({}),
   })
     .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(`${res.status}: ${t}`); }); return res.text().then(t => t ? JSON.parse(t) : {}); })
-    .then(data => { $('#deleteResult').html('삭제 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('deleteResultBadge', true); })
-    .catch(err => { $('#deleteResult').html('Error: ' + err); setResultBadge('deleteResultBadge', false); })
+    .then(data => { $('#deleteResult').text('삭제 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('deleteResultBadge', true); })
+    .catch(err => { $('#deleteResult').text('Error: ' + err); setResultBadge('deleteResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -251,15 +251,15 @@ function updateMember(button) {
   if (!baseUrl.startsWith('http')) { hideLoading(button); return alert('사용자 지정 Base URL을 입력하세요.'); }
   const url = `${baseUrl}/${encodeURIComponent(memberId)}`;
 
-  $('#updateResult').html(`실행 URL: ${url}\n수정 중...`);
+  $('#updateResult').text(`실행 URL: ${url}\n수정 중...`);
   fetch(url, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ account }),
   })
     .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(`${res.status}: ${t}`); }); return res.json(); })
-    .then(data => { $('#updateResult').html('수정 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('updateResultBadge', true); })
-    .catch(err => { $('#updateResult').html('Error: ' + err); setResultBadge('updateResultBadge', false); })
+    .then(data => { $('#updateResult').text('수정 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('updateResultBadge', true); })
+    .catch(err => { $('#updateResult').text('Error: ' + err); setResultBadge('updateResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -475,15 +475,12 @@ function listGroups(viewType, button) {
         (data.groups || []).forEach(g => {
           const date = new Date(g.create_date).toLocaleString();
           const memberCount = Array.isArray(g.members) ? g.members.length : '-';
-          $('#groupListResultTable tbody').append(`
-            <tr>
-              <td>${g.id}</td>
-              <td>${g.name}</td>
-              <td>${g.description || '-'}</td>
-              <td>${memberCount}</td>
-              <td>${date}</td>
-            </tr>
-          `);
+          // 그룹 이름·설명은 고객이 입력한 값이므로 셀은 textContent로만 채운다 (XSS 방지)
+          const $tr = $('<tr>');
+          [g.id, g.name, g.description || '-', memberCount, date].forEach(v => {
+            $('<td>').text(v === undefined || v === null ? '' : String(v)).appendTo($tr);
+          });
+          $('#groupListResultTable tbody').append($tr);
         });
       }
     })

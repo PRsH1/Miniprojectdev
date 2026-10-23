@@ -24,7 +24,12 @@ function updateUrlDisplay() {
     tokenUrl  = tokenUrlMap[env];
     memberUrl = memberUrlMap[env];
   }
-  $('#urlDisplay').html(`Access Token URL: ${tokenUrl}<br>멤버 API URL: ${memberUrl}`);
+  // 사용자 입력 URL이 섞이므로 텍스트 노드 + <br>로 조립 (XSS 방지)
+  $('#urlDisplay').empty().append(
+    document.createTextNode(`Access Token URL: ${tokenUrl}`),
+    $('<br>'),
+    document.createTextNode(`멤버 API URL: ${memberUrl}`)
+  );
 }
 
 // 사이드바 활성 메뉴 동기화

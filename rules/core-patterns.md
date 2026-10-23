@@ -184,6 +184,19 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 
 ---
 
+### Webhook 수신 → 모니터 (`webhook-receiver.js` → `utils/webhook.html`)
+
+`POST /api/webhook-receiver`는 인증 없이 열려 있고(누구나 임의 `company_id`로 보낼 수 있음) 결과를 **공개** Pusher 채널 `company-{company_id}`로 `new-event` 이벤트로 브로드캐스트한다. 따라서 페이로드는 신뢰할 수 없는 데이터로 취급한다.
+
+- **전달 헤더 허용 목록**: `content-type`, `content-length`, `user-agent`, 그리고 이름이 `eformsign`으로 시작하는 헤더(예: `eformsign_signature`)만 전달한다. `x-forwarded-for`/`x-real-ip`/`authorization`/`cookie` 등 그 외 헤더는 버린다.
+- **본문 검증**: 본문이 없거나 JSON 객체가 아니면 400 `VALIDATION_FAILED`. `company_id`가 없으면 기존대로 200 무시. 채널명으로 쓸 수 없는 `company_id`(Pusher 허용 문자 외, 150자 초과)는 400.
+- **크기 제한**: 직렬화한 이벤트가 9000바이트(Pusher 10KB 제한 여유분)를 넘으면 `company_id`/`webhook_id`/`event_type`/문서 핵심 필드만 남긴 요약본에 `truncated: true`, `originalSize`를 붙여 보낸다. 모니터는 "(요약본…)"을 표시한다.
+- **모니터 렌더링**: `utils/webhook.html`은 표 셀·토큰 결과·문서 정보 결과를 모두 `.text()`/`textContent`로만 렌더링한다(`createRow`, `renderPre`).
+- **문서 정보 조회 토큰 전달**: `/api/getDocumentInfo`에는 `Authorization: Bearer <token>` 헤더로 보낸다. 서버는 헤더를 우선 읽고, 쿼리 `token=`은 하위 호환으로만 허용하며 폐기 예정 경고 로그를 남긴다.
+- 테스트: `test/webhook-receiver.test.js`
+
+---
+
 ### Vercel Cron Job 패턴
 
 정기 실행 작업은 `vercel.json`의 `crons` 배열 + 전용 컨트롤러로 구현한다.

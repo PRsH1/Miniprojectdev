@@ -170,14 +170,15 @@
             } else {
                 signature = 'Bearer ' + privateKey;
             }
-            $('#tokenResult').html('<pre>토큰 발급 중...</pre>');
+            // 서버·외부 응답 문자열은 .text()로만 렌더링한다 (XSS 방지)
+            $('#tokenResult').empty().append($('<pre>').text('토큰 발급 중...'));
 
             const result = await window.issueAccessToken({ domain, apiKey, memberId, signature, execTime });
             if (result.ok) {
                 $('#accessToken').val(result.token);
-                $('#tokenResult').html('<pre>' + JSON.stringify(result.data, null, 2) + '</pre>');
+                $('#tokenResult').empty().append($('<pre>').text(JSON.stringify(result.data, null, 2)));
             } else {
-                $('#tokenResult').html(`<pre>에러: ${result.message || '알 수 없는 오류'}</pre>`);
+                $('#tokenResult').empty().append($('<pre>').text(`에러: ${result.message || '알 수 없는 오류'}`));
             }
         }
 
@@ -233,7 +234,10 @@
             // [수정됨] domain 변수 사용
             const url = `${domain}/v2.0/api/documents/${documentId}/download_files?${params.toString()}`;
             
-            resultBox.html(`<p>요청 URL: ${url}</p><p id="downloadStatus">다운로드 요청 중...</p>`);
+            resultBox.empty().append(
+                $('<p>').text(`요청 URL: ${url}`),
+                $('<p id="downloadStatus">').text('다운로드 요청 중...')
+            );
             try {
                 const response = await fetch(url, {
                     method: 'GET',
@@ -268,7 +272,7 @@
                 $('#downloadStatus').text(`다운로드 성공: ${finalFileName}`);
             } catch (err) {
                 $('#downloadStatus').text('다운로드 실패');
-                resultBox.append(`<pre>Error: ${err.message}</pre>`);
+                resultBox.append($('<pre>').text(`Error: ${err.message}`));
             }
         }
 

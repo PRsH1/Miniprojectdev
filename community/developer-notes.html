@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <title>개발자 노트</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- 마크다운 렌더러 + HTML 정화기: 정확한 버전 고정 + SRI (공개 페이지이므로 CDN 변조 방지) -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js" integrity="sha384-JEyTNhjM6R1ElGoJns4U2Ln4ofPcqzSsynQkmEc/KGy6336qAZl70tDLufbkla+3" crossorigin="anonymous"></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -405,11 +407,16 @@
         .replace(/'/g, '&#39;');
     }
 
+    // 마크다운 → HTML 변환 후 반드시 DOMPurify로 정화한다.
+    // marked 또는 DOMPurify 중 하나라도 로드되지 않으면 원문을 이스케이프한 텍스트로만 표시(fail-closed).
     function renderMarkdown(markdown) {
-      if (!window.marked || typeof window.marked.parse !== 'function') {
-        return '<p>' + escHtml(markdown) + '</p>';
+      const source = String(markdown || '');
+      const canRender = window.marked && typeof window.marked.parse === 'function'
+        && window.DOMPurify && typeof window.DOMPurify.sanitize === 'function';
+      if (!canRender) {
+        return '<p style="white-space:pre-wrap">' + escHtml(source) + '</p>';
       }
-      return window.marked.parse(markdown);
+      return window.DOMPurify.sanitize(window.marked.parse(source));
     }
 
     function formatDate(value) {
@@ -431,9 +438,9 @@
     }
 
     function getPreviewText(markdown) {
-      const temp = document.createElement('div');
-      temp.innerHTML = renderMarkdown(markdown);
-      return (temp.textContent || '').trim();
+      // DOMParser 문서는 비활성(inert)이라 이미지 onerror 등이 실행되지 않는다
+      const doc = new DOMParser().parseFromString(renderMarkdown(markdown), 'text/html');
+      return ((doc.body && doc.body.textContent) || '').trim();
     }
 
     function updateAdminUi() {
@@ -456,7 +463,7 @@
         const previewText = getPreviewText(note.content);
         const author = note.author_username ? escHtml(note.author_username) : 'admin';
         return '' +
-          '<article class="note-card' + (note.pinned ? ' pinned' : '') + '" data-note-id="' + note.id + '">' +
+          '<article class="note-card' + (note.pinned ? ' pinned' : '') + '" data-note-id="' + escHtml(note.id) + '">' +
             '<div class="note-head">' +
               '<div>' +
                 '<div class="note-meta">' +

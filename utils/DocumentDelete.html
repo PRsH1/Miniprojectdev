@@ -357,6 +357,12 @@
                             } else { throw error; }
                         }
                     }
+                    // 재발급 후에도 401이 반복되면 바깥 루프가 다시 돌며 토큰 발급·조회를 무한 반복하므로 중단한다
+                    if (!success) {
+                        const authError = new Error('토큰을 재발급해도 401이 반복되어 권한 오류로 중단했습니다. 멤버 권한·API Key·환경을 확인하세요.');
+                        authError.isAuthAbort = true;
+                        throw authError;
+                    }
                 }
                 document.getElementById('statusArea').classList.remove('hidden');
                 document.getElementById('foundCount').innerText = targetDocumentIds.length.toLocaleString();
@@ -365,6 +371,7 @@
                 setButtonState('search_done');
             } catch (e) {
                 log(`조회 실패: ${e.message}`, 'error');
+                if (e.isAuthAbort) alert(`조회 중단: ${e.message}`);
                 setButtonState('error');
             }
         }
@@ -403,6 +410,7 @@
             
             let realSuccessCnt = 0;
             let realFailCnt = 0;
+            let authAborted = false; // 재시도 소진(401 반복) 시 중단 플래그
 
             let deleteUrl = `${baseUrl}/v2.0/api/documents` + (isPermanent ? '?is_permanent=true' : '');
             log(`삭제 시작 (${totalDocs}건)...`, isPermanent ? 'warning' : 'system');
@@ -456,9 +464,17 @@
                             // 기타 오류 처리
                             log(`삭제 실패(구간 ${i}): ${error.message}`, 'error');
                             realFailCnt += chunkIds.length;
-                            isBatchDone = true; 
+                            isBatchDone = true;
                         }
                     }
+                }
+
+                // 401 재시도를 모두 소진한 청크는 실패로 집계하고 전체 작업을 중단한다
+                // (이전에는 성공·실패 어디에도 집계되지 않고 다음 청크로 넘어가 진행률이 100%에 도달하지 않았음)
+                if (!isBatchDone) {
+                    realFailCnt += chunkIds.length;
+                    authAborted = true;
+                    log(`권한 오류로 중단: 토큰을 재발급해도 401이 반복됩니다 (구간 ${i + 1}~${Math.min(i + BATCH_SIZE, totalDocs)} 실패 처리)`, 'error');
                 }
 
                 // UI 업데이트
@@ -470,7 +486,18 @@
                 elFail.innerText = realFailCnt;
                 elProcessed.innerText = processed;
 
+                if (authAborted) break;
                 if (i + BATCH_SIZE < totalDocs) await new Promise(r => setTimeout(r, DELAY_MS));
+            }
+
+            if (authAborted) {
+                await releaseWakeLock();
+                const processed = realSuccessCnt + realFailCnt;
+                progressStatusLabel.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>권한 오류로 중단';
+                log(`=== 권한 오류로 중단 (성공:${realSuccessCnt}, 실패:${realFailCnt}, 미처리:${totalDocs - processed}) ===`, 'error');
+                alert(`권한 오류로 중단했습니다.\n성공 ${realSuccessCnt}건, 실패 ${realFailCnt}건, 미처리 ${totalDocs - processed}건\n멤버 권한·API Key를 확인한 뒤 다시 조회하세요.`);
+                setButtonState('error');
+                return;
             }
 
             await releaseWakeLock();

@@ -236,6 +236,26 @@
             }
         });
 
+        // 외부·서버 문자열은 반드시 텍스트로만 렌더링한다 (XSS 방지)
+        function renderPre(container, text, options) {
+            const opts = options || {};
+            const pre = $('<pre>');
+            if (opts.error) pre.css('color', '#ff6b6b');
+            if (opts.label) pre.append($('<b>').text(opts.label), document.createTextNode('\n'));
+            pre.append(document.createTextNode(String(text)));
+            container.empty().append(pre);
+            return container;
+        }
+
+        function toJsonText(value) {
+            if (value instanceof Error) return value.message;
+            try {
+                return JSON.stringify(value, null, 2);
+            } catch (e) {
+                return String(value);
+            }
+        }
+
         // Helper: 현재 선택된 도메인 가져오기
         function getCurrentDomain() {
             const selection = $('#envSelection').val();
@@ -260,7 +280,7 @@
             channel = pusher.subscribe(channelName);
             pusher.connection.bind('state_change', function(states) {
                 if (states.current === 'connected') {
-                    statusDiv.html(`● <strong>${channelName}</strong> 채널에 연결됨`);
+                    statusDiv.empty().append('● ', $('<strong>').text(channelName), ' 채널에 연결됨');
                     statusDiv.removeClass('disconnected').addClass('connected');
                 } else {
                     statusDiv.text(`● 연결 끊김 (${states.current})`).removeClass('connected').addClass('disconnected');
@@ -291,7 +311,7 @@
                 alert('도메인, API-KEY, Secret Key, User ID를 모두 입력해주세요.');
                 return;
             }
-            $('#tokenResult').html('<pre>토큰 발급 중...</pre>');
+            renderPre($('#tokenResult'), '토큰 발급 중...');
             try {
                 const execTime = Date.now();
                 const keyObj = KEYUTIL.getKeyFromPlainPrivatePKCS8Hex(secretKey);
@@ -308,10 +328,10 @@
                 const data = await response.json();
                 if (!response.ok) throw data;
                 $('#accessToken').val(data.oauth_token.access_token);
-                $('#tokenResult').html('<pre>' + JSON.stringify(data, null, 2) + '</pre>');
+                renderPre($('#tokenResult'), toJsonText(data));
                 alert('Access Token이 발급되었습니다. 팝업을 닫아주세요.');
             } catch (error) {
-                $('#tokenResult').html(`<pre style="color: #ff6b6b;">에러: ${JSON.stringify(error, null, 2)}</pre>`);
+                renderPre($('#tokenResult'), '에러: ' + toJsonText(error), { error: true });
             }
         }
 
@@ -322,16 +342,19 @@
                 openTokenModalBtn.click();
                 return;
             }
-            resultContainer.slideDown().html('<pre>문서 정보 조회 중...</pre>');
+            renderPre(resultContainer, '문서 정보 조회 중...').slideDown();
             const domain = getCurrentDomain();
-            const url = `/api/getDocumentInfo?domain=${encodeURIComponent(domain)}&documentId=${documentId}&token=${encodeURIComponent(token)}`;
+            // 토큰은 쿼리스트링이 아닌 Authorization 헤더로 전달 (서버 로그·브라우저 히스토리 노출 방지)
+            const url = `/api/getDocumentInfo?domain=${encodeURIComponent(domain)}&documentId=${encodeURIComponent(documentId)}`;
             try {
-                const response = await fetch(url);
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 const data = await response.json();
                 if (!response.ok) { throw data; }
-                resultContainer.html(`<pre>${JSON.stringify(data, null, 2)}</pre>`);
+                renderPre(resultContainer, toJsonText(data));
             } catch (err) {
-                resultContainer.html(`<pre style="color: #ff6b6b;"><b>조회 실패:</b>\n${JSON.stringify(err, null, 2)}</pre>`);
+                renderPre(resultContainer, toJsonText(err), { error: true, label: '조회 실패:' });
             }
         }
 
@@ -355,7 +378,7 @@
             }
             alert('파일 다운로드를 시작합니다...');
             const domain = getCurrentDomain();
-            const url = `/api/downloadDocument?domain=${encodeURIComponent(domain)}&documentId=${documentId}&file_type=${encodeURIComponent(fileType)}&title=${encodeURIComponent(documentTitle)}`;
+            const url = `/api/downloadDocument?domain=${encodeURIComponent(domain)}&documentId=${encodeURIComponent(documentId)}&file_type=${encodeURIComponent(fileType)}&title=${encodeURIComponent(documentTitle)}`;
             try {
                 const response = await fetch(url, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -412,7 +435,7 @@
 
             const event = eventBody.document || eventBody.ready_document_pdf || {};
             const status = event.status || event.document_status;
-            const eventType = eventBody.event_type || 'unknown';
+            const eventType = String(eventBody.event_type || 'unknown');
             
             newEntry.attr('data-status', status);
             newEntry.attr('data-document-id', event.document_id || event.id);
@@ -420,10 +443,18 @@
             
             newEntry.find('.event-type').text(eventType.toUpperCase()).addClass(eventType);
             newEntry.find('.timestamp').text(new Date(data.receivedAt || eventBody.receivedAt).toLocaleString());
-            
+            if (data.truncated) {
+                // 서버가 Pusher 10KB 제한으로 요약본만 보낸 경우
+                newEntry.find('.timestamp').append(' ', $('<span>').text('(요약본 — 원본이 커서 일부 필드만 전달됨)'));
+            }
+
             const statusText = statusMap[status] ? `${statusMap[status]} (${status})` : (status || '-');
             const tableBody = newEntry.find('.log-table tbody');
-            const createRow = (key, value) => `<tr><td>${key}</td><td>${value || '-'}</td></tr>`;
+            // 웹훅 페이로드는 누구나 보낼 수 있으므로 셀 값은 textContent로만 넣는다
+            const createRow = (key, value) => $('<tr>').append(
+                $('<td>').text(key),
+                $('<td>').text(value === undefined || value === null || value === '' ? '-' : String(value))
+            );
             
             tableBody.append(createRow('웹훅 ID', eventBody.webhook_id));
             tableBody.append(createRow('문서 ID', event.document_id || event.id));
