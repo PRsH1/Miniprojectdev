@@ -10,7 +10,8 @@ ProjectImprove/
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 (ip-whitelist, refresh-rotation)
+├── test/                       # node:test 단위 테스트 (ip-whitelist, refresh-rotation, router-errors,
+│                               #   require-role, page-file) + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
 │   └── index.js                # 메인 API 라우터 (lazy-loading) + IP 화이트리스트 path/protected 체크
@@ -26,8 +27,6 @@ ProjectImprove/
 │   │   ├── validate.js                # 입력 사전 검증 (UUID/INTEGER id, page, 날짜) — 형식 오류를 400으로
 │   │   ├── page-file.js               # 보호 페이지 file_path 검증 (private/·utils/ 아래 .html만, 경로 탈출 차단)
 │   │   ├── audit.js                   # audit_logs INSERT 공통 모듈
-│   │   ├── protected-pages-config.js  # 구 password 방식 설정 잔재 — 현재 어떤 코드도 값을 읽지 않음
-│   │   ├── protectedPage.js           # 레거시 핸들러 팩토리 — config 무시, auth-middleware에 위임
 │   │   ├── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
 │   │   └── pusher.js                  # Pusher 인스턴스 공통 모듈 (알림 + Webhook 공용)
 │   │
@@ -56,13 +55,11 @@ ProjectImprove/
 │   ├── developer-notes.js      # 개발자 노트 CRUD (목록 public, 작성 admin)
 │   ├── bug-reports.js          # 버그 리포트 CRUD (제보 로그인, 관리 admin)
 │   │
-│   │   # ── 레거시 페이지 컨트롤러 (실제 페이지는 /app/* + auth-middleware가 서빙) ──
-│   │   # /api/<이름> 으로 라우팅되지만 protected_pages에 /api/* 행이 없어 현재 404를 반환한다. 제거 대상.
-│   ├── memberV2Page.js         # 레거시 — /app/memberV2 가 현행
-│   ├── OpenAPIAutoTest.js      # 레거시 — /app/OpenAPIAutoTest 가 현행 (존재하지 않는 PROTECTED_PAGES.apiautotest 참조)
-│   ├── templatecopy.js         # 레거시 — /app/templatecopy 가 현행
-│   ├── idptestauth.js          # 레거시 — /app/idptestauth 가 현행
-│   ├── adminPage.js            # /app/admin 라우터 등록 참조용 (실제 처리는 auth-middleware)
+│   │   # ── 보호 페이지 ──────────────────────────────────────
+│   │   # 보호 페이지는 /app/* + auth-middleware(DB protected_pages)로만 서빙한다.
+│   │   # 구 비밀번호 방식 컨트롤러(memberV2Page/templatecopy/idptestauth/OpenAPIAutoTest)와
+│   │   # protectedPage.js·protected-pages-config.js는 2026-10 제거됨 (/api/memberV2Page 등 → 404 JSON)
+│   ├── adminPage.js            # /app/admin 참조용 래퍼 (라우터 미등록 — 실제 처리는 auth-middleware)
 │   │
 │   │   # ── SAML ────────────────────────────────────────────
 │   ├── auth.js                 # SAML 응답 생성 (SP개시: 요청 ACS/target으로 test·test2·testjp·dev·prod 대상 라우팅, createTemplateCallback로 email/name 속성 채움, SAML_DEBUG 게이트 로깅)

@@ -168,8 +168,9 @@ test('PATCH /api/notifications/<INTEGER 초과>/read → 404 (DB 예외 없음)'
   assert.equal(calls.some((c) => /notifications/.test(c.text)), false);
 });
 
-test('알 수 없는 API 경로와 프로토타입 키는 404 JSON', async () => {
-  for (const url of ['/api/does-not-exist', '/api/constructor', '/api/__proto__']) {
+test('알 수 없는 API 경로·프로토타입 키·제거된 레거시 컨트롤러(Q11)는 404 JSON', async () => {
+  const legacy = ['/api/memberV2Page', '/api/templatecopy', '/api/idptestauth', '/api/OpenAPIAutoTest'];
+  for (const url of ['/api/does-not-exist', '/api/constructor', '/api/__proto__', ...legacy]) {
     const { res } = await callRouter({ url });
     assert.equal(res.statusCode, 404, url);
     assert.equal(res.body.error.code, 'RESOURCE_NOT_FOUND', url);

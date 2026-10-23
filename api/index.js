@@ -25,11 +25,8 @@ const controllers = {
   'sso-login':                () => require('../controllers/sso-login'),
   'webhook-receiver':         () => require('../controllers/webhook-receiver'),
 
-  // ─── 레거시 페이지 컨트롤러 (경로는 /app/* 으로 이전됨) ──────
-  'memberV2Page':             () => require('../controllers/memberV2Page'),
-  'templatecopy':             () => require('../controllers/templatecopy'),
-  'idptestauth':              () => require('../controllers/idptestauth'),
-  'OpenAPIAutoTest':          () => require('../controllers/OpenAPIAutoTest'),
+  // 레거시 비밀번호 보호 페이지 컨트롤러(/api/memberV2Page·templatecopy·idptestauth·OpenAPIAutoTest)는
+  // 제거됨 — 보호 페이지는 /app/* (auth-middleware) 로만 서빙한다. 구 경로 /memberV2 등은 vercel.json redirects 유지.
 };
 
 /** 로더가 반환한 모듈에서 실제 핸들러 함수를 꺼낸다 */
