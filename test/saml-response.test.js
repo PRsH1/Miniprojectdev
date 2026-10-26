@@ -43,7 +43,9 @@ if (keyPair) {
   process.env.SAML_PUBLIC_CERT = keyPair.cert.toString('base64');
 }
 
-const { idp, resolveTarget, createTemplateCallback, ACS_URLS } = require('../lib/saml');
+// lib/saml.js는 로드 시 인증서를 파싱하므로 키가 없으면 require 자체가 실패한다(ERR_INVALID_CERTIFICATE).
+// openssl이 없는 환경(예: PowerShell PATH)에서도 파일 전체가 실패하지 않고 skip되도록 키가 있을 때만 로드한다.
+const { idp, resolveTarget, createTemplateCallback, ACS_URLS } = keyPair ? require('../lib/saml') : {};
 
 async function buildResponse(user, target = 'test') {
   const { acsUrl, sp } = resolveTarget(target);
