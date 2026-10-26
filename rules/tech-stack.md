@@ -4,8 +4,9 @@
 - **백엔드:** Node.js (api/index.js 단일 라우터, lazy-loading)
   — `controllers/` 41개 = 라우트 컨트롤러 29 + `_shared/` 공용 모듈 11 + `cron/` 1
   (레거시 비밀번호 보호 컨트롤러 4종 + `protectedPage.js`·`protected-pages-config.js` 제거, `roles`·`validate`·`page-file` 추가)
-- **테스트:** `node --test` (`npm test` = `node --test test/*.test.js`) — 서버 단위 테스트 6개 파일
-  (`ip-whitelist`, `refresh-rotation`, `router-errors`, `require-role`, `page-file`, `saml-response`).
+- **테스트:** `node --test` (`npm test` = `node --test test/*.test.js`) — 서버 단위 테스트 9개 파일
+  (`ip-whitelist`, `refresh-rotation`, `router-errors`, `require-role`, `page-file`, `saml-response`,
+  `saml-xss`, `safe-next`, `webhook-receiver`).
   컨트롤러 테스트는 `test/helpers/http-mocks.js`로 req/res와 `getDb()`를 목으로 바꿔 DB 없이 실행한다. 프론트엔드 테스트는 없음
 - **프론트엔드:** 순수 HTML/CSS/JS + jQuery + jsrsasign
 - **DB:** Postgres (Neon) — `@neondatabase/serverless` ^0.10.4, `controllers/_shared/db.js`의 `sql` 태그 사용

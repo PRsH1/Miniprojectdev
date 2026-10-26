@@ -10,8 +10,9 @@ ProjectImprove/
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 (ip-whitelist, refresh-rotation, router-errors,
-│                               #   require-role, page-file, saml-response) + helpers/http-mocks.js (req/res/sql 목)
+├── test/                       # node:test 단위 테스트 9개 (ip-whitelist, refresh-rotation, router-errors,
+│                               #   require-role, page-file, saml-response, saml-xss, safe-next, webhook-receiver)
+│                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
 │   └── index.js                # 메인 API 라우터 (lazy-loading) + IP 화이트리스트 path/protected 체크
@@ -78,6 +79,9 @@ ProjectImprove/
 │       └── cleanup-audit.js    # 감사 로그 정리 Cron (CRON_SECRET 검증)
 │
 ├── lib/
+│   ├── html-escape.js          # escapeHtml — 서버 HTML 조립 시 본문·따옴표 속성 이스케이프 (SAML 폼 반사형 XSS 방지)
+│   ├── safe-next.js            # safeNext — 로그인 후 이동 경로(next) open redirect 차단 (auth/login.html·change-password.html에 인라인 사본)
+│   ├── saml-input.js           # SAMLRequest(base64 문자셋)·RelayState(1024자 이하) 형식 검증
 │   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/testjp/dev/prod 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, loginResponseTemplate.context + createTemplateCallback로 AttributeStatement 생성, debugDeliver 진단 헬퍼)
 │
 ├── auth/
