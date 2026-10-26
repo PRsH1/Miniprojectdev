@@ -62,8 +62,16 @@
     };
 
     const STORAGE_KEY = "open-api-auto-test-config-v1";
+    // localStorage 키 상수는 아래 readStoredConfig() 즉시 호출보다 먼저 선언해야 한다.
+    // (아래쪽에 두면 TDZ ReferenceError가 catch되어 저장된 프로필이 무시되고 기본값으로 시작함 — D-1)
+    const PROFILE_STORAGE_KEY = "open-api-auto-test-profiles-v1";
+    const ACTIVE_PROFILE_KEY = "open-api-auto-test-active-profile-v1";
+    const HISTORY_STORAGE_KEY = "open-api-auto-test-history-v1";
+    const DEFAULT_PROFILE_NAME = "Default";
     const storedConfig = readStoredConfig();
-    const config = merge(merge(clone(DEFAULT_CONFIG), window.OPEN_API_AUTO_TEST_CONFIG || {}), storedConfig || {});
+    // 구버전 저장본에 남은 비밀키·토큰이 메모리 config로 올라오지 않도록 제거한다 (P0-08).
+    // init()의 migrateStoredSecrets()보다 먼저 실행되므로 여기서도 걸러야 한다.
+    const config = merge(merge(clone(DEFAULT_CONFIG), window.OPEN_API_AUTO_TEST_CONFIG || {}), storedConfig ? stripSecrets(storedConfig) : {});
     const state = {
         activeCode: null,
         filteredCodes: [],
@@ -1584,10 +1592,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
     function esc(value) { return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
     function merge(target, source) { Object.keys(source || {}).forEach((key) => { const value = source[key]; if (value && typeof value === "object" && !Array.isArray(value)) { if (!target[key] || typeof target[key] !== "object" || Array.isArray(target[key])) target[key] = {}; merge(target[key], value); } else target[key] = value; }); return target; }
-    const PROFILE_STORAGE_KEY = "open-api-auto-test-profiles-v1";
-    const ACTIVE_PROFILE_KEY = "open-api-auto-test-active-profile-v1";
-    const HISTORY_STORAGE_KEY = "open-api-auto-test-history-v1";
-    const DEFAULT_PROFILE_NAME = "Default";
+    // PROFILE_STORAGE_KEY / ACTIVE_PROFILE_KEY / HISTORY_STORAGE_KEY / DEFAULT_PROFILE_NAME은 파일 상단(STORAGE_KEY 옆)에 선언
     const PROFILE_FIELD_IDS = [
         "profileSelect", "profileNameInput", "saveProfileBtn", "deleteProfileBtn", "exportProfileBtn", "importProfileBtn",
         "importProfileFile", "clearHistoryBtn", "historyList", "historyViewBanner",
