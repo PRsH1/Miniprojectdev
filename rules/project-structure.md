@@ -10,10 +10,10 @@ ProjectImprove/
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 13개 (ip-whitelist, refresh-rotation, router-errors,
+├── test/                       # node:test 단위 테스트 14개 (ip-whitelist, refresh-rotation, router-errors,
 │                               #   require-role, page-file, saml-response, saml-xss, safe-next,
-│                               #   webhook-receiver, admin-scripts, cron-cleanup, input-limits,
-│                               #   login-lockout)
+│                               #   webhook-receiver, admin-scripts, change-password, cron-cleanup,
+│                               #   input-limits, login-lockout)
 │                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
@@ -43,7 +43,7 @@ ProjectImprove/
 │   ├── signup.js               # 회원가입 요청 (admin 알림 INSERT)
 │   ├── signupStatus.js         # 가입 요청 상태 조회
 │   ├── password-reset-request.js  # 비밀번호 재설정 요청
-│   ├── change-password.js      # 비밀번호 변경
+│   ├── change-password.js      # 비밀번호 변경 (일반 변경은 현재 비밀번호 확인, 임시 비밀번호는 생략 / 성공 시 다른 refresh 폐기)
 │   │
 │   │   # ── eformsign 도구 API ────────────────────────────────
 │   ├── credentials.js          # eformsign 인증 정보 저장/조회/삭제 (GET·POST·DELETE — 수정 엔드포인트 없음)

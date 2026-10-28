@@ -55,7 +55,7 @@ const DOMAINS = {
   (세션 없음 401 `AUTH_REQUIRED` / 비활성·삭제 401 `TOKEN_INVALID` / 임시 비밀번호 403 / 역할 부족 403).
   성공 시 `{ sub, role(DB), mustChangePw, username, email }` 반환.
   - 사용처: `admin*.js` 5종(`'admin'`), `developer-notes.js`·`bug-reports.js` 관리 경로(`'admin'`), 버그 제보·내 제보(`'user'`),
-    `credentials.js`·`requestHistory.js`(`'user'`), `notifications.js`·`pusher-auth.js`(`'user'`, `allowMustChangePassword: true`)
+    `credentials.js`·`requestHistory.js`(`'user'`), `notifications.js`·`pusher-auth.js`·`change-password.js`(`'user'`, `allowMustChangePassword: true`)
   - 컨트롤러에 `jwt.verify` 기반 로컬 `requireAdmin`을 새로 만들지 말 것 — 1시간 후 401(재로그인 강요)과 강등 미반영이 재발한다.
   - `/app/*`(`auth-middleware.js`)와 `/api/me`도 같은 DB 상태를 기준으로 role·활성·임시 비밀번호를 판단한다.
 - **권한 변경 즉시 반영**: `PUT /api/admin/users/:id`에서 role 변경·비활성화 시 대상의 refresh 토큰을 폐기한다(`replaced_by` 없이 `revoked_at`만 → grace 차단).
@@ -88,6 +88,18 @@ const DOMAINS = {
 - IP 단위 제한은 코드가 아니라 **Vercel WAF rate limit** 규칙으로 건다(대시보드 설정, 사용자 작업).
   권장: `POST /api/login` IP당 10회/60초 초과 시 429(또는 Deny 10분), `POST /api/signup`·`/api/password-reset-request`
   IP당 5회/10분. Firewall 규칙은 배포와 별개라 코드 머지만으로는 적용되지 않는다.
+
+### 비밀번호 변경 (`controllers/change-password.js`, P0b-02)
+
+- 인증은 `requireRole(req, res, 'user', { allowMustChangePassword: true })` (refresh 인지·비활성 즉시 차단).
+- `GET /api/change-password` → `{ requiresCurrentPassword }`. `auth/change-password.html`이 이 값으로 현재 비밀번호 입력란을 보인다.
+- 일반 변경(`must_change_password=false`)은 `currentPassword` 필수. 틀리면 400이고 **로그인과 같은 실패 카운터**
+  (`_shared/password.js`의 `recordFailedLogin`)를 올린다 → 5회면 30분 잠금. 잠긴 동안은 검증 없이 403.
+- 임시 비밀번호 강제 변경(`must_change_password=true`)은 방금 그 비밀번호로 로그인했으므로 `currentPassword`를 요구하지 않는다.
+- 새 비밀번호가 현재(임시) 비밀번호와 같으면 400. 길이 8~256자.
+- 성공 시 `failed_login_count`·`locked_until` 초기화 + **현재 세션을 뺀** 이 사용자의 refresh 토큰을 모두 폐기한다
+  (`replaced_by` 없이 `revoked_at`만 → grace 차단). 현재 세션 = 요청 쿠키의 refresh 토큰 + 같은 요청에서 로테이션됐다면 그 후속 토큰.
+  다른 기기의 액세스 토큰(최대 1시간)은 만료 전까지 남는다. JWT 재서명(`mustChangePw:false`)·현재 refresh 로테이션은 P1-13.
 
 ### 역할(Role) 계층
 

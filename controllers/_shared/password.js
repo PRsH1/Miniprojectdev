@@ -38,8 +38,50 @@ async function verifyPassword(password, stored) {
  */
 const DUMMY_PASSWORD_HASH = `${crypto.randomBytes(16).toString('hex')}:${crypto.randomBytes(KEY_LENGTH).toString('hex')}`;
 
+// ─── 로그인 실패 잠금 (P0b-01) ─────────────────────────────────
+// 연속 실패 허용 횟수와 잠금 시간 — login.js와 change-password.js(현재 비밀번호 확인)가 공유
+const MAX_FAILED_LOGINS = 5;
+const LOCK_MINUTES = 30;
+
+/**
+ * 비밀번호 실패 1회 기록 — 원자적 증가 + 임계값 도달 시 잠금
+ * - 단일 UPDATE로 처리한다. 동시 요청도 행 잠금으로 직렬화되어 증가분이 사라지지 않는다.
+ * - 이미 잠겨 있으면 카운트·잠금 시각을 그대로 둔다(잠금 연장 없음)
+ * - 잠금이 만료된 뒤 첫 실패는 1부터 다시 센다
+ * - 없는 아이디도 같은 쿼리를 실행한다(0행) — 응답 지연을 맞추기 위함
+ * 반환: 갱신된 행 { id, failed_login_count, locked_until } 또는 null(계정 없음)
+ */
+async function recordFailedLogin(sql, username) {
+  const rows = await sql`
+    UPDATE users SET
+      failed_login_count = CASE
+        WHEN locked_until > now() THEN failed_login_count
+        WHEN locked_until IS NOT NULL THEN 1
+        ELSE COALESCE(failed_login_count, 0) + 1
+      END,
+      locked_until = CASE
+        WHEN locked_until > now() THEN locked_until
+        WHEN (CASE WHEN locked_until IS NOT NULL THEN 1 ELSE COALESCE(failed_login_count, 0) + 1 END) >= ${MAX_FAILED_LOGINS}::int
+          THEN now() + (${LOCK_MINUTES}::int * interval '1 minute')
+        ELSE NULL
+      END,
+      updated_at = now()
+    WHERE username = ${username}
+    RETURNING id, failed_login_count, locked_until
+  `;
+  return rows && rows.length ? rows[0] : null;
+}
+
+function isLockedAt(lockedUntil, now = new Date()) {
+  return Boolean(lockedUntil) && new Date(lockedUntil) > now;
+}
+
 module.exports = {
   DUMMY_PASSWORD_HASH,
+  LOCK_MINUTES,
+  MAX_FAILED_LOGINS,
   hashPassword,
+  isLockedAt,
+  recordFailedLogin,
   verifyPassword,
 };
