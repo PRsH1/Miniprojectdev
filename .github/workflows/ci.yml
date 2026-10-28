@@ -1,0 +1,65 @@
+# CI (P0b-10)
+# - test: npm ci → npm test(node:test) → npm run security:secrets(추적 파일 시크릿 점검)
+# - gitleaks: 전체 git 히스토리 시크릿 스캔(.gitleaks.toml). 현재 트리만 보는 security:secrets가
+#   놓치는 과거 커밋 유출을 잡는다. 확인된 과거 항목은 .gitleaks.toml [allowlist]에 근거와 함께 둔다.
+# DB 접속·배포는 하지 않는다(테스트는 sql 목으로 DB 없이 실행).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 단위 테스트 + 시크릿 점검
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 단위 테스트 (node --test)
+        run: npm test
+
+      - name: 추적 파일 시크릿 점검
+        run: npm run security:secrets
+
+  gitleaks:
+    name: gitleaks (전체 히스토리)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GITLEAKS_VERSION: '8.21.2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 전체 히스토리
+
+      - name: gitleaks 설치 (릴리스 체크섬 검증)
+        run: |
+          set -euo pipefail
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfL -o "$tarball" "$base/$tarball"
+          curl -sSfL -o checksums.txt "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          grep " ${tarball}\$" checksums.txt | sha256sum --check -
+          tar -xzf "$tarball" gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: gitleaks detect (전체 히스토리, .gitleaks.toml)
+        run: gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --verbose

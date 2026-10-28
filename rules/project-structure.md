@@ -8,7 +8,8 @@ ProjectImprove/
 ├── vercel.json                 # Vercel 배포 라우팅 설정
 ├── package.json
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
-├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
+├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙 (+ 확인된 과거 커밋·DUMMY 값 allowlist)
+├── .github/workflows/ci.yml    # CI: push·PR마다 npm ci → npm test → security:secrets + gitleaks 전체 히스토리
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
 ├── test/                       # node:test 단위 테스트 16개 (ip-whitelist, refresh-rotation, router-errors,
 │                               #   require-role, page-file, saml-response, saml-xss, safe-next,

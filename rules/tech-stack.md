@@ -10,6 +10,10 @@
   `saml-response`, `saml-xss`, `safe-next`, `webhook-receiver`, `admin-scripts`, `change-password`,
   `credential-crypto`, `cron-cleanup`, `input-limits`, `login-lockout`, `request-history`).
   컨트롤러 테스트는 `test/helpers/http-mocks.js`로 req/res와 `getDb()`를 목으로 바꿔 DB 없이 실행한다. 프론트엔드 테스트는 없음
+- **CI:** GitHub Actions `.github/workflows/ci.yml` (P0b-10) — push·PR마다 Node 24.x로 `npm ci` → `npm test` →
+  `npm run security:secrets`, 별도 job에서 gitleaks 8.21.2(릴리스 체크섬 검증)로 **전체 git 히스토리**를 `.gitleaks.toml` 기준 스캔.
+  과거에 확인·조치된 항목(교체된 SAML 키 커밋 등)과 `DUMMY-` 테스트 값은 `.gitleaks.toml` `[allowlist]`에 근거 주석과 함께 둔다.
+  테스트용 가짜 시크릿은 항상 `DUMMY-` 접두어로 쓴다(두 스캐너 공통 예외)
 - **프론트엔드:** 순수 HTML/CSS/JS + jQuery + jsrsasign
 - **DB:** Postgres (Neon) — `@neondatabase/serverless` ^0.10.4, `controllers/_shared/db.js`의 `sql` 태그 사용
 - **인증:** JWT (`jsonwebtoken` ^9.0.2) — 액세스/리프레시 토큰 + httpOnly 쿠키
