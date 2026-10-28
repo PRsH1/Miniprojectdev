@@ -62,8 +62,16 @@
     };
 
     const STORAGE_KEY = "open-api-auto-test-config-v1";
+    // localStorage 키 상수는 아래 readStoredConfig() 즉시 호출보다 먼저 선언해야 한다.
+    // (아래쪽에 두면 TDZ ReferenceError가 catch되어 저장된 프로필이 무시되고 기본값으로 시작함 — D-1)
+    const PROFILE_STORAGE_KEY = "open-api-auto-test-profiles-v1";
+    const ACTIVE_PROFILE_KEY = "open-api-auto-test-active-profile-v1";
+    const HISTORY_STORAGE_KEY = "open-api-auto-test-history-v1";
+    const DEFAULT_PROFILE_NAME = "Default";
     const storedConfig = readStoredConfig();
-    const config = merge(merge(clone(DEFAULT_CONFIG), window.OPEN_API_AUTO_TEST_CONFIG || {}), storedConfig || {});
+    // 구버전 저장본에 남은 비밀키·토큰이 메모리 config로 올라오지 않도록 제거한다 (P0-08).
+    // init()의 migrateStoredSecrets()보다 먼저 실행되므로 여기서도 걸러야 한다.
+    const config = merge(merge(clone(DEFAULT_CONFIG), window.OPEN_API_AUTO_TEST_CONFIG || {}), storedConfig ? stripSecrets(storedConfig) : {});
     const state = {
         activeCode: null,
         filteredCodes: [],
@@ -166,6 +174,11 @@
             "sortGroupBtn", "sortOpaBtn",
             "reportModal", "reportModalBody", "downloadReportMarkdownBtn", "downloadReportHtmlBtn", "closeReportBtn"
         ].forEach((id) => { els[id] = document.getElementById(id); });
+
+        // 이전 버전이 저장한 비밀키·토큰 제거 (1회 마이그레이션, 이후에는 저장 경로에서 항상 제외됨)
+        if (migrateStoredSecrets()) {
+            console.info("[OpenAPIAutoTest] localStorage에 남아 있던 비밀키·토큰을 제거했습니다. 비밀키는 [인증 저장]으로 서버에 암호화 저장하세요.");
+        }
 
         Object.entries(config.environments || {}).forEach(([key, value]) => {
             els.envSelect.insertAdjacentHTML("beforeend", `<option value="${esc(key)}">${esc(value.label || key)}</option>`);
@@ -1579,10 +1592,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
     function esc(value) { return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
     function clone(value) { return JSON.parse(JSON.stringify(value)); }
     function merge(target, source) { Object.keys(source || {}).forEach((key) => { const value = source[key]; if (value && typeof value === "object" && !Array.isArray(value)) { if (!target[key] || typeof target[key] !== "object" || Array.isArray(target[key])) target[key] = {}; merge(target[key], value); } else target[key] = value; }); return target; }
-    const PROFILE_STORAGE_KEY = "open-api-auto-test-profiles-v1";
-    const ACTIVE_PROFILE_KEY = "open-api-auto-test-active-profile-v1";
-    const HISTORY_STORAGE_KEY = "open-api-auto-test-history-v1";
-    const DEFAULT_PROFILE_NAME = "Default";
+    // PROFILE_STORAGE_KEY / ACTIVE_PROFILE_KEY / HISTORY_STORAGE_KEY / DEFAULT_PROFILE_NAME은 파일 상단(STORAGE_KEY 옆)에 선언
     const PROFILE_FIELD_IDS = [
         "profileSelect", "profileNameInput", "saveProfileBtn", "deleteProfileBtn", "exportProfileBtn", "importProfileBtn",
         "importProfileFile", "clearHistoryBtn", "historyList", "historyViewBanner",
@@ -1634,8 +1644,54 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         return {};
     }
 
+    // ── 비밀값 저장 제외 (P0-08) ─────────────────────────────────────────
+    // 프로필·설정·Export에는 비밀키(ECDSA hex)와 Access Token을 절대 기록하지 않는다.
+    // 비밀키는 설정 모달의 [인증 저장](서버 AES-256-GCM 암호화)으로만 보관한다.
+    // 메모리상의 config(현재 탭 실행용)는 그대로 두고, 저장되는 사본에서만 제거한다.
+    function stripSecrets(cfg) {
+        const copy = clone(cfg || {});
+        if (copy.auth && typeof copy.auth === "object") {
+            copy.auth.secretKey = "";
+            copy.auth.accessToken = "";
+        }
+        return copy;
+    }
+
+    function hasStoredSecret(cfg) {
+        return !!(cfg && cfg.auth && (has(cfg.auth.secretKey) || has(cfg.auth.accessToken)));
+    }
+
+    function writeStoredConfig(cfg) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(stripSecrets(cfg)));
+    }
+
+    // 이전 버전이 localStorage에 남긴 비밀키·토큰을 1회 제거한다 (페이지 로드 시)
+    function migrateStoredSecrets() {
+        let removed = false;
+        try {
+            const profiles = readProfiles();
+            if (Object.values(profiles).some(hasStoredSecret)) {
+                writeProfiles(profiles);
+                removed = true;
+            }
+            const legacyRaw = localStorage.getItem(STORAGE_KEY);
+            if (legacyRaw) {
+                const legacy = JSON.parse(legacyRaw);
+                if (hasStoredSecret(legacy)) {
+                    writeStoredConfig(legacy);
+                    removed = true;
+                }
+            }
+        } catch (error) {
+            return false;
+        }
+        return removed;
+    }
+
     function writeProfiles(profiles) {
-        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+        const safeProfiles = {};
+        Object.keys(profiles || {}).forEach((name) => { safeProfiles[name] = stripSecrets(profiles[name]); });
+        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(safeProfiles));
     }
 
     function readHistoryMap() {
@@ -1941,14 +1997,14 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         const profiles = readProfiles();
         profiles[profileName] = finalConfig;
         writeProfiles(profiles);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalConfig));
+        writeStoredConfig(finalConfig);
         replaceConfig(finalConfig);
         setCurrentProfileName(profileName);
         populateProfileSelect();
         populateSettingsFormFromConfig();
         updateEditorFromConfig();
         refreshAll();
-        setSettingsStatus(`프로필 "${profileName}"을 저장했습니다.`);
+        setSettingsStatus(`프로필 "${profileName}"을 저장했습니다. (비밀키·토큰은 저장되지 않음 — [인증 저장]을 사용하세요)`);
     }
 
     function deleteCurrentProfile() {
@@ -2012,7 +2068,8 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         const payload = {
             profileName,
             exportedAt: new Date().toISOString(),
-            config: clone(config)
+            // Export 파일에도 비밀키·토큰을 넣지 않는다
+            config: stripSecrets(config)
         };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
@@ -2023,7 +2080,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         link.click();
         link.remove();
         URL.revokeObjectURL(url);
-        setSettingsStatus(`프로필 "${profileName}"을 export 했습니다.`);
+        setSettingsStatus(`프로필 "${profileName}"을 export 했습니다. (비밀키·토큰 제외)`);
     }
 
     function importProfileFromFile(file) {
@@ -2037,8 +2094,9 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 const finalConfig = merge(clone(baseDefaultConfig()), importedConfig);
                 const profiles = readProfiles();
                 profiles[profileName] = finalConfig;
+                // 구버전 Export 파일에 비밀키가 있어도 저장소에는 기록하지 않는다 (현재 탭 메모리에만 반영)
                 writeProfiles(profiles);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(finalConfig));
+                writeStoredConfig(finalConfig);
                 setCurrentProfileName(profileName);
                 replaceConfig(finalConfig);
                 populateProfileSelect();

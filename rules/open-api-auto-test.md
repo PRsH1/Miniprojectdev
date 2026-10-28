@@ -92,6 +92,13 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 
 **동기화 흐름:** 불러오기 시 `credential-panel.js`의 `_setVal()`이 `change`+`input` 이벤트를 dispatch → `bindSettingsInputs()`에서 등록된 `syncConfigFromForm()` 자동 트리거 → config + auth 패널 + readiness 배지 전체 동기화. 추가 코드 불필요.
 
+### 프로필 저장 범위 (비밀값 제외)
+
+- 프로필 저장(`writeProfiles`)·설정 저장(`writeStoredConfig`)·프로필 Export는 **`auth.secretKey`(ECDSA 개인키 hex)와 `auth.accessToken`을 항상 빈 문자열로 바꿔 기록**한다(`stripSecrets()`). API Key·Member ID·환경·data 값은 그대로 저장된다.
+- 메모리상의 `config`(현재 탭 실행용)는 바꾸지 않으므로, 저장 직후에도 같은 탭에서는 그대로 실행된다. 새로고침·프로필 전환 후에는 비밀키를 다시 입력하거나 **[인증 불러오기]**로 서버(AES-256-GCM) 저장본을 불러온다.
+- 1회 마이그레이션: `init()`에서 `migrateStoredSecrets()`가 이전 버전이 남긴 `open-api-auto-test-profiles-v1`/`open-api-auto-test-config-v1`의 비밀값을 제거한다. 구버전 Export 파일을 Import하면 비밀값은 현재 탭 메모리에만 반영되고 저장소에는 기록되지 않는다.
+- 설정 모달 프로필 툴바 아래에 "비밀키는 [인증 저장]으로" 안내 문구가 있다.
+
 ### 사용 가이드
 
 가이드 모달 내용은 `OpenAPIAutoTest.js` 하단의 `hydrateGuideContent()` 함수에서 주입한다.

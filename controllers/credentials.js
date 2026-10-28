@@ -6,8 +6,9 @@
 
 const crypto = require('crypto');
 const { getDb } = require('./_shared/db');
-const { resolveUser } = require('./_shared/session');
+const { requireRole } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { requireUuid } = require('./_shared/validate');
 
 // ─── AES-256-GCM 암호화 유틸 ──────────────────────────────────────────────
 
@@ -46,13 +47,9 @@ function decrypt(stored) {
 }
 
 module.exports = async function credentialsController(req, res) {
-  const decoded = await resolveUser(req, res);
-  if (!decoded) {
-    return respondError(req, res, 401, {
-      code: 'AUTH_REQUIRED',
-      logMessage: 'Credentials API requires authentication',
-    });
-  }
+  // refresh 인지 + 비활성화·임시 비밀번호 계정 즉시 차단 (실패 시 401/403 응답 완료)
+  const decoded = await requireRole(req, res, 'user');
+  if (!decoded) return undefined;
 
   const userId = decoded.sub;
   const sql = getDb();
@@ -61,6 +58,9 @@ module.exports = async function credentialsController(req, res) {
   // ID 추출 (경로: /api/credentials/:id)
   const idMatch = urlPath.match(/^\/api\/credentials\/([^/]+)$/);
   const credId = idMatch ? idMatch[1] : null;
+
+  // 잘못된 UUID가 DB 예외(500)로 번지지 않도록 사전 검증
+  if (credId && !requireUuid(req, res, credId, '크리덴셜 ID')) return undefined;
 
   // GET /api/credentials — 목록 조회
   if (req.method === 'GET' && !credId) {
@@ -132,6 +132,14 @@ module.exports = async function credentialsController(req, res) {
         message: '유효하지 않은 환경 값입니다.',
         reason: 'environment는 op_saas, csap, custom 중 하나여야 합니다.',
         action: '환경 값을 다시 선택하세요.',
+      });
+    }
+    if (!['signature', 'bearer'].includes(secret_method)) {
+      return respondError(req, res, 400, {
+        code: 'VALIDATION_FAILED',
+        message: '유효하지 않은 인증 방식입니다.',
+        reason: 'secret_method는 signature, bearer 중 하나여야 합니다.',
+        action: '인증 방식을 다시 선택하세요.',
       });
     }
 

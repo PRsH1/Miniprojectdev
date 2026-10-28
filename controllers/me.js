@@ -76,8 +76,9 @@ module.exports = async function handler(req, res) {
 
   // ─── 3. 인증 사용자: username 조회 ───────────────────────────
   try {
+    // role은 JWT가 아니라 DB의 현재 값을 반환 (강등 즉시 카드 가시성·관리자 버튼에 반영)
     const rows = await sql`
-      SELECT username FROM users
+      SELECT username, role FROM users
       WHERE id = ${decoded.sub} AND is_active = true LIMIT 1
     `;
     if (!rows || rows.length === 0) {
@@ -86,7 +87,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       id: decoded.sub,
       username: rows[0].username,
-      role: decoded.role,
+      role: rows[0].role,
       protected_pages: protectedPages,
       pusher_key: process.env.PUSHER_KEY || null,
       pusher_cluster: process.env.PUSHER_CLUSTER || null,

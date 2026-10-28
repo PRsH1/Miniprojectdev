@@ -4,19 +4,20 @@
  */
 
 const { getDb } = require('./_shared/db');
-const { resolveUser } = require('./_shared/session');
+const { requireRole } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 
 const HISTORY_MAX = 100;
+const ENTRY_ID_MAX_LENGTH = 20;
+
+function isValidEntryId(value) {
+  return typeof value === 'string' && value.length >= 1 && value.length <= ENTRY_ID_MAX_LENGTH;
+}
 
 module.exports = async function requestHistoryController(req, res) {
-  const decoded = await resolveUser(req, res);
-  if (!decoded) {
-    return respondError(req, res, 401, {
-      code: 'AUTH_REQUIRED',
-      logMessage: 'RequestHistory API requires authentication',
-    });
-  }
+  // refresh 인지 + 비활성화·임시 비밀번호 계정 즉시 차단 (실패 시 401/403 응답 완료)
+  const decoded = await requireRole(req, res, 'user');
+  if (!decoded) return undefined;
 
   const userId = decoded.sub;
   const sql = getDb();
@@ -24,6 +25,16 @@ module.exports = async function requestHistoryController(req, res) {
 
   const idMatch = urlPath.match(/^\/api\/request-history\/([^/]+)$/);
   const entryId = idMatch ? idMatch[1] : null;
+
+  // id 컬럼은 VARCHAR(20) — 범위를 벗어난 값은 DB 예외(500) 대신 400으로 응답
+  if (entryId !== null && !isValidEntryId(entryId)) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: '히스토리 ID 형식이 올바르지 않습니다.',
+      reason: `id는 1~${ENTRY_ID_MAX_LENGTH}자 문자열이어야 합니다.`,
+      action: '목록을 새로고침한 뒤 다시 시도하세요.',
+    });
+  }
 
   if (req.method === 'GET' && !entryId) {
     const rows = await sql`
@@ -58,6 +69,14 @@ module.exports = async function requestHistoryController(req, res) {
         code: 'VALIDATION_FAILED',
         message: '필수 항목이 누락되었습니다.',
         reason: 'id와 name은 필수입니다.',
+        action: '요청 데이터를 확인하세요.',
+      });
+    }
+    if (!isValidEntryId(id)) {
+      return respondError(req, res, 400, {
+        code: 'VALIDATION_FAILED',
+        message: '히스토리 ID 형식이 올바르지 않습니다.',
+        reason: `id는 1~${ENTRY_ID_MAX_LENGTH}자 문자열이어야 합니다.`,
         action: '요청 데이터를 확인하세요.',
       });
     }

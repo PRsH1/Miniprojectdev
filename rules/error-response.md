@@ -50,5 +50,12 @@
 ### 구현 위치
 
 - 공통 유틸: `controllers/_shared/respond-error.js`
-- 중앙 라우터: `api/index.js`
+- 중앙 라우터: `api/index.js` — 모든 경로(`/app/*`, cron, notifications, pusher, credentials,
+  request-history, admin, 일반 컨트롤러)를 `dispatch()` 하나로 묶고 **단일 try/catch**로 감싼다.
+  컨트롤러에서 처리되지 않은 예외는 Vercel 기본 500이 아니라 `INTERNAL_ERROR`(API는 JSON,
+  페이지는 HTML)로 응답된다. 응답이 이미 시작된 뒤(`res.headersSent`)의 예외는 로그만 남긴다.
+  새 분기를 추가할 때는 반드시 `return await handler(req, res)` 형태로 호출할 것(`await` 누락 시 catch를 벗어남).
+- 입력 사전 검증: `controllers/_shared/validate.js` — 경로 id(UUID/INTEGER), `page`(양의 정수),
+  날짜(`YYYY-MM-DD`)를 DB에 넘기기 전에 확인해 형식 오류를 500 대신 400 `VALIDATION_FAILED`로 응답한다.
+  (`requireUuid(req, res, id, '라벨')`은 실패 시 응답까지 보내고 `false` 반환)
 - 페이지 인증/권한 처리: `controllers/_shared/auth-middleware.js`

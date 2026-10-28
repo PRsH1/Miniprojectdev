@@ -45,12 +45,13 @@ ProjectImprove/
 │   ├── _shared/
 │   │   ├── db.js                      # Neon DB 커넥션 풀
 │   │   ├── jwt.js                     # JWT sign/verify 유틸
-│   │   ├── session.js                 # resolveUser — API용 세션 해석 (만료 시 리프레시 로테이션)
+│   │   ├── session.js                 # resolveUser(세션 해석·리프레시) + requireRole(DB role 기반 API 인가)
+│   │   ├── roles.js                   # 역할 계층 비교 + users 현재 상태 조회
+│   │   ├── validate.js                # 입력 사전 검증 (UUID/INTEGER id, page, 날짜)
+│   │   ├── page-file.js               # 보호 페이지 file_path 검증 (private/·utils/ .html만)
 │   │   ├── auth-middleware.js         # JWT 검증 + 리프레시(원자적 로테이션) + role 체크 통합
 │   │   ├── audit.js                   # audit_logs INSERT 헬퍼
 │   │   ├── respond-error.js           # HTML/JSON 에러 응답 표준화
-│   │   ├── protected-pages-config.js  # (레거시) 구 보호 페이지 설정 — seed 참조용
-│   │   ├── protectedPage.js           # 보호 페이지 공통 핸들러
 │   │   ├── pusher.js                  # Pusher 인스턴스 공통 모듈 (알림 + Webhook 공용)
 │   │   └── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
 │   ├── login.js                  # DB 기반 로그인 (JWT 발급)
@@ -61,7 +62,7 @@ ProjectImprove/
 │   ├── signupStatus.js           # 회원가입 요청 상태 조회
 │   ├── change-password.js        # 강제 비밀번호 변경 처리
 │   ├── password-reset-request.js # 비밀번호 재설정 요청 (관리자 알림)
-│   ├── adminPage.js              # /app/admin 페이지 서빙
+│   ├── adminPage.js              # /app/admin 참조용 래퍼 (라우터 미등록 — 실제 서빙은 auth-middleware)
 │   ├── adminUsers.js             # 사용자 CRUD + 잠금해제 + 비밀번호 초기화
 │   ├── adminPages.js             # 보호 페이지 동적 설정 CRUD
 │   ├── adminAuditLogs.js         # 감사 로그 조회
@@ -79,12 +80,8 @@ ProjectImprove/
 │   ├── webhook-receiver.js       # 웹훅 수신 (Pusher 트리거)
 │   ├── sso-login.js              # SAML SSO 로그인 폼
 │   ├── idp-initiated-login.js    # IDP 시작 SAML 플로우
-│   ├── idptestauth.js            # IdP 테스트 페이지
 │   ├── metadata.js               # SAML 메타데이터 엔드포인트
-│   ├── send.js                   # SMTP 이메일 테스트
-│   ├── memberV2Page.js           # ★ 멤버/그룹 관리 V2 페이지
-│   ├── OpenAPIAutoTest.js        # OPA 번호 기준 자동 테스트 페이지
-│   └── templatecopy.js           # 템플릿 복사 유틸리티
+│   └── send.js                   # SMTP 이메일 테스트
 ├── lib/
 │   └── saml.js                   # SAML IDP/SP 설정
 ├── auth/
@@ -221,7 +218,8 @@ ProjectImprove/
 > 위 표는 `scripts/migrate.js` 시드 기준이다. 실제 역할은 DB(`protected_pages`)가 정본이며
 > Admin 콘솔에서 동적으로 추가/변경할 수 있다.
 > 기존 경로(`/memberV2`, `/templatecopy`, `/OpenAPIAutoTest`, `/idptestauth`)는 `/app/*`으로 301 리다이렉트됨.
-> `/api/memberV2Page` 등 레거시 컨트롤러 경로는 `protected_pages`에 해당 행이 없어 404를 반환한다.
+> 레거시 비밀번호 보호 컨트롤러(`/api/memberV2Page`, `/api/templatecopy`, `/api/idptestauth`, `/api/OpenAPIAutoTest`)는
+> 2026-10에 코드에서 제거되어 404 JSON을 반환한다. 보호 페이지는 `/app/*`로만 접근한다.
 
 ### 문서 관리
 
@@ -356,12 +354,10 @@ PUSHER_KEY=
 PUSHER_SECRET=
 PUSHER_CLUSTER=
 
-# ─── 레거시 비밀번호 방식 (제거 예정) ─────────────────────
-# 아래 3개는 protected-pages-config.js가 참조 — 레거시 컨트롤러 경로에서만 사용
-MEMBER_PAGE_PASSWORD=
-TEMPLATECOPY_PAGE_PASSWORD=
-IDP_TEST_PAGE_PASSWORD=
-AUTH_COOKIE_VALUE=          # 코드 참조 없음, 삭제 가능
+# ─── 삭제 대상 (레거시 비밀번호 방식 — 코드에서 제거됨) ────
+# 어떤 코드도 읽지 않는다. Vercel 대시보드와 .env.local에서 삭제할 것.
+# MEMBER_PAGE_PASSWORD / TEMPLATECOPY_PAGE_PASSWORD / IDP_TEST_PAGE_PASSWORD
+# APIAUTOTEST_PAGE_PASSWORD / AUTH_COOKIE_VALUE
 ```
 
 

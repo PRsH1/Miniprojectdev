@@ -21,9 +21,10 @@ ADMIN_EMAIL=                # 생성할 admin 이메일
 # ─── 런타임 자동 설정 ─────────────────────────────────────
 # NODE_ENV — Vercel이 자동 설정. 쿠키 Secure 플래그 등 분기에 사용 (직접 등록 불필요)
 
-# ─── 레거시 인증 (구 비밀번호 방식) — 전부 미사용, Vercel에서 삭제 가능 ──
-# protected-pages-config.js에 이름만 남아 있으나 protectedPage.js가 config를 무시하고
-# auth-middleware(DB 기반)로 위임하므로 어떤 코드도 이 값을 읽지 않는다.
+# ─── 삭제 대상 (레거시 비밀번호 보호 방식) — 코드에서 완전히 제거됨 ──
+# 관련 컨트롤러(protectedPage.js, protected-pages-config.js 등)를 2026-10에 삭제했다(Q11).
+# 아래 5개는 어떤 코드도 읽지 않는다. Vercel 대시보드(Production/Preview/Development)와
+# 로컬 .env.local에서 삭제할 것 — 대시보드 삭제는 사용자 작업.
 # MEMBER_PAGE_PASSWORD / TEMPLATECOPY_PAGE_PASSWORD / IDP_TEST_PAGE_PASSWORD
 # APIAUTOTEST_PAGE_PASSWORD / AUTH_COOKIE_VALUE
 

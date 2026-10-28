@@ -4,20 +4,10 @@
  * GET /api/admin/audit-logs
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
-
-function requireAdmin(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) { respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Admin audit API requires authentication' }); return null; }
-  let decoded;
-  try { decoded = jwt.verify(authToken, process.env.JWT_SECRET); } catch (error) { respondError(req, res, 401, { code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', error, logMessage: 'Admin audit token verification failed' }); return null; }
-  if (decoded.role !== 'admin') { respondError(req, res, 403, { code: 'FORBIDDEN', message: '관리자 권한이 필요합니다.', reason: '현재 계정은 감사 로그 조회 API를 사용할 수 없습니다.', action: '관리자 계정으로 로그인하세요.', logMessage: 'Admin role required for audit API' }); return null; }
-  return decoded;
-}
+const { requireRole } = require('./_shared/session');
+const { PG_INT_MAX, isIsoDate, parsePositiveInt } = require('./_shared/validate');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -25,20 +15,39 @@ module.exports = async function handler(req, res) {
     return methodNotAllowed(req, res, ['GET']);
   }
 
-  const decoded = requireAdmin(req, res);
+  const decoded = await requireRole(req, res, 'admin');
   if (!decoded) return;
 
   const sql = getDb();
   const qs = new URL(req.url, 'http://localhost').searchParams;
 
-  const page = Math.max(1, parseInt(qs.get('page') || '1', 10));
   const limit = 20;
+  // page는 양의 정수만 허용 — 'abc' 등은 NaN OFFSET → SQL 오류(500)가 되므로 400으로 차단
+  // 상한은 OFFSET이 INTEGER 범위를 넘지 않도록 제한
+  const page = parsePositiveInt(qs.get('page'), 1, Math.floor(PG_INT_MAX / limit));
+  if (page === null) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: 'page 값이 올바르지 않습니다.',
+      reason: 'page는 1 이상의 정수여야 합니다.',
+      action: 'page 파라미터를 확인한 뒤 다시 시도하세요.',
+    });
+  }
   const offset = (page - 1) * limit;
 
   const usernameFilter = qs.get('username') || '';
   const actionFilter = qs.get('action') || '';
   const dateFrom = qs.get('from') || '';
   const dateTo = qs.get('to') || '';
+
+  if ((dateFrom && !isIsoDate(dateFrom)) || (dateTo && !isIsoDate(dateTo))) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: '날짜 필터 형식이 올바르지 않습니다.',
+      reason: 'from/to는 YYYY-MM-DD 형식의 실제 날짜여야 합니다.',
+      action: '날짜를 다시 선택한 뒤 조회하세요.',
+    });
+  }
 
   // 동적 필터 조건 (neon 태그드 템플릿 리터럴 한계로 조건 분기)
   // 조건 조합: username, action, date_from, date_to 각각 선택적 적용

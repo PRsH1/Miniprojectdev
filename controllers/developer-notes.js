@@ -10,51 +10,14 @@
  * DELETE /api/developer-notes/:id
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { requireRole } = require('./_shared/session');
+const { isPgIntId } = require('./_shared/validate');
 
 const ALLOWED_SORT = ['created_at', 'updated_at', 'pinned'];
 const ALLOWED_DIR = ['ASC', 'DESC'];
-
-function requireAdmin(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies.auth_token;
-  if (!authToken) {
-    respondError(req, res, 401, {
-      code: 'AUTH_REQUIRED',
-      logMessage: 'Developer notes admin API requires authentication',
-    });
-    return null;
-  }
-
-  let decoded;
-  try {
-    decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch (error) {
-    respondError(req, res, 401, {
-      code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
-      error,
-      logMessage: 'Developer notes admin token verification failed',
-    });
-    return null;
-  }
-
-  if (decoded.role !== 'admin') {
-    respondError(req, res, 403, {
-      code: 'FORBIDDEN',
-      message: '관리자 권한이 필요합니다.',
-      reason: '현재 계정은 개발자 노트 관리 API를 사용할 수 없습니다.',
-      action: '관리자 계정으로 로그인하세요.',
-      logMessage: 'Admin role required for developer notes API',
-    });
-    return null;
-  }
-
-  return decoded;
-}
 
 function normalizePinned(value) {
   return value === true || value === 'true' || value === 1 || value === '1';
@@ -133,6 +96,17 @@ module.exports = async function handler(req, res) {
   const noteMatch = rawPath.match(/^\/api\/developer-notes\/(\d+)$/);
   const noteUpdateMatch = rawPath.match(/^\/api\/developer-notes\/(\d+)\/update$/);
 
+  // INTEGER 범위를 벗어난 id는 존재할 수 없으므로 DB 예외 대신 404
+  const rawNoteId = (noteMatch || noteUpdateMatch || [])[1];
+  if (rawNoteId !== undefined && !isPgIntId(rawNoteId)) {
+    return respondError(req, res, 404, {
+      code: 'RESOURCE_NOT_FOUND',
+      message: '개발자 노트를 찾을 수 없습니다.',
+      reason: '대상 노트가 없거나 이미 삭제되었습니다.',
+      action: '목록을 새로고침한 뒤 다시 시도하세요.',
+    });
+  }
+
   if (req.method === 'GET' && noteMatch) {
     const id = parseInt(noteMatch[1], 10);
     const rows = await sql`
@@ -155,7 +129,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'POST' && rawPath === '/api/developer-notes') {
-    const decoded = requireAdmin(req, res);
+    const decoded = await requireRole(req, res, 'admin');
     if (!decoded) return;
 
     const body = req.body || {};
@@ -192,7 +166,7 @@ module.exports = async function handler(req, res) {
   }
 
   if ((req.method === 'PATCH' && noteMatch) || (req.method === 'POST' && noteUpdateMatch)) {
-    const decoded = requireAdmin(req, res);
+    const decoded = await requireRole(req, res, 'admin');
     if (!decoded) return;
 
     const id = parseInt((noteMatch || noteUpdateMatch)[1], 10);
@@ -267,7 +241,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'DELETE' && noteMatch) {
-    const decoded = requireAdmin(req, res);
+    const decoded = await requireRole(req, res, 'admin');
     if (!decoded) return;
 
     const id = parseInt(noteMatch[1], 10);

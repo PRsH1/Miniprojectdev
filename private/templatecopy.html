@@ -83,7 +83,11 @@
       <button class="primary" id="save">로컬 저장</button>
       <button id="load">불러오기</button>
       <button class="warn" id="clear">초기화</button>
-      <span class="muted">브라우저 <span class="kbd">localStorage</span>에 저장됩니다.</span>
+      <label class="muted" style="display:inline-flex;align-items:center;gap:6px;margin:0;">
+        <input type="checkbox" id="rememberTokens" style="width:auto;margin:0;" />
+        토큰을 이 브라우저에 기억 (localStorage)
+      </label>
+      <span class="muted">회사·멤버·폼 ID는 <span class="kbd">localStorage</span>에, 토큰은 기본적으로 이 탭에만(<span class="kbd">sessionStorage</span>) 저장됩니다.</span>
     </div>
 
     <div class="section">
@@ -132,17 +136,55 @@
       refreshToken: 'efs_refreshToken'
     };
 
+    // 토큰(대상 회사 웹 세션)은 민감 정보 — 기본은 sessionStorage(탭을 닫으면 삭제),
+    // "이 브라우저에 기억"을 켠 경우에만 localStorage에 저장한다 (P0-08).
+    const TOKEN_FIELDS = ['accessToken', 'refreshToken'];
+    const REMEMBER_KEY = 'efs_rememberTokens';
+
+    function isRememberOn() {
+      try { return localStorage.getItem(REMEMBER_KEY) === '1'; } catch (e) { return false; }
+    }
+
+    function tokenStore(remember) {
+      return remember ? localStorage : sessionStorage;
+    }
+
+    // 이전 버전이 동의 없이 localStorage에 남긴 토큰을 이 탭(sessionStorage)으로 옮기고 localStorage에서 삭제
+    function migrateLegacyTokens() {
+      try {
+        if (localStorage.getItem(REMEMBER_KEY) !== null) return;
+        let moved = false;
+        for (const id of TOKEN_FIELDS) {
+          const v = localStorage.getItem(stateKeys[id]);
+          if (v === null) continue;
+          if (v && !sessionStorage.getItem(stateKeys[id])) sessionStorage.setItem(stateKeys[id], v);
+          localStorage.removeItem(stateKeys[id]);
+          moved = moved || !!v;
+        }
+        if (moved) toast('보안을 위해 저장된 토큰을 이 탭에서만 유지하도록 옮겼습니다. 계속 기억하려면 체크박스를 켜고 다시 저장하세요.');
+      } catch (e) {}
+    }
+
     function saveLocal() {
       const hostSel = document.querySelector('#host');
       const hostVal = (hostSel && hostSel.value === 'custom')
         ? (document.querySelector('#hostCustom').value || '')
         : (hostSel ? hostSel.value : 'kr-service.eformsign.com');
+      const remember = !!(document.querySelector('#rememberTokens') || {}).checked;
       localStorage.setItem(stateKeys.host, hostVal);
+      localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
       for (const id of Object.keys(stateKeys)) {
         if (id === 'host') continue;
-        localStorage.setItem(stateKeys[id], (document.querySelector('#' + id).value || ''));
+        const value = (document.querySelector('#' + id).value || '');
+        if (TOKEN_FIELDS.includes(id)) {
+          tokenStore(remember).setItem(stateKeys[id], value);
+          // 반대편 저장소의 사본은 제거 (기억 해제 시 localStorage 토큰 삭제)
+          tokenStore(!remember).removeItem(stateKeys[id]);
+        } else {
+          localStorage.setItem(stateKeys[id], value);
+        }
       }
-      toast('저장 완료');
+      toast(remember ? '저장 완료 (토큰은 이 브라우저에 기억됨)' : '저장 완료 (토큰은 이 탭을 닫으면 삭제됨)');
     }
 
     function loadLocal() {
@@ -157,9 +199,14 @@
         sel.value = 'custom';
         if (custom) { custom.style.display = 'block'; custom.value = savedHost; }
       }
+      const remember = isRememberOn();
+      const rememberEl = document.querySelector('#rememberTokens');
+      if (rememberEl) rememberEl.checked = remember;
       for (const id of Object.keys(stateKeys)) {
         if (id === 'host') continue;
-        const v = localStorage.getItem(stateKeys[id]) || '';
+        const v = TOKEN_FIELDS.includes(id)
+          ? (tokenStore(remember).getItem(stateKeys[id]) || '')
+          : (localStorage.getItem(stateKeys[id]) || '');
         document.querySelector('#' + id).value = v;
       }
       toast('불러오기 완료');
@@ -168,9 +215,13 @@
     function clearLocal() {
       for (const id of Object.keys(stateKeys)) {
         localStorage.removeItem(stateKeys[id]);
+        sessionStorage.removeItem(stateKeys[id]);
         const el = document.querySelector("#" + id);
         if (el) el.value = '';
       }
+      localStorage.removeItem(REMEMBER_KEY);
+      const rememberEl = document.querySelector('#rememberTokens');
+      if (rememberEl) rememberEl.checked = false;
       toast('초기화 완료');
     }
 
@@ -388,7 +439,8 @@
       if (!isCustom) $('#hostCustom').value = '';
     };
 
-    // 초기 자동 불러오기
+    // 초기 자동 불러오기 (구버전 localStorage 토큰 정리 후)
+    migrateLegacyTokens();
     loadLocal();
   </script>
 <script src="https://js.pusher.com/8.0/pusher.min.js"></script>

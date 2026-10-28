@@ -12,33 +12,12 @@
  * POST   /api/admin/ip-whitelist/test         → IP 허용 여부 테스트
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { respondError } = require('./_shared/respond-error');
+const { requireRole } = require('./_shared/session');
+const { requireUuid } = require('./_shared/validate');
 const { invalidateCache, isIpWhitelistEnabled } = require('./_shared/ip-whitelist');
-
-function requireAdmin(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) {
-    respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Admin ip-whitelist API requires authentication' });
-    return null;
-  }
-  let decoded;
-  try {
-    decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch (error) {
-    respondError(req, res, 401, { code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', error, logMessage: 'Admin ip-whitelist token verification failed' });
-    return null;
-  }
-  if (decoded.role !== 'admin') {
-    respondError(req, res, 403, { code: 'FORBIDDEN', message: '관리자 권한이 필요합니다.', reason: '현재 계정은 IP 화이트리스트 관리 API를 사용할 수 없습니다.', action: '관리자 계정으로 로그인하세요.', logMessage: 'Admin role required for ip-whitelist API' });
-    return null;
-  }
-  return decoded;
-}
 
 function isValidIpCidr(value) {
   const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}(\/([0-9]|[12]\d|3[0-2]))?$/;
@@ -49,7 +28,7 @@ function isValidIpCidr(value) {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const decoded = requireAdmin(req, res);
+  const decoded = await requireRole(req, res, 'admin');
   if (!decoded) return;
 
   const rawPath = req.url.split('?')[0];
@@ -97,6 +76,7 @@ module.exports = async function handler(req, res) {
   const rulesPatchMatch = rawPath.match(/^\/api\/admin\/ip-whitelist\/rules\/([^/]+)$/);
   if (req.method === 'PATCH' && rulesPatchMatch) {
     const ruleId = rulesPatchMatch[1];
+    if (!requireUuid(req, res, ruleId, '규칙 ID')) return undefined;
     const body = req.body || {};
     const updates = [];
     const values = [];
@@ -144,6 +124,7 @@ module.exports = async function handler(req, res) {
   const rulesDeleteMatch = rawPath.match(/^\/api\/admin\/ip-whitelist\/rules\/([^/]+)$/);
   if (req.method === 'DELETE' && rulesDeleteMatch) {
     const ruleId = rulesDeleteMatch[1];
+    if (!requireUuid(req, res, ruleId, '규칙 ID')) return undefined;
     const rows = await sql`DELETE FROM ip_whitelist WHERE id = ${ruleId} RETURNING ip_cidr`;
     if (!rows.length) {
       return respondError(req, res, 404, { code: 'RESOURCE_NOT_FOUND', message: '규칙을 찾을 수 없습니다.', reason: '삭제 대상 규칙이 존재하지 않습니다.', action: '목록을 새로고침한 뒤 다시 시도하세요.' });
@@ -157,6 +138,7 @@ module.exports = async function handler(req, res) {
   const scopesPutMatch = rawPath.match(/^\/api\/admin\/ip-whitelist\/scopes\/([^/]+)$/);
   if (req.method === 'PUT' && scopesPutMatch) {
     const scopeId = scopesPutMatch[1];
+    if (!requireUuid(req, res, scopeId, '스코프 ID')) return undefined;
     const body = req.body || {};
     if (typeof body.is_enabled !== 'boolean') {
       return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: 'is_enabled는 boolean 필수입니다.', reason: '스코프 활성화 여부를 true 또는 false로 지정해야 합니다.', action: 'is_enabled 값을 올바르게 입력하세요.' });
@@ -196,6 +178,7 @@ module.exports = async function handler(req, res) {
   const scopesDeleteMatch = rawPath.match(/^\/api\/admin\/ip-whitelist\/scopes\/([^/]+)$/);
   if (req.method === 'DELETE' && scopesDeleteMatch) {
     const scopeId = scopesDeleteMatch[1];
+    if (!requireUuid(req, res, scopeId, '스코프 ID')) return undefined;
     const existing = await sql`SELECT id, scope_type, scope_path FROM ip_whitelist_scopes WHERE id = ${scopeId}`;
     if (!existing.length) {
       return respondError(req, res, 404, { code: 'RESOURCE_NOT_FOUND', message: '스코프를 찾을 수 없습니다.', reason: '삭제 대상 스코프가 존재하지 않습니다.', action: '목록을 새로고침한 뒤 다시 시도하세요.' });
@@ -216,7 +199,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'POST' && rawPath === '/api/admin/ip-whitelist/test') {
     const body = req.body || {};
     const { ip, path: testPath } = body;
-    if (!ip) {
+    if (!ip || typeof ip !== 'string') {
       return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: 'ip는 필수입니다.', reason: '테스트할 IP 주소가 누락되었습니다.', action: 'ip 값을 입력하세요.' });
     }
 

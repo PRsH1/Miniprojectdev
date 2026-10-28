@@ -7,25 +7,16 @@
  * PUT  /api/admin/pages/:id   → 수정 (required_role, is_active)
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
-
-function requireAdmin(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) { respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Admin pages API requires authentication' }); return null; }
-  let decoded;
-  try { decoded = jwt.verify(authToken, process.env.JWT_SECRET); } catch (error) { respondError(req, res, 401, { code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', error, logMessage: 'Admin pages token verification failed' }); return null; }
-  if (decoded.role !== 'admin') { respondError(req, res, 403, { code: 'FORBIDDEN', message: '관리자 권한이 필요합니다.', reason: '현재 계정은 페이지 관리 API를 사용할 수 없습니다.', action: '관리자 계정으로 로그인하세요.', logMessage: 'Admin role required for page API' }); return null; }
-  return decoded;
-}
+const { requireRole } = require('./_shared/session');
+const { requireUuid } = require('./_shared/validate');
+const { ALLOWED_PAGE_DIRS, normalizePageFilePath } = require('./_shared/page-file');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const decoded = requireAdmin(req, res);
+  const decoded = await requireRole(req, res, 'admin');
   if (!decoded) return;
 
   const rawPath = req.url.split('?')[0];
@@ -54,11 +45,17 @@ module.exports = async function handler(req, res) {
       return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 required_role입니다.', reason: 'required_role은 admin, manager, user 중 하나여야 합니다.', action: '권한 값을 다시 선택하세요.' });
     }
 
+    // file_path 경로 탈출(../, 절대경로 등) 차단 — 서빙 시(auth-middleware)와 같은 규칙
+    const normalizedFile = normalizePageFilePath(file_path);
+    if (!normalizedFile.ok) {
+      return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 file_path입니다.', reason: normalizedFile.reason, action: `${ALLOWED_PAGE_DIRS.map((d) => `${d}/`).join(' 또는 ')} 아래의 .html 파일 경로(예: private/pageName.html)를 입력하세요.` });
+    }
+
     let newPage;
     try {
       const rows = await sql`
         INSERT INTO protected_pages (path, name, description, required_role, file_path)
-        VALUES (${pagePath}, ${name}, ${description || null}, ${required_role}, ${file_path})
+        VALUES (${pagePath}, ${name}, ${description || null}, ${required_role}, ${normalizedFile.relPath})
         RETURNING id, path, name, required_role, file_path, is_active
       `;
       newPage = rows[0];
@@ -77,6 +74,7 @@ module.exports = async function handler(req, res) {
   const deleteMatch = rawPath.match(/^\/api\/admin\/pages\/([^/]+)$/);
   if (req.method === 'DELETE' && deleteMatch) {
     const pageId = deleteMatch[1];
+    if (!requireUuid(req, res, pageId, '페이지 ID')) return undefined;
     const rows = await sql`
       DELETE FROM protected_pages WHERE id = ${pageId}
       RETURNING path, file_path
@@ -95,7 +93,12 @@ module.exports = async function handler(req, res) {
   const match = rawPath.match(/^\/api\/admin\/pages\/([^/]+)$/);
   if (req.method === 'PUT' && match) {
     const pageId = match[1];
+    if (!requireUuid(req, res, pageId, '페이지 ID')) return undefined;
     const body = req.body || {};
+
+    if (body.is_active !== undefined && typeof body.is_active !== 'boolean') {
+      return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: 'is_active는 true 또는 false여야 합니다.', reason: '활성 여부 값의 형식이 올바르지 않습니다.', action: 'is_active 값을 boolean으로 전달하세요.' });
+    }
 
     if (body.required_role !== undefined) {
       if (!['admin', 'manager', 'user'].includes(body.required_role)) {

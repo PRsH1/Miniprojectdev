@@ -12,12 +12,21 @@
  * DELETE /api/bug-reports/:id
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const pusher = require('./_shared/pusher');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { requireRole } = require('./_shared/session');
+const { isPgIntId } = require('./_shared/validate');
+
+function respondReportNotFound(req, res) {
+  return respondError(req, res, 404, {
+    code: 'RESOURCE_NOT_FOUND',
+    message: '버그 리포트를 찾을 수 없습니다.',
+    reason: '대상 제보가 없거나 이미 삭제되었습니다.',
+    action: '목록을 새로고침한 뒤 다시 시도하세요.',
+  });
+}
 
 const ALLOWED_SEVERITY = ['low', 'normal', 'high', 'critical'];
 const ALLOWED_STATUS = ['open', 'in-progress', 'resolved', 'closed'];
@@ -38,66 +47,6 @@ async function triggerNewNotification(channel, notification, unreadCount) {
   }
 }
 
-function requireAdmin(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies.auth_token;
-  if (!authToken) {
-    respondError(req, res, 401, {
-      code: 'AUTH_REQUIRED',
-      logMessage: 'Bug report admin API requires authentication',
-    });
-    return null;
-  }
-
-  let decoded;
-  try {
-    decoded = jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch (error) {
-    respondError(req, res, 401, {
-      code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
-      error,
-      logMessage: 'Bug report admin token verification failed',
-    });
-    return null;
-  }
-
-  if (decoded.role !== 'admin') {
-    respondError(req, res, 403, {
-      code: 'FORBIDDEN',
-      message: '관리자 권한이 필요합니다.',
-      reason: '현재 계정은 버그 리포트 관리 API를 사용할 수 없습니다.',
-      action: '관리자 계정으로 로그인하세요.',
-      logMessage: 'Admin role required for bug reports API',
-    });
-    return null;
-  }
-
-  return decoded;
-}
-
-function requireAuth(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies.auth_token;
-  if (!authToken) {
-    respondError(req, res, 401, {
-      code: 'AUTH_REQUIRED',
-      logMessage: 'Bug report submission requires authentication',
-    });
-    return null;
-  }
-
-  try {
-    return jwt.verify(authToken, process.env.JWT_SECRET);
-  } catch (error) {
-    respondError(req, res, 401, {
-      code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
-      error,
-      logMessage: 'Bug report submission token verification failed',
-    });
-    return null;
-  }
-}
-
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
   const rawPath = (req.url || '').split('?')[0];
@@ -105,7 +54,7 @@ module.exports = async function handler(req, res) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress;
 
   if (req.method === 'POST' && rawPath === '/api/bug-reports') {
-    const decoded = requireAuth(req, res);
+    const decoded = await requireRole(req, res, 'user');
     if (!decoded) return;
 
     const body = req.body || {};
@@ -131,22 +80,8 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const users = await sql`
-      SELECT id, username, email
-      FROM users
-      WHERE id = ${decoded.sub} AND is_active = true
-      LIMIT 1
-    `;
-    if (!users.length) {
-      return respondError(req, res, 401, {
-        code: 'AUTH_REQUIRED',
-        message: '유효한 로그인 사용자만 제보할 수 있습니다.',
-        reason: '현재 세션의 사용자 계정을 찾을 수 없거나 비활성 상태입니다.',
-        action: '다시 로그인한 뒤 시도하세요.',
-      });
-    }
-
-    const reporter = users[0];
+    // requireRole이 이미 활성 계정(users)을 조회했으므로 그 결과를 재사용
+    const reporter = { id: decoded.sub, username: decoded.username, email: decoded.email };
     const inserted = await sql`
       INSERT INTO bug_reports (
         title, description, reporter_name, reporter_email,
@@ -197,7 +132,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'GET' && rawPath === '/api/bug-reports') {
-    const decoded = requireAdmin(req, res);
+    const decoded = await requireRole(req, res, 'admin');
     if (!decoded) return;
 
     const qs = new URL(req.url, 'http://localhost').searchParams;
@@ -233,7 +168,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'GET' && rawPath === '/api/bug-reports/mine') {
-    const decoded = requireAuth(req, res);
+    const decoded = await requireRole(req, res, 'user');
     if (!decoded) return;
 
     const reports = await sql`
@@ -247,8 +182,17 @@ module.exports = async function handler(req, res) {
   }
 
   const myReportMatch = rawPath.match(/^\/api\/bug-reports\/mine\/(\d+)$/);
+  const reportMatch = rawPath.match(/^\/api\/bug-reports\/(\d+)$/);
+  const reportUpdateMatch = rawPath.match(/^\/api\/bug-reports\/(\d+)\/update$/);
+
+  // INTEGER 범위를 벗어난 id는 존재할 수 없으므로 DB 예외 대신 404
+  const rawReportId = (myReportMatch || reportMatch || reportUpdateMatch || [])[1];
+  if (rawReportId !== undefined && !isPgIntId(rawReportId)) {
+    return respondReportNotFound(req, res);
+  }
+
   if (req.method === 'GET' && myReportMatch) {
-    const decoded = requireAuth(req, res);
+    const decoded = await requireRole(req, res, 'user');
     if (!decoded) return;
 
     const id = parseInt(myReportMatch[1], 10);
@@ -270,11 +214,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ report: rows[0] });
   }
 
-  const reportMatch = rawPath.match(/^\/api\/bug-reports\/(\d+)$/);
-  const reportUpdateMatch = rawPath.match(/^\/api\/bug-reports\/(\d+)\/update$/);
-
   if (req.method === 'GET' && reportMatch) {
-    const decoded = requireAdmin(req, res);
+    const decoded = await requireRole(req, res, 'admin');
     if (!decoded) return;
 
     const id = parseInt(reportMatch[1], 10);
@@ -300,7 +241,7 @@ module.exports = async function handler(req, res) {
   }
 
   if ((req.method === 'PATCH' && reportMatch) || (req.method === 'POST' && reportUpdateMatch)) {
-    const decoded = requireAdmin(req, res);
+    const decoded = await requireRole(req, res, 'admin');
     if (!decoded) return;
 
     const id = parseInt((reportMatch || reportUpdateMatch)[1], 10);
@@ -425,7 +366,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'DELETE' && reportMatch) {
-    const decoded = requireAdmin(req, res);
+    const decoded = await requireRole(req, res, 'admin');
     if (!decoded) return;
 
     const id = parseInt(reportMatch[1], 10);

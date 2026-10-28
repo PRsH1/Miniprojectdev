@@ -4,13 +4,15 @@
 ProjectImprove/
 ├── index.html                  # 메인 허브 페이지 (모든 도구 링크 모음)
 ├── favicon.svg                 # 공통 파비콘 (플러그 아이콘, #1a73e8)
-├── middleware.js               # Vercel Edge Middleware — IP 화이트리스트 global scope 체크
+├── middleware.js               # Vercel Edge Middleware — /private/* 직접 접근 404 차단 + IP 화이트리스트 global scope 체크
 ├── vercel.json                 # Vercel 배포 라우팅 설정
 ├── package.json
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 (ip-whitelist, refresh-rotation)
+├── test/                       # node:test 단위 테스트 9개 (ip-whitelist, refresh-rotation, router-errors,
+│                               #   require-role, page-file, saml-response, saml-xss, safe-next, webhook-receiver)
+│                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
 │   └── index.js                # 메인 API 라우터 (lazy-loading) + IP 화이트리스트 path/protected 체크
@@ -21,10 +23,11 @@ ProjectImprove/
 │   │   ├── auth-middleware.js         # /app/* 보호 페이지 인증·권한·리프레시 미들웨어
 │   │   ├── db.js                      # Neon serverless Postgres 클라이언트 (sql 태그)
 │   │   ├── jwt.js                     # JWT 발급/검증 헬퍼
-│   │   ├── session.js                 # resolveUser — API용 세션 해석 (verify→만료 시 리프레시 로테이션)
+│   │   ├── session.js                 # resolveUser(세션 해석, 만료 시 리프레시 로테이션) + requireRole(DB role 기반 API 인가)
+│   │   ├── roles.js                   # 역할 계층(hasRole) + users 현재 상태 조회(loadUserState)
+│   │   ├── validate.js                # 입력 사전 검증 (UUID/INTEGER id, page, 날짜) — 형식 오류를 400으로
+│   │   ├── page-file.js               # 보호 페이지 file_path 검증 (private/·utils/ 아래 .html만, 경로 탈출 차단)
 │   │   ├── audit.js                   # audit_logs INSERT 공통 모듈
-│   │   ├── protected-pages-config.js  # 구 password 방식 설정 잔재 — 현재 어떤 코드도 값을 읽지 않음
-│   │   ├── protectedPage.js           # 레거시 핸들러 팩토리 — config 무시, auth-middleware에 위임
 │   │   ├── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
 │   │   └── pusher.js                  # Pusher 인스턴스 공통 모듈 (알림 + Webhook 공용)
 │   │
@@ -53,13 +56,11 @@ ProjectImprove/
 │   ├── developer-notes.js      # 개발자 노트 CRUD (목록 public, 작성 admin)
 │   ├── bug-reports.js          # 버그 리포트 CRUD (제보 로그인, 관리 admin)
 │   │
-│   │   # ── 레거시 페이지 컨트롤러 (실제 페이지는 /app/* + auth-middleware가 서빙) ──
-│   │   # /api/<이름> 으로 라우팅되지만 protected_pages에 /api/* 행이 없어 현재 404를 반환한다. 제거 대상.
-│   ├── memberV2Page.js         # 레거시 — /app/memberV2 가 현행
-│   ├── OpenAPIAutoTest.js      # 레거시 — /app/OpenAPIAutoTest 가 현행 (존재하지 않는 PROTECTED_PAGES.apiautotest 참조)
-│   ├── templatecopy.js         # 레거시 — /app/templatecopy 가 현행
-│   ├── idptestauth.js          # 레거시 — /app/idptestauth 가 현행
-│   ├── adminPage.js            # /app/admin 라우터 등록 참조용 (실제 처리는 auth-middleware)
+│   │   # ── 보호 페이지 ──────────────────────────────────────
+│   │   # 보호 페이지는 /app/* + auth-middleware(DB protected_pages)로만 서빙한다.
+│   │   # 구 비밀번호 방식 컨트롤러(memberV2Page/templatecopy/idptestauth/OpenAPIAutoTest)와
+│   │   # protectedPage.js·protected-pages-config.js는 2026-10 제거됨 (/api/memberV2Page 등 → 404 JSON)
+│   ├── adminPage.js            # /app/admin 참조용 래퍼 (라우터 미등록 — 실제 처리는 auth-middleware)
 │   │
 │   │   # ── SAML ────────────────────────────────────────────
 │   ├── auth.js                 # SAML 응답 생성 (SP개시: 요청 ACS/target으로 test·test2·testjp·dev·prod 대상 라우팅, createTemplateCallback로 email/name 속성 채움, SAML_DEBUG 게이트 로깅)
@@ -78,6 +79,9 @@ ProjectImprove/
 │       └── cleanup-audit.js    # 감사 로그 정리 Cron (CRON_SECRET 검증)
 │
 ├── lib/
+│   ├── html-escape.js          # escapeHtml — 서버 HTML 조립 시 본문·따옴표 속성 이스케이프 (SAML 폼 반사형 XSS 방지)
+│   ├── safe-next.js            # safeNext — 로그인 후 이동 경로(next) open redirect 차단 (auth/login.html·change-password.html에 인라인 사본)
+│   ├── saml-input.js           # SAMLRequest(base64 문자셋)·RelayState(1024자 이하) 형식 검증
 │   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/testjp/dev/prod 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, loginResponseTemplate.context + createTemplateCallback로 AttributeStatement 생성, debugDeliver 진단 헬퍼)
 │
 ├── auth/

@@ -111,6 +111,8 @@ const API_SPECS = {
 - 최대 100건 (초과 시 오래된 항목 자동 제거 — 비로그인은 프론트, 로그인은 서버에서 처리)
 - 기존 localStorage 항목은 로그인 시 마이그레이션하지 않음 — 로그인하면 DB 전용, localStorage는 비로그인 전용
 - DB 저장 실패 시 localStorage 백업 없음 — 토스트 표시 후 중단
+- **인증 헤더 마스킹**: 저장 시 `Authorization`(Bearer 토큰, OPA2_007/048은 base64 회사 API Key)·`eformsign_signature` 등 민감 헤더(`state.js`의 `SENSITIVE_HEADER_RE` — `authorization`/`cookie`/`x-api-key` 또는 이름에 `signature`/`token`/`secret` 포함)는 **키만 저장하고 값은 `""`**. `loadHistoryEntry()`는 저장 항목의 인증 헤더로 덮어쓰지 않고 현재 발급된 토큰을 유지한다(재발급 후 불러와도 401 없음).
+- 구버전 데이터: localStorage 항목은 `historyLoad()`가 읽을 때 인증 헤더 값을 지우고 다시 기록한다. DB에 이미 저장된 행은 서버 데이터를 바꾸지 않고, `initHistory()`가 메모리 캐시에 올릴 때만 마스킹한다(해당 항목을 다시 저장하거나 삭제하면 정리됨).
 
 **메모리 캐시 패턴 (`historyCache`):**
 - `let historyCache = null` — `null`이면 비로그인(localStorage 사용), 배열이면 로그인(캐시 사용)

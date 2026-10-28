@@ -135,8 +135,28 @@
   </div>
 
   <script>
+    // [safeNext] open redirect 차단 — lib/safe-next.js 와 동일 로직 (수정 시 함께 변경)
+    function safeNext(next, fallback) {
+      const fb = typeof fallback === 'string' ? fallback : '/';
+      const isSafePath = (v) => v.charAt(0) === '/' && v.charAt(1) !== '/' && v.charAt(1) !== '\\'
+        && !/[\u0000-\u001F\u007F]/.test(v);
+      if (typeof next !== 'string' || !next || next.length > 2048) return fb;
+      if (!isSafePath(next)) return fb;
+      let decoded = next;
+      for (let i = 0; i < 3; i += 1) {
+        let step;
+        try { step = decodeURIComponent(decoded); } catch (e) { return fb; }
+        if (step === decoded) break;
+        if (!isSafePath(step)) return fb;
+        decoded = step;
+      }
+      return next;
+    }
+    // [/safeNext]
+
     const params = new URLSearchParams(window.location.search);
-    const next = params.get('next') || '';
+    // 같은 오리진 상대 경로만 전달 (서버 login.js 에서도 동일하게 재검증)
+    const next = safeNext(params.get('next'), '');
     document.getElementById('next').value = next;
 
     // 에러 메시지 처리

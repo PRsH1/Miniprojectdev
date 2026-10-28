@@ -7,25 +7,15 @@
  * POST /api/admin/signup-requests/:id/reject       거절 { reject_reason }
  */
 
-const { parse } = require('cookie');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
-
-function requireAdmin(req, res) {
-  const cookies = parse(req.headers.cookie || '');
-  const authToken = cookies['auth_token'];
-  if (!authToken) { respondError(req, res, 401, { code: 'AUTH_REQUIRED', logMessage: 'Admin signup API requires authentication' }); return null; }
-  let decoded;
-  try { decoded = jwt.verify(authToken, process.env.JWT_SECRET); } catch (error) { respondError(req, res, 401, { code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID', error, logMessage: 'Admin signup token verification failed' }); return null; }
-  if (decoded.role !== 'admin') { respondError(req, res, 403, { code: 'FORBIDDEN', message: '관리자 권한이 필요합니다.', reason: '현재 계정은 회원가입 요청 관리 API를 사용할 수 없습니다.', action: '관리자 계정으로 로그인하세요.', logMessage: 'Admin role required for signup admin API' }); return null; }
-  return decoded;
-}
+const { requireRole } = require('./_shared/session');
+const { requireUuid } = require('./_shared/validate');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
-  const decoded = requireAdmin(req, res);
+  const decoded = await requireRole(req, res, 'admin');
   if (!decoded) return;
 
   const rawPath = req.url.split('?')[0];
@@ -55,6 +45,7 @@ module.exports = async function handler(req, res) {
   const approveMatch = rawPath.match(/^\/api\/admin\/signup-requests\/([^/]+)\/approve$/);
   if (req.method === 'POST' && approveMatch) {
     const requestId = approveMatch[1];
+    if (!requireUuid(req, res, requestId, '가입 요청 ID')) return undefined;
     const body = req.body || {};
     const role = body.role || 'user';
 
@@ -111,6 +102,7 @@ module.exports = async function handler(req, res) {
   const rejectMatch = rawPath.match(/^\/api\/admin\/signup-requests\/([^/]+)\/reject$/);
   if (req.method === 'POST' && rejectMatch) {
     const requestId = rejectMatch[1];
+    if (!requireUuid(req, res, requestId, '가입 요청 ID')) return undefined;
     const body = req.body || {};
     const rejectReason = (body.reject_reason || '').trim() || null;
 

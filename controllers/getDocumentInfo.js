@@ -6,13 +6,23 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-        const { domain, documentId, token } = req.query;
+        const { domain, documentId } = req.query;
+
+        // 토큰은 Authorization: Bearer 헤더를 우선 사용한다.
+        // 쿼리스트링 token은 로그·히스토리에 남으므로 폐기 예정 — 하위 호환으로만 허용하고 경고를 남긴다.
+        const authHeader = req.headers && req.headers.authorization;
+        const bearerMatch = typeof authHeader === 'string' ? /^Bearer\s+(.+)$/i.exec(authHeader.trim()) : null;
+        let token = bearerMatch ? bearerMatch[1].trim() : '';
+        if (!token && req.query.token) {
+            token = String(req.query.token);
+            console.warn('[getDocumentInfo] 쿼리스트링 token 사용은 폐기 예정입니다. Authorization: Bearer 헤더를 사용하세요.');
+        }
 
         if (!domain || !documentId || !token) {
             return respondError(req, res, 400, {
                 code: 'VALIDATION_FAILED',
-                message: '필수 쿼리 파라미터가 누락되었습니다.',
-                reason: 'domain, documentId, token이 모두 필요합니다.',
+                message: '필수 파라미터가 누락되었습니다.',
+                reason: 'domain, documentId 쿼리와 Authorization: Bearer 토큰이 모두 필요합니다.',
                 action: '요청 파라미터를 확인한 뒤 다시 시도하세요.',
             });
         }
@@ -25,7 +35,7 @@ module.exports = async function handler(req, res) {
             include_external_token: 'true',
             include_detail_template_info: 'true'
         });
-        const url = `${domain}/v2.0/api/documents/${documentId}?${params.toString()}`;
+        const url = `${domain}/v2.0/api/documents/${encodeURIComponent(documentId)}?${params.toString()}`;
 
         const docResponse = await fetch(url, {
             headers: { 'Authorization': `Bearer ${token}` }

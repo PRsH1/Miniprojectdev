@@ -1119,6 +1119,9 @@ $(function () {
     if (!val) { $hint.hide(); return; }
     if (val.startsWith('private/')) {
       $hint.css('color', 'var(--success)').text('✅ 직접 URL 접근이 차단됩니다.').show();
+    } else if (!val.replace(/^\//, '').startsWith('utils/') || val.includes('..')) {
+      // 서버(adminPages.js)는 private/·utils/ 아래 .html만 허용 — 함수 번들에 포함되는 디렉터리
+      $hint.css('color', 'var(--danger)').text('⛔ private/ 또는 utils/ 아래의 .html 파일만 등록할 수 있습니다.').show();
     } else {
       $hint.css('color', 'var(--warning)').text('⚠️ 직접 URL로도 접근 가능합니다. 완전한 보호를 위해 개발자에게 private/ 경로로의 파일 이동을 요청하세요.').show();
     }
@@ -1142,7 +1145,12 @@ $(function () {
       loadPages();
     }).fail(function (xhr) {
       $('#confirmPageRegistrationModal').removeClass('open');
-      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+      // 서버 에러는 { error: { message, reason } } 객체 — 객체를 그대로 넣으면 [object Object]로 보인다
+      const err = xhr.responseJSON && xhr.responseJSON.error;
+      const errText = err && typeof err === 'object'
+        ? [err.message, err.reason].filter(Boolean).join(' — ')
+        : (err || '오류 발생');
+      $msg.text(errText).addClass('err');
       $('#createPageModal').addClass('open');
     });
   }
