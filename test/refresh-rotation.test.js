@@ -31,7 +31,7 @@ async function withRefreshHarness(callback) {
   const originalUuid = crypto.randomUUID;
   const uuids = ['new-refresh-token-id', 'new-refresh-token'];
 
-  process.env.JWT_SECRET = 'refresh-rotation-test-secret';
+  process.env.JWT_SECRET = 'DUMMY-refresh-rotation-test-secret';
   crypto.randomUUID = () => {
     const next = uuids.shift();
     assert.ok(next, 'unexpected crypto.randomUUID call');
