@@ -81,6 +81,7 @@ ProjectImprove/
 │       └── cleanup-audit.js    # 감사 로그 정리 Cron (CRON_SECRET 검증)
 │
 ├── lib/
+│   ├── ip-match.js             # IP 화이트리스트 공용 파서 — IPv4/IPv6·CIDR 매칭, 경로 정규화·패턴 매칭 (middleware.js와 서버 공유)
 │   ├── html-escape.js          # escapeHtml — 서버 HTML 조립 시 본문·따옴표 속성 이스케이프 (SAML 폼 반사형 XSS 방지)
 │   ├── safe-next.js            # safeNext — 로그인 후 이동 경로(next) open redirect 차단 (auth/login.html·change-password.html에 인라인 사본)
 │   ├── saml-input.js           # SAMLRequest(base64 문자셋)·RelayState(1024자 이하) 형식 검증

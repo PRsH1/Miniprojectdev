@@ -67,7 +67,8 @@ POSTGRES_URL="..." node scripts/migrate-ip-whitelist.js
 | 파일 | 역할 |
 |---|---|
 | `middleware.js` | Vercel Edge Middleware — global scope 체크 |
-| `controllers/_shared/ip-whitelist.js` | CIDR 매칭 + 60초 TTL 캐시 공통 모듈 |
+| `lib/ip-match.js` | IP 파싱(IPv4/IPv6)·CIDR 매칭·경로 정규화/패턴 매칭 — middleware·서버·Admin API가 **같은 구현**을 공유 |
+| `controllers/_shared/ip-whitelist.js` | 스코프 판정 + 60초 TTL 캐시 공통 모듈 (매칭은 `lib/ip-match.js`) |
 | `controllers/adminIpWhitelist.js` | Admin REST API (규칙/스코프 CRUD + IP 테스트) |
 | `scripts/migrate-ip-whitelist.js` | DB 테이블 생성 + 시드 마이그레이션 |
 | `private/Admin.html` | Admin UI — IP 화이트리스트 탭 |
@@ -105,8 +106,10 @@ POSTGRES_URL="..." node scripts/migrate-ip-whitelist.js
 - Admin UI에서 규칙을 먼저 추가한 뒤 스코프를 활성화하도록 경고 표시
 
 **로컬호스트 자동 허용**:
-- `127.0.0.1`, `::1` 은 global scope 활성화 여부와 무관하게 항상 허용
+- `127.0.0.1`, `::1`(및 `::ffff:127.0.0.1`)은 global scope 활성화 여부와 무관하게 항상 허용
 - `vercel dev` 환경에서 자기 자신이 잠기는 문제 방지
+- 클라이언트 IP는 `x-forwarded-for` 첫 값 → `x-real-ip` 순으로 읽는다. **둘 다 없으면 더 이상 127.0.0.1로 간주하지 않는다**
+  (이전에는 헤더 없는 요청이 로컬호스트 예외로 통과). Vercel에서는 플랫폼이 항상 헤더를 붙인다
 
 **잠금 복구 절차**:
 1. 잘못된 규칙으로 Admin 접근이 차단되면 Vercel에서 `IP_WHITELIST_ENABLED`를 제거하거나 `0`으로 설정
@@ -115,9 +118,25 @@ POSTGRES_URL="..." node scripts/migrate-ip-whitelist.js
 
 ### ip_cidr 형식
 
-- IPv4 단일 주소: `1.2.3.4`
-- CIDR 표기: `192.168.0.0/24`
-- 전체 허용(드물게): `0.0.0.0/0`
+- IPv4 단일 주소: `1.2.3.4` / CIDR: `192.168.0.0/24` / IPv4 전체 허용(드물게): `0.0.0.0/0`
+- IPv6 단일 주소: `2001:db8::1` / CIDR: `2001:db8::/32` / IPv6 전체 허용: `::/0`
+- IPv4-mapped IPv6(`::ffff:1.2.3.4`)는 IPv4로 취급한다. `0.0.0.0/0`은 IPv6 클라이언트와 일치하지 않으므로
+  IPv6 사용자가 있는 스코프에는 IPv6 규칙도 따로 넣는다
+- 선행 0(`01.2.3.4`), 범위 초과, 앞뒤 공백, 50자 초과는 400으로 거부한다(Admin API `isValidIpCidr`)
+- 해석할 수 없는 클라이언트 IP(헤더 없음·쓰레기 값)는 어떤 규칙과도 일치하지 않는다 → 스코프가 켜져 있으면 차단
+
+### 경로 패턴 매칭 (path 스코프)
+
+요청 경로와 패턴을 모두 정규화한 뒤 비교한다(`normalizeRequestPath`): 퍼센트 디코딩(최대 2회),
+역슬래시→슬래시, 중복 슬래시 축약, `.`/`..` 구간 해석, **소문자화**, 끝 슬래시 제거.
+
+| 패턴 | 일치 범위 |
+|---|---|
+| `/api/login` (정확) | `/api/login` 자체 + 하위 경로(`/api/login/`, `/api/login/x`) — 라우터가 하위 경로도 같은 컨트롤러로 보내므로 |
+| `/api/admin/*` | `/api/admin` 자체 + 하위 전체 |
+| `/app*` | 정규화한 경로가 `/app`으로 시작 (`/apple`도 포함) |
+
+예전에는 정확 일치만 봐서 `/api/login/`·`/API/login`·`//api/login`으로 path 스코프를 우회할 수 있었다(P0b-03).
 
 ### 비(非)자명한 동작 — 수정 시 주의
 
