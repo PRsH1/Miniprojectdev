@@ -176,7 +176,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, email, password }),
         });
-        const data = await r.json();
+        // JSON이 아닌 응답(프록시 오류 페이지 등)도 아래 공통 문구로 처리되도록 파싱 실패는 빈 객체로
+        const data = await r.json().catch(() => ({}));
 
         if (r.ok) {
           const statusUrl = `${location.origin}/auth/signup-status.html?id=${data.requestId}`;
@@ -184,9 +185,17 @@
           document.getElementById('formArea').style.display = 'none';
           document.getElementById('successArea').classList.add('show');
         } else {
-          if (data.error === 'username_taken') errEl.textContent = '이미 사용 중인 아이디입니다.';
-          else if (data.error === 'email_taken') errEl.textContent = '이미 사용 중인 이메일입니다.';
-          else errEl.textContent = data.error || '요청 처리 중 오류가 발생했습니다.';
+          // 서버 에러는 { error: { status, code, message, reason, action } } 객체 — 문자열로 쓰면 [object Object]가 된다
+          // (auth/change-password.html과 같은 처리). 409 중복(아이디·이메일), 400 형식·길이, 시간당·대기 건수 제한 모두
+          // 서버가 보낸 message·reason을 그대로 보여 준다. textContent로만 넣는다(XSS 방지).
+          const err = data && data.error;
+          let msg = '';
+          if (err && typeof err === 'object') {
+            msg = [err.message, err.reason].filter(Boolean).join(' ');
+          } else if (typeof err === 'string') {
+            msg = err;
+          }
+          errEl.textContent = msg || '요청 처리 중 오류가 발생했습니다.';
           submitBtn.disabled = false;
           submitBtn.textContent = '가입 요청';
         }
