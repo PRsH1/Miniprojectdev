@@ -18,12 +18,12 @@ const { respondError } = require('./_shared/respond-error');
 const { requireRole } = require('./_shared/session');
 const { requireUuid } = require('./_shared/validate');
 const { invalidateCache, isIpWhitelistEnabled } = require('./_shared/ip-whitelist');
+// 규칙 검증·테스트 매칭도 실제 차단 로직과 같은 구현을 쓴다 (P0b-03 — IPv4/IPv6 CIDR)
+const { isIpInCidr, isValidIpCidr: isValidCidrText, matchesPathPattern } = require('../lib/ip-match');
 
 function isValidIpCidr(value) {
-  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}(\/([0-9]|[12]\d|3[0-2]))?$/;
-  if (!ipv4Regex.test(value)) return false;
-  const ip = value.split('/')[0];
-  return ip.split('.').every(octet => parseInt(octet, 10) <= 255);
+  // ip_cidr 컬럼은 VARCHAR(50). 앞뒤 공백도 저장되므로 원문 그대로 형식을 검사한다
+  return typeof value === 'string' && value.length <= 50 && value === value.trim() && isValidCidrText(value);
 }
 
 module.exports = async function handler(req, res) {
@@ -59,7 +59,7 @@ module.exports = async function handler(req, res) {
       return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: 'path 스코프에는 scope_path가 필수입니다.', reason: 'scope_type이 path인 경우 경로 패턴을 지정해야 합니다.', action: 'scope_path를 입력하세요.' });
     }
     if (!isValidIpCidr(ip_cidr)) {
-      return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 IP/CIDR 형식입니다.', reason: 'IPv4 단일 주소(예: 1.2.3.4) 또는 CIDR 표기법(예: 192.168.0.0/24) 형식이어야 합니다.', action: '올바른 IP 주소 또는 CIDR 범위를 입력하세요.' });
+      return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 IP/CIDR 형식입니다.', reason: 'IPv4·IPv6 단일 주소(예: 1.2.3.4, 2001:db8::1) 또는 CIDR 표기법(예: 192.168.0.0/24, 2001:db8::/32) 형식이어야 합니다.', action: '올바른 IP 주소 또는 CIDR 범위를 입력하세요.' });
     }
 
     const rows = await sql`
@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
     if (body.label !== undefined) { updates.push('label'); values.push(body.label); }
     if (body.ip_cidr !== undefined) {
       if (!isValidIpCidr(body.ip_cidr)) {
-        return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 IP/CIDR 형식입니다.', reason: 'IPv4 단일 주소 또는 CIDR 표기법 형식이어야 합니다.', action: '올바른 IP 주소 또는 CIDR 범위를 입력하세요.' });
+        return respondError(req, res, 400, { code: 'VALIDATION_FAILED', message: '유효하지 않은 IP/CIDR 형식입니다.', reason: 'IPv4·IPv6 단일 주소 또는 CIDR 표기법 형식이어야 합니다.', action: '올바른 IP 주소 또는 CIDR 범위를 입력하세요.' });
       }
       updates.push('ip_cidr'); values.push(body.ip_cidr);
     }
@@ -216,18 +216,7 @@ module.exports = async function handler(req, res) {
         ]);
         const scope = scopes[0];
         if (!scope?.is_enabled) return { enabled: false, matched: false, allowed: true };
-        const matched = rules.some(r => {
-          const cidr = r.ip_cidr;
-          const cleanIp = ip.replace(/^::ffff:/, '');
-          if (!cidr.includes('/')) return cleanIp === cidr;
-          const [network, bitsStr] = cidr.split('/');
-          const bits = parseInt(bitsStr, 10);
-          if (bits === 0) return true;
-          const mask = (~0 << (32 - bits)) >>> 0;
-          const ipInt = cleanIp.split('.').reduce((acc, o) => acc * 256 + parseInt(o, 10), 0) >>> 0;
-          const netInt = network.split('.').reduce((acc, o) => acc * 256 + parseInt(o, 10), 0) >>> 0;
-          return (ipInt & mask) === (netInt & mask);
-        });
+        const matched = rules.some(r => isIpInCidr(ip, r.ip_cidr));
         return { enabled: true, matched, allowed: matched };
       })(),
       (async () => {
@@ -238,27 +227,11 @@ module.exports = async function handler(req, res) {
           sql`SELECT * FROM ip_whitelist_scopes WHERE scope_type = 'path' AND is_enabled = TRUE`,
           sql`SELECT * FROM ip_whitelist WHERE scope_type = 'path' AND is_active = TRUE`,
         ]);
-        const matchFn = (reqPath, pattern) => {
-          if (pattern.endsWith('/*')) return reqPath.startsWith(pattern.slice(0, -1)) || reqPath === pattern.slice(0, -2);
-          if (pattern.endsWith('*'))  return reqPath.startsWith(pattern.slice(0, -1));
-          return reqPath === pattern;
-        };
-        const matchedScopes = scopes.filter(s => matchFn(testPath, s.scope_path));
+        const matchedScopes = scopes.filter(s => matchesPathPattern(String(testPath), s.scope_path));
         if (!matchedScopes.length) return { enabled: scopes.length > 0, matched: false, allowed: true };
         const scopePaths = new Set(matchedScopes.map(s => s.scope_path));
         const scopeRules = rules.filter(r => scopePaths.has(r.scope_path));
-        const cleanIp = ip.replace(/^::ffff:/, '');
-        const allowed = scopeRules.some(r => {
-          const cidr = r.ip_cidr;
-          if (!cidr.includes('/')) return cleanIp === cidr;
-          const [network, bitsStr] = cidr.split('/');
-          const bits = parseInt(bitsStr, 10);
-          if (bits === 0) return true;
-          const mask = (~0 << (32 - bits)) >>> 0;
-          const ipInt = cleanIp.split('.').reduce((acc, o) => acc * 256 + parseInt(o, 10), 0) >>> 0;
-          const netInt = network.split('.').reduce((acc, o) => acc * 256 + parseInt(o, 10), 0) >>> 0;
-          return (ipInt & mask) === (netInt & mask);
-        });
+        const allowed = scopeRules.some(r => isIpInCidr(ip, r.ip_cidr));
         return { enabled: true, matched: true, allowed };
       })(),
       (async () => {
@@ -270,18 +243,7 @@ module.exports = async function handler(req, res) {
         ]);
         const scope = scopes[0];
         if (!scope?.is_enabled) return { enabled: false, matched: false, allowed: true };
-        const cleanIp = ip.replace(/^::ffff:/, '');
-        const matched = rules.some(r => {
-          const cidr = r.ip_cidr;
-          if (!cidr.includes('/')) return cleanIp === cidr;
-          const [network, bitsStr] = cidr.split('/');
-          const bits = parseInt(bitsStr, 10);
-          if (bits === 0) return true;
-          const mask = (~0 << (32 - bits)) >>> 0;
-          const ipInt = cleanIp.split('.').reduce((acc, o) => acc * 256 + parseInt(o, 10), 0) >>> 0;
-          const netInt = network.split('.').reduce((acc, o) => acc * 256 + parseInt(o, 10), 0) >>> 0;
-          return (ipInt & mask) === (netInt & mask);
-        });
+        const matched = rules.some(r => isIpInCidr(ip, r.ip_cidr));
         return { enabled: true, matched, allowed: matched };
       })(),
     ]);

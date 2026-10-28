@@ -3,17 +3,22 @@
  * 프로젝트 개발 이력을 developer_notes 테이블에 버전별로 삽입
  *
  * 실행 방법:
- *   node scripts/seed-developer-notes.js
+ *   node scripts/seed-developer-notes.js            # 빈 테이블에만 삽입
+ *   node scripts/seed-developer-notes.js --force    # 기존 노트를 전부 삭제한 뒤 재삽입
  *   (또는) POSTGRES_URL="..." node scripts/seed-developer-notes.js
  *
- * 재실행 시: 기존 노트를 전체 삭제 후 재삽입합니다.
+ * 주의(P0b-12): developer_notes에 이미 노트가 있으면 --force 없이는 아무것도 바꾸지 않고 중단한다.
+ *   --force는 관리자가 운영에서 작성한 노트까지 모두 지우므로 운영 DB에서는 사용하지 말 것.
+ *   .env.local은 운영 DB를 가리킬 수 있다.
  */
 
-// .env.local 수동 파싱 (dotenv 패키지 없이)
 const fs = require('fs');
 const path = require('path');
-const envPath = path.join(__dirname, '..', '.env.local');
-if (fs.existsSync(envPath)) {
+
+// .env.local 수동 파싱 (dotenv 패키지 없이) — 직접 실행할 때만 읽는다(테스트에서 require 시 무시)
+function loadEnvLocal() {
+  const envPath = path.join(__dirname, '..', '.env.local');
+  if (!fs.existsSync(envPath)) return;
   fs.readFileSync(envPath, 'utf8').split('\n').forEach(line => {
     const m = line.match(/^([^#=]+)=(.*)$/);
     if (m && !process.env[m[1].trim()]) {
@@ -21,7 +26,6 @@ if (fs.existsSync(envPath)) {
     }
   });
 }
-const { neon } = require('@neondatabase/serverless');
 
 const NOTES = [
   // ──────────────────────────────────────────────────────────────
@@ -551,33 +555,38 @@ index.html 유틸리티 섹션 아래에 "커뮤니티" 섹션을 신설했습�
   },
 ];
 
-async function seed() {
-  if (!process.env.POSTGRES_URL) {
-    console.error('❌ POSTGRES_URL 환경변수가 설정되지 않았습니다.');
-    process.exit(1);
-  }
-
-  const sql = neon(process.env.POSTGRES_URL);
-
+/**
+ * 개발자 노트 시드
+ * - 기존 노트가 있고 force가 아니면 아무것도 바꾸지 않고 { status: 'aborted', existing } 반환
+ * - force면 기존 노트 전체 삭제 후 재삽입
+ * @returns {{ status: 'aborted'|'seeded', existing: number, deleted: number, inserted: number }}
+ */
+async function seedNotes(sql, { notes = NOTES, force = false, log = console.log } = {}) {
   // admin 계정 조회
   const admins = await sql`SELECT id, username FROM users WHERE role = 'admin' LIMIT 1`;
   if (admins.length === 0) {
-    console.error('❌ admin 계정을 찾을 수 없습니다. 먼저 create-admin.js를 실행하세요.');
-    process.exit(1);
+    throw new Error('admin 계정을 찾을 수 없습니다. 먼저 create-admin.js를 실행하세요.');
   }
   const adminId = admins[0].id;
-  console.log(`✓ admin 계정 확인: ${admins[0].username} (${adminId})`);
+  log(`✓ admin 계정 확인: ${admins[0].username} (${adminId})`);
 
-  // 기존 노트 전체 삭제 후 재삽입
-  const existing = await sql`SELECT COUNT(*) as cnt FROM developer_notes`;
-  if (parseInt(existing[0].cnt) > 0) {
+  // 기존 노트가 있으면 --force 없이는 중단 (운영에서 관리자가 작성한 노트 보호)
+  const existingRows = await sql`SELECT COUNT(*)::int AS cnt FROM developer_notes`;
+  const existing = parseInt(existingRows[0].cnt, 10) || 0;
+  let deleted = 0;
+  if (existing > 0) {
+    if (!force) {
+      return { status: 'aborted', existing, deleted: 0, inserted: 0 };
+    }
     await sql`DELETE FROM developer_notes`;
-    console.log(`  ✓ 기존 ${existing[0].cnt}개 노트 삭제 완료`);
+    deleted = existing;
+    log(`  ✓ 기존 ${existing}개 노트 삭제 완료 (--force)`);
   }
 
-  console.log(`\n총 ${NOTES.length}개 버전 노트를 삽입합니다...\n`);
+  log(`\n총 ${notes.length}개 버전 노트를 삽입합니다...\n`);
 
-  for (const note of NOTES) {
+  let inserted = 0;
+  for (const note of notes) {
     await sql`
       INSERT INTO developer_notes (title, content, version, author_id, pinned, created_at, updated_at)
       VALUES (
@@ -590,13 +599,39 @@ async function seed() {
         ${note.created_at}::date
       )
     `;
-    console.log(`  ✓ ${note.version} — ${note.title}`);
+    inserted += 1;
+    log(`  ✓ ${note.version} — ${note.title}`);
   }
 
+  return { status: 'seeded', existing, deleted, inserted };
+}
+
+async function main() {
+  loadEnvLocal();
+  if (!process.env.POSTGRES_URL) {
+    console.error('❌ POSTGRES_URL 환경변수가 설정되지 않았습니다.');
+    process.exit(1);
+  }
+
+  const { neon } = require('@neondatabase/serverless');
+  const sql = neon(process.env.POSTGRES_URL);
+  const force = process.argv.includes('--force');
+
+  const result = await seedNotes(sql, { force });
+  if (result.status === 'aborted') {
+    console.error(`❌ developer_notes에 이미 ${result.existing}개 노트가 있어 중단합니다. 변경 사항 없음.`);
+    console.error('   기존 노트를 모두 지우고 다시 넣으려면 --force 를 붙여 실행하세요.');
+    console.error('   (주의: 관리자가 작성한 노트도 함께 삭제됩니다. 운영 DB에서는 사용하지 마세요.)');
+    process.exit(1);
+  }
   console.log('\n✅ 개발자 노트 시드 완료!');
 }
 
-seed().catch(err => {
-  console.error('❌ 오류:', err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(err => {
+    console.error('❌ 오류:', err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { seedNotes, NOTES };

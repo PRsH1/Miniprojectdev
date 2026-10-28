@@ -1,50 +1,18 @@
 /**
  * controllers/credentials.js
- * eformsign 인증 정보 저장/조회/수정/삭제
+ * eformsign 인증 정보 저장/조회/삭제 (수정 엔드포인트 없음)
  * 모든 요청은 JWT 인증 필요 (auth_token 쿠키)
+ *
+ * secret_key 암호화는 controllers/_shared/credential-crypto.js (P0b-05)
+ * - 새로 저장: `v1:{iv}:{tag}:{ct}` + authTagLength 16 + AAD(user_id)
+ * - 읽기: v1 / 기존 접두어 없는 `{iv}:{tag}:{ct}` / 암호화 이전 평문 모두 지원
  */
 
-const crypto = require('crypto');
 const { getDb } = require('./_shared/db');
 const { requireRole } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 const { requireUuid } = require('./_shared/validate');
-
-// ─── AES-256-GCM 암호화 유틸 ──────────────────────────────────────────────
-
-/** 환경변수에서 32바이트 키 버퍼 반환. 미설정 시 예외 throw */
-function getEncryptionKey() {
-  const hex = process.env.CREDENTIAL_ENCRYPTION_KEY;
-  if (!hex) throw new Error('CREDENTIAL_ENCRYPTION_KEY 환경변수가 설정되지 않았습니다.');
-  return Buffer.from(hex, 'hex');
-}
-
-/** 암호화된 값 판별 — "{iv}:{tag}:{cipher}" 형식인지 확인 */
-function isEncrypted(val) {
-  return typeof val === 'string' && val.split(':').length === 3;
-}
-
-/** plaintext → "{iv_hex}:{authTag_hex}:{ciphertext_hex}" */
-function encrypt(plaintext) {
-  const key = getEncryptionKey();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const authTag = cipher.getAuthTag();
-  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
-}
-
-/** "{iv_hex}:{authTag_hex}:{ciphertext_hex}" → plaintext. 실패 시 예외 throw */
-function decrypt(stored) {
-  const key = getEncryptionKey();
-  const [ivHex, authTagHex, ciphertextHex] = stored.split(':');
-  const iv = Buffer.from(ivHex, 'hex');
-  const authTag = Buffer.from(authTagHex, 'hex');
-  const ciphertext = Buffer.from(ciphertextHex, 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(authTag);
-  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
-}
+const { decryptSecret, encryptSecret } = require('./_shared/credential-crypto');
 
 module.exports = async function credentialsController(req, res) {
   // refresh 인지 + 비활성화·임시 비밀번호 계정 즉시 차단 (실패 시 401/403 응답 완료)
@@ -96,10 +64,10 @@ module.exports = async function credentialsController(req, res) {
 
     const row = rows[0];
 
-    // secret_key 복호화 — 암호화된 값이면 복호화, 기존 plaintext는 그대로 반환
-    if (row.secret_key && isEncrypted(row.secret_key)) {
+    // secret_key 복호화 — v1(AAD=user_id)·기존 형식은 복호화, 암호화 이전 평문은 그대로 반환
+    if (row.secret_key) {
       try {
-        row.secret_key = decrypt(row.secret_key);
+        row.secret_key = decryptSecret(row.secret_key, userId).plaintext;
       } catch (e) {
         console.error('[credentials] decrypt failed:', { id: credId, error: e.message });
         return respondError(req, res, 500, {
@@ -143,11 +111,20 @@ module.exports = async function credentialsController(req, res) {
       });
     }
 
-    // secret_key가 있을 때만 암호화 후 저장
+    if (secret_key !== undefined && secret_key !== null && typeof secret_key !== 'string') {
+      return respondError(req, res, 400, {
+        code: 'VALIDATION_FAILED',
+        message: 'secret_key 형식이 올바르지 않습니다.',
+        reason: 'secret_key는 문자열이어야 합니다.',
+        action: '비밀 키 값을 다시 확인하세요.',
+      });
+    }
+
+    // secret_key가 있을 때만 암호화 후 저장 (v1 + AAD=user_id)
     let encryptedSecretKey = null;
     if (secret_key) {
       try {
-        encryptedSecretKey = encrypt(secret_key);
+        encryptedSecretKey = encryptSecret(secret_key, userId);
       } catch (e) {
         return respondError(req, res, 500, {
           code: 'INTERNAL_ERROR',

@@ -55,7 +55,7 @@ const DOMAINS = {
   (세션 없음 401 `AUTH_REQUIRED` / 비활성·삭제 401 `TOKEN_INVALID` / 임시 비밀번호 403 / 역할 부족 403).
   성공 시 `{ sub, role(DB), mustChangePw, username, email }` 반환.
   - 사용처: `admin*.js` 5종(`'admin'`), `developer-notes.js`·`bug-reports.js` 관리 경로(`'admin'`), 버그 제보·내 제보(`'user'`),
-    `credentials.js`·`requestHistory.js`(`'user'`), `notifications.js`·`pusher-auth.js`(`'user'`, `allowMustChangePassword: true`)
+    `credentials.js`·`requestHistory.js`(`'user'`), `notifications.js`·`pusher-auth.js`·`change-password.js`(`'user'`, `allowMustChangePassword: true`)
   - 컨트롤러에 `jwt.verify` 기반 로컬 `requireAdmin`을 새로 만들지 말 것 — 1시간 후 401(재로그인 강요)과 강등 미반영이 재발한다.
   - `/app/*`(`auth-middleware.js`)와 `/api/me`도 같은 DB 상태를 기준으로 role·활성·임시 비밀번호를 판단한다.
 - **권한 변경 즉시 반영**: `PUT /api/admin/users/:id`에서 role 변경·비활성화 시 대상의 refresh 토큰을 폐기한다(`replaced_by` 없이 `revoked_at`만 → grace 차단).
@@ -74,6 +74,32 @@ const DOMAINS = {
 // 4. role 계층 체크: admin > manager > user
 // 5. file_path HTML 서빙 + audit_logs INSERT
 ```
+
+### 로그인 실패 잠금 · 계정 열거 완화 (`controllers/login.js`, P0b-01)
+
+- 연속 5회 실패 시 30분 잠금(`MAX_FAILED_LOGINS`, `LOCK_MINUTES`). 실패 카운트는 **단일 UPDATE**
+  (`failed_login_count = COALESCE(failed_login_count,0) + 1 … RETURNING`)로만 올린다 — 동시 요청이 같은 값을 읽고
+  덮어쓰던 read-modify-write 금지. 이미 잠긴 동안의 실패는 카운트·잠금 시각을 바꾸지 않고(연장 없음),
+  잠금 만료 후 첫 실패는 1부터 다시 센다. 성공 로그인 시 0으로 초기화.
+- 없는 아이디도 `DUMMY_PASSWORD_HASH`(`_shared/password.js`)로 scrypt를 1회 돌리고 같은 실패 UPDATE(0행)를 실행한다.
+  없는 아이디·틀린 비밀번호·비활성·잠김 계정의 실패 응답은 모두 `error=invalid`.
+- `error=inactive` / `error=locked&until=…` 안내는 **비밀번호가 맞을 때만** 보낸다(본인만 상태를 알 수 있음).
+- 아이디 50자·비밀번호 256자를 넘으면 DB·scrypt 없이 `error=invalid`.
+- IP 단위 제한은 코드가 아니라 **Vercel WAF rate limit** 규칙으로 건다(대시보드 설정, 사용자 작업).
+  권장: `POST /api/login` IP당 10회/60초 초과 시 429(또는 Deny 10분), `POST /api/signup`·`/api/password-reset-request`
+  IP당 5회/10분. Firewall 규칙은 배포와 별개라 코드 머지만으로는 적용되지 않는다.
+
+### 비밀번호 변경 (`controllers/change-password.js`, P0b-02)
+
+- 인증은 `requireRole(req, res, 'user', { allowMustChangePassword: true })` (refresh 인지·비활성 즉시 차단).
+- `GET /api/change-password` → `{ requiresCurrentPassword }`. `auth/change-password.html`이 이 값으로 현재 비밀번호 입력란을 보인다.
+- 일반 변경(`must_change_password=false`)은 `currentPassword` 필수. 틀리면 400이고 **로그인과 같은 실패 카운터**
+  (`_shared/password.js`의 `recordFailedLogin`)를 올린다 → 5회면 30분 잠금. 잠긴 동안은 검증 없이 403.
+- 임시 비밀번호 강제 변경(`must_change_password=true`)은 방금 그 비밀번호로 로그인했으므로 `currentPassword`를 요구하지 않는다.
+- 새 비밀번호가 현재(임시) 비밀번호와 같으면 400. 길이 8~256자.
+- 성공 시 `failed_login_count`·`locked_until` 초기화 + **현재 세션을 뺀** 이 사용자의 refresh 토큰을 모두 폐기한다
+  (`replaced_by` 없이 `revoked_at`만 → grace 차단). 현재 세션 = 요청 쿠키의 refresh 토큰 + 같은 요청에서 로테이션됐다면 그 후속 토큰.
+  다른 기기의 액세스 토큰(최대 1시간)은 만료 전까지 남는다. JWT 재서명(`mustChangePw:false`)·현재 refresh 로테이션은 P1-13.
 
 ### 역할(Role) 계층
 
@@ -210,12 +236,14 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 
 ```javascript
 // controllers/cron/cleanup-audit.js (GET 메서드)
-// 1. Authorization: Bearer <CRON_SECRET> 헤더 검증
-// 2. DELETE 쿼리 실행
+// 1. Authorization: Bearer <CRON_SECRET> 헤더 검증 (crypto.timingSafeEqual 고정 시간 비교)
+// 2. DELETE 쿼리 실행 — CTE(DELETE … RETURNING 1 → SELECT COUNT(*))로 실제 삭제 건수 집계
 // 3. { success: true, deleted: N } 반환
 ```
 
-- Cron 엔드포인트는 반드시 `CRON_SECRET` 검증 — 미설정(`undefined`) 시 모든 요청 차단
+- Cron 엔드포인트는 반드시 `CRON_SECRET` 검증 — 미설정(`undefined`) 시 모든 요청 차단(401 `AUTH_REQUIRED` JSON)
+- 시크릿 비교는 `===`가 아니라 길이 확인 후 `crypto.timingSafeEqual`을 쓴다(`cleanup-audit.js`의 `safeEqual`)
+- Neon http 드라이버의 `sql` 태그는 행 배열만 반환하므로(`.count` 없음) 삭제 건수는 `RETURNING`으로 받아 센다
 - `crons` 스케줄은 **Production 환경에서만** 자동 실행 (로컬·Preview는 수동 curl로 테스트)
 - 로컬 테스트: `curl -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/cleanup-audit`
 - Hobby 플랜: 일 1회 제한 / Pro 플랜: 분 단위 설정 가능

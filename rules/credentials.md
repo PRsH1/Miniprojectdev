@@ -19,12 +19,17 @@
 | DELETE | `/api/credentials/:id` | 크리덴셜 삭제 |
 
 **보안 원칙:**
-- `secret_key`는 AES-256-GCM 암호화 저장 (`CREDENTIAL_ENCRYPTION_KEY` 환경변수 필요)
-  - 저장 형식: `{iv_hex}:{authTag_hex}:{ciphertext_hex}`
+- `secret_key`는 AES-256-GCM 암호화 저장 (`CREDENTIAL_ENCRYPTION_KEY` 환경변수 필요, hex 64자=32바이트)
+  - 구현: `controllers/_shared/credential-crypto.js` (`encryptSecret` / `decryptSecret`) — P0b-05
+  - 저장 형식(신규): `v1:{iv_hex}:{authTag_hex}:{ciphertext_hex}` — IV 12바이트, **태그 16바이트 고정**(`authTagLength: 16`),
+    **AAD = `eformsign_credentials:{user_id}`** (암호문을 다른 사용자 행으로 옮기면 복호화 실패 → 500)
+  - 하위 호환 읽기: 접두어 없는 기존 형식 `{iv_hex(24)}:{authTag_hex(32)}:{ciphertext_hex}`는 AAD 없이 복호화한다.
+    기존 행을 v1로 바꾸는 마이그레이션은 하지 않는다(다음 저장부터 v1). 두 형식과 정확히 일치하지 않는 값은 평문으로 보고 그대로 반환
+    (예전 "콜론 2개면 암호문" 판정 때문에 콜론이 든 평문이 500이던 문제 해결)
   - 목록 조회 시 `secret_key` 미반환, `has_secret_key: boolean`만 반환
   - 단건 조회 시 서버 복호화 후 평문 반환 — 클라이언트 변경 없음
-  - `secret_key`가 null이면 암호화/복호화 없이 그대로 처리
-  - 기존 plaintext → `scripts/migrate-credentials-encrypt.js`로 일괄 재암호화
+  - `secret_key`가 null이면 암호화/복호화 없이 그대로 처리. 문자열이 아니면 400
+  - 기존 plaintext → `scripts/migrate-credentials-encrypt.js`로 일괄 암호화(평문 행만 v1로, 기존 암호문 행은 건너뜀)
 - 모든 엔드포인트는 JWT 인증 필요, `WHERE user_id = decoded.sub`로 타 사용자 접근 차단
 
 ---

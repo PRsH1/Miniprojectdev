@@ -14,28 +14,16 @@
  */
 
 const { neon } = require('@neondatabase/serverless');
-const crypto = require('crypto');
 
-// ─── 암호화 유틸 (credentials.js와 동일 로직) ───────────────────────────
+// ─── 암호화 유틸 — 서버와 같은 모듈 사용 (P0b-05: v1 접두어 + authTagLength 16 + AAD=user_id) ──
+// 이 스크립트는 "평문" 행만 v1로 암호화한다. 이미 암호화된 기존 형식({iv}:{tag}:{ct}) 행은 건드리지 않는다.
+const {
+  encryptSecret,
+  getEncryptionKey,
+  isEncryptedValue: isEncrypted,
+} = require('../controllers/_shared/credential-crypto');
 
-function getEncryptionKey() {
-  const hex = process.env.CREDENTIAL_ENCRYPTION_KEY;
-  if (!hex) throw new Error('CREDENTIAL_ENCRYPTION_KEY 환경변수가 설정되지 않았습니다.');
-  return Buffer.from(hex, 'hex');
-}
-
-function isEncrypted(val) {
-  return typeof val === 'string' && val.split(':').length === 3;
-}
-
-function encrypt(plaintext) {
-  const key = getEncryptionKey();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
-  const authTag = cipher.getAuthTag();
-  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
-}
+const encrypt = (plaintext, userId) => encryptSecret(plaintext, userId);
 
 // ─── 마이그레이션 실행 ─────────────────────────────────────────────────
 
@@ -59,7 +47,7 @@ async function run() {
 
   // secret_key가 있는 행 전체 조회
   const rows = await sql`
-    SELECT id, secret_key
+    SELECT id, user_id, secret_key
     FROM eformsign_credentials
     WHERE secret_key IS NOT NULL
   `;
@@ -77,7 +65,7 @@ async function run() {
     }
 
     try {
-      const encryptedKey = encrypt(row.secret_key);
+      const encryptedKey = encrypt(row.secret_key, row.user_id);
       await sql`
         UPDATE eformsign_credentials
         SET secret_key = ${encryptedKey}, updated_at = NOW()
