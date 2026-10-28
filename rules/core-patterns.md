@@ -75,6 +75,20 @@ const DOMAINS = {
 // 5. file_path HTML 서빙 + audit_logs INSERT
 ```
 
+### 로그인 실패 잠금 · 계정 열거 완화 (`controllers/login.js`, P0b-01)
+
+- 연속 5회 실패 시 30분 잠금(`MAX_FAILED_LOGINS`, `LOCK_MINUTES`). 실패 카운트는 **단일 UPDATE**
+  (`failed_login_count = COALESCE(failed_login_count,0) + 1 … RETURNING`)로만 올린다 — 동시 요청이 같은 값을 읽고
+  덮어쓰던 read-modify-write 금지. 이미 잠긴 동안의 실패는 카운트·잠금 시각을 바꾸지 않고(연장 없음),
+  잠금 만료 후 첫 실패는 1부터 다시 센다. 성공 로그인 시 0으로 초기화.
+- 없는 아이디도 `DUMMY_PASSWORD_HASH`(`_shared/password.js`)로 scrypt를 1회 돌리고 같은 실패 UPDATE(0행)를 실행한다.
+  없는 아이디·틀린 비밀번호·비활성·잠김 계정의 실패 응답은 모두 `error=invalid`.
+- `error=inactive` / `error=locked&until=…` 안내는 **비밀번호가 맞을 때만** 보낸다(본인만 상태를 알 수 있음).
+- 아이디 50자·비밀번호 256자를 넘으면 DB·scrypt 없이 `error=invalid`.
+- IP 단위 제한은 코드가 아니라 **Vercel WAF rate limit** 규칙으로 건다(대시보드 설정, 사용자 작업).
+  권장: `POST /api/login` IP당 10회/60초 초과 시 429(또는 Deny 10분), `POST /api/signup`·`/api/password-reset-request`
+  IP당 5회/10분. Firewall 규칙은 배포와 별개라 코드 머지만으로는 적용되지 않는다.
+
 ### 역할(Role) 계층
 
 ```

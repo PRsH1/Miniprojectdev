@@ -10,9 +10,10 @@ ProjectImprove/
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 12개 (ip-whitelist, refresh-rotation, router-errors,
+├── test/                       # node:test 단위 테스트 13개 (ip-whitelist, refresh-rotation, router-errors,
 │                               #   require-role, page-file, saml-response, saml-xss, safe-next,
-│                               #   webhook-receiver, admin-scripts, cron-cleanup, input-limits)
+│                               #   webhook-receiver, admin-scripts, cron-cleanup, input-limits,
+│                               #   login-lockout)
 │                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
@@ -28,13 +29,14 @@ ProjectImprove/
 │   │   ├── roles.js                   # 역할 계층(hasRole) + users 현재 상태 조회(loadUserState)
 │   │   ├── validate.js                # 입력 사전 검증 (UUID/INTEGER id, page, 날짜) — 형식 오류를 400으로
 │   │   ├── input-limits.js            # 입력 길이·건수 한도 상수(INPUT_LIMITS) + requireMaxLengths — 초과 시 400
+│   │   ├── password.js                # scrypt 비밀번호 해시/검증 + 계정 열거 완화용 DUMMY_PASSWORD_HASH
 │   │   ├── page-file.js               # 보호 페이지 file_path 검증 (private/·utils/ 아래 .html만, 경로 탈출 차단)
 │   │   ├── audit.js                   # audit_logs INSERT 공통 모듈
 │   │   ├── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
 │   │   └── pusher.js                  # Pusher 인스턴스 공통 모듈 (알림 + Webhook 공용)
 │   │
 │   │   # ── 인증 API ──────────────────────────────────────────
-│   ├── login.js                # 로그인 (JWT 발급 + 쿠키 세션)
+│   ├── login.js                # 로그인 (JWT 발급 + 쿠키 세션, 5회 실패 30분 잠금 — 원자적 카운터·계정 열거 완화)
 │   ├── logout.js               # 로그아웃 (쿠키/리프레시 토큰 폐기)
 │   ├── refresh.js              # 리프레시 토큰으로 액세스 토큰 갱신 (공유 tryRefreshToken 위임)
 │   ├── me.js                   # 현재 로그인 사용자 정보 (+ Pusher 설정 포함)
