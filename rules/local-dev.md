@@ -34,6 +34,11 @@ node scripts/create-admin.js             # 최초 admin 계정
   일반 사용자의 `GET /api/notifications`가 500을 반환한다.
 - `migrate-refresh-rotation.js`를 빠뜨리면 로그인은 되지만 액세스 토큰 만료(1h) 후
   세션 갱신이 전부 막힌다. **코드 배포 전에 실행할 것.**
+- `create-admin.js`는 같은 username이 이미 있으면 **계정 복구**로 동작한다 — 비밀번호 교체, role=admin·활성화,
+  로그인 잠금 해제(`failed_login_count=0`, `locked_until=NULL`), `must_change_password=false`
+  (`--must-change`를 붙이면 true), 그리고 그 계정의 활성 refresh 토큰을 모두 폐기한다(기존 세션 재로그인 필요).
+- `seed-developer-notes.js`는 `developer_notes`에 노트가 하나라도 있으면 아무것도 바꾸지 않고 종료 코드 1로 중단한다.
+  `--force`를 붙여야 기존 노트를 전부 지우고 다시 넣는다 — 관리자가 작성한 노트도 지워지므로 운영 DB에서는 쓰지 않는다.
 
 > **증상으로 역추적**: `/api/login`이 401이 아니라 **500**을 반환하면 자격 증명 문제가 아니라
 > 스키마 부재를 의심할 것. 테이블이 없으면 쿼리가 실행되지 못하고 `INTERNAL_ERROR`로 감싸진다.

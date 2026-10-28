@@ -10,9 +10,9 @@ ProjectImprove/
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 10개 (ip-whitelist, refresh-rotation, router-errors,
+├── test/                       # node:test 단위 테스트 11개 (ip-whitelist, refresh-rotation, router-errors,
 │                               #   require-role, page-file, saml-response, saml-xss, safe-next,
-│                               #   webhook-receiver, cron-cleanup)
+│                               #   webhook-receiver, admin-scripts, cron-cleanup)
 │                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
@@ -134,8 +134,8 @@ ProjectImprove/
 │   ├── migrate-refresh-rotation.js      # refresh_tokens.replaced_by 컬럼 추가 (로테이션 경합 처리, 코드 배포 전 실행)
 │   ├── migrate-credentials-encrypt.js   # 크리덴셜 secret_key 일괄 재암호화
 │   ├── migrate-notifications.js         # notifications 테이블 마이그레이션
-│   ├── seed-developer-notes.js          # 개발자 노트 시드
-│   ├── create-admin.js                  # 최초 admin 계정 생성
+│   ├── seed-developer-notes.js          # 개발자 노트 시드 (노트가 이미 있으면 중단, --force로만 전체 삭제 후 재삽입)
+│   ├── create-admin.js                  # 최초 admin 계정 생성 / 기존 계정 복구(잠금 해제·refresh 토큰 폐기, --must-change)
 │   ├── check-protected-pages.js         # 보호 페이지 정합성 점검 (npm run check:pages)
 │   ├── check-secrets.js                 # 시크릿 누출 점검 (npm run security:secrets)
 │   ├── cleanup-request-history-secrets.js # api_request_history 구버전 인증 값 제거 (기본 dry-run, --apply로 적용)
