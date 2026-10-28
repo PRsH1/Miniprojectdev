@@ -210,12 +210,14 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 
 ```javascript
 // controllers/cron/cleanup-audit.js (GET 메서드)
-// 1. Authorization: Bearer <CRON_SECRET> 헤더 검증
-// 2. DELETE 쿼리 실행
+// 1. Authorization: Bearer <CRON_SECRET> 헤더 검증 (crypto.timingSafeEqual 고정 시간 비교)
+// 2. DELETE 쿼리 실행 — CTE(DELETE … RETURNING 1 → SELECT COUNT(*))로 실제 삭제 건수 집계
 // 3. { success: true, deleted: N } 반환
 ```
 
-- Cron 엔드포인트는 반드시 `CRON_SECRET` 검증 — 미설정(`undefined`) 시 모든 요청 차단
+- Cron 엔드포인트는 반드시 `CRON_SECRET` 검증 — 미설정(`undefined`) 시 모든 요청 차단(401 `AUTH_REQUIRED` JSON)
+- 시크릿 비교는 `===`가 아니라 길이 확인 후 `crypto.timingSafeEqual`을 쓴다(`cleanup-audit.js`의 `safeEqual`)
+- Neon http 드라이버의 `sql` 태그는 행 배열만 반환하므로(`.count` 없음) 삭제 건수는 `RETURNING`으로 받아 센다
 - `crons` 스케줄은 **Production 환경에서만** 자동 실행 (로컬·Preview는 수동 curl로 테스트)
 - 로컬 테스트: `curl -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/cleanup-audit`
 - Hobby 플랜: 일 1회 제한 / Pro 플랜: 분 단위 설정 가능

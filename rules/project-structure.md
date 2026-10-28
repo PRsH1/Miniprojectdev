@@ -10,8 +10,9 @@ ProjectImprove/
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 9개 (ip-whitelist, refresh-rotation, router-errors,
-│                               #   require-role, page-file, saml-response, saml-xss, safe-next, webhook-receiver)
+├── test/                       # node:test 단위 테스트 10개 (ip-whitelist, refresh-rotation, router-errors,
+│                               #   require-role, page-file, saml-response, saml-xss, safe-next,
+│                               #   webhook-receiver, cron-cleanup)
 │                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
