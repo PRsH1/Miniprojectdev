@@ -10,10 +10,10 @@ ProjectImprove/
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 15개 (ip-whitelist, refresh-rotation, router-errors,
+├── test/                       # node:test 단위 테스트 16개 (ip-whitelist, refresh-rotation, router-errors,
 │                               #   require-role, page-file, saml-response, saml-xss, safe-next,
 │                               #   webhook-receiver, admin-scripts, change-password, credential-crypto,
-│                               #   cron-cleanup, input-limits, login-lockout)
+│                               #   cron-cleanup, input-limits, login-lockout, request-history)
 │                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
@@ -53,7 +53,7 @@ ProjectImprove/
 │   ├── getDocumentInfo.js      # 문서 메타데이터 조회
 │   ├── webhook-receiver.js     # Webhook 수신 → Pusher 브로드캐스트
 │   ├── send.js                 # SMTP 이메일 테스트
-│   ├── requestHistory.js       # OpenAPITester 요청 히스토리 CRUD (로그인 사용자 DB 저장)
+│   ├── requestHistory.js       # OpenAPITester 요청 히스토리 CRUD (로그인 사용자 DB 저장, 저장 id는 서버 생성)
 │   │
 │   │   # ── 알림 / 커뮤니티 ──────────────────────────────────
 │   ├── notifications.js        # 알림 목록/읽음/삭제 (역할별 분기)

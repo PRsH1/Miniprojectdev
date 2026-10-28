@@ -162,7 +162,7 @@ const API_SPECS = {
 | 메서드 | 경로 | 설명 |
 |---|---|---|
 | GET | `/api/request-history` | 내 히스토리 목록 (최신순 100건) |
-| POST | `/api/request-history` | 항목 저장 (100건 초과 시 서버에서 오래된 것 자동 삭제) |
+| POST | `/api/request-history` | 항목 저장 (100건 초과 시 서버에서 오래된 것 자동 삭제). **id는 서버가 생성**(20자 base64url 난수, 응답 `{ success, id }`) — 클라이언트 id는 무시(P0b-06). 크기 한도 초과는 400(`rules/error-response.md` 한도 표) |
 | DELETE | `/api/request-history/:id` | 단건 삭제 |
 | DELETE | `/api/request-history` | 전체 삭제 |
 
@@ -226,4 +226,5 @@ const API_SPECS = {
 - **`saves-toggle` 클릭 시 `e.stopPropagation()` 필수**: `.endpoint-item` 클릭(→ `selectEndpoint`) 이벤트와 독립되어야 하므로 반드시 전파 차단
 - **`historyCache` 초기화 타이밍**: `initHistory()`는 `refreshAuthUser()` 완료 후 호출되어야 `state.authUser` 체크가 정확함. `init.js`의 `document.ready`에서 `refreshAuthUser().then(() => initHistory()).then(() => buildSidebar())` 체인 순서를 반드시 유지할 것
 - **`historyCaptureAndSave()` 반환값**: 저장 성공 시 `entry` 객체 반환, 실패 시 `null` 반환. `confirmSave()`에서 `null` 확인 후 모달을 유지(닫지 않음)해야 사용자가 재시도할 수 있음
+  - 로그인 저장은 요청 본문에서 `id`를 빼고 보내며, 응답의 서버 `id`를 `entry.id`로 넣은 뒤 캐시에 추가한다. 실패 토스트에는 서버의 `error.reason`(없으면 `message`)을 보여 준다. 비로그인(localStorage)은 기존대로 `Date.now()` id
 - **로그인 상태 변경**: 페이지 로드 시 1회 판단 후 고정. 세션 중 로그아웃해도 `historyCache`가 남아있으면 캐시를 계속 사용함 — 페이지 새로고침 시 비로그인 상태로 올바르게 전환됨 (의도된 동작)

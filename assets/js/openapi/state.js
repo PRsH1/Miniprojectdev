@@ -211,16 +211,24 @@ async function historyCaptureAndSave(customName) {
 
     if (historyCache !== null) {
         try {
+            // 로그인 저장은 서버가 id를 만든다 (P0b-06) — 클라이언트 id(Date.now)는 보내지 않는다
+            const payload = Object.assign({}, entry);
+            delete payload.id;
             const res = await fetch('/api/request-history', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(entry),
+                body: JSON.stringify(payload),
             });
             if (handleApiAuthExpired(res)) return null;
-            if (!res.ok) {
-                showToast('요청 저장 실패 (서버 오류)', 2000);
+            const data = await res.json().catch(() => null);
+            if (!res.ok || !data || !data.id) {
+                // 서버 에러는 { error: { message, reason } } — 크기 한도 초과(400) 등 사유를 그대로 보여 준다
+                const err = data && data.error;
+                const detail = err && typeof err === 'object' ? (err.reason || err.message) : '';
+                showToast(detail ? `요청 저장 실패: ${detail}` : '요청 저장 실패 (서버 오류)', 3000);
                 return null;
             }
+            entry.id = String(data.id);
             historyCache.unshift(entry);
             if (historyCache.length > HISTORY_MAX) historyCache.splice(HISTORY_MAX);
         } catch (e) {

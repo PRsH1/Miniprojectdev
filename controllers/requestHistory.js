@@ -3,6 +3,7 @@
  * OpenAPITester 요청 히스토리 저장/조회/삭제 (로그인 사용자 전용)
  */
 
+const crypto = require('crypto');
 const { getDb } = require('./_shared/db');
 const { requireRole } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
@@ -10,6 +11,16 @@ const { INPUT_LIMITS, requireMaxLengths } = require('./_shared/input-limits');
 
 const HISTORY_MAX = 100;
 const ENTRY_ID_MAX_LENGTH = 20;
+const ID_INSERT_ATTEMPTS = 3;
+
+/**
+ * 서버 생성 히스토리 ID (P0b-06)
+ * id 컬럼이 VARCHAR(20)이라 UUID(36자)는 들어가지 않는다 → 스키마를 바꾸지 않고
+ * 15바이트(120비트) 난수를 base64url 20자로 쓴다. URL 경로(/api/request-history/:id)에 그대로 쓸 수 있는 문자만 나온다.
+ */
+function newEntryId() {
+  return crypto.randomBytes(15).toString('base64url');
+}
 
 function isValidEntryId(value) {
   return typeof value === 'string' && value.length >= 1 && value.length <= ENTRY_ID_MAX_LENGTH;
@@ -116,8 +127,8 @@ module.exports = async function requestHistoryController(req, res) {
   }
 
   if (req.method === 'POST' && !entryId) {
+    // 클라이언트가 보낸 id는 쓰지 않는다(P0b-06) — 하위 호환을 위해 받아도 무시
     const {
-      id,
       name,
       endpointId,
       method,
@@ -131,39 +142,49 @@ module.exports = async function requestHistoryController(req, res) {
       savedAt,
     } = req.body || {};
 
-    if (!id || !name) {
+    if (!name) {
       return respondError(req, res, 400, {
         code: 'VALIDATION_FAILED',
         message: '필수 항목이 누락되었습니다.',
-        reason: 'id와 name은 필수입니다.',
-        action: '요청 데이터를 확인하세요.',
-      });
-    }
-    if (!isValidEntryId(id)) {
-      return respondError(req, res, 400, {
-        code: 'VALIDATION_FAILED',
-        message: '히스토리 ID 형식이 올바르지 않습니다.',
-        reason: `id는 1~${ENTRY_ID_MAX_LENGTH}자 문자열이어야 합니다.`,
+        reason: 'name은 필수입니다.',
         action: '요청 데이터를 확인하세요.',
       });
     }
     if (!validateEntryPayload(req, res, req.body || {})) return undefined;
 
-    await sql`
-      INSERT INTO api_request_history
-        (id, user_id, name, endpoint_id, method, environment, url,
-         path_params, query_params, headers, body, response, saved_at)
-      VALUES
-        (${id}, ${userId}, ${name}, ${endpointId || null}, ${method || null},
-         ${environment || null}, ${url || null},
-         ${JSON.stringify(pathParams || [])}::jsonb,
-         ${JSON.stringify(queryParams || [])}::jsonb,
-         ${JSON.stringify(headers || [])}::jsonb,
-         ${body || null},
-         ${response ? JSON.stringify(response) : null}::jsonb,
-         ${savedAt || Date.now()})
-      ON CONFLICT (id) DO NOTHING
-    `;
+    // 서버가 id를 만든다(P0b-06). 예전에는 클라이언트의 Date.now() 문자열을 전역 PK로 쓰고
+    // ON CONFLICT DO NOTHING 후에도 201을 돌려줘, 같은 밀리초에 저장한 다른 사용자의 항목이 조용히 사라졌다.
+    // 120비트 난수라 충돌은 사실상 없지만, 충돌로 0행이면 새 id로 다시 시도하고 끝내 실패하면 500을 낸다.
+    let savedId = null;
+    for (let attempt = 0; attempt < ID_INSERT_ATTEMPTS && !savedId; attempt += 1) {
+      const candidate = newEntryId();
+      const inserted = await sql`
+        INSERT INTO api_request_history
+          (id, user_id, name, endpoint_id, method, environment, url,
+           path_params, query_params, headers, body, response, saved_at)
+        VALUES
+          (${candidate}, ${userId}, ${name}, ${endpointId || null}, ${method || null},
+           ${environment || null}, ${url || null},
+           ${JSON.stringify(pathParams || [])}::jsonb,
+           ${JSON.stringify(queryParams || [])}::jsonb,
+           ${JSON.stringify(headers || [])}::jsonb,
+           ${body || null},
+           ${response ? JSON.stringify(response) : null}::jsonb,
+           ${savedAt || Date.now()})
+        ON CONFLICT (id) DO NOTHING
+        RETURNING id
+      `;
+      if (inserted && inserted.length > 0) savedId = inserted[0].id;
+    }
+    if (!savedId) {
+      return respondError(req, res, 500, {
+        code: 'DATABASE_ERROR',
+        message: '요청을 저장하지 못했습니다.',
+        reason: '저장 ID를 할당하지 못했습니다.',
+        action: '잠시 후 다시 시도하세요.',
+        logMessage: 'request-history: id allocation failed',
+      });
+    }
 
     await sql`
       DELETE FROM api_request_history
@@ -177,7 +198,7 @@ module.exports = async function requestHistoryController(req, res) {
         )
     `;
 
-    return res.status(201).json({ success: true, id });
+    return res.status(201).json({ success: true, id: savedId });
   }
 
   if (req.method === 'DELETE' && entryId) {
