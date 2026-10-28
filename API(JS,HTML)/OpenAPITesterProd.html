@@ -1410,6 +1410,8 @@
                         </button>
                     </div>
                 </div>
+                <!-- 응답 에러 요약·토큰 만료 배너 (api-error.js / ui.js showResponseNotice) -->
+                <div id="responseNotice" class="response-notice" style="display:none;padding:0 16px;flex-shrink:0;"></div>
                 <div class="response-body-wrap">
                     <div class="response-placeholder" id="responsePlaceholder">
                         <i class="fa-solid fa-satellite-dish"></i>
@@ -1734,6 +1736,7 @@
 </div>
 
 <!-- OpenAPITester 분할 모듈 (로드 순서 중요) -->
+<script src="/assets/js/api-error.js"></script>
 <script src="/assets/js/openapi/api-list.js"></script>
 <script>
 

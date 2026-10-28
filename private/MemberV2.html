@@ -1673,7 +1673,8 @@ window.CREDENTIAL_CONFIG = {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-<!-- 모듈: 로드 순서 중요 -->
+<!-- 모듈: 로드 순서 중요 (공유 모듈 → member/api.js → ui.js → init.js → credential-panel.js) -->
+<script src="/assets/js/api-error.js"></script>
 <script src="/assets/js/member/api.js"></script>
 <script src="/assets/js/member/ui.js"></script>
 <script src="/assets/js/member/init.js"></script>

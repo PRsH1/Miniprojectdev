@@ -114,6 +114,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
     <script src="/assets/js/token-issuer.js"></script>
     <script src="/assets/js/result-panel.js"></script>
+    <script src="/assets/js/api-error.js"></script>
     <script>
         const DOMAINS = { 
             op_saas: 'https://kr-api.eformsign.com', 
@@ -280,24 +281,21 @@
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                 } catch (proxyErr) {
-                    ResultPanel.render(resultBox, `Error: ${proxyErr.message || directErr.message}`, {
-                        title: '다운로드 실패', status: 'error', filename: 'DocumentDownload_error',
-                        meta: [`요청 URL: ${url}`, '직접 호출과 서버 프록시 호출이 모두 실패했습니다.']
-                    });
+                    renderApiError(resultBox, { error: directErr, url, title: '다운로드 실패 (직접 호출·서버 프록시 모두 실패)' });
                     return;
                 }
             }
 
             if (!response.ok) {
                 const errorText = await response.text().catch(() => '');
-                let errorBody = errorText;
-                try { errorBody = JSON.parse(errorText); } catch (_) { /* JSON이 아니면 원문 그대로 */ }
-                ResultPanel.render(resultBox, errorBody, {
-                    title: '다운로드 실패', status: 'error', statusText: `HTTP ${response.status}`,
-                    filename: 'DocumentDownload_error',
-                    meta: [`요청 URL: ${url}`, `경로: ${via === 'proxy' ? '서버 프록시(via proxy)' : '직접 호출'}`,
-                        via === 'proxy' ? '프록시는 약 4.5MB를 넘는 파일을 전달하지 못합니다. 큰 파일은 CORS가 허용된 환경에서 직접 다운로드하세요.' : '']
+                renderApiError(resultBox, {
+                    status: response.status, bodyText: errorText, url,
+                    title: via === 'proxy' ? '다운로드 실패 (via proxy)' : '다운로드 실패'
                 });
+                if (via === 'proxy') {
+                    resultBox.append($('<div>').css({ fontSize: '12px', color: '#666' })
+                        .text('서버 프록시는 약 4.5MB를 넘는 파일을 전달하지 못합니다. 큰 파일은 CORS가 허용된 환경에서 직접 다운로드하세요.'));
+                }
                 return;
             }
 

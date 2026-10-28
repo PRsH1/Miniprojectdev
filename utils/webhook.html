@@ -8,6 +8,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+    <script src="/assets/js/api-error.js"></script>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -350,11 +351,20 @@
                 const response = await fetch(url, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const data = await response.json();
-                if (!response.ok) { throw data; }
+                // 상태를 먼저 확인하고 본문을 해석한다 (HTML 에러 페이지에서 SyntaxError 방지)
+                const text = await response.text().catch(() => '');
+                if (!response.ok) {
+                    renderApiError(resultContainer, { status: response.status, bodyText: text, title: '조회 실패' });
+                    return;
+                }
+                let data;
+                try { data = JSON.parse(text); } catch (_) {
+                    renderApiError(resultContainer, { status: response.status, bodyText: text, title: '응답 해석 실패' });
+                    return;
+                }
                 renderPre(resultContainer, toJsonText(data));
             } catch (err) {
-                renderPre(resultContainer, toJsonText(err), { error: true, label: '조회 실패:' });
+                renderApiError(resultContainer, { error: err, title: '조회 실패' });
             }
         }
 

@@ -34,6 +34,19 @@ API 도구의 결과 영역은 `<pre>`를 직접 만들지 말고 `window.Result
 - 로드 순서: `token-issuer.js` 바로 다음(페이지 인라인 스크립트보다 앞).
 - DocumentDownload는 direct 호출이 CORS/네트워크로 실패하면 `/api/downloadDocument` 프록시로 재시도하고(결과 배지 `via proxy`), 확장자는 content-type으로 추론한다. 프록시는 Vercel 응답 한도(약 4.5MB)를 넘는 파일을 전달하지 못한다.
 
+### API 에러 표시 공유 모듈 (`assets/js/api-error.js`)
+
+eformsign API·허브 프록시의 에러 응답은 raw JSON 대신 `window.renderApiError(container, info)`로 보여 준다(IIFE, jQuery 불필요, 모든 외부 문자열 textContent).
+
+- `info`: `{ status, bodyText | body, url, title, append }` — HTTP 에러 / `{ error, url }` — fetch reject(네트워크·CORS).
+- 표시: 한 줄 요약 `HTTP 400 · [코드] 메시지` + [에러 코드 찾아보기 →](`/utils/error-codes.html?q=<코드>`) + [원본 응답 보기] 토글(JSON은 pretty-print, 아니면 앞 300자).
+  401이면 토큰 재발급 안내, `Failed to fetch`류면 "CORS 차단, 도메인 오타, 네트워크 문제" 안내 + `/utils/CorsTest.html` 링크.
+- 코드·메시지 키 탐색 순서: `code`, `error_code`, `ErrorMessage`, `message`, `error.message` (허브 프록시의 `error.upstream`, `error.error`도 지원).
+- 부가 API: `ApiError.parse(info)`(렌더링 없이 요약), `ApiError.fromResponse(container, res, {url})`, `ApiError.isNetworkError(err)`, `ApiError.lookupUrl(code, {absolute})`.
+- **상태 코드를 먼저 확인한 뒤 본문을 파싱**한다(`res.text()` → `!res.ok`면 renderApiError → 그다음 `JSON.parse`). HTML 502 게이트웨이 페이지에서 SyntaxError가 나지 않게 하기 위함.
+- 적용: DocumentInfo·DocumentSendImprove(전송·템플릿 조회)·listdocuments·DocumentDownload·webhook(문서 정보 조회)·OpenAPITester(`#responseNotice`)·MemberV2(결과 영역 위 `.member-api-error`, `showApiErrorSummary()`)·AutoTest(리포트 실패/CHECK 상세의 에러 코드 링크).
+- 에러 코드 딥링크: `utils/error-codes.html?q=<검색어>`(검색창 채움 + 필터, 0건 카드 숨김, 입력 시 `?q=` URL 동기화), `#code-<코드>`(해당 행으로 스크롤·하이라이트, 같은 코드의 두 번째 이후 행은 `code-<코드>-2`…). 각 행에 [링크 복사] 버튼. 엔드포인트·항목 수는 DOM에서 계산한다.
+
 ### 환경 도메인
 
 ```javascript

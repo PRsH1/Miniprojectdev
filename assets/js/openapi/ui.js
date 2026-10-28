@@ -228,6 +228,7 @@ function selectEndpoint(id) {
 
     // 현재 엔드포인트 응답 복원 (없으면 초기화)
     $('#exampleResponsePanel').hide();
+    hideResponseNotice();
     restoreResponseState(ep.id);
     updateExampleResponseBtn(ep);
 }
@@ -776,10 +777,17 @@ async function sendRequest(forceDownload = false) {
             } else {
                 $pre.text(text || '(응답 없음)');
             }
+
+            // 4xx/5xx: 응답 패널 위에 "HTTP 400 · [코드] 메시지" 요약 + 에러 코드 찾아보기 링크
+            if (res.status >= 400) {
+                showResponseNotice({ status: res.status, bodyText: text, url });
+            }
         }
 
     } catch (e) {
         $('#responsePlaceholder').show().find('p').text('요청 실패: ' + e.message);
+        // Failed to fetch → CORS·도메인 오타·네트워크 안내 + CorsTest 링크
+        showResponseNotice({ error: e, url });
         showToast('요청 실패: ' + e.message, 3000);
     }
 
@@ -800,7 +808,29 @@ function copyResponse() {
     navigator.clipboard.writeText(text).then(() => showToast('응답이 복사되었습니다'));
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// RESPONSE NOTICE (응답 에러 요약 — assets/js/api-error.js)
+// ──────────────────────────────────────────────────────────────────────────
+function showResponseNotice(info) {
+    const el = document.getElementById('responseNotice');
+    if (!el) return;
+    if (typeof window.renderApiError === 'function') {
+        window.renderApiError(el, info);
+    } else {
+        el.textContent = info && info.error ? String(info.error.message || info.error) : `HTTP ${info && info.status}`;
+    }
+    el.style.display = '';
+}
+
+function hideResponseNotice() {
+    const el = document.getElementById('responseNotice');
+    if (!el) return;
+    el.textContent = '';
+    el.style.display = 'none';
+}
+
 function clearResponse() {
+    hideResponseNotice();
     $('#statusBadge').hide();
     $('#responseMeta').hide();
     $('#btnCopyResponse').hide();

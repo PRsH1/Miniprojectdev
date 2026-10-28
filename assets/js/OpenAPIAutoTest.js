@@ -1249,6 +1249,21 @@
         };
     }
 
+    // 에러 코드 레퍼런스(utils/error-codes.html?q=) 링크 — 리포트 파일을 따로 열어도 동작하도록 절대 URL 사용
+    function errorCodeLookupUrl(code) {
+        const clean = String(code || "").trim();
+        if (!clean || clean === "-") return "";
+        if (window.ApiError && typeof window.ApiError.lookupUrl === "function") {
+            return window.ApiError.lookupUrl(clean, { absolute: true });
+        }
+        return `${window.location.origin}/utils/error-codes.html?q=${encodeURIComponent(clean)}`;
+    }
+
+    function errorCodeLinkHtml(code) {
+        const href = errorCodeLookupUrl(code);
+        return href ? ` <a href="${esc(href)}" target="_blank" rel="noopener">에러 코드 찾아보기 →</a>` : "";
+    }
+
     function parseErrorInfo(responseText) {
         const text = String(responseText || "").trim();
         if (!text) return { code: "", message: "" };
@@ -1388,7 +1403,7 @@
                         <div class="report-failure-meta">
                             ${esc(failure.method)} ${esc(failure.url || "(URL 없음)")}<br>
                             HTTP ${esc(String(failure.httpStatus))} | ${esc(failure.duration)}<br>
-                            에러: [${esc(failure.errorCode)}] ${esc(failure.errorMessage)}
+                            에러: [${esc(failure.errorCode)}] ${esc(failure.errorMessage)}${errorCodeLinkHtml(failure.errorCode)}
                         </div>
                         <pre>${esc(failure.responseBody || "(Empty)")}</pre>
                     </div>
@@ -1402,7 +1417,7 @@
                         <div class="report-failure-meta">
                             ${esc(item.method)} ${esc(item.url || "(URL 없음)")}<br>
                             HTTP ${esc(String(item.httpStatus))} | ${esc(item.duration)}<br>
-                            응답 코드: [${esc(item.errorCode)}] ${esc(item.errorMessage)}<br>
+                            응답 코드: [${esc(item.errorCode)}] ${esc(item.errorMessage)}${errorCodeLinkHtml(item.errorCode)}<br>
                             <strong>의도된 응답(예: 이미 정리된 리소스)인지 실제 오류인지 확인이 필요합니다.</strong>
                         </div>
                         <pre>${esc(item.responseBody || "(Empty)")}</pre>
@@ -1476,7 +1491,7 @@
                 lines.push(`- **URL**: ${failure.method} ${failure.url || "(URL 없음)"}`);
                 lines.push(`- **HTTP Status**: ${failure.httpStatus}`);
                 lines.push(`- **Duration**: ${failure.duration}`);
-                lines.push(`- **에러 코드**: ${failure.errorCode}`);
+                lines.push(`- **에러 코드**: ${failure.errorCode}${errorCodeLookupUrl(failure.errorCode) ? ` ([에러 코드 찾아보기](${errorCodeLookupUrl(failure.errorCode)}))` : ""}`);
                 lines.push(`- **에러 메시지**: ${failure.errorMessage}`);
                 lines.push("");
                 lines.push("**Response:**");

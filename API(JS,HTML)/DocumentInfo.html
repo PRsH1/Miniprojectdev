@@ -9,6 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
     <script src="/assets/js/token-issuer.js"></script>
     <script src="/assets/js/result-panel.js"></script>
+    <script src="/assets/js/api-error.js"></script>
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
         .container { max-width: 900px; margin: 30px auto; background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -264,48 +265,50 @@
             const queryString = params.toString();
 
             // [수정됨] 도메인 변수 사용
-            let url = `${domain}/v2.0/api/documents/${documentId}`;
+            let url = `${domain}/v2.0/api/documents/${encodeURIComponent(documentId)}`;
             if (queryString) {
                 url += `?${queryString}`;
             }
 
             ResultPanel.renderStatus('#docInfoResult', '조회 중...', [`실행 URL: ${url}`]);
 
+            let response;
             try {
-                const response = await fetch(url, {
+                response = await fetch(url, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
                 });
-
-                const resultText = await response.text();
-                const resultJson = JSON.parse(resultText);
-
-                if (!response.ok) {
-                    throw new Error(`네트워크 응답 문제 ${response.status}: ${resultText}`);
-                }
-
-                // 문서 필드·제목 등은 외부 서명자가 입력한 값이므로 반드시 텍스트로 표시 (ResultPanel은 textContent 사용)
-                ResultPanel.render('#docInfoResult', resultJson, {
-                    title: '조회 완료',
-                    status: 'ok',
-                    statusText: `HTTP ${response.status}`,
-                    filename: 'DocumentInfo',
-                    meta: [`실행 URL: ${url}`]
-                });
-
             } catch (err) {
-                let errorContent = err.message;
-                try {
-                    const errorJson = JSON.parse(errorContent.substring(errorContent.indexOf('{')));
-                    errorContent = `네트워크 응답 문제 ${err.message.split(':')[0]}:\n${JSON.stringify(errorJson, null, 2)}`;
-                } catch {}
-                ResultPanel.render('#docInfoResult', `Error: ${errorContent}`, {
-                    title: '조회 실패', status: 'error', filename: 'DocumentInfo_error', meta: [`실행 URL: ${url}`]
-                });
+                // CORS·도메인 오타·네트워크 실패
+                renderApiError('#docInfoResult', { error: err, url, title: '조회 실패' });
+                return;
             }
+
+            // 상태 코드를 먼저 확인한 뒤 본문을 해석한다 (HTML 502 응답에서 SyntaxError 방지)
+            const resultText = await response.text().catch(() => '');
+            if (!response.ok) {
+                renderApiError('#docInfoResult', { status: response.status, bodyText: resultText, url, title: '조회 실패' });
+                return;
+            }
+            let resultJson;
+            try {
+                resultJson = JSON.parse(resultText);
+            } catch (_) {
+                renderApiError('#docInfoResult', { status: response.status, bodyText: resultText, url, title: '응답 해석 실패' });
+                return;
+            }
+
+            // 문서 필드·제목 등은 외부 서명자가 입력한 값이므로 반드시 텍스트로 표시 (ResultPanel은 textContent 사용)
+            ResultPanel.render('#docInfoResult', resultJson, {
+                title: '조회 완료',
+                status: 'ok',
+                statusText: `HTTP ${response.status}`,
+                filename: 'DocumentInfo',
+                meta: [`실행 URL: ${url}`]
+            });
         }
     </script>
 <script>

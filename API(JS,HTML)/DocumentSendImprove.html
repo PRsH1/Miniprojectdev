@@ -191,6 +191,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
     <script src="/assets/js/token-issuer.js"></script>
     <script src="/assets/js/result-panel.js"></script>
+    <script src="/assets/js/api-error.js"></script>
     <script>
         // 기본 URL 맵
         const tokenUrlMap = { op_saas: 'https://kr-api.eformsign.com/v2.0/api_auth/access_token', csap: 'https://www.gov-eformsign.com/Service/v2.0/api_auth/access_token' };
@@ -361,10 +362,7 @@
                 try { data = JSON.parse(text); } catch (_) { /* JSON이 아니면 원문 표시 */ }
 
                 if (!res.ok) {
-                    ResultPanel.render('#result', data, {
-                        title: '문서 전송 실패', status: 'error', statusText: `HTTP ${res.status}`,
-                        filename: 'DocumentSend_error', meta: [`요청 URL: ${url}`]
-                    });
+                    renderApiError('#result', { status: res.status, bodyText: text, url, title: '문서 전송 실패' });
                     return;
                 }
 
@@ -378,9 +376,8 @@
                     filename: 'DocumentSend', meta: [`요청 URL: ${url}`]
                 });
             } catch (err) {
-                ResultPanel.render('#result', '오류: ' + err.message, {
-                    title: '문서 전송 실패', status: 'error', filename: 'DocumentSend_error'
-                });
+                // 네트워크·CORS 실패 또는 커스텀 도메인 미입력
+                renderApiError('#result', { error: err, title: '문서 전송 실패' });
             }
         }
 
@@ -496,13 +493,11 @@
                     body: JSON.stringify({ type: 'api', template_id: templateId })
                 });
                 const txt  = await resp.text();
-                const json = JSON.parse(txt || '{}');
-
                 if (!resp.ok) {
-                    const code = json.code || resp.status;
-                    const em   = json.ErrorMessage || resp.statusText;
-                    throw new Error(`${code}: ${em}`);
+                    renderApiError(msgEl, { status: resp.status, bodyText: txt, title: '템플릿 정보 조회 실패' });
+                    return;
                 }
+                const json = JSON.parse(txt || '{}');
                 const doc = json.document;
                 if (!doc) throw new Error('문서 정보 없음');
 
@@ -559,7 +554,11 @@
 
                 msgEl.textContent = '템플릿 정보 조회 성공';
             } catch (e) {
-                msgEl.textContent = e.message;
+                if (window.ApiError && ApiError.isNetworkError(e)) {
+                    renderApiError(msgEl, { error: e, title: '템플릿 정보 조회 실패' });
+                } else {
+                    msgEl.textContent = e.message;
+                }
             } finally {
                 btn.disabled = false;
                 btn.textContent = '템플릿 정보 조회';

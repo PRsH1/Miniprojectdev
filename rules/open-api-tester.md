@@ -208,6 +208,16 @@ const API_SPECS = {
 
 ---
 
+### 응답 에러 표시 (`#responseNotice`)
+
+- 두 HTML 모두 응답 헤더와 `.response-body-wrap` 사이에 `#responseNotice`가 있다. `ui.js`의 `showResponseNotice(info)` / `hideResponseNotice()`가 관리한다.
+- 4xx/5xx 응답이면 `renderApiError`(`assets/js/api-error.js`)로 `HTTP 400 · [코드] 메시지` + 에러 코드 찾아보기 링크를 표시한다. 본문은 기존처럼 `#responseBody`에 pretty-print된다.
+- `fetch` 자체가 실패하면(`Failed to fetch`) CORS·도메인 오타·네트워크 안내와 CorsTest 링크를 표시한다.
+- `clearResponse()`와 `selectEndpoint()`(응답 캐시 복원 전)에서 숨긴다. 응답 캐시(`responseCache`)에는 저장하지 않는다.
+- 로드 순서: `api-error.js`는 `openapi/api-list.js`보다 앞(공유 모듈 → openapi 모듈).
+
+---
+
 ### 비(非)자명한 동작 — 수정 시 주의
 
 - **사이드바 정렬 모드**: `ui.js`의 `currentViewMode` 변수로 관리 (`'group'` | `'code'` | `'method'`)
