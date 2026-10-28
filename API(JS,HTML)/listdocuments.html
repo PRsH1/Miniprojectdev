@@ -234,7 +234,7 @@
                 <input type="text" id="privateKeyHex" placeholder="예: 30... (Signature 방식)">
             </div>
 
-            <button onclick="getAccessToken()">Access Token 발급</button>
+            <button id="btnGetToken" onclick="withLoading(this, getAccessToken)">Access Token 발급</button>
             <div class="form-group" style="display:flex;gap:8px;margin-top:10px;">
                 <button type="button" onclick="openCredentialSaveModal()" style="width:auto;flex:1;">인증 저장</button>
                 <button type="button" onclick="openCredentialLoadModal()" style="width:auto;flex:1;">인증 불러오기</button>
@@ -336,14 +336,15 @@
                 <input type="text" id="template_ids" placeholder="예: id1, id2, id3">
             </div>
 
-            <button onclick="listDocuments()">문서 목록 조회 실행</button>
-            <div id="result" class="result-area" style="display:none;"></div>
+            <button id="btnListDocuments" onclick="withLoading(this, listDocuments)">문서 목록 조회 실행</button>
+            <div id="result"></div>
         </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
     <script src="/assets/js/token-issuer.js"></script>
+    <script src="/assets/js/result-panel.js"></script>
     <script>
         // 기본 URL 맵 (Base URL만 저장)
         const baseUrlMap = {
@@ -443,6 +444,7 @@
 
         // 2. 문서 목록 조회
         function listDocuments() {
+            // withLoading이 요청 완료까지 버튼을 잠그도록 Promise를 반환한다
             const token = $('#accessToken').val().trim();
             const baseUrl = getBaseUrl();
 
@@ -460,10 +462,7 @@
             };
             url += '?' + Object.entries(qs).map(([k, v]) => `${k}=${v}`).join('&');
 
-            $('#result').show().empty().append(
-                $('<p>').text(`Request URL: ${url}`),
-                $('<p id="statusMessage">').text('조회 중...')
-            );
+            ResultPanel.renderStatus('#result', '조회 중...', [`Request URL: ${url}`]);
 
             const body = {
                 type: $('#docType').val(),
@@ -486,7 +485,7 @@
                 if (ids.length) body.template_ids = ids;
             }
 
-            fetch(url, {
+            return fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify(body)
@@ -496,13 +495,20 @@
                 : res.text().then(t => { throw new Error(`Status ${res.status}: ${t}`); })
             )
             .then(data => {
-                $('#statusMessage').text('조회 완료 (Success)');
-                // 문서 제목·필드 값은 외부 입력값이므로 반드시 텍스트로 표시
-                $('#result').append($('<pre>').text(JSON.stringify(data, null, 2)));
+                // 문서 제목·필드 값은 외부 입력값이므로 반드시 텍스트로 표시 (ResultPanel은 textContent 사용)
+                const count = data && Array.isArray(data.documents) ? data.documents.length : null;
+                ResultPanel.render('#result', data, {
+                    title: count === null ? '조회 완료 (Success)' : `조회 완료 (Success) · ${count}건`,
+                    status: 'ok',
+                    filename: 'listdocuments',
+                    meta: [`Request URL: ${url}`]
+                });
             })
             .catch(err => {
-                $('#statusMessage').text('조회 실패 (Fail)');
-                $('#result').append($('<pre>').css('color', '#ff6b6b').text(`Error: ${err.message}`));
+                ResultPanel.render('#result', `Error: ${err.message}`, {
+                    title: '조회 실패 (Fail)', status: 'error', filename: 'listdocuments_error',
+                    meta: [`Request URL: ${url}`]
+                });
             });
         }
     </script>

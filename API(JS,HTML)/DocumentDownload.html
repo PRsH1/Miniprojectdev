@@ -73,7 +73,7 @@
             <div class="form-group">
                 <label for="user_id_token">User ID:</label> <input type="text" id="user_id_token" placeholder="User ID 입력">
             </div>
-            <button onclick="getAccessToken()">Access Token 발급</button>
+            <button id="btnGetToken" onclick="withLoading(this, getAccessToken)">Access Token 발급</button>
             <div class="form-group" style="display:flex;gap:8px;margin-top:10px;">
                 <button type="button" onclick="openCredentialSaveModal()" style="width:auto;flex:1;">인증 저장</button>
                 <button type="button" onclick="openCredentialLoadModal()" style="width:auto;flex:1;">인증 불러오기</button>
@@ -105,14 +105,15 @@
                 <label for="fileName">file_name (선택):</label>
                 <input type="text" id="fileName" placeholder="다운로드 파일명 지정 (확장자 제외)">
             </div>
-            <button onclick="downloadFiles()">파일 다운로드</button>
-            <div class="result-box" id="downloadResult"></div>
+            <button id="btnDownload" onclick="withLoading(this, downloadFiles)">파일 다운로드</button>
+            <div id="downloadResult"></div>
         </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
     <script src="/assets/js/token-issuer.js"></script>
+    <script src="/assets/js/result-panel.js"></script>
     <script>
         const DOMAINS = { 
             op_saas: 'https://kr-api.eformsign.com', 
@@ -187,7 +188,7 @@
                 return null;
             }
             let fileName = null;
-            const utf8FilenameMatch = /filename\*=UTF-8''([^;]+)/i.exec(dispositionHeader);
+            const utf8FilenameMatch = /filename\*="?UTF-8''([^;"]+)"?/i.exec(dispositionHeader);
             if (utf8FilenameMatch && utf8FilenameMatch[1]) {
                 try {
                     fileName = decodeURIComponent(utf8FilenameMatch[1]);
@@ -196,7 +197,7 @@
                     console.error("Error decoding filename*:", e);
                 }
             }
-            const legacyFilenameMatch = /filename="?([^;"]+)"?/i.exec(dispositionHeader);
+            const legacyFilenameMatch = /filename="?([^;"*]+)"?/i.exec(dispositionHeader);
             if (legacyFilenameMatch && legacyFilenameMatch[1]) {
                 let filename = legacyFilenameMatch[1];
                 try {
@@ -209,6 +210,29 @@
                 }
             }
             return null;
+        }
+
+        // content-type으로 확장자 추론 (사용자가 파일명을 지정했거나 서버가 파일명을 주지 않은 경우)
+        function extensionFromContentType(contentType) {
+            const ct = String(contentType || '').toLowerCase();
+            if (ct.includes('application/pdf')) return '.pdf';
+            if (ct.includes('zip')) return '.zip';
+            if (ct.includes('application/json')) return '.json';
+            if (ct.includes('image/png')) return '.png';
+            if (ct.includes('image/jpeg')) return '.jpg';
+            return '';
+        }
+
+        // 브라우저에 파일 저장 트리거
+        function saveBlob(blob, fileName) {
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { window.URL.revokeObjectURL(downloadUrl); a.remove(); }, 0);
         }
 
         async function downloadFiles() {
@@ -232,48 +256,81 @@
             }
             
             // [수정됨] domain 변수 사용
-            const url = `${domain}/v2.0/api/documents/${documentId}/download_files?${params.toString()}`;
-            
-            resultBox.empty().append(
-                $('<p>').text(`요청 URL: ${url}`),
-                $('<p id="downloadStatus">').text('다운로드 요청 중...')
-            );
+            const url = `${domain}/v2.0/api/documents/${encodeURIComponent(documentId)}/download_files?${params.toString()}`;
+
+            ResultPanel.renderStatus(resultBox, '다운로드 요청 중...', [`요청 URL: ${url}`]);
+
+            let response;
+            let via = 'direct';
             try {
-                const response = await fetch(url, {
+                response = await fetch(url, {
                     method: 'GET',
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (!response.ok) {
-                    const errorJson = await response.json();
-                    throw new Error(`서버 오류 ${response.status}: ${JSON.stringify(errorJson, null, 2)}`);
+            } catch (directErr) {
+                // CORS·네트워크로 직접 호출이 막히면 서버 프록시(/api/downloadDocument)로 재시도
+                console.info('[download] direct 전송 실패(CORS/네트워크) /api/downloadDocument 프록시 경유 재시도');
+                via = 'proxy';
+                const proxyParams = new URLSearchParams({ domain, documentId, file_type: fileTypes.join(',') });
+                if (userInputFileName) proxyParams.append('title', userInputFileName);
+                ResultPanel.renderStatus(resultBox, '직접 다운로드가 차단되어 서버 프록시로 재시도 중...', [`요청 URL: ${url}`]);
+                try {
+                    response = await fetch(`/api/downloadDocument?${proxyParams.toString()}`, {
+                        method: 'GET',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                } catch (proxyErr) {
+                    ResultPanel.render(resultBox, `Error: ${proxyErr.message || directErr.message}`, {
+                        title: '다운로드 실패', status: 'error', filename: 'DocumentDownload_error',
+                        meta: [`요청 URL: ${url}`, '직접 호출과 서버 프록시 호출이 모두 실패했습니다.']
+                    });
+                    return;
                 }
-                $('#downloadStatus').text('응답 수신 완료. 파일 처리 중...');
-                let finalFileName;
-                if (userInputFileName) {
-                    const contentType = response.headers.get('content-type');
-                    let extension = '';
-                    if (contentType.includes('application/pdf')) extension = '.pdf';
-                    else if (contentType.includes('application/zip')) extension = '.zip';
-                    finalFileName = userInputFileName + extension;
-                } else {
-                    const disposition = response.headers.get('content-disposition');
-                    finalFileName = parseContentDisposition(disposition) || 'downloaded_file';
-                }
-                const blob = await response.blob();
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = downloadUrl;
-                a.download = finalFileName;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(downloadUrl);
-                a.remove();
-                $('#downloadStatus').text(`다운로드 성공: ${finalFileName}`);
-            } catch (err) {
-                $('#downloadStatus').text('다운로드 실패');
-                resultBox.append($('<pre>').text(`Error: ${err.message}`));
             }
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                let errorBody = errorText;
+                try { errorBody = JSON.parse(errorText); } catch (_) { /* JSON이 아니면 원문 그대로 */ }
+                ResultPanel.render(resultBox, errorBody, {
+                    title: '다운로드 실패', status: 'error', statusText: `HTTP ${response.status}`,
+                    filename: 'DocumentDownload_error',
+                    meta: [`요청 URL: ${url}`, `경로: ${via === 'proxy' ? '서버 프록시(via proxy)' : '직접 호출'}`,
+                        via === 'proxy' ? '프록시는 약 4.5MB를 넘는 파일을 전달하지 못합니다. 큰 파일은 CORS가 허용된 환경에서 직접 다운로드하세요.' : '']
+                });
+                return;
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            const extension = extensionFromContentType(contentType);
+            let finalFileName;
+            if (userInputFileName) {
+                finalFileName = (extension && !userInputFileName.toLowerCase().endsWith(extension))
+                    ? userInputFileName + extension
+                    : userInputFileName;
+            } else {
+                const disposition = response.headers.get('content-disposition');
+                finalFileName = parseContentDisposition(disposition) || `document_${documentId}${extension}`;
+            }
+            const blob = await response.blob();
+            saveBlob(blob, finalFileName);
+
+            ResultPanel.render(resultBox, {
+                result: 'success',
+                via,
+                http_status: response.status,
+                document_id: documentId,
+                file_type: fileTypes.join(','),
+                file_name: finalFileName,
+                content_type: contentType,
+                size_bytes: blob.size
+            }, {
+                title: `다운로드 성공: ${finalFileName}`,
+                status: 'ok',
+                statusText: via === 'proxy' ? 'via proxy' : 'direct',
+                filename: 'DocumentDownload',
+                meta: [`요청 URL: ${url}`]
+            });
         }
 
         $(document).ready(function() {
@@ -304,6 +361,12 @@
                 const docId = $(this).val().trim() || '{DOCUMENT_ID}';
                 $('#dynamicDownloadDocId').text(docId);
             });
+
+            // ?document_id= 쿼리 프리필 (문서 작성 도구의 [다운로드 →] 링크)
+            const prefillId = ResultPanel.getQueryParam('document_id');
+            if (prefillId) {
+                $('#downloadDocumentId').val(prefillId).trigger('input');
+            }
 
             $('.btn-checkbox-group input[type="checkbox"]').on('change', function() {
                 $(this).closest('label').toggleClass('selected', this.checked);

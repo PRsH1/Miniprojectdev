@@ -113,6 +113,7 @@ ProjectImprove/
 │   ├── notification-bell.js    # index.html 전용 알림 벨 모듈 (IIFE → window.NotifBell)
 │   ├── credential-panel.js     # 크리덴셜 저장/불러오기 공유 모달 모듈 (IIFE)
 │   ├── token-issuer.js         # Access Token 발급 공유 모듈 (IIFE → window.issueAccessToken, direct→CORS 실패 시 /api/getToken 프록시 fallback)
+│   ├── result-panel.js         # 결과 패널 공유 모듈 (IIFE → window.ResultPanel·withLoading: JSON 표시·복사·다운로드·접기, 버튼 로딩, 문서 ID 링크)
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── member/                 # MemberV2 분할 모듈 (로드 순서 중요)
 │   │   ├── api.js              #   API 호출, 엑셀 처리 (전역 함수)

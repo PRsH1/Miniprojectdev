@@ -22,6 +22,18 @@ fetch(`${domain}/v2.0/api_auth/access_token`, {
 
 > **브라우저 도구에서 토큰 발급 시**: 위 direct fetch를 그대로 복사하지 말고 공유 모듈 `assets/js/token-issuer.js`의 `window.issueAccessToken({ domain, apiKey, memberId, signature, execTime })`를 사용한다. CORS/네트워크 전송 실패 시에만 `/api/getToken` 서버 프록시로 자동 fallback하며(인증거부는 즉시 최종 실패), 반환값 `{ ok, token, data, message, via }`의 `data`로 `refresh_token`·`company_id` 등 원본 응답을 추출할 수 있다. 서명 생성은 각 페이지가 담당하고 모듈에는 계산된 서명값만 전달한다(비밀키 브라우저 이탈 없음).
 
+### 결과 패널 공유 모듈 (`assets/js/result-panel.js`)
+
+API 도구의 결과 영역은 `<pre>`를 직접 만들지 말고 `window.ResultPanel`을 쓴다(IIFE, 의존성 없음 — jQuery 없는 페이지도 가능).
+
+- `ResultPanel.render(el, data, { title, filename, meta, status, statusText, collapsed })` — JSON(또는 문자열)을 **textContent**로 렌더링하고 헤더에 [복사]·[JSON 다운로드]·[접기] 버튼을 붙인다. 다운로드 파일명은 `<filename>_<YYYYMMDD_HHmmss>.json`. `el`은 요소·셀렉터·jQuery 객체 모두 허용.
+- `ResultPanel.renderStatus(el, message, meta)` — "조회 중..." 같은 진행 문구.
+- `withLoading(btn, asyncFn)` (= `ResultPanel.withLoading`) — 실행 중 버튼 `disabled` + "처리 중…", 끝나면 원래 자식 노드로 복원. 이미 실행 중이면 `asyncFn`을 호출하지 않으므로 빠른 연속 클릭에도 요청은 1건이다. `onclick="withLoading(this, fn)"` 형태로 쓰고, `fn`은 요청이 끝날 때까지 기다리는 Promise를 반환해야 한다.
+- `ResultPanel.renderDocumentLinks(el, documentId)` — "생성된 문서 ID: xxx [복사] [문서 정보 조회 →] [다운로드 →]". 링크는 `/API(JS,HTML)/DocumentInfo.html?document_id=xxx`, `/API(JS,HTML)/DocumentDownload.html?document_id=xxx`(새 탭). 두 페이지는 `?document_id=` 쿼리로 입력란을 프리필한다.
+- 적용: `API(JS,HTML)/{DocumentInfo,listdocuments,DocumentDownload,DocumentSendImprove}.html`, `Embedding/embedding_doc_Integration.html`(성공 시 `alert()` 대신 페이지 내 박스).
+- 로드 순서: `token-issuer.js` 바로 다음(페이지 인라인 스크립트보다 앞).
+- DocumentDownload는 direct 호출이 CORS/네트워크로 실패하면 `/api/downloadDocument` 프록시로 재시도하고(결과 배지 `via proxy`), 확장자는 content-type으로 추론한다. 프록시는 Vercel 응답 한도(약 4.5MB)를 넘는 파일을 전달하지 못한다.
+
 ### 환경 도메인
 
 ```javascript
