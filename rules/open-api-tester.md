@@ -208,11 +208,23 @@ const API_SPECS = {
 
 ---
 
+### 응답 에러 표시 (`#responseNotice`)
+
+- 두 HTML 모두 응답 헤더와 `.response-body-wrap` 사이에 `#responseNotice`가 있다. `ui.js`의 `showResponseNotice(info)` / `hideResponseNotice()`가 관리한다.
+- 4xx/5xx 응답이면 `renderApiError`(`assets/js/api-error.js`)로 `HTTP 400 · [코드] 메시지` + 에러 코드 찾아보기 링크를 표시한다. 본문은 기존처럼 `#responseBody`에 pretty-print된다.
+- `fetch` 자체가 실패하면(`Failed to fetch`) CORS·도메인 오타·네트워크 안내와 CorsTest 링크를 표시한다.
+- `clearResponse()`와 `selectEndpoint()`(응답 캐시 복원 전)에서 숨긴다. 응답 캐시(`responseCache`)에는 저장하지 않는다.
+- 로드 순서: `api-error.js` → `token-issuer.js` → `token-badge.js` → `openapi/api-list.js` …(공유 모듈 → openapi 모듈). 두 HTML 모두 동일.
+
+---
+
 ### 비(非)자명한 동작 — 수정 시 주의
 
 - **사이드바 정렬 모드**: `ui.js`의 `currentViewMode` 변수로 관리 (`'group'` | `'code'` | `'method'`)
 - **API 선택 시 자동 탭 전환**: Path 파라미터 있음 → Path 탭 / Body 있음 → Body 탭 / 그 외 → Query 탭
-- **토큰 발급 3단계 fallback**: direct 호출 후 전송실패(CORS/네트워크) 시에만 `/api/getToken` 프록시를 재시도하고, 인증거부 응답은 즉시 최종 실패 처리
+- **토큰 발급은 공유 모듈 사용**: `getAccessToken()`은 `window.issueAccessToken`(`assets/js/token-issuer.js`)을 호출한다(direct → 전송실패 시에만 `/api/getToken` 프록시, 인증거부는 즉시 실패). 페이지 자체 direct/proxy 구현(`tryDirectToken`/`tryProxyToken`)은 제거됨. 성공 시 `#tokenBadge`(token-badge.js)에 남은 시간·via 표시, 실패 시 `#tokenErrorMsg`에 `[코드] 메시지`를 [닫기] 전까지 고정 표시(`showTokenError`/`hideTokenError`). 성공 시 `getAccessToken()`은 발급 결과를 반환한다
+- **401 배너**: Send 응답이 401이면 `#responseNotice` 맨 위에 "토큰이 만료되었거나 유효하지 않습니다 [토큰 재발급]" 배너(`#tokenExpiredBanner`)가 뜨고 배지가 "만료됨"으로 바뀐다. 클릭 → `getAccessToken()` 성공 시 배너 제거
+- **`showToast` 타이머**: `state.js`의 `showToast`는 이전 타이머를 `clearTimeout`한 뒤 새로 건다(연속 토스트가 일찍 사라지던 문제 수정)
 - **DELETE with Body**: `sendRequest`에서 DELETE도 body 포함 메서드로 처리 — Body가 있는 DELETE API(OPA2_009, OPA2_020, OPA2_051 등) 정상 전송
 - **가이드 문서 Authorization 오기재**: OPA2_050~052처럼 가이드에 `api_key base64 인코딩`으로 잘못 기재된 경우가 있음 — 실제로는 Bearer Access Token을 사용하므로 `requiresAuth: true`로 설정할 것
 - **URL 표시 인코딩**: `,` `@` `:` `/`는 인코딩하지 않고 그대로 표시 (`encodeForDisplay` 함수, `ui.js` `updateUrlPreview`)

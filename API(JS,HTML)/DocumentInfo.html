@@ -8,6 +8,8 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
     <script src="/assets/js/token-issuer.js"></script>
+    <script src="/assets/js/result-panel.js"></script>
+    <script src="/assets/js/api-error.js"></script>
     <style>
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
         .container { max-width: 900px; margin: 30px auto; background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -81,7 +83,7 @@
                 <label for="user_id_token">User ID:</label>
                 <input type="text" id="user_id_token" placeholder="User ID 입력">
             </div>
-            <button onclick="getAccessToken()">Access Token 발급</button>
+            <button id="btnGetToken" onclick="withLoading(this, getAccessToken)">Access Token 발급</button>
             <div class="form-group" style="display:flex;gap:8px;margin-top:10px;">
                 <button type="button" onclick="openCredentialSaveModal()" style="width:auto;flex:1;">인증 저장</button>
                 <button type="button" onclick="openCredentialLoadModal()" style="width:auto;flex:1;">인증 불러오기</button>
@@ -116,8 +118,8 @@
                     <label><input type="checkbox" name="docInfoQs" value="include_detail_template_info"><span>상세 템플릿 정보 포함</span></label>
                 </div>
             </div>
-            <button onclick="getDocumentInfo()">문서 정보 조회</button>
-            <div class="result-box" id="docInfoResult"></div>
+            <button id="btnDocInfo" onclick="withLoading(this, getDocumentInfo)">문서 정보 조회</button>
+            <div id="docInfoResult"></div>
         </div>
     </div>
 
@@ -189,6 +191,12 @@
             $('.checkbox-group input[type="checkbox"]').on('change', function() {
                 $(this).closest('label').toggleClass('selected', this.checked);
             });
+
+            // ?document_id= 쿼리 프리필 (문서 작성 도구의 [문서 정보 조회 →] 링크)
+            const prefillId = ResultPanel.getQueryParam('document_id');
+            if (prefillId) {
+                $('#documentId').val(prefillId).trigger('input');
+            }
         });
 
         async function getAccessToken() {
@@ -224,7 +232,7 @@
             }
 
             // 서버·외부 응답 문자열은 .text()로만 렌더링한다 (XSS 방지)
-            $('#tokenResult').empty().append($('<pre>').text('토큰 발송 중...'));
+            $('#tokenResult').empty().append($('<pre>').text('토큰 발급 중...'));
 
             const result = await window.issueAccessToken({ domain, apiKey, memberId, signature, execTime });
             if (result.ok) {
@@ -257,45 +265,50 @@
             const queryString = params.toString();
 
             // [수정됨] 도메인 변수 사용
-            let url = `${domain}/v2.0/api/documents/${documentId}`;
+            let url = `${domain}/v2.0/api/documents/${encodeURIComponent(documentId)}`;
             if (queryString) {
                 url += `?${queryString}`;
             }
 
-            $('#docInfoResult').empty().append(
-                $('<p>').text(`실행 URL: ${url}`),
-                $('<p id="statusMessage">').text('조회 중...')
-            );
+            ResultPanel.renderStatus('#docInfoResult', '조회 중...', [`실행 URL: ${url}`]);
 
+            let response;
             try {
-                const response = await fetch(url, {
+                response = await fetch(url, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     }
                 });
-
-                const resultText = await response.text();
-                const resultJson = JSON.parse(resultText);
-
-                if (!response.ok) {
-                    throw new Error(`네트워크 응답 문제 ${response.status}: ${resultText}`);
-                }
-
-                $('#statusMessage').text('조회 완료');
-                // 문서 필드·제목 등은 외부 서명자가 입력한 값이므로 반드시 텍스트로 표시
-                $('#docInfoResult').append($('<pre>').text(JSON.stringify(resultJson, null, 2)));
-
             } catch (err) {
-                $('#statusMessage').text('조회 실패');
-                let errorContent = err.message;
-                try {
-                    const errorJson = JSON.parse(errorContent.substring(errorContent.indexOf('{')));
-                    errorContent = `네트워크 응답 문제 ${err.message.split(':')[0]}:\n${JSON.stringify(errorJson, null, 2)}`;
-                } catch {}
-                $('#docInfoResult').append($('<pre>').text(`Error: ${errorContent}`));
+                // CORS·도메인 오타·네트워크 실패
+                renderApiError('#docInfoResult', { error: err, url, title: '조회 실패' });
+                return;
             }
+
+            // 상태 코드를 먼저 확인한 뒤 본문을 해석한다 (HTML 502 응답에서 SyntaxError 방지)
+            const resultText = await response.text().catch(() => '');
+            if (!response.ok) {
+                renderApiError('#docInfoResult', { status: response.status, bodyText: resultText, url, title: '조회 실패' });
+                return;
+            }
+            let resultJson;
+            try {
+                resultJson = JSON.parse(resultText);
+            } catch (_) {
+                renderApiError('#docInfoResult', { status: response.status, bodyText: resultText, url, title: '응답 해석 실패' });
+                return;
+            }
+
+            // 문서 필드·제목 등은 외부 서명자가 입력한 값이므로 반드시 텍스트로 표시 (ResultPanel은 textContent 사용)
+            ResultPanel.render('#docInfoResult', resultJson, {
+                title: '조회 완료',
+                status: 'ok',
+                statusText: `HTTP ${response.status}`,
+                filename: 'DocumentInfo',
+                meta: [`실행 URL: ${url}`]
+            });
         }
     </script>
 <script>
@@ -307,7 +320,7 @@ window.CREDENTIAL_CONFIG = {
     envFixed:         null,
     envSaveMap:       null,
     envLoadMap:       null,
-    customUrlId:      null,
+    customUrlId:      'customDomainInput',
     secretMethodId:   'secretKeyMethod',
     secretMethodType: 'radio',
 };

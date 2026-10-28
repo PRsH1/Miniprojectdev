@@ -133,7 +133,7 @@
         </fieldset>
 
         <div class="form-group">
-            <button type="submit">문서 전송하기</button>
+            <button type="submit" id="btnSubmitDoc">문서 전송하기</button>
         </div>
 
         <div class="toggle-label">
@@ -144,7 +144,8 @@
     </form>
 
     <h2>응답 결과</h2>
-    <pre id="result">—</pre>
+    <div id="docLinks"></div>
+    <div id="result"><div class="info-text">아직 전송하지 않았습니다.</div></div>
 
     <template id="tpl-recipient">
         <div class="list-item">
@@ -189,9 +190,11 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
     <script src="/assets/js/token-issuer.js"></script>
+    <script src="/assets/js/result-panel.js"></script>
+    <script src="/assets/js/api-error.js"></script>
     <script>
         // 기본 URL 맵
-        const tokenUrlMap = { op_saas: 'https://kr-api.eformsign.com/v2.0/api_auth/access_token', csap: 'https://www.gov-eformsign.com/Service/v2.0/api_auth/access_token' };
+        // 토큰 발급은 공유 모듈(token-issuer.js)이 apiBase에서 도메인을 추출해 처리한다
         const apiBaseMap = { op_saas: 'https://kr-api.eformsign.com/v2.0/api', csap: 'https://www.gov-eformsign.com/Service/v2.0/api' };
 
         let lastRequestBody = null;
@@ -226,13 +229,11 @@
                 }
 
                 return {
-                    tokenUrl: `${domain}/v2.0/api_auth/access_token`,
                     apiBase: `${domain}/v2.0/api`
                 };
             }
 
             return {
-                tokenUrl: tokenUrlMap[env],
                 apiBase: apiBaseMap[env]
             };
         }
@@ -247,8 +248,13 @@
         setupList('params','tpl-param','addParam');
         setupList('notifications','tpl-notify','addNotify');
 
-        document.getElementById('docForm').addEventListener('submit', async e => {
+        document.getElementById('docForm').addEventListener('submit', e => {
             e.preventDefault();
+            // 처리 중에는 버튼을 잠가 중복 전송(더블클릭)을 막는다
+            withLoading(document.getElementById('btnSubmitDoc'), submitDocument);
+        });
+
+        async function submitDocument() {
 
             const tokenVal = document.getElementById('accessToken').value.trim();
             if (!tokenVal) {
@@ -338,8 +344,9 @@
                 const apiBase = endpoints.apiBase;
                 
                 const url = `${apiBase}/documents?template_id=${encodeURIComponent(document.getElementById('templateId').value)}`;
-                document.getElementById('result').textContent = '전송 중...';
-                
+                document.getElementById('docLinks').textContent = '';
+                ResultPanel.renderStatus('#result', '전송 중...', [`요청 URL: ${url}`]);
+
                 const res = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -348,12 +355,29 @@
                     },
                     body: JSON.stringify(body)
                 });
-                const data = await res.json();
-                document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+                const text = await res.text();
+                let data = text;
+                try { data = JSON.parse(text); } catch (_) { /* JSON이 아니면 원문 표시 */ }
+
+                if (!res.ok) {
+                    renderApiError('#result', { status: res.status, bodyText: text, url, title: '문서 전송 실패' });
+                    return;
+                }
+
+                // 생성된 문서 ID를 눈에 띄게 표시하고 조회·다운로드 도구로 바로 이동할 수 있게 한다
+                const createdId = data && data.document && data.document.id;
+                if (createdId) {
+                    ResultPanel.renderDocumentLinks('#docLinks', createdId);
+                }
+                ResultPanel.render('#result', data, {
+                    title: '문서 전송 완료', status: 'ok', statusText: `HTTP ${res.status}`,
+                    filename: 'DocumentSend', meta: [`요청 URL: ${url}`]
+                });
             } catch (err) {
-                document.getElementById('result').textContent = '오류: ' + err.message;
+                // 네트워크·CORS 실패 또는 커스텀 도메인 미입력
+                renderApiError('#result', { error: err, title: '문서 전송 실패' });
             }
-        });
+        }
 
         document.getElementById('secretMethod').addEventListener('change', () => {
             const m   = document.getElementById('secretMethod').value;
@@ -467,13 +491,11 @@
                     body: JSON.stringify({ type: 'api', template_id: templateId })
                 });
                 const txt  = await resp.text();
-                const json = JSON.parse(txt || '{}');
-
                 if (!resp.ok) {
-                    const code = json.code || resp.status;
-                    const em   = json.ErrorMessage || resp.statusText;
-                    throw new Error(`${code}: ${em}`);
+                    renderApiError(msgEl, { status: resp.status, bodyText: txt, title: '템플릿 정보 조회 실패' });
+                    return;
                 }
+                const json = JSON.parse(txt || '{}');
                 const doc = json.document;
                 if (!doc) throw new Error('문서 정보 없음');
 
@@ -530,7 +552,11 @@
 
                 msgEl.textContent = '템플릿 정보 조회 성공';
             } catch (e) {
-                msgEl.textContent = e.message;
+                if (window.ApiError && ApiError.isNetworkError(e)) {
+                    renderApiError(msgEl, { error: e, title: '템플릿 정보 조회 실패' });
+                } else {
+                    msgEl.textContent = e.message;
+                }
             } finally {
                 btn.disabled = false;
                 btn.textContent = '템플릿 정보 조회';
@@ -569,7 +595,7 @@ window.CREDENTIAL_CONFIG = {
     envFixed:         null,
     envSaveMap:       null,
     envLoadMap:       null,
-    customUrlId:      null,
+    customUrlId:      'customDomainInput',
     secretMethodId:   'secretMethod',
     secretMethodType: 'select',
 };

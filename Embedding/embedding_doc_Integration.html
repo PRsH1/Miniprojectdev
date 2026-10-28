@@ -9,6 +9,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js"></script>
     <script src="/assets/js/token-issuer.js"></script>
+    <script src="/assets/js/result-panel.js"></script>
     
     <style>
       /* --- 기본 레이아웃 (데스크탑) --- */
@@ -612,7 +613,19 @@
       function success_callback(response) {
         hideLoading();
         console.log("✅ Success:", JSON.stringify(response, null, 4));
-        alert(`성공!\nID: ${response.document_id}\n제목: ${response.title}`);
+        // alert 대신 페이지 내 메시지 박스에 문서 ID + 복사 버튼 표시 (외부 문자열은 textContent로만)
+        const createdId = response && (response.document_id || (response.document && response.document.id));
+        if (createdId) {
+          ResultPanel.renderDocumentLinks("#embedDocLinks", createdId, { label: "문서 작성 성공 · 문서 ID:" });
+        } else {
+          document.getElementById("embedDocLinks").textContent = "";
+        }
+        ResultPanel.render("#embedResultBox", response, {
+          title: response && response.title ? `성공 · ${response.title}` : "성공",
+          status: "ok",
+          filename: "embedding_doc",
+          collapsed: true
+        });
         const displayMode = $('input[name="display_mode"]:checked').val();
         if (displayMode === "modal") closeModal();
       }
@@ -620,7 +633,13 @@
       function error_callback(err) {
         hideLoading();
         console.log("❌ Error:", JSON.stringify(err, null, 4));
-        alert(`실패:\n${err.message} (${err.code})`);
+        document.getElementById("embedDocLinks").textContent = "";
+        ResultPanel.render("#embedResultBox", err, {
+          title: `실패: ${(err && err.message) || "알 수 없는 오류"}${err && err.code ? ` (${err.code})` : ""}`,
+          status: "error",
+          filename: "embedding_doc_error"
+        });
+        document.getElementById("embedResultBox").scrollIntoView({ behavior: "smooth", block: "nearest" });
         const displayMode = $('input[name="display_mode"]:checked').val();
         if (displayMode === "modal") closeModal();
       }
@@ -1127,6 +1146,9 @@
       <button id="startButton" class="btn" style="background: #28a745; margin-top: 20px">
         Start Document
       </button>
+      <!-- 문서 작성 결과 (alert 대신 페이지 내 표시) -->
+      <div id="embedDocLinks"></div>
+      <div id="embedResultBox"></div>
     </div>
 
     <div class="right-panel">
@@ -1159,7 +1181,7 @@
       envFixed:         null,
       envSaveMap:       { 'saas': 'op_saas', 'csap': 'csap', 'custom': 'custom' },
       envLoadMap:       { 'op_saas': 'saas', 'csap': 'csap', 'custom': 'custom' },
-      customUrlId:      null,
+      customUrlId:      'customApiUrl',   // API Base URL (라이브러리 Domain URL은 별도 입력)
       secretMethodId:   'tokenMethodSelect',
       secretMethodType: 'select',
   };

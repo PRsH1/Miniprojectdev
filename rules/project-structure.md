@@ -109,7 +109,7 @@ ProjectImprove/
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구 (HTML)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
-│   └── error-codes.html        # OPA2 에러 코드 모음 (검색 가능 — OPA2_021·OPA2_061 카드는 아직 없음)
+│   └── error-codes.html        # OPA2 에러 코드 모음 (검색 + ?q= / #code-<코드> 딥링크 — OPA2_021·OPA2_061 카드는 아직 없음)
 │
 ├── design-preview-member.html  # MemberV2 디자인 시스템 확인용 (프로덕션 미사용)
 ├── img/                        # 정적 이미지 (sso_flow.png 등)
@@ -120,6 +120,9 @@ ProjectImprove/
 │   ├── notification-bell.js    # index.html 전용 알림 벨 모듈 (IIFE → window.NotifBell)
 │   ├── credential-panel.js     # 크리덴셜 저장/불러오기 공유 모달 모듈 (IIFE)
 │   ├── token-issuer.js         # Access Token 발급 공유 모듈 (IIFE → window.issueAccessToken, direct→CORS 실패 시 /api/getToken 프록시 fallback)
+│   ├── api-error.js            # API 에러 표시 공유 모듈 (IIFE → window.renderApiError·ApiError: 요약·에러 코드 링크·원본 토글·CORS 안내)
+│   ├── token-badge.js          # 토큰 상태 배지 공유 모듈 (IIFE → window.TokenBadge: 남은 시간·via proxy·만료됨+재발급, 1분 타이머)
+│   ├── result-panel.js         # 결과 패널 공유 모듈 (IIFE → window.ResultPanel·withLoading: JSON 표시·복사·다운로드·접기, 버튼 로딩, 문서 ID 링크)
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── member/                 # MemberV2 분할 모듈 (로드 순서 중요)
 │   │   ├── api.js              #   API 호출, 엑셀 처리 (전역 함수)

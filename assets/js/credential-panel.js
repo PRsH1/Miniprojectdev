@@ -9,14 +9,18 @@
  *       userIdId:         'user_id_token',
  *       secretKeyId:      'privateKeyHex',
  *       envId:            'envSelection',   // null이면 envFixed 사용
- *       envFixed:         null,             // 'op_saas' | 'csap' (envId가 null일 때)
+ *       envFixed:         null,             // 'op_saas' | 'csap' | 'custom' (envId가 null일 때)
+ *       customUrlFixed:   null,             // envFixed:'custom'일 때 고정 URL (예: Kogas 전용 도메인)
  *       envSaveMap:       null,             // 페이지값→DB값 맵. null이면 1:1
  *       envLoadMap:       null,             // DB값→페이지값 맵. null이면 1:1
- *       customUrlId:      null,             // custom 환경 URL 입력 필드 ID
+ *       customUrlId:      'customDomainInput', // custom 환경 URL 입력 필드 ID — 페이지에 입력란이 있으면 필수
  *       secretMethodId:   'secretKeyMethod',// null이면 signature 고정
  *       secretMethodType: 'radio',          // 'radio'|'select'|'tab'|null
  *       darkMode:         false,            // true면 다크 테마 모달 사용
  *   };
+ *
+ * 비밀 키 방식은 signature / bearer만 저장할 수 있다(DB CHECK 제약). 페이지에서 basic이 선택되어 있으면
+ * 저장 버튼을 비활성화하고 안내한다(Q13 기본안 — 서버 변경 없음).
  *   </script>
  *   <script src="/assets/js/credential-panel.js"></script>
  */
@@ -226,6 +230,9 @@
             }
         } else {
             env = cfg.envFixed || 'op_saas';
+            if (env === 'custom') {
+                customUrl = cfg.customUrlFixed || (cfg.customUrlId ? _getVal(cfg.customUrlId) : '') || null;
+            }
         }
 
         var secretMethod = 'signature';
@@ -239,7 +246,8 @@
             if (tab) secretMethod = tab.dataset.method || 'signature';
         }
 
-        if (secretMethod !== 'bearer') secretMethod = 'signature';
+        // basic은 저장 대상이 아니다 — 저장 모달에서 막고 안내한다(_cpConfirmSave / openCredentialSaveModal)
+        if (secretMethod !== 'bearer' && secretMethod !== 'basic') secretMethod = 'signature';
 
         return {
             apiKey: _getVal(cfg.apiKeyId),
@@ -278,13 +286,24 @@
             if (btn) btn.click();
         }
 
+        // 고정 환경 페이지(예: Kogas)에 다른 환경의 크리덴셜을 불러오면 알린다
+        var envMismatch = !cfg.envId && cfg.envFixed && (
+            c.environment !== cfg.envFixed ||
+            (cfg.customUrlFixed && _normUrl(c.custom_url) !== _normUrl(cfg.customUrlFixed))
+        );
+
+        // 토스트는 textContent로 출력하므로 이스케이프하지 않는다 (& 등이 그대로 보이도록)
         if (c.secret_key) {
             _setVal(cfg.secretKeyId, c.secret_key);
-            _showToast('"' + _esc(c.name) + '" 인증 정보를 불러왔습니다.');
+            _showToast('"' + (c.name || '') + '" 인증 정보를 불러왔습니다.' + (envMismatch ? ' (주의: 이 페이지의 고정 환경과 다른 크리덴셜입니다)' : ''), envMismatch ? 4500 : 2000);
         } else {
             _setVal(cfg.secretKeyId, '');
-            _showToast('"' + _esc(c.name) + '" 불러오기 완료 — 비밀 키를 직접 입력해주세요.', 3500);
+            _showToast('"' + (c.name || '') + '" 불러오기 완료 — 비밀 키를 직접 입력해주세요.' + (envMismatch ? ' (주의: 이 페이지의 고정 환경과 다른 크리덴셜입니다)' : ''), 4500);
         }
+    }
+
+    function _normUrl(u) {
+        return String(u || '').trim().replace(/\/+$/, '').toLowerCase();
     }
 
     // custom 환경 포함 환경 레이블 반환
@@ -397,9 +416,13 @@
                                 '<span>비밀 키도 함께 저장합니다</span>',
                             '</label>',
                         '</div>',
+                        // Basic Auth 미지원 안내 (Q13 기본안: 서버 변경 없이 저장 비활성화)
+                        '<div id="_cpSaveBasicNotice" style="display:none;margin:-6px 0 16px;padding:8px 10px;border-radius:6px;background:#fff7e0;border:1px solid #f3d48a;color:#7a5600;font-size:12px;line-height:1.5;">',
+                            'Basic Auth 방식은 인증 저장을 지원하지 않습니다. Signature 또는 Bearer Token 방식으로 바꾼 뒤 저장하세요.',
+                        '</div>',
                         '<div style="display:flex;gap:8px;justify-content:flex-end;">',
                             '<button type="button" onclick="_cpCloseSaveModal()" style="' + _btnStyle(false) + '">취소</button>',
-                            '<button type="button" onclick="_cpConfirmSave()" style="' + _btnStyle(true) + '">저장</button>',
+                            '<button type="button" id="_cpSaveBtn" onclick="_cpConfirmSave()" style="' + _btnStyle(true) + '">저장</button>',
                         '</div>',
                     '</div>',
                 '</div>',
@@ -453,8 +476,22 @@
             saveEnv.value = cur.env || 'op_saas';
             saveEnv.disabled = !!cfg.envFixed;
         }
-        if (saveCustomUrl) saveCustomUrl.value = cur.customUrl || '';
+        if (saveCustomUrl) {
+            saveCustomUrl.value = cur.customUrl || '';
+            // 고정 URL 페이지(Kogas 등)는 URL을 바꿀 수 없다
+            saveCustomUrl.readOnly = !!(cfg.envFixed === 'custom' && cfg.customUrlFixed);
+        }
         if (saveCustomUrlWrap) saveCustomUrlWrap.style.display = cur.env === 'custom' ? '' : 'none';
+        // Basic Auth는 저장할 수 없다 → 저장 버튼 비활성화 + 안내
+        var isBasic = cur.secretMethod === 'basic';
+        var basicNotice = document.getElementById('_cpSaveBasicNotice');
+        var saveBtn = document.getElementById('_cpSaveBtn');
+        if (basicNotice) basicNotice.style.display = isBasic ? '' : 'none';
+        if (saveBtn) {
+            saveBtn.disabled = isBasic;
+            saveBtn.style.opacity = isBasic ? '0.5' : '';
+            saveBtn.style.cursor = isBasic ? 'not-allowed' : 'pointer';
+        }
         document.getElementById('_cpSaveModal').style.display = 'flex';
         setTimeout(function () { document.getElementById('_cpSaveName').focus(); }, 50);
     };
@@ -498,6 +535,13 @@
         try {
             var deleteRes = await fetch('/api/credentials/' + id, { method: 'DELETE' });
             if (_handleApiAuthResponse(deleteRes)) return;
+            if (!deleteRes.ok) {
+                // 실패를 성공처럼 처리하지 않는다 — 목록은 그대로 두고 실패를 알린다
+                var errBody = await deleteRes.json().catch(function () { return {}; });
+                _showToast('삭제 실패: ' + ((errBody.error && errBody.error.message) || ('HTTP ' + deleteRes.status)), 3500);
+                return;
+            }
+            _showToast('삭제했습니다.');
             var res = await fetch('/api/credentials');
             if (_handleApiAuthResponse(res)) return;
             if (res.ok) _renderList(await res.json());
@@ -523,6 +567,10 @@
             return;
         }
         var cur = _readFromPage(); // secretMethod 읽기용
+        if (cur.secretMethod === 'basic') {
+            _showToast('Basic Auth 방식은 인증 저장을 지원하지 않습니다.', 3500);
+            return;
+        }
         try {
             var res = await fetch('/api/credentials', {
                 method: 'POST',
@@ -544,7 +592,7 @@
                 return;
             }
             window._cpCloseSaveModal();
-            _showToast('"' + _esc(name) + '" 인증 정보가 저장되었습니다.');
+            _showToast('"' + name + '" 인증 정보가 저장되었습니다.');
         } catch (e) { _showToast('저장 중 오류가 발생했습니다.', 2500); }
     };
 

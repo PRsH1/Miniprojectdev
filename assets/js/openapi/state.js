@@ -66,10 +66,13 @@ function methodBadge(method) {
     return `<span class="m-badge ${escHtml(methodClass(method))}">${escHtml(method)}</span>`;
 }
 
+let _toastTimer = null;
 function showToast(msg, duration = 2000) {
     const $t = $('#toast');
     $t.text(msg).addClass('show');
-    setTimeout(() => $t.removeClass('show'), duration);
+    // 이전 토스트 타이머를 지워야 새 메시지가 이전 타이머에 의해 일찍 사라지지 않는다
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => $t.removeClass('show'), duration);
 }
 
 function fetchMeBootstrap() {

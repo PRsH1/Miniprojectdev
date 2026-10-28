@@ -581,59 +581,37 @@
         const signature = sig.sign();
         const domain = baseUrl();
 
-        // 브라우저 직접 호출은 유지하고, 전송실패(CORS/네트워크)일 때만 /api/getToken 프록시로 재시도한다.
-        // 과거 b829055에서 프록시 단독 구조가 일부 on-premise 도메인 ConnectTimeout을 만들었기 때문에
-        // 직접 호출을 1차로 두고 프록시는 CORS 차단 도메인을 구제하는 fallback으로만 사용한다.
-        let payload = await fetchTokenDirect(domain, apiKey, memberId, signature, execTime);
-        if (payload === TOKEN_TRANSPORT_FAIL) {
-            console.info('[token] direct 전송 실패 /api/getToken 프록시 경유 재시도');
-            payload = await fetchTokenViaProxy(domain, apiKey, memberId, signature, execTime);
-        }
+        // 공유 모듈(assets/js/token-issuer.js): 브라우저 직접 호출을 1차로 두고,
+        // 전송실패(CORS/네트워크)일 때만 /api/getToken 프록시로 재시도한다. 인증 거부는 즉시 실패.
+        // (과거 b829055에서 프록시 단독 구조가 일부 on-premise 도메인 ConnectTimeout을 만들었던 이력 때문)
+        const result = await window.issueAccessToken({ domain, apiKey, memberId, signature, execTime });
+        if (!result.ok) throw new Error(result.message || "Access Token 발급에 실패했습니다.");
 
-        state.token = must(payload?.oauth_token?.access_token, "응답에서 access_token을 찾지 못했습니다.");
-        const cid = payload?.api_key?.company?.company_id;
+        state.token = must(result.token, "응답에서 access_token을 찾지 못했습니다.");
+        const cid = result.data?.api_key?.company?.company_id;
         if (cid) state.companyId = cid;
         updateAuthPanelUI();
+        attachTokenBadges(result);
         return state.token;
     }
 
-    const TOKEN_TRANSPORT_FAIL = Symbol('token_transport_fail');
+    // 토큰 상태 배지 (assets/js/token-badge.js) — 인증 패널·설정 모달 두 곳
+    const TOKEN_BADGE_IDS = ["#authTokenBadge", "#modalTokenBadge"];
 
-    async function fetchTokenDirect(domain, apiKey, memberId, signature, execTime) {
-        let response;
-        try {
-            response = await fetch(`${domain}/v2.0/api_auth/access_token`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json; charset=UTF-8",
-                    "Authorization": "Bearer " + btoa(apiKey),
-                    "eformsign_signature": signature
-                },
-                body: JSON.stringify({ execution_time: execTime, member_id: memberId })
-            });
-        } catch (_) {
-            return TOKEN_TRANSPORT_FAIL;
-        }
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.message || payload.ErrorMessage || "Access Token 발급에 실패했습니다.");
-        return payload;
+    function attachTokenBadges(result) {
+        if (!window.TokenBadge) return;
+        const onReissue = () => { if (els.btnIssueToken) els.btnIssueToken.click(); };
+        TOKEN_BADGE_IDS.forEach((sel) => window.TokenBadge.attach(sel, result, { onReissue }));
     }
 
-    async function fetchTokenViaProxy(domain, apiKey, memberId, signature, execTime) {
-        const response = await fetch('/api/getToken', {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ domain, apiKey, memberId, signature, execTime })
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload?.oauth_token?.access_token) {
-            const up = payload.error && payload.error.upstream;
-            const msg = (up && (up.code ? `[${up.code}] ${up.message || ''}`.trim() : up.message))
-                || (payload.error && payload.error.message)
-                || payload.message || "프록시 경유 Access Token 발급에 실패했습니다.";
-            throw new Error(msg);
-        }
-        return payload;
+    function markTokenBadgesExpired() {
+        if (!window.TokenBadge) return;
+        TOKEN_BADGE_IDS.forEach((sel) => window.TokenBadge.markExpired(sel));
+    }
+
+    function clearTokenBadges() {
+        if (!window.TokenBadge) return;
+        TOKEN_BADGE_IDS.forEach((sel) => window.TokenBadge.clear(sel));
     }
 
     async function request({ id, method, path, body, ok, check, after, validate, headers, useToken = true }) {
@@ -649,6 +627,8 @@
         const start = performance.now();
         const response = await fetch(url, options);
         const duration = `${Math.round(performance.now() - start)}ms`;
+        // 토큰을 실어 보낸 요청이 401이면 배지를 "만료됨 · [토큰 재발급]"으로 바꾼다
+        if (useToken && response.status === 401) markTokenBadgesExpired();
         const type = response.headers.get("content-type") || "";
         let text = "";
         let json = null;
@@ -1249,6 +1229,21 @@
         };
     }
 
+    // 에러 코드 레퍼런스(utils/error-codes.html?q=) 링크 — 리포트 파일을 따로 열어도 동작하도록 절대 URL 사용
+    function errorCodeLookupUrl(code) {
+        const clean = String(code || "").trim();
+        if (!clean || clean === "-") return "";
+        if (window.ApiError && typeof window.ApiError.lookupUrl === "function") {
+            return window.ApiError.lookupUrl(clean, { absolute: true });
+        }
+        return `${window.location.origin}/utils/error-codes.html?q=${encodeURIComponent(clean)}`;
+    }
+
+    function errorCodeLinkHtml(code) {
+        const href = errorCodeLookupUrl(code);
+        return href ? ` <a href="${esc(href)}" target="_blank" rel="noopener">에러 코드 찾아보기 →</a>` : "";
+    }
+
     function parseErrorInfo(responseText) {
         const text = String(responseText || "").trim();
         if (!text) return { code: "", message: "" };
@@ -1388,7 +1383,7 @@
                         <div class="report-failure-meta">
                             ${esc(failure.method)} ${esc(failure.url || "(URL 없음)")}<br>
                             HTTP ${esc(String(failure.httpStatus))} | ${esc(failure.duration)}<br>
-                            에러: [${esc(failure.errorCode)}] ${esc(failure.errorMessage)}
+                            에러: [${esc(failure.errorCode)}] ${esc(failure.errorMessage)}${errorCodeLinkHtml(failure.errorCode)}
                         </div>
                         <pre>${esc(failure.responseBody || "(Empty)")}</pre>
                     </div>
@@ -1402,7 +1397,7 @@
                         <div class="report-failure-meta">
                             ${esc(item.method)} ${esc(item.url || "(URL 없음)")}<br>
                             HTTP ${esc(String(item.httpStatus))} | ${esc(item.duration)}<br>
-                            응답 코드: [${esc(item.errorCode)}] ${esc(item.errorMessage)}<br>
+                            응답 코드: [${esc(item.errorCode)}] ${esc(item.errorMessage)}${errorCodeLinkHtml(item.errorCode)}<br>
                             <strong>의도된 응답(예: 이미 정리된 리소스)인지 실제 오류인지 확인이 필요합니다.</strong>
                         </div>
                         <pre>${esc(item.responseBody || "(Empty)")}</pre>
@@ -1476,7 +1471,7 @@
                 lines.push(`- **URL**: ${failure.method} ${failure.url || "(URL 없음)"}`);
                 lines.push(`- **HTTP Status**: ${failure.httpStatus}`);
                 lines.push(`- **Duration**: ${failure.duration}`);
-                lines.push(`- **에러 코드**: ${failure.errorCode}`);
+                lines.push(`- **에러 코드**: ${failure.errorCode}${errorCodeLookupUrl(failure.errorCode) ? ` ([에러 코드 찾아보기](${errorCodeLookupUrl(failure.errorCode)}))` : ""}`);
                 lines.push(`- **에러 메시지**: ${failure.errorMessage}`);
                 lines.push("");
                 lines.push("**Response:**");
@@ -2418,6 +2413,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
     }
 
     function updateAuthPanelUI() {
+        if (!state.token) clearTokenBadges();
         if (!els.authStatusBadge) return;
         if (state.token) {
             const short = state.token.length > 40 ? state.token.slice(0, 40) + "..." : state.token;

@@ -19,10 +19,41 @@ function setResultBadge(badgeId, isOk) {
   badge.style.display = '';
 }
 
+// ─── API 에러 요약 (assets/js/api-error.js) ──────────────
+// HTTP 에러 응답을 status·본문과 함께 Error로 만든다 (메시지 형식은 기존과 동일: "400: {본문}")
+function apiHttpError(res, bodyText) {
+  const err = new Error(`${res.status}: ${bodyText || ''}`);
+  err.status = res.status;
+  err.bodyText = bodyText || '';
+  return err;
+}
+
+// 결과 영역 바로 위에 "HTTP 400 · [코드] 메시지 + 에러 코드 찾아보기" 박스를 표시한다
+function showApiErrorSummary(resultSelector, err) {
+  // 401이면 토큰 배지를 "만료됨 · [토큰 재발급]"으로 바꾼다
+  if (err && err.status === 401 && window.TokenBadge) window.TokenBadge.markExpired('#tokenBadge');
+  const $target = $(resultSelector);
+  if (!$target.length || typeof window.renderApiError !== 'function') return;
+  let $box = $target.prev('.member-api-error');
+  if (!$box.length) $box = $('<div class="member-api-error"></div>').insertBefore($target);
+  if (err && err.status) {
+    window.renderApiError($box[0], { status: err.status, bodyText: err.bodyText });
+  } else {
+    const m = /^(\d{3}): ([\s\S]*)$/.exec(String(err && err.message !== undefined ? err.message : err));
+    if (m) window.renderApiError($box[0], { status: Number(m[1]), bodyText: m[2] });
+    else window.renderApiError($box[0], { error: err });
+  }
+}
+
+function clearApiErrorSummary(resultSelector) {
+  $(resultSelector).prev('.member-api-error').remove();
+}
+
 // ─── 상수 ───────────────────────────────────────────────
-const tokenUrlMap = {
-  op_saas: 'https://kr-api.eformsign.com/v2.0/api_auth/access_token',
-  csap:    'https://www.gov-eformsign.com/Service/v2.0/api_auth/access_token',
+// 토큰 발급 도메인 (경로는 공유 모듈 token-issuer.js가 붙인다)
+const tokenDomainMap = {
+  op_saas: 'https://kr-api.eformsign.com',
+  csap:    'https://www.gov-eformsign.com/Service',
 };
 const memberUrlMap = {
   op_saas: 'https://kr-api.eformsign.com/v2.0/api/members',
@@ -66,18 +97,17 @@ function hideLoading(button) {
 }
 
 // ─── Access Token 발급 ───────────────────────────────────
-function getAccessToken(button) {
+async function getAccessToken(button) {
   showLoading(button);
 
   const env = $('#envSelection').val();
-  let requestURL;
-  if (env === 'custom') {
-    const base = $('#customEnvUrl').val().trim().replace(/\/$/, '');
-    requestURL = base.includes('/api_auth/access_token')
-      ? base
-      : `${base}/v2.0/api_auth/access_token`;
-  } else {
-    requestURL = tokenUrlMap[env];
+  // custom은 Base URL 또는 전체 토큰 URL 모두 허용 (token-issuer.js의 normalizeDomain이 경로를 정리)
+  const domain = env === 'custom'
+    ? $('#customEnvUrl').val().trim().replace(/\/$/, '')
+    : tokenDomainMap[env];
+  if (!domain) {
+    hideLoading(button);
+    return alert('사용자 지정 Base URL을 입력하세요.');
   }
 
   const execution_time = Date.now() + '';
@@ -107,38 +137,39 @@ function getAccessToken(button) {
     signatureValue = 'Bearer ' + privateKeyInput;
   }
 
-  const requestBody = { execution_time: parseInt(execution_time), member_id: user_id };
   $('#tokenResult').text('Access Token 발급 요청 중...');
 
-  $.ajax({
-    url: requestURL,
-    type: 'POST',
-    contentType: 'application/json; charset=UTF-8',
-    data: JSON.stringify(requestBody),
-    beforeSend: req => {
-      req.setRequestHeader('Authorization', 'Bearer ' + btoa(apiKey));
-      req.setRequestHeader('eformsign_signature', signatureValue);
-    },
-    success: data => {
-      $('#accessToken').val(data.oauth_token.access_token);
-      $('#refreshToken').val(data.oauth_token.refresh_token);
-      $('#companyId').val(data.api_key.company.company_id);
-      $('#tokenResult').text('Access Token 발급 성공.\n' + JSON.stringify(data, null, 2));
-      setResultBadge('tokenResultBadge', true);
-      // 사이드바 토큰 상태 업데이트
-      updateTokenStatus(data.oauth_token.access_token, env);
-    },
-    error: (jqXHR) => {
-      let resp;
-      try { resp = JSON.parse(jqXHR.responseText); } catch { resp = { message: '파싱 오류' }; }
-      const code = resp.code || jqXHR.status || 'Unknown';
-      const msg = resp.ErrorMessage || jqXHR.statusText;
-      alert(`발급 실패:\n코드: ${code}\n메시지: ${msg}`);
-      $('#tokenResult').text(`Access Token 발급 실패.\n코드: ${code}\n응답:\n${JSON.stringify(resp, null, 2)}`);
+  try {
+    // 공유 모듈: direct 호출 → CORS/네트워크 실패 시에만 /api/getToken 프록시로 재시도
+    const result = await window.issueAccessToken({
+      domain,
+      apiKey,
+      memberId: user_id,
+      signature: signatureValue,
+      execTime: parseInt(execution_time, 10),
+    });
+    if (!result.ok) {
+      // 실패 메시지는 결과 영역에 남겨 둔다 (사용자가 다시 발급할 때까지 유지)
+      $('#tokenResult').text(`Access Token 발급 실패.\n${result.message || '알 수 없는 오류'}` +
+        (result.data ? `\n응답:\n${JSON.stringify(result.data, null, 2)}` : ''));
       setResultBadge('tokenResultBadge', false);
-    },
-    complete: () => hideLoading(button),
-  });
+      alert(`발급 실패:\n${result.message || '알 수 없는 오류'}`);
+      return;
+    }
+    const data = result.data || {};
+    $('#accessToken').val(result.token);
+    $('#refreshToken').val((data.oauth_token && data.oauth_token.refresh_token) || '');
+    $('#companyId').val((data.api_key && data.api_key.company && data.api_key.company.company_id) || '');
+    $('#tokenResult').text(`Access Token 발급 성공${result.via === 'proxy' ? ' (via proxy)' : ''}.\n` + JSON.stringify(data, null, 2));
+    setResultBadge('tokenResultBadge', true);
+    if (window.TokenBadge) {
+      window.TokenBadge.attach('#tokenBadge', result, { onReissue: () => getAccessToken(document.getElementById('btnGetToken')) });
+    }
+    // 사이드바 토큰 상태 업데이트
+    updateTokenStatus(result.token, env);
+  } finally {
+    hideLoading(button);
+  }
 }
 
 // ─── 멤버 추가 ───────────────────────────────────────────
@@ -189,9 +220,9 @@ function addMember(button) {
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ account }),
   })
-    .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(`${res.status}: ${t}`); }); return res.json(); })
-    .then(data => { $('#result').text('멤버 추가 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('addResultBadge', true); })
-    .catch(err => { $('#result').text('Error: ' + err); setResultBadge('addResultBadge', false); })
+    .then(res => { if (!res.ok) return res.text().then(t => { throw apiHttpError(res, t); }); return res.json(); })
+    .then(data => { clearApiErrorSummary('#result'); $('#result').text('멤버 추가 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('addResultBadge', true); })
+    .catch(err => { showApiErrorSummary('#result', err); $('#result').text('Error: ' + err); setResultBadge('addResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -217,9 +248,9 @@ function deleteMember(button) {
     headers: { 'Accept': '*/*', 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({}),
   })
-    .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(`${res.status}: ${t}`); }); return res.text().then(t => t ? JSON.parse(t) : {}); })
-    .then(data => { $('#deleteResult').text('삭제 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('deleteResultBadge', true); })
-    .catch(err => { $('#deleteResult').text('Error: ' + err); setResultBadge('deleteResultBadge', false); })
+    .then(res => { if (!res.ok) return res.text().then(t => { throw apiHttpError(res, t); }); return res.text().then(t => t ? JSON.parse(t) : {}); })
+    .then(data => { clearApiErrorSummary('#deleteResult'); $('#deleteResult').text('삭제 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('deleteResultBadge', true); })
+    .catch(err => { showApiErrorSummary('#deleteResult', err); $('#deleteResult').text('Error: ' + err); setResultBadge('deleteResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -257,9 +288,9 @@ function updateMember(button) {
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ account }),
   })
-    .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(`${res.status}: ${t}`); }); return res.json(); })
-    .then(data => { $('#updateResult').text('수정 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('updateResultBadge', true); })
-    .catch(err => { $('#updateResult').text('Error: ' + err); setResultBadge('updateResultBadge', false); })
+    .then(res => { if (!res.ok) return res.text().then(t => { throw apiHttpError(res, t); }); return res.json(); })
+    .then(data => { clearApiErrorSummary('#updateResult'); $('#updateResult').text('수정 성공.\n' + JSON.stringify(data, null, 2)); setResultBadge('updateResultBadge', true); })
+    .catch(err => { showApiErrorSummary('#updateResult', err); $('#updateResult').text('Error: ' + err); setResultBadge('updateResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -388,9 +419,9 @@ function addGroup(button) {
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ group: { name, description, members } }),
   })
-    .then(res => { if (!res.ok) return res.text().then(txt => { throw new Error(txt || `HTTP ${res.status}`); }); return res.json(); })
-    .then(json => { $('#groupResult').text(JSON.stringify({ message: '그룹 추가 성공', response: json }, null, 2)); setResultBadge('groupAddResultBadge', true); })
-    .catch(err => { $('#groupResult').text(JSON.stringify({ message: '그룹 추가 실패', error: err.toString() }, null, 2)); setResultBadge('groupAddResultBadge', false); })
+    .then(res => { if (!res.ok) return res.text().then(txt => { throw apiHttpError(res, txt); }); return res.json(); })
+    .then(json => { clearApiErrorSummary('#groupResult'); $('#groupResult').text(JSON.stringify({ message: '그룹 추가 성공', response: json }, null, 2)); setResultBadge('groupAddResultBadge', true); })
+    .catch(err => { showApiErrorSummary('#groupResult', err); $('#groupResult').text(JSON.stringify({ message: '그룹 추가 실패', error: err.toString() }, null, 2)); setResultBadge('groupAddResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -413,9 +444,9 @@ function updateGroup(button) {
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify(body),
   })
-    .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(t || `HTTP ${res.status}`); }); return res.json(); })
-    .then(json => { $('#groupUpdateResult').text(JSON.stringify({ message: '그룹 수정 성공', response: json }, null, 2)); setResultBadge('groupUpdateResultBadge', true); })
-    .catch(err => { $('#groupUpdateResult').text(JSON.stringify({ message: '그룹 수정 실패', error: err.toString() }, null, 2)); setResultBadge('groupUpdateResultBadge', false); })
+    .then(res => { if (!res.ok) return res.text().then(t => { throw apiHttpError(res, t); }); return res.json(); })
+    .then(json => { clearApiErrorSummary('#groupUpdateResult'); $('#groupUpdateResult').text(JSON.stringify({ message: '그룹 수정 성공', response: json }, null, 2)); setResultBadge('groupUpdateResultBadge', true); })
+    .catch(err => { showApiErrorSummary('#groupUpdateResult', err); $('#groupUpdateResult').text(JSON.stringify({ message: '그룹 수정 실패', error: err.toString() }, null, 2)); setResultBadge('groupUpdateResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 
@@ -438,9 +469,9 @@ function deleteGroups(button) {
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     body: JSON.stringify({ group_ids: ids }),
   })
-    .then(res => { if (!res.ok) return res.text().then(txt => { throw new Error(txt || `HTTP ${res.status}`); }); return res.json(); })
-    .then(json => { $('#groupDeleteResult').text(JSON.stringify({ message: '그룹 삭제 성공', response: json }, null, 2)); setResultBadge('groupDeleteResultBadge', true); })
-    .catch(err => { $('#groupDeleteResult').text(JSON.stringify({ message: '그룹 삭제 실패', error: err.toString() }, null, 2)); setResultBadge('groupDeleteResultBadge', false); })
+    .then(res => { if (!res.ok) return res.text().then(txt => { throw apiHttpError(res, txt); }); return res.json(); })
+    .then(json => { clearApiErrorSummary('#groupDeleteResult'); $('#groupDeleteResult').text(JSON.stringify({ message: '그룹 삭제 성공', response: json }, null, 2)); setResultBadge('groupDeleteResultBadge', true); })
+    .catch(err => { showApiErrorSummary('#groupDeleteResult', err); $('#groupDeleteResult').text(JSON.stringify({ message: '그룹 삭제 실패', error: err.toString() }, null, 2)); setResultBadge('groupDeleteResultBadge', false); })
     .finally(() => hideLoading(button));
 }
 

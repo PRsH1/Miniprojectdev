@@ -20,7 +20,36 @@ fetch(`${domain}/v2.0/api_auth/access_token`, {
 });
 ```
 
-> **브라우저 도구에서 토큰 발급 시**: 위 direct fetch를 그대로 복사하지 말고 공유 모듈 `assets/js/token-issuer.js`의 `window.issueAccessToken({ domain, apiKey, memberId, signature, execTime })`를 사용한다. CORS/네트워크 전송 실패 시에만 `/api/getToken` 서버 프록시로 자동 fallback하며(인증거부는 즉시 최종 실패), 반환값 `{ ok, token, data, message, via }`의 `data`로 `refresh_token`·`company_id` 등 원본 응답을 추출할 수 있다. 서명 생성은 각 페이지가 담당하고 모듈에는 계산된 서명값만 전달한다(비밀키 브라우저 이탈 없음).
+> **브라우저 도구에서 토큰 발급 시**: 위 direct fetch를 그대로 복사하지 말고 공유 모듈 `assets/js/token-issuer.js`의 `window.issueAccessToken({ domain, apiKey, memberId, signature, execTime })`를 사용한다. CORS/네트워크 전송 실패 시에만 `/api/getToken` 서버 프록시로 자동 fallback하며(인증거부는 즉시 최종 실패), 반환값 `{ ok, token, data, message, via, status, issuedAt, expiresAt, expiresIn, expiresEstimated }`의 `data`로 `refresh_token`·`company_id` 등 원본 응답을 추출할 수 있다. `expiresAt`은 응답 `oauth_token.expires_in`(초)이 있으면 발급 시각 + expires_in, 없으면 + 3600초로 추정하고 `expiresEstimated: true`. 실패 시 `message`는 `[코드] 메시지` 형식. 서명 생성은 각 페이지가 담당하고 모듈에는 계산된 서명값만 전달한다(비밀키 브라우저 이탈 없음).
+>
+> **토큰 직접 호출 금지**: `api_auth/access_token`을 `fetch`/`axios`/`$.ajax`로 직접 부르지 않는다. 적용 페이지: DocumentInfo·DocumentDownload·listdocuments·DocumentSendImprove·KogasDocumentSend·임베딩 2종·DocumentDelete·templateDeletetool·webhook·MassDocumentDowmload·MemberV2(`member/api.js`)·OpenAPITester(`openapi/ui.js`)·AutoTest(`OpenAPIAutoTest.js`). 남은 직접 호출은 레거시 페이지(`Embedding/*_update*`, `template_create_update*`, `API(JS,HTML)/js/MemberMain.js`)뿐이다(P1-24 정리 대상).
+>
+> **토큰 상태 배지 `assets/js/token-badge.js`**: `TokenBadge.attach(el, result, { onReissue, onExpire })`로 "토큰 유효 · 47분 남음 · via proxy" / "곧 만료"(5분 이하) / "만료됨 · [토큰 재발급]"을 표시한다. 1분 간격 클라이언트 타이머(서버 호출 없음). API가 401을 주면 `TokenBadge.markExpired(el)`, 토큰 초기화 시 `TokenBadge.clear(el)`. 테스트용 `TokenBadge.setExpiresAt(el, ts)`. 로드 순서: `token-issuer.js` → `token-badge.js` → 페이지 스크립트(MemberV2는 `member/api.js`보다 앞, OpenAPITester는 `openapi/api-list.js`보다 앞, AutoTest는 `OpenAPIAutoTest.js`보다 앞).
+
+### 결과 패널 공유 모듈 (`assets/js/result-panel.js`)
+
+API 도구의 결과 영역은 `<pre>`를 직접 만들지 말고 `window.ResultPanel`을 쓴다(IIFE, 의존성 없음 — jQuery 없는 페이지도 가능).
+
+- `ResultPanel.render(el, data, { title, filename, meta, status, statusText, collapsed })` — JSON(또는 문자열)을 **textContent**로 렌더링하고 헤더에 [복사]·[JSON 다운로드]·[접기] 버튼을 붙인다. 다운로드 파일명은 `<filename>_<YYYYMMDD_HHmmss>.json`. `el`은 요소·셀렉터·jQuery 객체 모두 허용.
+- `ResultPanel.renderStatus(el, message, meta)` — "조회 중..." 같은 진행 문구.
+- `withLoading(btn, asyncFn)` (= `ResultPanel.withLoading`) — 실행 중 버튼 `disabled` + "처리 중…", 끝나면 원래 자식 노드로 복원. 이미 실행 중이면 `asyncFn`을 호출하지 않으므로 빠른 연속 클릭에도 요청은 1건이다. `onclick="withLoading(this, fn)"` 형태로 쓰고, `fn`은 요청이 끝날 때까지 기다리는 Promise를 반환해야 한다.
+- `ResultPanel.renderDocumentLinks(el, documentId)` — "생성된 문서 ID: xxx [복사] [문서 정보 조회 →] [다운로드 →]". 링크는 `/API(JS,HTML)/DocumentInfo.html?document_id=xxx`, `/API(JS,HTML)/DocumentDownload.html?document_id=xxx`(새 탭). 두 페이지는 `?document_id=` 쿼리로 입력란을 프리필한다.
+- 적용: `API(JS,HTML)/{DocumentInfo,listdocuments,DocumentDownload,DocumentSendImprove}.html`, `Embedding/embedding_doc_Integration.html`(성공 시 `alert()` 대신 페이지 내 박스).
+- 로드 순서: `token-issuer.js` 바로 다음(페이지 인라인 스크립트보다 앞).
+- DocumentDownload는 direct 호출이 CORS/네트워크로 실패하면 `/api/downloadDocument` 프록시로 재시도하고(결과 배지 `via proxy`), 확장자는 content-type으로 추론한다. 프록시는 Vercel 응답 한도(약 4.5MB)를 넘는 파일을 전달하지 못한다.
+
+### API 에러 표시 공유 모듈 (`assets/js/api-error.js`)
+
+eformsign API·허브 프록시의 에러 응답은 raw JSON 대신 `window.renderApiError(container, info)`로 보여 준다(IIFE, jQuery 불필요, 모든 외부 문자열 textContent).
+
+- `info`: `{ status, bodyText | body, url, title, append }` — HTTP 에러 / `{ error, url }` — fetch reject(네트워크·CORS).
+- 표시: 한 줄 요약 `HTTP 400 · [코드] 메시지` + [에러 코드 찾아보기 →](`/utils/error-codes.html?q=<코드>`) + [원본 응답 보기] 토글(JSON은 pretty-print, 아니면 앞 300자).
+  401이면 토큰 재발급 안내, `Failed to fetch`류면 "CORS 차단, 도메인 오타, 네트워크 문제" 안내 + `/utils/CorsTest.html` 링크.
+- 코드·메시지 키 탐색 순서: `code`, `error_code`, `ErrorMessage`, `message`, `error.message` (허브 프록시의 `error.upstream`, `error.error`도 지원).
+- 부가 API: `ApiError.parse(info)`(렌더링 없이 요약), `ApiError.fromResponse(container, res, {url})`, `ApiError.isNetworkError(err)`, `ApiError.lookupUrl(code, {absolute})`.
+- **상태 코드를 먼저 확인한 뒤 본문을 파싱**한다(`res.text()` → `!res.ok`면 renderApiError → 그다음 `JSON.parse`). HTML 502 게이트웨이 페이지에서 SyntaxError가 나지 않게 하기 위함.
+- 적용: DocumentInfo·DocumentSendImprove(전송·템플릿 조회)·listdocuments·DocumentDownload·webhook(문서 정보 조회)·OpenAPITester(`#responseNotice`)·MemberV2(결과 영역 위 `.member-api-error`, `showApiErrorSummary()`)·AutoTest(리포트 실패/CHECK 상세의 에러 코드 링크).
+- 에러 코드 딥링크: `utils/error-codes.html?q=<검색어>`(검색창 채움 + 필터, 0건 카드 숨김, 입력 시 `?q=` URL 동기화), `#code-<코드>`(해당 행으로 스크롤·하이라이트, 같은 코드의 두 번째 이후 행은 `code-<코드>-2`…). 각 행에 [링크 복사] 버튼. 엔드포인트·항목 수는 DOM에서 계산한다.
 
 ### 환경 도메인
 
