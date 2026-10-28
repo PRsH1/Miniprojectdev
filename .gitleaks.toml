@@ -1,5 +1,10 @@
 title = "ProjectImprove secret scanning"
 
+# 정규식 작성 규칙 (D-2): 규칙 regex에는 캡처 그룹 (…)을 쓰지 말고 비캡처 그룹 (?:…)만 쓴다.
+# secretGroup을 지정하지 않으면 gitleaks는 첫 캡처 그룹을 Secret으로 잡는다. 그룹이 비어 있으면
+# Secret이 빈 문자열이 되어 규칙 allowlist(process.env 등)·전역 allowlist(DUMMY- 등)가 적용되지 않는다.
+# 비캡처 그룹만 쓰면 Secret = 전체 일치 문자열이 된다. (path 정규식은 Secret과 무관해 예외)
+
 [extend]
 useDefault = true
 
@@ -20,7 +25,7 @@ tags = ["pem", "saml"]
 [[rules]]
 id = "private-key-pem-block"
 description = "Private key PEM block."
-regex = '''(?i)-{5}BEGIN[[:space:]]+(RSA[[:space:]]+|DSA[[:space:]]+|EC[[:space:]]+|OPENSSH[[:space:]]+|ENCRYPTED[[:space:]]+)?PRIVATE[[:space:]]+KEY-{5}'''
+regex = '''(?i)-{5}BEGIN[[:space:]]+(?:RSA[[:space:]]+|DSA[[:space:]]+|EC[[:space:]]+|OPENSSH[[:space:]]+|ENCRYPTED[[:space:]]+)?PRIVATE[[:space:]]+KEY-{5}'''
 keywords = ["PRIVATE KEY"]
 tags = ["key", "pem", "saml"]
 
@@ -48,14 +53,14 @@ tags = ["saml", "certificate"]
 [[rules]]
 id = "database-url"
 description = "Database URL containing credentials."
-regex = '''(?i)(postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^:\s"'<>]+:[^@\s"'<>]+@[^ \t\r\n"'<>]+'''
+regex = '''(?i)(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^:\s"'<>]+:[^@\s"'<>]+@[^ \t\r\n"'<>]+'''
 keywords = ["postgres", "postgresql", "mysql", "mongodb"]
 tags = ["database", "secret"]
 
 [[rules]]
 id = "database-url-env"
 description = "Database URL environment value."
-regex = '''(?i)(DATABASE_URL|POSTGRES_URL|POSTGRES_PRISMA_URL|POSTGRES_URL_NON_POOLING)[[:space:]]*[:=][[:space:]]*["']?[^"'\s]{20,}'''
+regex = '''(?i)(?:DATABASE_URL|POSTGRES_URL|POSTGRES_PRISMA_URL|POSTGRES_URL_NON_POOLING)[[:space:]]*[:=][[:space:]]*["']?[^"'\s]{20,}'''
 keywords = ["DATABASE_URL", "POSTGRES_URL"]
 tags = ["database", "secret"]
 [rules.allowlist]
@@ -75,7 +80,7 @@ regexes = ['''(?i)process\.env|import\.meta\.env''']
 [[rules]]
 id = "jwt-secret"
 description = "JWT secret environment value."
-regex = '''(?i)JWT(_[A-Z0-9]+)*_SECRET[[:space:]]*[:=][[:space:]]*["']?[A-Za-z0-9_./+=-]{16,}'''
+regex = '''(?i)JWT(?:_[A-Z0-9]+)*_SECRET[[:space:]]*[:=][[:space:]]*["']?[A-Za-z0-9_./+=-]{16,}'''
 keywords = ["JWT_SECRET"]
 tags = ["jwt", "secret"]
 [rules.allowlist]
