@@ -302,3 +302,20 @@ test('P0b-03 middleware: 공용 파서를 쓰고, IP 헤더가 없으면 로컬�
     globalThis.__neonForTest = null;
   }
 });
+
+test('D-5 matchesPathPattern: 정확 패턴 "/"는 루트만 일치 (하위 경로 포함 규칙의 예외)', () => {
+  for (const p of ['/', '', '//', '/.', '/?x=1', '/%2f']) {
+    assert.equal(matchesPathPattern(p, '/'), true, `루트 ${JSON.stringify(p)}`);
+  }
+  for (const p of ['/api/me', '/app/admin', '/api/admin/users', '/index.html', '/a']) {
+    assert.equal(matchesPathPattern(p, '/'), false, `하위 경로 ${p}는 '/'와 불일치`);
+    // 같은 의미의 다른 표기('//', ' / ')도 루트만
+    assert.equal(matchesPathPattern(p, '//'), false, p);
+    assert.equal(matchesPathPattern(p, ' / '), false, p);
+  }
+  // 전체 대상은 와일드카드로 명시
+  assert.equal(matchesPathPattern('/api/me', '/*'), true);
+  assert.equal(matchesPathPattern('/', '/*'), true);
+  // 다른 정확 패턴의 하위 경로 포함은 그대로
+  assert.equal(matchesPathPattern('/api/login/x', '/api/login'), true);
+});

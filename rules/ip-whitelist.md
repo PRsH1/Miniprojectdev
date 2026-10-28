@@ -135,6 +135,8 @@ POSTGRES_URL="..." node scripts/migrate-ip-whitelist.js
 | `/api/login` (정확) | `/api/login` 자체 + 하위 경로(`/api/login/`, `/api/login/x`) — 라우터가 하위 경로도 같은 컨트롤러로 보내므로 |
 | `/api/admin/*` | `/api/admin` 자체 + 하위 전체 |
 | `/app*` | 정규화한 경로가 `/app`으로 시작 (`/apple`도 포함) |
+| `/` (정확) | **루트 `/`만** (정규화 후 `/`가 되는 `//`, `/.` 포함). 위 "하위 경로 포함" 규칙의 예외 — 그대로 적용하면 모든 경로와 일치해 관리자 콘솔까지 잠기므로(D-5) |
+| `/*` | 전체 경로 — 모든 요청을 대상으로 하려면 이렇게 명시 |
 
 예전에는 정확 일치만 봐서 `/api/login/`·`/API/login`·`//api/login`으로 path 스코프를 우회할 수 있었다(P0b-03).
 
