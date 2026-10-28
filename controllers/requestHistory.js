@@ -6,12 +6,79 @@
 const { getDb } = require('./_shared/db');
 const { requireRole } = require('./_shared/session');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { INPUT_LIMITS, requireMaxLengths } = require('./_shared/input-limits');
 
 const HISTORY_MAX = 100;
 const ENTRY_ID_MAX_LENGTH = 20;
 
 function isValidEntryId(value) {
   return typeof value === 'string' && value.length >= 1 && value.length <= ENTRY_ID_MAX_LENGTH;
+}
+
+function validationError(req, res, message, reason) {
+  respondError(req, res, 400, {
+    code: 'VALIDATION_FAILED',
+    message,
+    reason,
+    action: '저장할 요청 내용을 줄이거나 확인한 뒤 다시 시도하세요.',
+    logMessage: `request-history: ${message}`,
+  });
+  return false;
+}
+
+/**
+ * 저장 항목 형식·크기 검증 (P0b-04)
+ * - 문자열 필드는 컬럼 길이(또는 운영 한도) 이하
+ * - pathParams/queryParams/headers는 배열이며 항목 수·직렬화 길이 한도 이하
+ * - response는 객체(또는 없음)이며 직렬화 길이 한도 이하
+ * - savedAt은 없거나 0 이상의 안전한 정수(BIGINT 컬럼)
+ * 실패 시 400 응답 후 false
+ */
+function validateEntryPayload(req, res, payload) {
+  const L = INPUT_LIMITS;
+  const { name, endpointId, method, environment, url, body, pathParams, queryParams, headers, response, savedAt } = payload;
+
+  for (const [value, label] of [[name, 'name'], [endpointId, 'endpointId'], [method, 'method'],
+    [environment, 'environment'], [url, 'url'], [body, 'body']]) {
+    if (value !== undefined && value !== null && typeof value !== 'string') {
+      return validationError(req, res, `${label} 형식이 올바르지 않습니다.`, `${label}은(는) 문자열이어야 합니다.`);
+    }
+  }
+  if (!requireMaxLengths(req, res, [
+    { value: name, max: L.historyName, label: '저장 이름' },
+    { value: endpointId, max: L.historyEndpointId, label: 'endpointId' },
+    { value: method, max: L.historyMethod, label: 'method' },
+    { value: environment, max: L.historyEnvironment, label: 'environment' },
+    { value: url, max: L.historyUrl, label: '요청 URL' },
+    { value: body, max: L.historyBody, label: '요청 Body' },
+  ])) return false;
+
+  for (const [value, label] of [[pathParams, 'pathParams'], [queryParams, 'queryParams'], [headers, 'headers']]) {
+    if (value === undefined || value === null) continue;
+    if (!Array.isArray(value)) {
+      return validationError(req, res, `${label} 형식이 올바르지 않습니다.`, `${label}는 배열이어야 합니다.`);
+    }
+    if (value.length > L.historyParamItems) {
+      return validationError(req, res, `${label} 항목이 너무 많습니다.`, `${label}는 최대 ${L.historyParamItems}개까지 저장할 수 있습니다.`);
+    }
+    if (JSON.stringify(value).length > L.historyParamsJson) {
+      return validationError(req, res, `${label}가 너무 큽니다.`, `${label} 전체 길이는 최대 ${L.historyParamsJson.toLocaleString('en-US')}자입니다.`);
+    }
+  }
+
+  if (response !== undefined && response !== null) {
+    if (typeof response !== 'object' || Array.isArray(response)) {
+      return validationError(req, res, 'response 형식이 올바르지 않습니다.', 'response는 객체여야 합니다.');
+    }
+    if (JSON.stringify(response).length > L.historyResponseJson) {
+      return validationError(req, res, 'response가 너무 큽니다.', `response 요약은 최대 ${L.historyResponseJson.toLocaleString('en-US')}자입니다.`);
+    }
+  }
+
+  if (savedAt !== undefined && savedAt !== null && !(Number.isSafeInteger(savedAt) && savedAt >= 0)) {
+    return validationError(req, res, 'savedAt 형식이 올바르지 않습니다.', 'savedAt은 밀리초 단위 정수여야 합니다.');
+  }
+  return true;
 }
 
 module.exports = async function requestHistoryController(req, res) {
@@ -80,6 +147,7 @@ module.exports = async function requestHistoryController(req, res) {
         action: '요청 데이터를 확인하세요.',
       });
     }
+    if (!validateEntryPayload(req, res, req.body || {})) return undefined;
 
     await sql`
       INSERT INTO api_request_history

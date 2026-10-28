@@ -58,4 +58,17 @@
 - 입력 사전 검증: `controllers/_shared/validate.js` — 경로 id(UUID/INTEGER), `page`(양의 정수),
   날짜(`YYYY-MM-DD`)를 DB에 넘기기 전에 확인해 형식 오류를 500 대신 400 `VALIDATION_FAILED`로 응답한다.
   (`requireUuid(req, res, id, '라벨')`은 실패 시 응답까지 보내고 `false` 반환)
+- 입력 길이·건수 한도: `controllers/_shared/input-limits.js`의 `INPUT_LIMITS` 한곳에 모은다(P0b-04).
+  한도 초과는 DB에 닿기 전에 **400 `VALIDATION_FAILED`**(건수 제한도 400)로 응답한다.
+  `requireMaxLengths(req, res, [{ value, max, label }])`은 실패 시 응답까지 보내고 `false` 반환.
+
+  | 대상 | 한도 |
+  |---|---|
+  | `POST /api/signup` | 아이디 50자(공백·제어문자 불가), 이메일 255자(형식 검사), 비밀번호 8~256자, 같은 IP 1시간 5건(`audit_logs` 기준), 승인 대기 전체 200건 |
+  | `POST /api/password-reset-request` | 아이디 50자. 같은 계정의 `pending` 요청이 있으면 새로 만들지 않음(응답은 동일 200) |
+  | `POST /api/bug-reports` | 제목 256자, 설명 10,000자, 페이지 URL 512자, 사용자당 24시간 20건 |
+  | 버그 리포트 관리자 수정 | 원인·조치·관리자 메모 각 10,000자 |
+  | `POST /api/request-history` | 이름 255자, URL 4,096자, Body 200,000자, path/query/headers 각 100개·직렬화 50,000자, response 요약 10,000자, savedAt 정수 |
+
+  화면 입력란의 `maxlength`(auth/signup·login·change-password, community/bug-report)도 같은 값을 쓴다.
 - 페이지 인증/권한 처리: `controllers/_shared/auth-middleware.js`

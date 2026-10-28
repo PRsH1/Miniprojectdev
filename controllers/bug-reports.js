@@ -18,6 +18,7 @@ const pusher = require('./_shared/pusher');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 const { requireRole } = require('./_shared/session');
 const { isPgIntId } = require('./_shared/validate');
+const { INPUT_LIMITS, requireMaxLengths, respondCountLimit } = require('./_shared/input-limits');
 
 function respondReportNotFound(req, res) {
   return respondError(req, res, 404, {
@@ -77,6 +78,26 @@ module.exports = async function handler(req, res) {
         message: '유효하지 않은 심각도입니다.',
         reason: 'severity는 low, normal, high, critical 중 하나여야 합니다.',
         action: '심각도 값을 다시 선택하세요.',
+      });
+    }
+    // 길이 한도 (P0b-04)
+    if (!requireMaxLengths(req, res, [
+      { value: title, max: INPUT_LIMITS.bugTitle, label: '제목' },
+      { value: description, max: INPUT_LIMITS.bugDescription, label: '설명' },
+      { value: pageUrl, max: INPUT_LIMITS.bugPageUrl, label: '페이지 URL' },
+    ])) return undefined;
+
+    // 건수 제한 (P0b-04): 제보마다 관리자 알림이 생기므로 사용자당 24시간 건수 제한
+    const [{ count: recentCount }] = await sql`
+      SELECT COUNT(*)::int AS count FROM bug_reports
+      WHERE reporter_user_id = ${decoded.sub} AND created_at > now() - interval '24 hours'
+    `;
+    if ((Number(recentCount) || 0) >= INPUT_LIMITS.bugReportsPerUserPerDay) {
+      return respondCountLimit(req, res, {
+        message: '오늘은 더 이상 버그를 제보할 수 없습니다.',
+        reason: `한 사용자는 24시간에 ${INPUT_LIMITS.bugReportsPerUserPerDay}건까지 제보할 수 있습니다.`,
+        action: '기존 제보에 내용을 모아 두었다가 나중에 제보하거나 관리자에게 직접 문의하세요.',
+        logMessage: `Bug report daily limit: ${decoded.sub}`,
       });
     }
 
@@ -273,6 +294,12 @@ module.exports = async function handler(req, res) {
         action: '상태 값을 다시 선택하세요.',
       });
     }
+    // 길이 한도 (P0b-04)
+    if (!requireMaxLengths(req, res, [
+      { value: cause, max: INPUT_LIMITS.bugAdminText, label: '원인' },
+      { value: actionTaken, max: INPUT_LIMITS.bugAdminText, label: '조치 내용' },
+      { value: adminNote, max: INPUT_LIMITS.bugAdminText, label: '관리자 메모' },
+    ])) return undefined;
 
     const beforeRows = await sql`
       SELECT status, reporter_user_id, cause, action_taken

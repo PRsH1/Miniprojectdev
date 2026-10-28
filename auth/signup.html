@@ -93,23 +93,23 @@
       <form id="signupForm">
         <label for="username">아이디</label>
         <div class="input-wrap">
-          <input type="text" id="username" class="plain" placeholder="사용자 아이디" required autocomplete="username" />
+          <input type="text" id="username" class="plain" placeholder="사용자 아이디" required maxlength="50" autocomplete="username" />
         </div>
 
         <label for="email">이메일</label>
         <div class="input-wrap">
-          <input type="email" id="email" class="plain" placeholder="example@email.com" required autocomplete="email" />
+          <input type="email" id="email" class="plain" placeholder="example@email.com" required maxlength="255" autocomplete="email" />
         </div>
 
         <label for="password">비밀번호 <small>(8자 이상)</small></label>
         <div class="input-wrap">
-          <input type="password" id="password" placeholder="비밀번호 입력" required minlength="8" autocomplete="new-password" />
+          <input type="password" id="password" placeholder="비밀번호 입력" required minlength="8" maxlength="256" autocomplete="new-password" />
           <button class="toggle" type="button" data-target="password">👁️</button>
         </div>
 
         <label for="passwordConfirm">비밀번호 확인</label>
         <div class="input-wrap">
-          <input type="password" id="passwordConfirm" placeholder="비밀번호 재입력" required minlength="8" autocomplete="new-password" />
+          <input type="password" id="passwordConfirm" placeholder="비밀번호 재입력" required minlength="8" maxlength="256" autocomplete="new-password" />
           <button class="toggle" type="button" data-target="passwordConfirm">👁️</button>
         </div>
 

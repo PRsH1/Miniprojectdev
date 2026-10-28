@@ -37,7 +37,7 @@ node scripts/migrate-bug-reports-v2.js                  # bug_reports.cause/acti
 
 | 메서드 | 경로 | 인증 | 설명 |
 |--------|------|------|------|
-| POST | `/api/bug-reports` | 로그인 사용자 | 제보 + notifications INSERT (`bug_report` 타입) |
+| POST | `/api/bug-reports` | 로그인 사용자 | 제보 + notifications INSERT (`bug_report` 타입). 제목 256·설명 10,000·URL 512자, 24시간 20건 초과 시 400 (`rules/error-response.md` 한도 표) |
 | GET | `/api/bug-reports/mine` | 로그인 사용자 | 본인 제보 목록 (cause·action_taken 포함) |
 | GET | `/api/bug-reports/mine/:id` | 로그인 사용자 | 본인 제보 단건 상세 (`WHERE reporter_user_id = me` 강제) |
 | GET | `/api/bug-reports` | admin | 목록 (status/severity 필터) |
