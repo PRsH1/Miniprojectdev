@@ -102,6 +102,25 @@ test('키가 없거나 64자 hex가 아니면 암호화 실패', async () => {
   await withKey(undefined, () => assert.throws(() => encryptSecret(SECRET, USER_A), /설정되지/));
   await withKey('abcd', () => assert.throws(() => encryptSecret(SECRET, USER_A), /64자/));
   await withKey(KEY, () => assert.throws(() => encryptSecret(SECRET, ''), /user_id/));
+  // 공백뿐인 값은 미설정과 같다
+  await withKey(' \n', () => assert.throws(() => encryptSecret(SECRET, USER_A), /설정되지/));
+  // 중간 공백·hex 아닌 문자·길이 초과는 trim 후에도 거부
+  await withKey(`${KEY.slice(0, 32)} ${KEY.slice(32)}`, () => assert.throws(() => encryptSecret(SECRET, USER_A), /64자/));
+  await withKey(`${KEY.slice(0, 63)}g`, () => assert.throws(() => encryptSecret(SECRET, USER_A), /64자/));
+  await withKey(`${KEY}ab`, () => assert.throws(() => encryptSecret(SECRET, USER_A), /64자/));
+});
+
+test('키 앞뒤 공백·개행은 무시하고 대문자 hex는 소문자로 정규화한다 (D-4 — 같은 키로 복호화)', async () => {
+  const { getEncryptionKey } = require('../controllers/_shared/credential-crypto');
+  const expected = Buffer.from(KEY, 'hex');
+  for (const variant of [`${KEY}\n`, `${KEY}\r\n`, `  ${KEY}\t `, KEY.toUpperCase(), `${KEY.toUpperCase()}\n`]) {
+    await withKey(variant, () => assert.deepEqual(getEncryptionKey(), expected, JSON.stringify(variant)));
+  }
+  // 깨끗한 키로 암호화한 값을 끝 개행·대문자 키로 복호화할 수 있어야 한다(운영 env 값 형태가 달라도 같은 키)
+  const stored = await withKey(KEY, () => encryptSecret(SECRET, USER_A));
+  await withKey(`${KEY.toUpperCase()}\n`, () => assert.equal(decryptSecret(stored, USER_A).plaintext, SECRET));
+  const legacy = legacyEncrypt(SECRET, KEY);
+  await withKey(`${KEY}\n`, () => assert.equal(decryptSecret(legacy, USER_A).plaintext, SECRET));
 });
 
 // ── 컨트롤러 통합 ─────────────────────────────────────

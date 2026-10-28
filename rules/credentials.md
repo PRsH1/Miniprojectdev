@@ -19,7 +19,7 @@
 | DELETE | `/api/credentials/:id` | 크리덴셜 삭제 |
 
 **보안 원칙:**
-- `secret_key`는 AES-256-GCM 암호화 저장 (`CREDENTIAL_ENCRYPTION_KEY` 환경변수 필요, hex 64자=32바이트)
+- `secret_key`는 AES-256-GCM 암호화 저장 (`CREDENTIAL_ENCRYPTION_KEY` 환경변수 필요, hex 64자=32바이트 — 앞뒤 공백·개행은 무시, 대문자 hex는 소문자로 정규화. 중간 공백·비hex·길이 불일치는 예외)
   - 구현: `controllers/_shared/credential-crypto.js` (`encryptSecret` / `decryptSecret`) — P0b-05
   - 저장 형식(신규): `v1:{iv_hex}:{authTag_hex}:{ciphertext_hex}` — IV 12바이트, **태그 16바이트 고정**(`authTagLength: 16`),
     **AAD = `eformsign_credentials:{user_id}`** (암호문을 다른 사용자 행으로 옮기면 복호화 실패 → 500)

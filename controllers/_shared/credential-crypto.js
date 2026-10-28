@@ -11,7 +11,7 @@
  * - 평문 (암호화 도입 이전 데이터): 위 두 형식과 정확히 일치하지 않으면 평문으로 보고 그대로 반환한다.
  *     · 예전에는 "콜론 2개"만 보고 암호문으로 판단해 콜론이 든 평문이 500을 냈다(A2-#16).
  *
- * 키: CREDENTIAL_ENCRYPTION_KEY (hex 64자 = 32바이트)
+ * 키: CREDENTIAL_ENCRYPTION_KEY (hex 64자 = 32바이트, 앞뒤 공백·개행 무시, 대소문자 무관)
  */
 
 const crypto = require('crypto');
@@ -25,11 +25,18 @@ const HEX = '[0-9a-fA-F]';
 const V1_RE = new RegExp(`^v1:(${HEX}{${IV_BYTES * 2}}):(${HEX}{${TAG_BYTES * 2}}):((?:${HEX}{2})*)$`);
 const LEGACY_RE = new RegExp(`^(${HEX}{${IV_BYTES * 2}}):(${HEX}{${TAG_BYTES * 2}}):((?:${HEX}{2})*)$`);
 
-/** 환경변수에서 32바이트 키 버퍼 반환. 미설정·형식 오류 시 예외 throw */
+/**
+ * 환경변수에서 32바이트 키 버퍼 반환. 미설정·형식 오류 시 예외 throw
+ * - 앞뒤 공백·개행은 제거한다(D-4). 대시보드·.env에 값을 붙여 넣을 때 끝 개행이 섞이기 쉽고,
+ *   예전 `Buffer.from(hex, 'hex')`는 이를 무시하고 동작했으므로 같은 값이 계속 동작해야 한다.
+ * - 대문자 hex도 허용하고 소문자로 정규화한다(같은 바이트).
+ * - 중간에 섞인 공백·hex가 아닌 문자·길이 불일치는 여전히 예외 — 잘못된 키로 조용히 암호화하지 않는다.
+ */
 function getEncryptionKey() {
-  const hex = process.env.CREDENTIAL_ENCRYPTION_KEY;
+  const raw = process.env.CREDENTIAL_ENCRYPTION_KEY;
+  const hex = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
   if (!hex) throw new Error('CREDENTIAL_ENCRYPTION_KEY 환경변수가 설정되지 않았습니다.');
-  if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+  if (!/^[0-9a-f]{64}$/.test(hex)) {
     throw new Error('CREDENTIAL_ENCRYPTION_KEY는 hex 64자(32바이트)여야 합니다.');
   }
   return Buffer.from(hex, 'hex');
