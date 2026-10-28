@@ -111,8 +111,15 @@ const DOMAINS = {
   덮어쓰던 read-modify-write 금지. 이미 잠긴 동안의 실패는 카운트·잠금 시각을 바꾸지 않고(연장 없음),
   잠금 만료 후 첫 실패는 1부터 다시 센다. 성공 로그인 시 0으로 초기화.
 - 없는 아이디도 `DUMMY_PASSWORD_HASH`(`_shared/password.js`)로 scrypt를 1회 돌리고 같은 실패 UPDATE(0행)를 실행한다.
-  없는 아이디·틀린 비밀번호·비활성·잠김 계정의 실패 응답은 모두 `error=invalid`.
-- `error=inactive` / `error=locked&until=…` 안내는 **비밀번호가 맞을 때만** 보낸다(본인만 상태를 알 수 있음).
+  없는 아이디·틀린 비밀번호의 실패 응답은 모두 `error=invalid`.
+- **잠긴 계정은 비밀번호 정오와 무관하게 `error=invalid`** (D-1). scrypt 1회·실패 UPDATE(잠금 중이라 값 변화 없음)·
+  `login_failed` 감사 로그(`reason: 'locked'`)까지 오답과 똑같은 경로를 탄다. 잠금 중 정답에만 다른 응답을 주면
+  30분 동안 무제한 추측하다 응답이 바뀌는 순간 정답을 아는 오라클이 되고, `error=locked`를 항상 주면
+  아무 아이디나 5회 틀려 잠근 뒤 응답으로 계정 존재를 확인할 수 있으므로 둘 다 쓰지 않는다.
+  잠금 가능성은 `auth/login.html`의 공통 실패 문구("5회 연속 실패하면 30분 제한…")로만 안내한다.
+  (`error=locked`는 서버가 더 이상 보내지 않으며 화면은 예전 링크 호환용으로 같은 문구를 표시)
+- `error=inactive`는 **잠기지 않은 계정에서 비밀번호가 맞을 때만** 보낸다. 정답 여부가 드러나는 정도는 활성 계정의
+  로그인 성공과 같고, 틀린 시도는 같은 카운터로 5회 후 잠긴다(잠긴 뒤에는 위 규칙대로 `invalid`).
 - 아이디 50자·비밀번호 256자를 넘으면 DB·scrypt 없이 `error=invalid`.
 - IP 단위 제한은 코드가 아니라 **Vercel WAF rate limit** 규칙으로 건다(대시보드 설정, 사용자 작업).
   권장: `POST /api/login` IP당 10회/60초 초과 시 429(또는 Deny 10분), `POST /api/signup`·`/api/password-reset-request`
