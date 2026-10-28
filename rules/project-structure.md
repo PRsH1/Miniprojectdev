@@ -137,6 +137,7 @@ ProjectImprove/
 │   ├── create-admin.js                  # 최초 admin 계정 생성
 │   ├── check-protected-pages.js         # 보호 페이지 정합성 점검 (npm run check:pages)
 │   ├── check-secrets.js                 # 시크릿 누출 점검 (npm run security:secrets)
+│   ├── cleanup-request-history-secrets.js # api_request_history 구버전 인증 값 제거 (기본 dry-run, --apply로 적용)
 │   └── mcp/                             # MCP 서버 실행 스크립트 (brave-search.ps1, tavily.ps1)
 │
 └── docs/                       # .gitignore로 대부분 제외 — 아래 4개만 추적됨
