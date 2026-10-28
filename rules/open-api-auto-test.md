@@ -86,7 +86,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 | `customUrlId` | `formCustomUrl` | 설정 모달 Custom URL |
 | `secretMethodId` | `formAuthMode` | 설정 모달 인증 방식 select |
 | `secretMethodType` | `select` | auth 패널 tab이 아닌 설정 모달 select 사용 |
-| `darkMode` | `true` | 설정 모달이 다크 테마 |
+| `darkMode` | `false` | 페이지·설정 모달이 밝은 테마 (P1-01에서 `true` → `false`) |
 
 **`envSaveMap`/`envLoadMap`:** 모달 select value(`saas`)와 DB 형식(`op_saas`) 변환. `csap`/`custom`은 동일하므로 `saas` ↔ `op_saas` 한 건만 매핑.
 
