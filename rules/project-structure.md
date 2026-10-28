@@ -114,6 +114,7 @@ ProjectImprove/
 │   ├── credential-panel.js     # 크리덴셜 저장/불러오기 공유 모달 모듈 (IIFE)
 │   ├── token-issuer.js         # Access Token 발급 공유 모듈 (IIFE → window.issueAccessToken, direct→CORS 실패 시 /api/getToken 프록시 fallback)
 │   ├── api-error.js            # API 에러 표시 공유 모듈 (IIFE → window.renderApiError·ApiError: 요약·에러 코드 링크·원본 토글·CORS 안내)
+│   ├── token-badge.js          # 토큰 상태 배지 공유 모듈 (IIFE → window.TokenBadge: 남은 시간·via proxy·만료됨+재발급, 1분 타이머)
 │   ├── result-panel.js         # 결과 패널 공유 모듈 (IIFE → window.ResultPanel·withLoading: JSON 표시·복사·다운로드·접기, 버튼 로딩, 문서 ID 링크)
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── member/                 # MemberV2 분할 모듈 (로드 순서 중요)

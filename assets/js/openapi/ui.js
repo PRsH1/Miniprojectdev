@@ -586,62 +586,48 @@ async function getAccessToken() {
 
     $('#btnGetToken').prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin fa-sm"></i> 발급 중...');
     try {
-        const payload = { domain, apiKey, memberId, signature, execTime };
-        let result = await tryDirectToken(payload);
-        if (result.transportFail) {
-            console.info('[token] direct 전송 실패(CORS/네트워크) /api/getToken 프록시 경유 재시도');
-            result = await tryProxyToken(payload);
-        }
+        // 공유 모듈(assets/js/token-issuer.js): direct → CORS/네트워크 실패 시에만 /api/getToken 프록시
+        const result = await window.issueAccessToken({ domain, apiKey, memberId, signature, execTime });
         if (result.ok) {
+            hideTokenError();
             applyIssuedToken(result.token);
-            showToast('토큰이 발급되었습니다');
+            if (window.TokenBadge) {
+                window.TokenBadge.attach('#tokenBadge', result, { onReissue: () => getAccessToken() });
+            }
+            showToast('토큰이 발급되었습니다' + (result.via === 'proxy' ? ' (via proxy)' : ''));
         } else {
-            showToast('토큰 발급 실패: ' + (result.message || '알 수 없는 오류'), 3500);
+            // "[4030004] The signature is invalid." 형태 — 사용자가 닫을 때까지 남긴다
+            showTokenError('토큰 발급 실패: ' + (result.message || '알 수 없는 오류'));
         }
+        return result;
     } finally {
         $('#btnGetToken').prop('disabled', false).html('<i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급');
     }
 }
 
-async function tryDirectToken({ domain, apiKey, memberId, signature, execTime }) {
-    let res;
-    try {
-        res = await fetch(`${domain}/v2.0/api_auth/access_token`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json; charset=UTF-8',
-                'Authorization': 'Bearer ' + btoa(apiKey),
-                'eformsign_signature': signature
-            },
-            body: JSON.stringify({ execution_time: execTime, member_id: memberId })
-        });
-    } catch (_) {
-        return { transportFail: true };
-    }
-    let data = {}; try { data = await res.json(); } catch (_) {}
-    if (data.oauth_token && data.oauth_token.access_token) return { ok: true, token: data.oauth_token.access_token };
-    return { ok: false, message: JSON.stringify(data) };
+// 토큰 발급 실패 메시지 — 토스트(자동 사라짐) 대신 인증 패널 아래에 [닫기] 전까지 고정 표시
+function showTokenError(message) {
+    const el = document.getElementById('tokenErrorMsg');
+    if (!el) { showToast(message, 5000); return; }
+    el.textContent = '';
+    el.style.cssText = 'display:flex;align-items:flex-start;gap:8px;margin:8px 0 0;padding:8px 12px;border:1px solid #f3c2bd;border-left:4px solid #d93025;border-radius:6px;background:#fdf3f2;color:#8a1c14;font-size:0.82rem;line-height:1.5;word-break:break-word;';
+    const text = document.createElement('span');
+    text.style.flex = '1';
+    text.textContent = message;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.textContent = '닫기';
+    close.style.cssText = 'flex-shrink:0;padding:2px 10px;border:1px solid #d9a5a0;border-radius:5px;background:#fff;color:#a50e0e;cursor:pointer;font-size:0.78rem;';
+    close.addEventListener('click', hideTokenError);
+    el.appendChild(text);
+    el.appendChild(close);
 }
 
-async function tryProxyToken({ domain, apiKey, memberId, signature, execTime }) {
-    try {
-        const res = await fetch('/api/getToken', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domain, apiKey, memberId, signature, execTime })
-        });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok && data.oauth_token && data.oauth_token.access_token) {
-            return { ok: true, token: data.oauth_token.access_token };
-        }
-        const up = data.error && data.error.upstream;
-        const msg = (up && (up.code ? `[${up.code}] ${up.message || ''}`.trim() : up.message))
-            || (data.error && data.error.message)
-            || JSON.stringify(data);
-        return { ok: false, message: msg };
-    } catch (e) {
-        return { ok: false, message: '프록시 호출 실패: ' + e.message };
-    }
+function hideTokenError() {
+    const el = document.getElementById('tokenErrorMsg');
+    if (!el) return;
+    el.textContent = '';
+    el.style.display = 'none';
 }
 
 function applyIssuedToken(token) {
@@ -655,6 +641,7 @@ function applyIssuedToken(token) {
 }
 
 function updateAuthUI() {
+    if (!state.accessToken && window.TokenBadge) window.TokenBadge.clear('#tokenBadge');
     if (state.accessToken) {
         const short = state.accessToken.substring(0, 40) + '...';
         $('#tokenDisplay').text(short).addClass('has-token');
@@ -779,6 +766,7 @@ async function sendRequest(forceDownload = false) {
             }
 
             // 4xx/5xx: 응답 패널 위에 "HTTP 400 · [코드] 메시지" 요약 + 에러 코드 찾아보기 링크
+            // 401이면 "토큰이 만료되었거나 유효하지 않습니다 [토큰 재발급]" 배너를 함께 띄운다
             if (res.status >= 400) {
                 showResponseNotice({ status: res.status, bodyText: text, url });
             }
@@ -819,7 +807,41 @@ function showResponseNotice(info) {
     } else {
         el.textContent = info && info.error ? String(info.error.message || info.error) : `HTTP ${info && info.status}`;
     }
+    if (info && info.status === 401) {
+        if (window.TokenBadge) window.TokenBadge.markExpired('#tokenBadge');
+        el.insertBefore(buildTokenExpiredBanner(), el.firstChild);
+    }
     el.style.display = '';
+}
+
+// 401 배너: [토큰 재발급] 클릭 → getAccessToken() 성공 시 배너 제거
+function buildTokenExpiredBanner() {
+    const banner = document.createElement('div');
+    banner.id = 'tokenExpiredBanner';
+    banner.style.cssText = 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0;padding:8px 12px;border:1px solid #f5d48a;border-left:4px solid #e8a200;border-radius:6px;background:#fffaeb;color:#5c4300;font-size:0.82rem;font-weight:600;';
+    const text = document.createElement('span');
+    text.textContent = '토큰이 만료되었거나 유효하지 않습니다';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '토큰 재발급';
+    btn.style.cssText = 'padding:3px 10px;border:1px solid #e6c46e;border-radius:5px;background:#fff;color:#7a5600;cursor:pointer;font-size:0.78rem;font-weight:600;';
+    btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = '재발급 중…';
+        const result = await getAccessToken();
+        if (result && result.ok) {
+            banner.remove();
+            showToast('토큰을 재발급했습니다. 요청을 다시 보내세요.', 3000);
+        } else {
+            btn.disabled = false;
+            btn.textContent = '토큰 재발급';
+            // 인증 정보가 비어 있으면 인증 패널을 보여 준다
+            $('#authPanelBody').addClass('open');
+        }
+    });
+    banner.appendChild(text);
+    banner.appendChild(btn);
+    return banner;
 }
 
 function hideResponseNotice() {

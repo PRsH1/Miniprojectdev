@@ -107,7 +107,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 ### 비(非)자명한 동작 — 수정 시 주의
 
 - **완료 문서 판별 기준**: `doc.current_status.status_type === "003"` — 숫자 3이 아닌 **문자열** `"003"`으로 엄격 비교
-- **토큰 발급 3단계 fallback**: `issueTokenFromPanel()`은 direct 호출 후 전송실패(CORS/네트워크) 시에만 `/api/getToken` 프록시를 재시도하고, 인증거부 응답은 즉시 최종 실패 처리
+- **토큰 발급은 공유 모듈 사용**: `issueTokenFromPanel()`은 `window.issueAccessToken`(`assets/js/token-issuer.js`)을 호출한다(direct → 전송실패 시에만 `/api/getToken` 프록시, 인증거부는 즉시 실패 → `[코드] 메시지` alert). 자체 `fetchTokenDirect`/`fetchTokenViaProxy`는 제거됨. 성공 시 `#authTokenBadge`·`#modalTokenBadge`에 토큰 상태 배지(token-badge.js), `request()`가 토큰 요청에서 401을 받으면 배지를 "만료됨"으로 바꾼다. `private/OpenAPIAutoTest.html` 로드 순서: `token-issuer.js` → `token-badge.js` → `api-error.js` → `OpenAPIAutoTest.js`
 - **OPA 037 pdfTargetPhone은 선택**: email 또는 phone 중 하나만 있으면 실행 가능. `keys`에는 `data.pdfTargetEmail`만 포함
 - **`freshShared()`**: 실행 시마다 초기화되는 step 간 공유 상태. 새 공유 변수 추가 시 이 함수에도 추가할 것
 - **`globalChecks()`의 "주 템플릿" 항목 없음**: 모든 문서 생성 OPA가 자동탐색으로 전환되어 제거됨

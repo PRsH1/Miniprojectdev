@@ -70,5 +70,5 @@ window.CREDENTIAL_CONFIG = {
 - **토스트 위치**: `bottom: 80px` — 코너 모드 auth 패널(`bottom: 16px`)과 겹치지 않도록
 - **적용 제외**: OpenAPITester(`OpenAPITesterFull.html`, `OpenAPITesterProd.html`)만 자체 모달 유지.
   MemberV2는 공유 모듈로 전환됨(`private/MemberV2.html`이 `CREDENTIAL_CONFIG` 선언 + `credential-panel.js` 로드)
-- **로드 순서 주의(MemberV2)**: `member/api.js` → `ui.js` → `init.js` → `credential-panel.js` 순.
+- **로드 순서 주의(MemberV2)**: 공유 모듈(`api-error.js` → `token-issuer.js` → `token-badge.js`) → `member/api.js` → `ui.js` → `init.js` → `credential-panel.js` 순.
   `credential-panel.js`가 마지막이어야 `_setVal()`의 `change`/`input` 이벤트를 member 모듈이 받는다

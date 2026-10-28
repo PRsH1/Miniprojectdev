@@ -20,7 +20,11 @@ fetch(`${domain}/v2.0/api_auth/access_token`, {
 });
 ```
 
-> **브라우저 도구에서 토큰 발급 시**: 위 direct fetch를 그대로 복사하지 말고 공유 모듈 `assets/js/token-issuer.js`의 `window.issueAccessToken({ domain, apiKey, memberId, signature, execTime })`를 사용한다. CORS/네트워크 전송 실패 시에만 `/api/getToken` 서버 프록시로 자동 fallback하며(인증거부는 즉시 최종 실패), 반환값 `{ ok, token, data, message, via }`의 `data`로 `refresh_token`·`company_id` 등 원본 응답을 추출할 수 있다. 서명 생성은 각 페이지가 담당하고 모듈에는 계산된 서명값만 전달한다(비밀키 브라우저 이탈 없음).
+> **브라우저 도구에서 토큰 발급 시**: 위 direct fetch를 그대로 복사하지 말고 공유 모듈 `assets/js/token-issuer.js`의 `window.issueAccessToken({ domain, apiKey, memberId, signature, execTime })`를 사용한다. CORS/네트워크 전송 실패 시에만 `/api/getToken` 서버 프록시로 자동 fallback하며(인증거부는 즉시 최종 실패), 반환값 `{ ok, token, data, message, via, status, issuedAt, expiresAt, expiresIn, expiresEstimated }`의 `data`로 `refresh_token`·`company_id` 등 원본 응답을 추출할 수 있다. `expiresAt`은 응답 `oauth_token.expires_in`(초)이 있으면 발급 시각 + expires_in, 없으면 + 3600초로 추정하고 `expiresEstimated: true`. 실패 시 `message`는 `[코드] 메시지` 형식. 서명 생성은 각 페이지가 담당하고 모듈에는 계산된 서명값만 전달한다(비밀키 브라우저 이탈 없음).
+>
+> **토큰 직접 호출 금지**: `api_auth/access_token`을 `fetch`/`axios`/`$.ajax`로 직접 부르지 않는다. 적용 페이지: DocumentInfo·DocumentDownload·listdocuments·DocumentSendImprove·KogasDocumentSend·임베딩 2종·DocumentDelete·templateDeletetool·webhook·MassDocumentDowmload·MemberV2(`member/api.js`)·OpenAPITester(`openapi/ui.js`)·AutoTest(`OpenAPIAutoTest.js`). 남은 직접 호출은 레거시 페이지(`Embedding/*_update*`, `template_create_update*`, `API(JS,HTML)/js/MemberMain.js`)뿐이다(P1-24 정리 대상).
+>
+> **토큰 상태 배지 `assets/js/token-badge.js`**: `TokenBadge.attach(el, result, { onReissue, onExpire })`로 "토큰 유효 · 47분 남음 · via proxy" / "곧 만료"(5분 이하) / "만료됨 · [토큰 재발급]"을 표시한다. 1분 간격 클라이언트 타이머(서버 호출 없음). API가 401을 주면 `TokenBadge.markExpired(el)`, 토큰 초기화 시 `TokenBadge.clear(el)`. 테스트용 `TokenBadge.setExpiresAt(el, ts)`. 로드 순서: `token-issuer.js` → `token-badge.js` → 페이지 스크립트(MemberV2는 `member/api.js`보다 앞, OpenAPITester는 `openapi/api-list.js`보다 앞, AutoTest는 `OpenAPIAutoTest.js`보다 앞).
 
 ### 결과 패널 공유 모듈 (`assets/js/result-panel.js`)
 

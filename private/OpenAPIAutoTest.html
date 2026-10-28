@@ -513,6 +513,7 @@
                     <div class="token-display" id="authTokenDisplay" title="클릭하여 복사">토큰을 발급받아 주세요</div>
                     <div class="company-id-display" id="authCompanyIdDisplay" style="display:none">Company ID: <span id="authCompanyIdValue">-</span></div>
                 </div>
+                <div id="authTokenBadge"></div>
             </div>
         </div>
 
@@ -666,6 +667,7 @@
                             <div class="token-display" id="modalTokenDisplay" title="클릭 시 복사">토큰을 발급받은 뒤 확인하세요.</div>
                             <div class="company-id-display" id="modalCompanyIdDisplay" style="display:none">Company ID: <span id="modalCompanyIdValue">-</span></div>
                         </div>
+                        <div id="modalTokenBadge"></div>
                         <div class="settings-divider"></div>
                         <div class="settings-subtitle">고급 JSON 편집</div>
                         <div class="settings-toolbar">
@@ -808,6 +810,9 @@ window.OPEN_API_AUTO_TEST_CONFIG = window.OPEN_API_AUTO_TEST_CONFIG || {
     }
 };
 </script>
+<script src="/assets/js/token-issuer.js"></script>
+<script src="/assets/js/token-badge.js"></script>
+<script src="/assets/js/api-error.js"></script>
 <script src="/assets/js/OpenAPIAutoTest.js"></script>
 <script>
 window.CREDENTIAL_CONFIG = {

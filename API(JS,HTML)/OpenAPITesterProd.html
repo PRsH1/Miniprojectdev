@@ -1256,6 +1256,9 @@
                     <button type="button" class="btn-secondary" onclick="openCredentialLoadModal()">인증 불러오기</button>
                     <div class="token-display" id="tokenDisplay" title="클릭하여 복사">토큰을 발급받아 주세요</div>
                 </div>
+                <!-- 토큰 상태 배지(token-badge.js) · 발급 실패 메시지(닫을 때까지 유지) -->
+                <div id="tokenBadge"></div>
+                <div id="tokenErrorMsg" style="display:none"></div>
             </div>
         </div>
 
@@ -1737,6 +1740,8 @@
 
 <!-- OpenAPITester 분할 모듈 (로드 순서 중요) -->
 <script src="/assets/js/api-error.js"></script>
+<script src="/assets/js/token-issuer.js"></script>
+<script src="/assets/js/token-badge.js"></script>
 <script src="/assets/js/openapi/api-list.js"></script>
 <script>
 
