@@ -2,7 +2,7 @@ const {
   idp,
   resolveTarget,
   resolveTargetByAcsUrl,
-  extractAcsUrl,
+  parseAuthnRequest,
   createTemplateCallback,
   debugDeliver,
 } = require('../lib/saml');
@@ -33,7 +33,9 @@ module.exports = async (req, res) => {
 
   // 대상 서버 결정 우선순위: ① 명시적 target(test/dev) → ② 요청의 AssertionConsumerServiceURL → ③ test 폴백.
   // 요청 ACS는 화이트리스트(ACS_URLS)에 일치하는 값만 허용(서명된 Assertion 유출 방지).
-  const requestedAcs = extractAcsUrl(SAMLRequest);
+  // SP 개시 흐름: AuthnRequest에서 ACS URL과 요청 ID를 함께 파싱한다(P0b-11).
+  // 요청 ID는 InResponseTo로 들어가 SP가 요청-응답을 묶고 재전송을 막는 데 쓴다. 없으면 InResponseTo 생략.
+  const { acsUrl: requestedAcs, requestId } = parseAuthnRequest(SAMLRequest);
   const explicit = (target === 'test' || target === 'test2' || target === 'testjp' || target === 'dev' || target === 'prod') ? target : null;
   const { key, acsUrl, sp } = explicit
     ? resolveTarget(explicit)
@@ -42,15 +44,15 @@ module.exports = async (req, res) => {
   try {
     const { context } = await idp.createLoginResponse(
       sp,
-      { extract: { request: { id: 'request_id' } } },
+      requestId ? { extract: { request: { id: requestId } } } : {},
       'post',
       user,
-      createTemplateCallback(acsUrl, user, 'request_id')
+      createTemplateCallback(acsUrl, user, requestId)
     );
 
     const decodedXml = Buffer.from(context, 'base64').toString('utf-8');
     const hasAttributes = decodedXml.includes('AttributeStatement');
-    console.log(`🚀 SAML Response Generated → ${key} 서버 (${acsUrl}) | 결정: ${explicit ? 'target=' + explicit : '요청ACS'} | 요청 ACS: ${requestedAcs || '없음'} | Has Attributes? ${hasAttributes}`);
+    console.log(`🚀 SAML Response Generated → ${key} 서버 (${acsUrl}) | 결정: ${explicit ? 'target=' + explicit : '요청ACS'} | 요청 ACS: ${requestedAcs || '없음'} | InResponseTo: ${requestId || '(생략)'} | Has Attributes? ${hasAttributes}`);
 
     const debugOn = process.env.SAML_DEBUG === '1'
       && (req.query?.debug === '1' || req.body?.debug === '1');
