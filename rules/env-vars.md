@@ -29,7 +29,7 @@ ADMIN_EMAIL=                # 생성할 admin 이메일
 # APIAUTOTEST_PAGE_PASSWORD / AUTH_COOKIE_VALUE
 
 # ─── 크리덴셜 암호화 ─────────────────────────────────────
-CREDENTIAL_ENCRYPTION_KEY=  # eformsign 비밀 키 AES-256-GCM 암호화 키 (openssl rand -hex 32 로 생성)
+CREDENTIAL_ENCRYPTION_KEY=  # eformsign 비밀 키 AES-256-GCM 암호화 키 — hex 64자 필수 (openssl rand -hex 32 로 생성). 바꾸면 기존 암호문 복호화 불가
 
 # ─── IP 화이트리스트 ──────────────────────────────────────
 IP_WHITELIST_ENABLED=       # '1' 또는 'true'일 때만 적용. 미설정/그 외 값은 OFF
