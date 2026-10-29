@@ -208,8 +208,9 @@
   <script src="/assets/js/token-issuer.js"></script>
   <script>
     // 환경별 엔드포인트 맵
-    const tokenUrlMap = {
-      op_saas: 'https://eform.kogas.or.kr/Service/v2.0/api_auth/access_token',
+    // 토큰 발급 도메인 (경로는 공유 모듈 token-issuer.js가 붙인다)
+    const tokenDomainMap = {
+      op_saas: 'https://eform.kogas.or.kr/Service',
     };
     const apiBaseMap = {
       op_saas: 'https://eform.kogas.or.kr/Service/v2.0/api',
@@ -276,7 +277,7 @@
       }
 
       try {
-        const domain = tokenUrlMap[env].replace(/\/v2\.0\/api_auth\/access_token$/, '');
+        const domain = tokenDomainMap[env];
         const result = await window.issueAccessToken({
           domain,
           apiKey,
@@ -572,8 +573,10 @@ window.CREDENTIAL_CONFIG = {
     apiKeyId:         'apiKey',
     userIdId:         'userIdToken',
     secretKeyId:      'privateKeyHex',
-    envId:            'envSelection',
-    envFixed:         null,
+    // Kogas 전용 도메인은 SaaS(op_saas)가 아니므로 직접 입력(custom) + 고정 URL로 저장한다
+    envId:            null,
+    envFixed:         'custom',
+    customUrlFixed:   'https://eform.kogas.or.kr/Service',
     envSaveMap:       null,
     envLoadMap:       null,
     customUrlId:      null,

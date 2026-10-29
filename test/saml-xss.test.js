@@ -98,6 +98,7 @@ function loadAuthHandler(createLoginResponse) {
     resolveTarget: (key) => ({ key, acsUrl: `https://${key}.example.com/acs?a=1&b=2`, sp: {} }),
     resolveTargetByAcsUrl: () => ({ key: 'test', acsUrl: 'https://test.example.com/acs', sp: {} }),
     extractAcsUrl: () => null,
+    parseAuthnRequest: () => ({ acsUrl: null, requestId: null }),
     createTemplateCallback: () => () => ({}),
     debugDeliver: async () => {},
   };

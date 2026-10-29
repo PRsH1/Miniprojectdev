@@ -2,32 +2,35 @@
  * controllers/login.js
  * DB 기반 로그인 (username + password)
  * POST /api/login
+ *
+ * 실패 처리 원칙 (P0b-01)
+ * - 실패 카운터는 단일 UPDATE(failed_login_count = failed_login_count + 1 … RETURNING)로 원자적으로 올린다.
+ *   동시 요청이 같은 값을 읽고 덮어써서 카운트가 사라지던 read-modify-write를 없앴다.
+ * - 계정 열거 완화: 없는 아이디·틀린 비밀번호·잠김 계정 모두 같은 순서로
+ *   (사용자 조회 → scrypt 검증 → 실패 카운터 UPDATE → 감사 로그) 처리하고 같은 'invalid'로 응답한다.
+ * - 잠김 계정은 비밀번호 정오와 무관하게 항상 'invalid'다(D-1). 잠금 중 정답일 때만 다른 응답을 주면
+ *   잠금 30분 동안 횟수 제한 없이 추측하다 응답이 바뀌는 순간 정답을 알게 되는 오라클이 된다.
+ *   'locked' 안내도 주지 않는다 — 아무 아이디나 5회 틀려 잠근 뒤 'locked'가 나오는지로 계정 존재를 확인할 수 있기 때문.
+ *   잠금 가능성은 화면의 공통 실패 문구(auth/login.html)로만 알린다.
+ * - '비활성' 안내는 잠기지 않은 계정에서 비밀번호가 맞을 때만 준다. 정답 여부가 드러나는 것은 활성 계정의
+ *   로그인 성공과 같은 수준이며, 틀린 시도는 같은 실패 카운터로 5회 후 잠긴다(잠긴 뒤에는 위 규칙으로 'invalid').
+ * - IP 단위 제한은 코드가 아니라 Vercel WAF rate limit 규칙으로 건다(rules/core-patterns.md 참고).
  */
 
 const crypto = require('crypto');
-const { promisify } = require('util');
 const { serialize } = require('cookie');
 const { getDb } = require('./_shared/db');
 const { sign } = require('./_shared/jwt');
 const { insertAuditLog } = require('./_shared/audit');
 const { respondError } = require('./_shared/respond-error');
+const {
+  DUMMY_PASSWORD_HASH,
+  isLockedAt,
+  recordFailedLogin,
+  verifyPassword,
+} = require('./_shared/password');
+const { INPUT_LIMITS } = require('./_shared/input-limits');
 const { safeNext } = require('../lib/safe-next');
-
-const scryptAsync = promisify(crypto.scrypt);
-
-// 비밀번호 해시 검증 (salt:hash 형식)
-async function verifyPassword(password, stored) {
-  const colonIdx = stored.indexOf(':');
-  if (colonIdx === -1) return false;
-  const salt = stored.slice(0, colonIdx);
-  const hash = stored.slice(colonIdx + 1);
-  const hashBuffer = Buffer.from(hash, 'hex');
-  const inputHash = await scryptAsync(password, salt, 64);
-  if (hashBuffer.length !== inputHash.length) return false;
-  return crypto.timingSafeEqual(hashBuffer, inputHash);
-}
-
-
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -36,8 +39,8 @@ module.exports = async function handler(req, res) {
   }
 
   const body = req.body || {};
-  const username = (body.username || '').trim();
-  const password = body.password || '';
+  const username = (typeof body.username === 'string' ? body.username : '').trim();
+  const password = typeof body.password === 'string' ? body.password : '';
   // open redirect 차단: 같은 오리진 상대 경로만 허용, 그 외는 '' (→ 최종 '/')
   const next = safeNext(body.next, '');
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress;
@@ -49,6 +52,10 @@ module.exports = async function handler(req, res) {
   };
 
   if (!username || !password) return errorRedirect('invalid');
+  // 길이 한도를 넘는 값은 존재할 수 없는 계정/비밀번호 — 계정과 무관하게 같은 응답(scrypt 비용 남용 방지)
+  if (username.length > INPUT_LIMITS.username || password.length > INPUT_LIMITS.passwordMax) {
+    return errorRedirect('invalid');
+  }
 
   const sql = getDb();
 
@@ -59,58 +66,49 @@ module.exports = async function handler(req, res) {
   } catch (err) {
     return respondError(req, res, 500, { code: 'DATABASE_ERROR', logMessage: '사용자 조회 오류', error: err });
   }
+  const user = users && users.length > 0 ? users[0] : null;
 
-  if (!users || users.length === 0) {
-    // 사용자 열거 방지: 동일한 에러 반환
-    await insertAuditLog({ username, action: 'login_failed', ipAddress: ip, result: 'failure', metadata: { reason: 'not_found' } });
-    return errorRedirect('invalid');
-  }
-
-  const user = users[0];
-
-  // 2. is_active 확인
-  if (!user.is_active) {
-    await insertAuditLog({ userId: user.id, username, action: 'login_failed', ipAddress: ip, result: 'failure', metadata: { reason: 'inactive' } });
-    return errorRedirect('inactive');
-  }
-
-  // 3. locked_until 확인
-  if (user.locked_until && new Date(user.locked_until) > new Date()) {
-    await insertAuditLog({ userId: user.id, username, action: 'login_failed', ipAddress: ip, result: 'failure', metadata: { reason: 'locked' } });
-    const p = new URLSearchParams({ error: 'locked', until: user.locked_until.toISOString() });
-    if (next) p.set('next', next);
-    return res.redirect(302, `/auth/login.html?${p.toString()}`);
-  }
-
-  // locked_until이 과거면 failed_login_count 초기화
-  if (user.locked_until && new Date(user.locked_until) <= new Date()) {
-    await sql`UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE id = ${user.id}`;
-    user.failed_login_count = 0;
-    user.locked_until = null;
-  }
-
-  // 4. 비밀번호 검증
-  let isValid = false;
+  // 2. 비밀번호 검증 — 계정이 없어도 더미 해시로 같은 scrypt 비용을 치른다.
+  //    잠긴 계정도 scrypt는 똑같이 1회 돌리되 결과는 버린다(응답 지연·쿼리 순서를 다른 실패와 맞춤).
+  const wasLocked = Boolean(user) && isLockedAt(user.locked_until);
+  let passwordOk = false;
   try {
-    isValid = await verifyPassword(password, user.password_hash);
+    passwordOk = await verifyPassword(password, user ? user.password_hash : DUMMY_PASSWORD_HASH);
   } catch (err) {
     return respondError(req, res, 500, { code: 'INTERNAL_ERROR', logMessage: '비밀번호 검증 오류', error: err });
   }
+  // 잠긴 계정은 정답이어도 실패로 취급한다 — 정답/오답이 같은 경로·같은 응답을 타야 오라클이 생기지 않는다(D-1)
+  const isValid = Boolean(user) && !wasLocked && passwordOk;
 
+  // 3. 실패: 없는 계정 / 틀린 비밀번호 / 잠긴 계정(정오 무관) — 같은 처리·같은 응답
   if (!isValid) {
-    const newCount = (user.failed_login_count || 0) + 1;
-    if (newCount >= 5) {
-      const lockedUntil = new Date(Date.now() + 30 * 60 * 1000);
-      await sql`
-        UPDATE users SET failed_login_count = ${newCount}, locked_until = ${lockedUntil.toISOString()}, updated_at = now()
-        WHERE id = ${user.id}
-      `;
-      await insertAuditLog({ userId: user.id, username, action: 'account_locked', ipAddress: ip, result: 'failure', metadata: { failed_count: newCount } });
-    } else {
-      await sql`UPDATE users SET failed_login_count = ${newCount}, updated_at = now() WHERE id = ${user.id}`;
+    let updated = null;
+    try {
+      // 잠긴 동안은 recordFailedLogin이 카운트·잠금 시각을 바꾸지 않는다(연장 없음). 쿼리는 똑같이 실행한다.
+      updated = await recordFailedLogin(sql, username);
+    } catch (err) {
+      return respondError(req, res, 500, { code: 'DATABASE_ERROR', logMessage: '로그인 실패 카운트 갱신 오류', error: err });
     }
-    await insertAuditLog({ userId: user.id, username, action: 'login_failed', ipAddress: ip, result: 'failure', metadata: { failed_count: newCount } });
+
+    const reason = !user ? 'not_found' : (wasLocked ? 'locked' : (user.is_active ? 'bad_password' : 'inactive'));
+    if (updated && !wasLocked && isLockedAt(updated.locked_until)) {
+      await insertAuditLog({ userId: user.id, username, action: 'account_locked', ipAddress: ip, result: 'failure', metadata: { failed_count: updated.failed_login_count } });
+    }
+    await insertAuditLog({
+      userId: user ? user.id : undefined,
+      username,
+      action: 'login_failed',
+      ipAddress: ip,
+      result: 'failure',
+      metadata: { reason, ...(updated ? { failed_count: updated.failed_login_count } : {}) },
+    });
     return errorRedirect('invalid');
+  }
+
+  // 4. 잠기지 않은 계정에서 비밀번호는 맞지만 비활성 → 본인에게만 비활성 안내
+  if (!user.is_active) {
+    await insertAuditLog({ userId: user.id, username, action: 'login_failed', ipAddress: ip, result: 'failure', metadata: { reason: 'inactive' } });
+    return errorRedirect('inactive');
   }
 
   // 5. JWT 액세스 토큰 발급
@@ -137,7 +135,7 @@ module.exports = async function handler(req, res) {
   ];
   res.setHeader('Set-Cookie', cookies);
 
-  // 8. last_login_at 업데이트, failed_login_count 초기화
+  // 8. last_login_at 업데이트, failed_login_count 초기화 (만료된 잠금도 여기서 정리)
   await sql`
     UPDATE users SET failed_login_count = 0, locked_until = NULL, last_login_at = now(), updated_at = now()
     WHERE id = ${user.id}

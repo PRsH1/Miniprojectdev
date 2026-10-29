@@ -10,6 +10,10 @@ const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
 const pusher = require('./_shared/pusher');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
+const { INPUT_LIMITS, requireMaxLengths, respondCountLimit } = require('./_shared/input-limits');
+
+// 단순 이메일 형식 (공백 없음, @ 하나, 도메인에 점) — 실제 수신 가능 여부는 확인하지 않는다
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -41,9 +45,11 @@ module.exports = async function handler(req, res) {
 
   res.setHeader('Content-Type', 'application/json');
   const body = req.body || {};
-  const username = (body.username || '').trim();
-  const email = (body.email || '').trim().toLowerCase();
-  const password = body.password || '';
+  // 배열·객체 등 문자열이 아닌 값은 빈 값으로 취급 (.trim() TypeError → 500 방지)
+  const str = (v) => (typeof v === 'string' ? v : '');
+  const username = str(body.username).trim();
+  const email = str(body.email).trim().toLowerCase();
+  const password = str(body.password);
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress;
 
   if (!username || !email || !password) {
@@ -54,16 +60,67 @@ module.exports = async function handler(req, res) {
       action: '입력값을 모두 채운 뒤 다시 시도하세요.',
     });
   }
-  if (password.length < 8) {
+  if (password.length < INPUT_LIMITS.passwordMin) {
     return respondError(req, res, 400, {
       code: 'VALIDATION_FAILED',
-      message: '비밀번호는 8자 이상이어야 합니다.',
+      message: `비밀번호는 ${INPUT_LIMITS.passwordMin}자 이상이어야 합니다.`,
       reason: '보안 정책상 최소 길이를 만족해야 합니다.',
-      action: '8자 이상 비밀번호를 입력하세요.',
+      action: `${INPUT_LIMITS.passwordMin}자 이상 비밀번호를 입력하세요.`,
+    });
+  }
+  // 길이 한도 (P0b-04) — DB 컬럼 길이 초과로 500이 나기 전에 400
+  if (!requireMaxLengths(req, res, [
+    { value: username, max: INPUT_LIMITS.username, label: '아이디' },
+    { value: email, max: INPUT_LIMITS.email, label: '이메일' },
+    { value: password, max: INPUT_LIMITS.passwordMax, label: '비밀번호' },
+  ])) return undefined;
+  if (/[\s\u0000-\u001f\u007f]/.test(username)) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: '아이디에 공백이나 제어 문자를 쓸 수 없습니다.',
+      reason: '아이디는 공백 없는 문자열이어야 합니다.',
+      action: '공백을 빼고 다시 입력하세요.',
+    });
+  }
+  if (!EMAIL_RE.test(email)) {
+    return respondError(req, res, 400, {
+      code: 'VALIDATION_FAILED',
+      message: '이메일 형식이 올바르지 않습니다.',
+      reason: '이메일은 name@example.com 형식이어야 합니다.',
+      action: '이메일 주소를 다시 확인하세요.',
     });
   }
 
   const sql = getDb();
+
+  // 0. 건수 제한 (P0b-04) — 미인증 엔드포인트라 IP당 시간당 요청 수와 전체 대기 건수를 제한한다.
+  //    IP는 audit_logs(signup_requested) 기준. IP를 알 수 없으면 IP 제한은 건너뛰고 전체 상한만 적용.
+  const [recentFromIp, pendingTotal] = await Promise.all([
+    ip
+      ? sql`
+          SELECT COUNT(*)::int AS count FROM audit_logs
+          WHERE action = 'signup_requested' AND ip_address = ${ip}
+            AND created_at > now() - interval '1 hour'
+        `
+      : Promise.resolve([{ count: 0 }]),
+    sql`SELECT COUNT(*)::int AS count FROM signup_requests WHERE status = 'pending'`,
+  ]);
+  if ((Number(recentFromIp[0]?.count) || 0) >= INPUT_LIMITS.signupPerIpPerHour) {
+    return respondCountLimit(req, res, {
+      message: '가입 요청이 너무 많습니다.',
+      reason: `같은 네트워크에서 1시간에 ${INPUT_LIMITS.signupPerIpPerHour}건까지 가입을 요청할 수 있습니다.`,
+      action: '1시간 뒤 다시 시도하거나 관리자에게 문의하세요.',
+      logMessage: `Signup rate limit by IP: ${ip}`,
+    });
+  }
+  if ((Number(pendingTotal[0]?.count) || 0) >= INPUT_LIMITS.signupPendingMax) {
+    return respondCountLimit(req, res, {
+      message: '지금은 가입 요청을 받을 수 없습니다.',
+      reason: '승인 대기 중인 가입 요청이 너무 많습니다.',
+      action: '관리자가 대기 요청을 처리한 뒤 다시 시도하세요.',
+      logMessage: 'Signup pending limit reached',
+    });
+  }
 
   // 1. username 중복 확인 (users + pending signup_requests)
   const [usersWithName, pendingWithName] = await Promise.all([

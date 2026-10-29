@@ -53,6 +53,11 @@ td{padding:8px 12px;vertical-align:top}
 .ec{font-family:'SFMono-Regular',Consolas,monospace;font-size:.76rem;color:#7c3aed;word-break:break-all}
 .mc{color:#374151}
 .highlight{background:#fef9c3!important}
+.anchor-target{background:#dbeafe!important;outline:2px solid #2d7be0;outline-offset:-2px}
+.copy-link{margin-left:8px;border:1px solid #cbd5e1;background:#fff;border-radius:4px;font-size:.68rem;padding:0 6px;cursor:pointer;color:#475569;opacity:.55;white-space:nowrap;vertical-align:middle;font-family:inherit}
+tr:hover .copy-link,.copy-link:focus{opacity:1}
+.copy-link.copied{color:#15803d;border-color:#86efac;opacity:1}
+.no-result{display:none;text-align:center;padding:40px 0;color:#64748b;font-size:.88rem}
 .http-group-row td{background:#f0f4f8;font-weight:700;padding:6px 12px;font-size:.78rem;border-top:2px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
 .http-badge{display:inline-block;padding:1px 7px;border-radius:3px;font-size:.68rem;font-weight:700;color:#fff;font-family:monospace;white-space:nowrap;vertical-align:middle}
 
@@ -71,7 +76,8 @@ td{padding:8px 12px;vertical-align:top}
     <h1>Open API 에러 코드 모음</h1>
     <p>각 API 엔드포인트에서 발생 가능한 모든 에러 코드를 3단계 소스 깊이까지 추적하여 정리</p>
     <div class="stats">
-      <div class="stat"><strong>43</strong>엔드포인트</div>
+      <div class="stat"><strong id="statEndpoints">-</strong>엔드포인트</div>
+      <div class="stat"><strong id="statCodes">-</strong>에러 코드 항목</div>
       <div class="stat"><strong>45+</strong>소스파일 추적</div>
     </div>
   </div>
@@ -86,6 +92,7 @@ td{padding:8px 12px;vertical-align:top}
 </div>
 
 <div class="container">
+<div class="no-result" id="noResult">일치하는 에러 코드가 없습니다. 코드 번호나 메시지 일부로 다시 검색해 보세요.</div>
 <div class="card"><div class="card-header" onclick="toggle(this)"><span class="arrow">&#9654;</span><span class="mb" style="background:#0d6efd">POST</span><h3>OPA2_001 Access Token 발급</h3><span class="ep">/v2.0/api_auth/access_token</span><span class="cnt">17</span></div><div class="card-body"><table><thead><tr><th style="width:95px">코드</th><th style="width:320px">Enum</th><th>메시지</th></tr></thead><tbody><tr><td class="cc">4030004</td><td class="ec">INVALID_AUTH_SIGNATURE</td><td class="mc">The signature is invalid.</td></tr>
 <tr><td class="cc">4000001</td><td class="ec">INVALID_BODY_DATA</td><td class="mc">The body data is invalid.</td></tr>
 <tr><td class="cc">4000003</td><td class="ec">INVALID_API_KEY</td><td class="mc">The apiKey does not exist.</td></tr>
@@ -1106,16 +1113,90 @@ function initGroups(){
   });
 }
 
-function doFilter(){
+// 각 코드 행에 id="code-<코드>" 앵커 + "링크 복사" 버튼 부여 (같은 코드가 여러 엔드포인트에 있으면 첫 행이 code-<코드>, 이후는 code-<코드>-2 …)
+function initAnchors(){
+  var seen={};
+  document.querySelectorAll('.card-body table tbody tr:not(.http-group-row)').forEach(function(r){
+    var cc=r.querySelector('.cc');if(!cc)return;
+    // 검색은 버튼 문구를 제외한 원래 행 텍스트로 한다
+    r.dataset.search=r.textContent.toLowerCase();
+    var code=cc.textContent.trim();
+    seen[code]=(seen[code]||0)+1;
+    r.id=seen[code]===1?'code-'+code:'code-'+code+'-'+seen[code];
+    var btn=document.createElement('button');
+    btn.type='button';btn.className='copy-link';btn.textContent='링크 복사';
+    btn.title='이 에러 코드 행으로 바로 가는 링크를 복사합니다';
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var url=location.origin+location.pathname+'#'+r.id;
+      var done=function(ok){btn.textContent=ok?'복사됨':'복사 실패';btn.classList.toggle('copied',!!ok);setTimeout(function(){btn.textContent='링크 복사';btn.classList.remove('copied');},1500);};
+      if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(url).then(function(){done(true);},function(){done(false);});}
+      else{var ta=document.createElement('textarea');ta.value=url;document.body.appendChild(ta);ta.select();var ok=false;try{ok=document.execCommand('copy');}catch(_){ok=false;}ta.remove();done(ok);}
+    });
+    var target=r.querySelector('.mc')||r.lastElementChild;
+    target.appendChild(btn);
+  });
+}
+
+// 엔드포인트·에러 코드 수는 DOM에서 계산 (하드코딩 숫자 드리프트 방지)
+function updateStats(){
+  document.getElementById('statEndpoints').textContent=document.querySelectorAll('.container .card').length;
+  document.getElementById('statCodes').textContent=document.querySelectorAll('.card-body tbody tr:not(.http-group-row)').length;
+}
+
+// 검색어를 ?q= 로 URL에 반영 (공유 가능한 딥링크)
+function syncQueryParam(q){
+  try{
+    var u=new URL(location.href);
+    if(q)u.searchParams.set('q',q);else u.searchParams.delete('q');
+    history.replaceState(null,'',u.pathname+u.search+u.hash);
+  }catch(_){}
+}
+
+// #code-<코드> 앵커: 해당 카드를 펼치고 행으로 스크롤·하이라이트
+function goToAnchor(){
+  var hash=decodeURIComponent((location.hash||'').replace(/^#/,''));
+  if(!/^code-/.test(hash))return false;
+  var row=document.getElementById(hash);
+  if(!row){
+    // 앵커가 없으면 코드 값으로 검색
+    var code=hash.replace(/^code-/,'').replace(/-\d+$/,'');
+    document.getElementById('si').value=code;doFilter();
+    return false;
+  }
+  var card=row.closest('.card');
+  if(card){
+    card.style.display='';
+    var h=card.querySelector('.card-header'),b=card.querySelector('.card-body');
+    if(h)h.classList.add('open');if(b)b.classList.add('open');
+  }
+  row.style.display='';
+  document.querySelectorAll('.anchor-target').forEach(function(el){el.classList.remove('anchor-target');});
+  row.classList.add('anchor-target');
+  setTimeout(function(){row.scrollIntoView({behavior:'smooth',block:'center'});},50);
+  return true;
+}
+
+function applyDeepLink(){
+  var q='';
+  try{q=new URLSearchParams(location.search).get('q')||'';}catch(_){q='';}
+  if(q){document.getElementById('si').value=q;doFilter(true);}
+  goToAnchor();
+}
+
+function doFilter(skipSync){
   var q=document.getElementById('si').value.toLowerCase().trim();
   var info=document.getElementById('sinfo');
+  var noResult=document.getElementById('noResult');
+  if(skipSync!==true)syncQueryParam(document.getElementById('si').value.trim());
   if(!q){
     document.querySelectorAll('table tbody tr').forEach(function(r){r.style.display='';r.classList.remove('highlight');});
     document.querySelectorAll('.card').forEach(function(c){
+      c.style.display='';
       var h=c.querySelector('.card-header');if(h)h.classList.remove('open');
       var b=c.querySelector('.card-body');if(b)b.classList.remove('open');
     });
-    info.style.display='none';return;
+    info.style.display='none';noResult.style.display='none';return;
   }
   var v=0;
   document.querySelectorAll('.card').forEach(function(card){
@@ -1124,7 +1205,7 @@ function doFilter(){
     var hdrText=hdr?hdr.textContent.toLowerCase():'';
     var found=false;
     card.querySelectorAll('table tbody tr:not(.http-group-row)').forEach(function(r){
-      var t=r.textContent.toLowerCase();
+      var t=r.dataset.search||r.textContent.toLowerCase();
       if(t.indexOf(q)>=0||hdrText.indexOf(q)>=0){r.style.display='';r.classList.add('highlight');found=true;v++;}
       else{r.style.display='none';r.classList.remove('highlight');}
     });
@@ -1141,11 +1222,20 @@ function doFilter(){
     });
     if(found&&hdr&&body){hdr.classList.add('open');body.classList.add('open');}
     else if(hdr&&body){hdr.classList.remove('open');body.classList.remove('open');}
+    // 일치 항목이 0건인 카드는 숨긴다
+    card.style.display=found?'':'none';
   });
   info.style.display='block';info.textContent=v+' 건 검색됨';
+  noResult.style.display=v?'none':'block';
 }
 
-document.addEventListener('DOMContentLoaded',initGroups);
+document.addEventListener('DOMContentLoaded',function(){
+  initGroups();
+  initAnchors();
+  updateStats();
+  applyDeepLink();
+});
+window.addEventListener('hashchange',goToAnchor);
 
 </script>
 <script src="https://js.pusher.com/8.0/pusher.min.js"></script>

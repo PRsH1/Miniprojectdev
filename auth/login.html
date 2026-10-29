@@ -98,12 +98,12 @@
     <form action="/api/login" method="POST" id="loginForm">
       <label for="username">아이디</label>
       <div class="input-wrap">
-        <input id="username" name="username" type="text" class="plain" placeholder="사용자 아이디" required autocomplete="username" />
+        <input id="username" name="username" type="text" class="plain" placeholder="사용자 아이디" required maxlength="50" autocomplete="username" />
       </div>
 
       <label for="password">비밀번호</label>
       <div class="input-wrap">
-        <input id="password" name="password" type="password" placeholder="비밀번호" required autocomplete="current-password" />
+        <input id="password" name="password" type="password" placeholder="비밀번호" required maxlength="256" autocomplete="current-password" />
         <button class="toggle" type="button" aria-label="비밀번호 보기" id="toggleBtn">👁️</button>
       </div>
 
@@ -125,7 +125,7 @@
     <div class="modal">
       <h2 id="forgotTitle">비밀번호 재설정 요청</h2>
       <p>아이디를 입력하면 관리자에게 알림이 전달됩니다.</p>
-      <input type="text" id="forgotUsername" placeholder="사용자 아이디" />
+      <input type="text" id="forgotUsername" placeholder="사용자 아이디" maxlength="50" />
       <div class="modal-actions">
         <button class="btn-cancel" id="forgotCancel">취소</button>
         <button class="btn-submit-modal" id="forgotSubmit">요청 전송</button>
@@ -162,18 +162,12 @@
     // 에러 메시지 처리
     const errMsg = document.getElementById('errorMessage');
     const errCode = params.get('error');
-    if (errCode === 'invalid') {
-      errMsg.textContent = '아이디 또는 비밀번호가 올바르지 않습니다.';
+    // 서버는 잠긴 계정도 비밀번호 정오와 무관하게 'invalid'로 응답한다(D-1 — 정답 판별·계정 존재 노출 방지).
+    // 그래서 잠금 가능성은 공통 실패 문구로만 안내한다. 'locked'는 예전 링크 호환용으로 같은 문구를 보여 준다.
+    if (errCode === 'invalid' || errCode === 'locked') {
+      errMsg.textContent = '아이디 또는 비밀번호가 올바르지 않습니다. 5회 연속 실패하면 30분 동안 로그인이 제한되며, 제한 중에는 올바른 비밀번호로도 로그인되지 않습니다.';
     } else if (errCode === 'inactive') {
       errMsg.textContent = '비활성화된 계정입니다. 관리자에게 문의하세요.';
-    } else if (errCode === 'locked') {
-      const until = params.get('until');
-      let msg = '로그인 시도 초과로 계정이 잠겼습니다.';
-      if (until) {
-        const d = new Date(until);
-        msg += ` (${d.toLocaleString('ko-KR')}까지)`;
-      }
-      errMsg.textContent = msg;
     }
 
     // 비밀번호 보기 토글

@@ -7,6 +7,8 @@
  * (path/protected scope는 api/index.js, auth-middleware.js에서 처리)
  */
 import { neon } from '@neondatabase/serverless';
+// IP 파싱·CIDR 매칭은 서버(controllers/_shared/ip-whitelist.js)와 같은 구현을 쓴다 (P0b-03)
+import { isIpInCidr, isLoopback, clientIpFromHeaders } from './lib/ip-match.js';
 
 export const config = {
   matcher: '/((?!_vercel).*)',
@@ -25,20 +27,6 @@ export function isStaticPath(pathname) {
   return path.startsWith('/assets/') || path.startsWith('/img/') || path.startsWith('/file/')
       || path === '/favicon.svg'
       || /\.(?:css|js|png|jpe?g|svg|ico|webp|woff2?|ttf|map|pdf)$/i.test(path);
-}
-
-function ipToInt(ip) {
-  return ip.split('.').reduce((acc, o) => (acc * 256 + parseInt(o, 10)) >>> 0, 0);
-}
-
-function isInCidr(clientIp, cidr) {
-  const ip = clientIp.replace(/^::ffff:/, '');
-  if (!cidr.includes('/')) return ip === cidr;
-  const [net, bits] = cidr.split('/');
-  const b = parseInt(bits, 10);
-  if (b === 0) return true;
-  const mask = (~0 << (32 - b)) >>> 0;
-  return (ipToInt(ip) & mask) === (ipToInt(net) & mask);
 }
 
 async function loadGlobalCheck() {
@@ -82,16 +70,16 @@ export default async function middleware(request) {
   if (!isIpWhitelistEnabled()) return;
   if (isStaticPath(pathname)) return;
 
-  const forwarded = request.headers.get('x-forwarded-for') || '';
-  const ip = forwarded.split(',')[0].trim() || '127.0.0.1';
-  const cleanIp = ip.replace(/^::ffff:/, '');
+  // x-forwarded-for → x-real-ip 순. 둘 다 없으면 ''(=어떤 규칙과도 불일치)로 평가한다.
+  // 이전에는 헤더가 없으면 127.0.0.1로 간주해 로컬호스트 예외로 통과했다(우회 가능).
+  const ip = clientIpFromHeaders((name) => request.headers.get(name));
 
   // 로컬호스트 항상 허용
-  if (cleanIp === '127.0.0.1' || cleanIp === '::1') return;
+  if (isLoopback(ip)) return;
 
   try {
     const data = await loadGlobalCheck();
-    if (data.enabled && !data.rules.some(r => isInCidr(ip, r.ip_cidr))) {
+    if (data.enabled && !data.rules.some(r => isIpInCidr(ip, r.ip_cidr))) {
       return new Response(
         '이 IP 주소에서는 접근이 허용되지 않습니다.\nIP 화이트리스트에 등록되지 않은 주소입니다.',
         { status: 403, headers: { 'Content-Type': 'text/plain; charset=utf-8' } }

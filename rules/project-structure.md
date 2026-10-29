@@ -8,10 +8,13 @@ ProjectImprove/
 ├── vercel.json                 # Vercel 배포 라우팅 설정
 ├── package.json
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
-├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙
+├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙 (+ 확인된 과거 커밋·DUMMY 값 allowlist)
+├── .github/workflows/ci.yml    # CI: push·PR마다 npm ci → npm test → security:secrets + gitleaks 전체 히스토리
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 9개 (ip-whitelist, refresh-rotation, router-errors,
-│                               #   require-role, page-file, saml-response, saml-xss, safe-next, webhook-receiver)
+├── test/                       # node:test 단위 테스트 16개 (ip-whitelist, refresh-rotation, router-errors,
+│                               #   require-role, page-file, saml-response, saml-xss, safe-next,
+│                               #   webhook-receiver, admin-scripts, change-password, credential-crypto,
+│                               #   cron-cleanup, input-limits, login-lockout, request-history)
 │                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
@@ -26,20 +29,23 @@ ProjectImprove/
 │   │   ├── session.js                 # resolveUser(세션 해석, 만료 시 리프레시 로테이션) + requireRole(DB role 기반 API 인가)
 │   │   ├── roles.js                   # 역할 계층(hasRole) + users 현재 상태 조회(loadUserState)
 │   │   ├── validate.js                # 입력 사전 검증 (UUID/INTEGER id, page, 날짜) — 형식 오류를 400으로
+│   │   ├── input-limits.js            # 입력 길이·건수 한도 상수(INPUT_LIMITS) + requireMaxLengths — 초과 시 400
+│   │   ├── password.js                # scrypt 비밀번호 해시/검증 + 계정 열거 완화용 DUMMY_PASSWORD_HASH + 실패 잠금 카운터
+│   │   ├── credential-crypto.js       # 크리덴셜 secret_key AES-256-GCM (v1:{iv}:{tag}:{ct} + AAD=user_id, 기존 형식 읽기 호환)
 │   │   ├── page-file.js               # 보호 페이지 file_path 검증 (private/·utils/ 아래 .html만, 경로 탈출 차단)
 │   │   ├── audit.js                   # audit_logs INSERT 공통 모듈
 │   │   ├── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
 │   │   └── pusher.js                  # Pusher 인스턴스 공통 모듈 (알림 + Webhook 공용)
 │   │
 │   │   # ── 인증 API ──────────────────────────────────────────
-│   ├── login.js                # 로그인 (JWT 발급 + 쿠키 세션)
+│   ├── login.js                # 로그인 (JWT 발급 + 쿠키 세션, 5회 실패 30분 잠금 — 원자적 카운터·계정 열거 완화)
 │   ├── logout.js               # 로그아웃 (쿠키/리프레시 토큰 폐기)
 │   ├── refresh.js              # 리프레시 토큰으로 액세스 토큰 갱신 (공유 tryRefreshToken 위임)
 │   ├── me.js                   # 현재 로그인 사용자 정보 (+ Pusher 설정 포함)
 │   ├── signup.js               # 회원가입 요청 (admin 알림 INSERT)
 │   ├── signupStatus.js         # 가입 요청 상태 조회
 │   ├── password-reset-request.js  # 비밀번호 재설정 요청
-│   ├── change-password.js      # 비밀번호 변경
+│   ├── change-password.js      # 비밀번호 변경 (일반 변경은 현재 비밀번호 확인, 임시 비밀번호는 생략 / 성공 시 다른 refresh 폐기)
 │   │
 │   │   # ── eformsign 도구 API ────────────────────────────────
 │   ├── credentials.js          # eformsign 인증 정보 저장/조회/삭제 (GET·POST·DELETE — 수정 엔드포인트 없음)
@@ -48,7 +54,7 @@ ProjectImprove/
 │   ├── getDocumentInfo.js      # 문서 메타데이터 조회
 │   ├── webhook-receiver.js     # Webhook 수신 → Pusher 브로드캐스트
 │   ├── send.js                 # SMTP 이메일 테스트
-│   ├── requestHistory.js       # OpenAPITester 요청 히스토리 CRUD (로그인 사용자 DB 저장)
+│   ├── requestHistory.js       # OpenAPITester 요청 히스토리 CRUD (로그인 사용자 DB 저장, 저장 id는 서버 생성)
 │   │
 │   │   # ── 알림 / 커뮤니티 ──────────────────────────────────
 │   ├── notifications.js        # 알림 목록/읽음/삭제 (역할별 분기)
@@ -63,7 +69,7 @@ ProjectImprove/
 │   ├── adminPage.js            # /app/admin 참조용 래퍼 (라우터 미등록 — 실제 처리는 auth-middleware)
 │   │
 │   │   # ── SAML ────────────────────────────────────────────
-│   ├── auth.js                 # SAML 응답 생성 (SP개시: 요청 ACS/target으로 test·test2·testjp·dev·prod 대상 라우팅, createTemplateCallback로 email/name 속성 채움, SAML_DEBUG 게이트 로깅)
+│   ├── auth.js                 # SAML 응답 생성 (SP개시: 요청 ACS/target으로 test·test2·testjp·dev·prod 대상 라우팅, AuthnRequest의 실제 ID를 InResponseTo로 사용(없으면 생략), createTemplateCallback로 email/name 속성 채움, SAML_DEBUG 게이트 로깅)
 │   ├── sso-login.js            # SAML SSO 로그인 폼 (target 쿼리로 대상 서버 강제 가능 — test·test2·testjp·dev·prod, debug=1 게이트 플래그 폼 전달)
 │   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우 (폼 target으로 test·dev 선택, createTemplateCallback + SAML_DEBUG 게이트 로깅)
 │   ├── metadata.js             # SAML 메타데이터 엔드포인트
@@ -79,10 +85,11 @@ ProjectImprove/
 │       └── cleanup-audit.js    # 감사 로그 정리 Cron (CRON_SECRET 검증)
 │
 ├── lib/
+│   ├── ip-match.js             # IP 화이트리스트 공용 파서 — IPv4/IPv6·CIDR 매칭, 경로 정규화·패턴 매칭 (middleware.js와 서버 공유)
 │   ├── html-escape.js          # escapeHtml — 서버 HTML 조립 시 본문·따옴표 속성 이스케이프 (SAML 폼 반사형 XSS 방지)
 │   ├── safe-next.js            # safeNext — 로그인 후 이동 경로(next) open redirect 차단 (auth/login.html·change-password.html에 인라인 사본)
 │   ├── saml-input.js           # SAMLRequest(base64 문자셋)·RelayState(1024자 이하) 형식 검증
-│   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/testjp/dev/prod 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, loginResponseTemplate.context + createTemplateCallback로 AttributeStatement 생성, debugDeliver 진단 헬퍼)
+│   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/testjp/dev/prod 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, parseAuthnRequest(Redirect·POST 바인딩 SAMLRequest → ACS URL·요청 ID), loginResponseTemplate.context + createTemplateCallback로 AttributeStatement 생성, debugDeliver 진단 헬퍼)
 │
 ├── auth/
 │   └── login.html              # 인증 보호 페이지용 로그인 UI (+ signup/change-password/403 등)
@@ -102,7 +109,7 @@ ProjectImprove/
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구 (HTML)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
-│   └── error-codes.html        # OPA2 에러 코드 모음 (검색 가능 — OPA2_021·OPA2_061 카드는 아직 없음)
+│   └── error-codes.html        # OPA2 에러 코드 모음 (검색 + ?q= / #code-<코드> 딥링크 — OPA2_021·OPA2_061 카드는 아직 없음)
 │
 ├── design-preview-member.html  # MemberV2 디자인 시스템 확인용 (프로덕션 미사용)
 ├── img/                        # 정적 이미지 (sso_flow.png 등)
@@ -113,6 +120,9 @@ ProjectImprove/
 │   ├── notification-bell.js    # index.html 전용 알림 벨 모듈 (IIFE → window.NotifBell)
 │   ├── credential-panel.js     # 크리덴셜 저장/불러오기 공유 모달 모듈 (IIFE)
 │   ├── token-issuer.js         # Access Token 발급 공유 모듈 (IIFE → window.issueAccessToken, direct→CORS 실패 시 /api/getToken 프록시 fallback)
+│   ├── api-error.js            # API 에러 표시 공유 모듈 (IIFE → window.renderApiError·ApiError: 요약·에러 코드 링크·원본 토글·CORS 안내)
+│   ├── token-badge.js          # 토큰 상태 배지 공유 모듈 (IIFE → window.TokenBadge: 남은 시간·via proxy·만료됨+재발급, 1분 타이머)
+│   ├── result-panel.js         # 결과 패널 공유 모듈 (IIFE → window.ResultPanel·withLoading: JSON 표시·복사·다운로드·접기, 버튼 로딩, 문서 ID 링크)
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── member/                 # MemberV2 분할 모듈 (로드 순서 중요)
 │   │   ├── api.js              #   API 호출, 엑셀 처리 (전역 함수)
@@ -133,8 +143,8 @@ ProjectImprove/
 │   ├── migrate-refresh-rotation.js      # refresh_tokens.replaced_by 컬럼 추가 (로테이션 경합 처리, 코드 배포 전 실행)
 │   ├── migrate-credentials-encrypt.js   # 크리덴셜 secret_key 일괄 재암호화
 │   ├── migrate-notifications.js         # notifications 테이블 마이그레이션
-│   ├── seed-developer-notes.js          # 개발자 노트 시드
-│   ├── create-admin.js                  # 최초 admin 계정 생성
+│   ├── seed-developer-notes.js          # 개발자 노트 시드 (노트가 이미 있으면 중단, --force로만 전체 삭제 후 재삽입)
+│   ├── create-admin.js                  # 최초 admin 계정 생성 / 기존 계정 복구(잠금 해제·refresh 토큰 폐기, --must-change)
 │   ├── check-protected-pages.js         # 보호 페이지 정합성 점검 (npm run check:pages)
 │   ├── check-secrets.js                 # 시크릿 누출 점검 (npm run security:secrets)
 │   ├── cleanup-request-history-secrets.js # api_request_history 구버전 인증 값 제거 (기본 dry-run, --apply로 적용)
