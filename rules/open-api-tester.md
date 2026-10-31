@@ -175,6 +175,9 @@ const API_SPECS = {
 - sessionStorage `openapi_tester_draft_v1` = `{ v:1, current, env, customDomain, drafts }`: 입력이 멈춘 뒤 0.4초(`scheduleDraftPersist`) 및 API 전환 시 기록.
   **인증 헤더 값은 `maskSensitiveHeaders()`로 비워서 저장**한다(메모리 캐시는 값 보유 — OPA2_007의 직접 입력 Authorization은 같은 탭 안에서 API를 오가도 유지).
   용량 초과면 현재 API draft만 저장. 새로고침하면 환경·직접 입력 URL을 먼저 복원하고, 사이드바를 만든 뒤 마지막으로 보던 API를 열어 draft를 복원한다(토스트 안내).
+  복원(`restoreDraftSession()`)이 끝나기 전에는 `draftSessionReady=false`라 `persistDraftSession()`이 기록하지 않는다
+  (D-10 — 환경 select 복원의 change 이벤트가 빈 draft를 먼저 써서, `/api/me`가 느릴 때 다시 새로고침하면 편집 내용이 사라졌다).
+  `refreshAuthUser()`/`initHistory()`가 실패해도 `.catch()` 뒤에 복원은 실행된다.
   토큰·API Key·Member ID·비밀 키는 저장하지 않는다(P0-08).
 - 진행 중인 요청이 있는데 API를 바꾸면 그 요청은 취소된다(응답이 다른 API 화면에 표시되는 것 방지).
 

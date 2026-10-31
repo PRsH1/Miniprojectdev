@@ -153,7 +153,8 @@ $(document).ready(function() {
     });
 
     // 로그인 상태 캐시 후 DB 히스토리 초기화
-    refreshAuthUser().then(() => initHistory()).then(() => {
+    // 인증 확인이 실패해도 draft 복원·저장은 진행해야 하므로 catch 후 이어 간다 (D-10)
+    refreshAuthUser().then(() => initHistory()).catch(() => {}).then(() => {
         buildSidebar();
         restoreDraftSession(savedSession);
     });
@@ -254,7 +255,9 @@ function closeTopModal() {
 
 // 새로고침 전에 보던 API와 편집 내용을 복원한다 (인증 헤더 값은 저장하지 않았으므로 현재 토큰 사용)
 function restoreDraftSession(saved) {
-    if (!saved || !saved.drafts || typeof saved.drafts !== 'object') return;
+    // 이 시점부터 sessionStorage 기록을 허용한다 — 복원 전 기록은 persistDraftSession()이 막는다 (D-10)
+    draftSessionReady = true;
+    if (!saved || !saved.drafts || typeof saved.drafts !== 'object') { persistDraftSession(); return; }
     Object.keys(saved.drafts).forEach(id => {
         if (!requestDraftCache[id] && API_LIST.some(ep => ep.id === id)) requestDraftCache[id] = saved.drafts[id];
     });
@@ -262,6 +265,7 @@ function restoreDraftSession(saved) {
         selectEndpoint(saved.current);
         if (saved.drafts[saved.current]) showToast('새로고침 전 편집 내용을 복원했습니다 (인증 헤더 값 제외)', 3000);
     }
+    persistDraftSession();
 }
 
 function updateBaseUrlBadge() {

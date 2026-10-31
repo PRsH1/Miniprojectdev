@@ -59,6 +59,9 @@ const requestDraftCache = {};
 
 // 새로고침 대비 탭 단위 보관 (sessionStorage) — 인증 헤더 값은 저장하지 않는다
 const DRAFT_SESSION_KEY = 'openapi_tester_draft_v1';
+// 새로고침 직후 이전 draft를 복원(restoreDraftSession)하기 전에는 sessionStorage를 덮어쓰지 않는다 —
+// 환경 select 복원(change 이벤트) 등이 빈 draft를 먼저 기록해 이전 편집 내용을 지우던 문제 (D-10)
+let draftSessionReady = false;
 
 // 현재 화면의 요청 구성(파라미터·헤더·Body)을 읽는다 — draft·요청 저장 공용
 function captureRequestSnapshot() {
@@ -91,6 +94,7 @@ function maskSnapshot(snap) {
 }
 
 function persistDraftSession() {
+    if (!draftSessionReady) return;
     const current = state.currentEndpoint ? state.currentEndpoint.id : null;
     const base = {
         v: 1,
