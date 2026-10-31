@@ -123,6 +123,14 @@ setResultBadge('addResultBadge', false);  // → "Error" (빨강)
 - **`btn-ghost`**: 복사 같은 보조 액션 전용. 폼 제출 버튼에는 사용하지 않는다.
   복사 버튼은 `copyResultText('<결과 요소 id>')`(ui.js)를 쓴다 — 성공·실패를 토스트(`showToast`)로 알려 준다.
 
+- **상단 바 오프셋 `--auth-bar-h: 40px`**: auth-status.js 상단 바(fixed, 40px, z-index 99999)에 가리지 않도록
+  사이드바(`sticky top`·높이), 좁은 화면 드로어(`top`·높이), 햄버거 버튼(`top: calc(40px + 14px)`)이 이 변수를 쓴다(P1-19).
+  드로어가 열리면 `.sidebar-logo`에 왼쪽 여백을 줘 버튼이 제목을 가리지 않게 하고, 메뉴를 고르면 드로어를 닫는다(init.js).
+  768px 이하에서 카드 헤더·엑셀 단계 행은 줄바꿈된다 — 375px에서 가로 스크롤 없음.
+- **세션 만료 미저장 훅 (P1-21)**: init.js가 `window.AUTH_STATUS_HAS_UNSAVED`를 등록한다. 본문(`.main-panel`)의
+  읽기 전용이 아닌 텍스트·비밀번호 입력에 기본값과 다른 값이 있거나, 엑셀 파일이 선택되어 있거나, 엑셀 일괄 처리가 실행 중이면 `true`.
+  auth-status.js(C5)가 이 값으로 자동 새로고침 대신 배너를 띄운다.
+
 ### 의도치 않은 변경 방지 (P1-15)
 
 - **멤버 수정 `enabled`는 "변경 안 함"이 기본**: `#updateEnabled`의 첫 옵션은 빈 값(`변경 안 함`)이며,
