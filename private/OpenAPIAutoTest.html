@@ -122,6 +122,36 @@
         .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
         .btn-secondary { border: 1px solid var(--border); background: #fff; color: #475569; }
         .btn-secondary:hover { border-color: #94a3b8; }
+        .btn-secondary:disabled { color: #94a3b8; background: #f8fafc; cursor: not-allowed; }
+        .btn-danger { border: none; background: var(--red); color: #fff; border-radius: 6px; padding: 10px 14px; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+        .btn-danger:hover { background: #b83232; }
+        .btn-danger:disabled { background: #e8a0a0; cursor: progress; }
+        .header-tools select:disabled, .header-tools input:disabled { opacity: 0.55; cursor: not-allowed; }
+        /* 실행 안내 (alert 대체) */
+        .run-notice { margin-top: 12px; padding: 9px 12px; border-radius: 8px; font-size: 0.84rem; line-height: 1.5; border: 1px solid; }
+        .run-notice.warn { background: #fffbeb; border-color: #fde68a; color: #92670c; }
+        .run-notice.error { background: #fdecec; border-color: #f5c2c2; color: #b42318; }
+        .run-notice.info { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+        /* 실행 확인 모달 (P1-11) */
+        .confirm-overlay { display: none; position: fixed; inset: 0; z-index: 2300; background: rgba(10,18,28,0.72); backdrop-filter: blur(3px); align-items: center; justify-content: center; padding: 16px; }
+        .confirm-overlay.open { display: flex; }
+        .confirm-modal { background: #fff; border-radius: 14px; width: min(640px, 100%); max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.28); }
+        .confirm-header { background: var(--sidebar-bg); padding: 16px 22px; }
+        .confirm-header h2 { color: #fff; font-size: 1rem; }
+        .confirm-header p { color: var(--sidebar-muted); font-size: 0.8rem; margin-top: 2px; }
+        .confirm-body { padding: 18px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .confirm-warn { background: #fdecec; border: 1px solid #f5c2c2; color: #b42318; border-radius: 8px; padding: 10px 12px; font-size: 0.82rem; line-height: 1.5; font-weight: 600; }
+        .confirm-row { display: flex; gap: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 0.84rem; }
+        .confirm-key { color: #64748b; flex: 0 0 120px; }
+        .confirm-value { color: #0f172a; font-weight: 600; word-break: break-all; }
+        .confirm-value.danger { color: var(--red); }
+        .confirm-list { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 0.82rem; }
+        .confirm-list.write { border-color: #fdba74; background: #fff7ed; }
+        .confirm-list.skip { border-color: #fde68a; background: #fffbeb; }
+        .confirm-list-title { font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+        .confirm-list ul { padding-left: 18px; max-height: 180px; overflow-y: auto; }
+        .confirm-list li { color: #334155; line-height: 1.6; }
+        .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--border); background: #f8fafc; }
         .status-grid { margin-top: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
         .status-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: #f8fafc; }
         .status-card .label { color: #64748b; font-size: 0.77rem; margin-bottom: 6px; }
@@ -316,6 +346,7 @@
         .auth-panel-header.launcher { cursor: pointer; }
         .auth-panel-header.launcher:hover { background: #f3f8ff; }
         .auth-panel-header.launcher #authChevron { display: none; }
+        .auth-panel-header.launcher.locked { cursor: not-allowed; opacity: 0.6; }
         .auth-panel-body.hidden { display: none !important; }
         .auth-panel-body { padding: 0 20px 16px; display: none; }
         .auth-panel-body.open { display: block; }
@@ -527,9 +558,11 @@
                     <button class="btn-secondary" id="openSettingsModalBtn">입력값 설정</button>
                     <button class="btn-secondary" id="runActiveBtn">현재 OPA만 실행</button>
                     <button class="btn-primary" id="runSelectedBtn">선택한 OPA 실행</button>
+                    <button class="btn-danger" id="stopRunBtn" type="button" style="display:none"><i class="fa-solid fa-stop fa-sm"></i> 중지</button>
                     <button class="btn-secondary" id="openReportBtn" style="display:none"><i class="fa-solid fa-chart-bar fa-sm"></i> 리포트 보기</button>
                 </div>
             </div>
+            <div id="runNotice" class="run-notice warn" role="status" aria-live="polite" hidden></div>
 
             <div class="status-grid">
                 <div class="status-card"><div class="label">선택된 OPA</div><div class="value" id="selectedCount">0개</div></div>
@@ -747,6 +780,21 @@
 </div>
 
 <div class="settings-modal-overlay" id="settingsModalOverlay"></div>
+
+<!-- RUN CONFIRM MODAL (P1-11) — 내용은 OpenAPIAutoTest.js confirmRun()이 textContent로 채움 -->
+<div class="confirm-overlay" id="runConfirmModal" role="dialog" aria-modal="true" aria-labelledby="runConfirmTitle">
+    <div class="confirm-modal">
+        <div class="confirm-header">
+            <h2 id="runConfirmTitle">테스트 실행 확인</h2>
+            <p>대상 환경과 실행할 작업을 확인한 뒤 실행하세요.</p>
+        </div>
+        <div class="confirm-body" id="runConfirmBody"></div>
+        <div class="confirm-actions">
+            <button class="btn-secondary" id="runConfirmCancelBtn" type="button">취소</button>
+            <button class="btn-primary" id="runConfirmOkBtn" type="button">실행</button>
+        </div>
+    </div>
+</div>
 
 <!-- GUIDE MODAL -->
 <div class="guide-overlay" id="guideModal" onclick="closeGuideOutside(event)">

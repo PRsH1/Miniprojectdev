@@ -54,6 +54,34 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 - `readiness(scenario)`: `scenario.keys`를 순회하여 비어 있는 항목을 `missing` 배열로 반환
 - `missing.length === 0` → 준비됨 / 하나라도 있으면 → 설정 필요
 - 상세 패널 "누락된 설정" 섹션(`#missingSectionWrap`)은 누락 시에만 표시
+- **실행 시 readiness SKIP (P1-11)**: `runSet()`은 데이터 설정이 빠진 OPA(`missingDataKeys()` — `auth.panel` 제외)를 실행하지 않고
+  모든 step을 `SKIP("설정 필요: data.attachTemplateId")`로 기록한다. FAIL이 아니다. 인증 누락은 실행 첫 단계(토큰 준비) 실패로 드러난다.
+
+### 실행 안전장치 (P1-11)
+
+- **처음 방문 시 선택 없음**: 기본으로 아무 OPA도 선택하지 않는다. 마지막 선택은 프로필별로 localStorage
+  `open-api-auto-test-selection-v1`(`{ 프로필명: [code…] }`)에 기억하고, 프로필 전환(`loadProfile`) 시 해당 프로필 선택을 복원한다.
+  기본 환경(SaaS 운영)은 그대로다(Q12).
+- **선택 없이 실행** → `alert` 대신 요약 패널의 인라인 안내(`#runNotice`, `showRunNotice()`/`hideRunNotice()`).
+- **실행 전 확인 모달** `#runConfirmModal`: [현재 OPA만 실행]·[선택한 OPA 실행]·재실행 버튼 모두 `requestRun(codes)` → `confirmRun()`
+  (Promise) → 확인 시에만 `runSet()`. 표시: 대상 환경 + Base URL, 회사(company_id, 발급 전이면 안내), 프로필/인증, OPA·step 수,
+  쓰기 작업이 있는 OPA 목록(`WRITE_STEP_KINDS` 분류 — 문서 작성·발송·취소·삭제, 멤버·그룹 추가·수정·삭제, 도장 생성·삭제 등),
+  설정 필요로 건너뛸 OPA. SaaS 운영이면 빨간 경고 문구, Base URL이 비면 실행 버튼 비활성. 기본 포커스는 [취소], Esc·바깥 클릭은 취소.
+  모달 내용은 전부 `textContent`로 채운다.
+- **실행 중 잠금** `setRunLock(true)`: 실행 버튼·전체 선택/해제, 헤더 환경 select·Custom URL, 입력값 설정 버튼(모달), 프로필 select를
+  비활성화하고 열린 설정 모달을 닫는다. `baseUrl()`은 요청마다 다시 읽으므로 잠그지 않으면 실행 도중 다른 서버로 요청이 간다.
+  실행 중 과거 이력 열기도 막는다. 실행 중 탭 닫기·새로고침은 `beforeunload` 경고.
+- **[중지]** `#stopRunBtn` → `requestStop()`: `state.stopRequested = true` + 진행 중 요청의 `AbortController`를 모두 취소한다.
+  - 취소된 step은 `SKIP("사용자 중지 — 진행 중이던 요청을 취소했습니다…")` (서버에서 이미 처리됐을 수 있음).
+  - 이후 step은 `SKIP("사용자 중지")`. **단, 정리 step은 정리할 자원이 있으면 실행**한다(`STOP_CLEANUP_TARGETS`:
+    `cancelDocs`/`deleteDocs`=`createdIdList`, `deleteGroup`=`createdGroupId`, `deleteMember`=`memberCreated`,
+    `cleanupBulk1/2`=`bulkMemberIds`, `deleteStamp`=`companyStampId`). 결과 행 이름에 "· 중지 후 정리"가 붙고,
+    자원이 없으면 `SKIP("사용자 중지 (정리 대상 없음)")`. 정리 요청은 `state.cleanupPhase` 동안만 `request()`가 허용한다.
+  - **선행 FAIL 시 정리 step도 SKIP하는 기존 동작은 바꾸지 않는다**(기획서 0절 — P0-13 제외). 중지 후 정리는 FAIL이 없던 OPA에만 해당한다.
+  - `state.shared.memberCreated`(createMember가 PASS/CHECK)는 `freshShared()`에 추가된 공유 변수다.
+  - 중지된 실행은 진행 문구가 "중지됨: …", 이력 항목에 "(중지됨)", 리포트 `meta.stopped = true`.
+- **요청 타임아웃**: step 요청마다 60초(`REQUEST_TIMEOUT_MS`). 넘으면 요청을 취소하고 `FAIL`(`responseStatus: "TIMEOUT"`)로 기록한다
+  — 예외가 아니라 결과를 반환하므로 `try*` 자동 시도 step은 다음 후보로 넘어간다. 토큰 발급(`issueAccessToken`)은 대상이 아니다.
 
 ### 설정 모달 입력 필드
 

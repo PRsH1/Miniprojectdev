@@ -67,7 +67,11 @@
     const PROFILE_STORAGE_KEY = "open-api-auto-test-profiles-v1";
     const ACTIVE_PROFILE_KEY = "open-api-auto-test-active-profile-v1";
     const HISTORY_STORAGE_KEY = "open-api-auto-test-history-v1";
+    // 프로필별 마지막 OPA 선택 (P1-11). 처음 방문하면 아무 것도 선택하지 않는다.
+    const SELECTION_STORAGE_KEY = "open-api-auto-test-selection-v1";
     const DEFAULT_PROFILE_NAME = "Default";
+    // step 요청 하나의 최대 대기 시간 (P1-11). 넘으면 요청을 취소하고 FAIL(TIMEOUT)로 기록한다.
+    const REQUEST_TIMEOUT_MS = 60 * 1000;
     const storedConfig = readStoredConfig();
     // 구버전 저장본에 남은 비밀키·토큰이 메모리 config로 올라오지 않도록 제거한다 (P0-08).
     // init()의 migrateStoredSecrets()보다 먼저 실행되므로 여기서도 걸러야 한다.
@@ -83,7 +87,10 @@
         authMethod: "signature",
         viewMode: "group",
         lastReportData: null,
-        selectedHistoryId: null
+        selectedHistoryId: null,
+        stopRequested: false,       // [중지] 클릭 후 true — 다음 step부터 SKIP("사용자 중지")
+        cleanupPhase: false,        // 중지 후 정리 step 실행 중이면 true — 이때는 request()가 막지 않는다
+        activeControllers: new Set() // 진행 중 요청의 AbortController (중지 시 취소)
     };
     const els = {};
     const DUMMY_PDF_BASE64 = "JVBERi0xLjEKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyMDAgMjAwXSA+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDQgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjE5OQolJUVPRg==";
@@ -126,6 +133,50 @@
     // 이 코드들은 PASS가 아닌 CHECK(검토 필요)로 표시한다.
     // 404는 포함하지 않음 — 정리 step에서 404는 실제 오류이므로 FAIL로 떨어진다.
     const CHECK_STATUS_CODES = [400, 401, 402, 403];
+
+    // 실행 확인 모달(P1-11)에 표시할 "계정에 변경을 남기는" step 분류.
+    // 키에 없는 step은 조회 전용으로 본다.
+    const WRITE_STEP_KINDS = {
+        tryCreateAuto: "문서 작성",
+        createDocWithAttach: "문서 작성",
+        createExternalDoc: "외부 문서 작성",
+        seedInternalDoc: "문서 작성",
+        tryMassCreateAuto: "문서 일괄 작성",
+        tryMassCreateMultiAuto: "문서 일괄 작성",
+        massCreateDocs: "문서 일괄 작성",
+        massCreateMultiDocs: "문서 일괄 작성",
+        rerequestDoc: "수신자 재요청 발송",
+        trySendPdfAuto: "완료 문서 PDF 발송",
+        sendPdf: "완료 문서 PDF 발송",
+        tryRefreshCompleteTokenAuto: "완료 토큰 기한 연장",
+        refreshCompleteToken: "완료 토큰 기한 연장",
+        cancelDocs: "문서 취소",
+        deleteDocs: "문서 삭제",
+        createMember: "멤버 추가",
+        bulkCreateMembers: "멤버 일괄 추가",
+        updateMember: "멤버 수정",
+        deleteMember: "멤버 삭제",
+        cleanupBulk1: "멤버 삭제",
+        cleanupBulk2: "멤버 삭제",
+        createGroup: "그룹 추가",
+        updateGroup: "그룹 수정",
+        deleteGroup: "그룹 삭제",
+        createStamp: "도장 생성",
+        deleteStamp: "도장 삭제"
+    };
+
+    // [중지] 후에도 실행하는 정리 step과, 정리할 자원이 실제로 있는지 판정하는 함수 (P1-11).
+    // 선행 step FAIL 시의 동작(정리 step도 SKIP)은 바꾸지 않는다 — 기획서 0절 P0-13 제외 결정.
+    const STOP_CLEANUP_TARGETS = {
+        cancelDocs: () => state.shared.createdIdList.length > 0,
+        deleteDocs: () => state.shared.createdIdList.length > 0,
+        deleteGroup: () => has(state.shared.createdGroupId),
+        deleteMember: () => state.shared.memberCreated === true,
+        cleanupBulk1: () => has(state.shared.bulkMemberIds[0]),
+        cleanupBulk2: () => has(state.shared.bulkMemberIds[1]),
+        deleteStamp: () => has(state.shared.companyStampId)
+    };
+    const STOP_REASON = "사용자 중지";
 
     const scenarios = [
         { code: "OPA 003", group: "문서", method: "GET", name: "문서 정보 조회", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 기본/상세 조회를 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "docInfoBasic", "docInfoDetail", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
@@ -172,7 +223,8 @@
             "btnIssueToken", "btnClearToken", "authTokenDisplay", "authCompanyIdDisplay", "authCompanyIdValue",
             "modalIssueTokenBtn", "modalClearTokenBtn", "modalTokenDisplay", "modalCompanyIdDisplay", "modalCompanyIdValue",
             "sortGroupBtn", "sortOpaBtn",
-            "reportModal", "reportModalBody", "downloadReportMarkdownBtn", "downloadReportHtmlBtn", "closeReportBtn"
+            "reportModal", "reportModalBody", "downloadReportMarkdownBtn", "downloadReportHtmlBtn", "closeReportBtn",
+            "stopRunBtn", "runNotice", "runConfirmModal", "runConfirmBody", "runConfirmOkBtn", "runConfirmCancelBtn"
         ].forEach((id) => { els[id] = document.getElementById(id); });
 
         // 이전 버전이 저장한 비밀키·토큰 제거 (1회 마이그레이션, 이후에는 저장 경로에서 항상 제외됨)
@@ -185,7 +237,8 @@
         });
         els.envSelect.value = config.defaultEnvironment in config.environments ? config.defaultEnvironment : Object.keys(config.environments)[0];
 
-        scenarios.forEach((scenario) => state.selectedCodes.add(scenario.code));
+        // 처음 방문하면 선택 없음. 이전에 고른 OPA는 프로필별로 기억해 복원한다 (P1-11, Q12)
+        restoreSelection();
         state.activeCode = scenarios[0] ? scenarios[0].code : null;
 
         initAuthPanel();
@@ -193,12 +246,27 @@
         els.envSelect.addEventListener("change", handleHeaderEnvironmentChange);
         els.customUrlInput.addEventListener("input", handleHeaderCustomUrlInput);
         els.scenarioSearch.addEventListener("input", refreshAll);
-        els.selectAllBtn.addEventListener("click", () => { scenarios.forEach((s) => state.selectedCodes.add(s.code)); refreshAll(); });
-        els.clearAllBtn.addEventListener("click", () => { state.selectedCodes.clear(); refreshAll(); });
+        els.selectAllBtn.addEventListener("click", () => { scenarios.forEach((s) => state.selectedCodes.add(s.code)); saveSelection(); hideRunNotice(); refreshAll(); });
+        els.clearAllBtn.addEventListener("click", () => { state.selectedCodes.clear(); saveSelection(); refreshAll(); });
         els.sortGroupBtn.addEventListener("click", () => { state.viewMode = "group"; els.sortGroupBtn.classList.add("active"); els.sortOpaBtn.classList.remove("active"); renderList(); });
         els.sortOpaBtn.addEventListener("click", () => { state.viewMode = "opa"; els.sortOpaBtn.classList.add("active"); els.sortGroupBtn.classList.remove("active"); renderList(); });
-        els.runSelectedBtn.addEventListener("click", () => runSet([...state.selectedCodes]));
-        els.runActiveBtn.addEventListener("click", () => state.activeCode && runSet([state.activeCode]));
+        els.runSelectedBtn.addEventListener("click", () => requestRun([...state.selectedCodes]));
+        els.runActiveBtn.addEventListener("click", () => requestRun(state.activeCode ? [state.activeCode] : []));
+        if (els.stopRunBtn) els.stopRunBtn.addEventListener("click", requestStop);
+        if (els.runConfirmModal) {
+            els.runConfirmModal.addEventListener("click", (event) => { if (event.target === els.runConfirmModal) closeRunConfirm(false); });
+            els.runConfirmCancelBtn.addEventListener("click", () => closeRunConfirm(false));
+            els.runConfirmOkBtn.addEventListener("click", () => closeRunConfirm(true));
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape" && els.runConfirmModal.classList.contains("open")) closeRunConfirm(false);
+            });
+        }
+        // 실행 중 탭 닫기·새로고침 경고 (진행 중 요청이 끊기면 정리 step이 실행되지 않는다)
+        window.addEventListener("beforeunload", (event) => {
+            if (!state.running) return;
+            event.preventDefault();
+            event.returnValue = "";
+        });
         els.openReportBtn.addEventListener("click", openReportModal);
         els.downloadReportMarkdownBtn.addEventListener("click", () => downloadReport("md"));
         els.downloadReportHtmlBtn.addEventListener("click", () => downloadReport("html"));
@@ -280,6 +348,8 @@
                 event.stopPropagation();
                 if (checkbox.checked) state.selectedCodes.add(code);
                 else state.selectedCodes.delete(code);
+                saveSelection();
+                if (state.selectedCodes.size) hideRunNotice();
                 renderList();
                 renderDetail();
                 refreshStatus();
@@ -620,25 +690,47 @@
             ...(useToken ? { Authorization: `Bearer ${await token()}` } : {}),
             ...(headers || {})
         };
+        // [중지] 후에는 정리 step 외의 요청을 보내지 않는다 (try* 반복 시도 중간에도 멈춤)
+        if (state.stopRequested && !state.cleanupPhase) throw stopError();
+
         const options = { method, headers: requestHeaders };
         if (body !== undefined && body !== null) options.body = JSON.stringify(body);
 
         const url = `${baseUrl()}${path}`;
+        // 요청마다 AbortController — [중지] 시 즉시 취소, 60초 넘으면 타임아웃 (P1-11)
+        const controller = new AbortController();
+        let timedOut = false;
+        const timer = setTimeout(() => { timedOut = true; controller.abort(); }, REQUEST_TIMEOUT_MS);
+        state.activeControllers.add(controller);
+        options.signal = controller.signal;
+
         const start = performance.now();
-        const response = await fetch(url, options);
-        const duration = `${Math.round(performance.now() - start)}ms`;
-        // 토큰을 실어 보낸 요청이 401이면 배지를 "만료됨 · [토큰 재발급]"으로 바꾼다
-        if (useToken && response.status === 401) markTokenBadgesExpired();
-        const type = response.headers.get("content-type") || "";
+        let response;
         let text = "";
         let json = null;
-        if (["pdf", "zip", "octet-stream", "image"].some((keyword) => type.includes(keyword))) {
-            const blob = await response.blob();
-            text = `[Binary File] ${type} (${blob.size} bytes)`;
-        } else {
-            text = await response.text();
-            try { json = JSON.parse(text); text = JSON.stringify(json, null, 2); } catch (error) {}
+        try {
+            response = await fetch(url, options);
+            // 토큰을 실어 보낸 요청이 401이면 배지를 "만료됨 · [토큰 재발급]"으로 바꾼다
+            if (useToken && response.status === 401) markTokenBadgesExpired();
+            const type = response.headers.get("content-type") || "";
+            if (["pdf", "zip", "octet-stream", "image"].some((keyword) => type.includes(keyword))) {
+                const blob = await response.blob();
+                text = `[Binary File] ${type} (${blob.size} bytes)`;
+            } else {
+                text = await response.text();
+                try { json = JSON.parse(text); text = JSON.stringify(json, null, 2); } catch (error) {}
+            }
+        } catch (error) {
+            if (timedOut) {
+                return { statusType: "FAIL", responseStatus: "TIMEOUT", method, label: stepMeta(id).label, url, duration: `${Math.round(performance.now() - start)}ms`, requestBody: body, responseText: `요청이 ${REQUEST_TIMEOUT_MS / 1000}초 안에 끝나지 않아 취소했습니다. 네트워크 상태나 대상 서버를 확인해 주세요.` };
+            }
+            if (controller.signal.aborted) throw stopError();
+            throw error;
+        } finally {
+            clearTimeout(timer);
+            state.activeControllers.delete(controller);
         }
+        const duration = `${Math.round(performance.now() - start)}ms`;
         let statusType;
         if (ok.includes(response.status)) statusType = "PASS";
         else if (Array.isArray(check) && check.includes(response.status)) statusType = "CHECK";
@@ -901,7 +993,8 @@
         const env = config.environments[selectedEnv];
         return env ? normalizeBaseUrl(env.baseUrl) : "";
     }
-    function freshShared() { return { lastCreatedId: null, createdIdList: [], createdGroupId: null, companyStampId: null, bulkMemberIds: [], completedDocIds: [], candidateTemplateIds: [], candidateDocIds: [] }; }
+    // memberCreated: 이 OPA에서 createMember가 PASS/CHECK로 끝났는지 — [중지] 후 deleteMember 정리 여부 판정용 (P1-11)
+    function freshShared() { return { lastCreatedId: null, createdIdList: [], createdGroupId: null, companyStampId: null, bulkMemberIds: [], memberCreated: false, completedDocIds: [], candidateTemplateIds: [], candidateDocIds: [] }; }
     function restoreSeedCache(seedCache) { Object.values(seedCache).forEach((cached) => Object.assign(state.shared, clone(cached))); }
     function extractSeedData(stepId) {
         if (stepId === "listFormsForSeed") return { candidateTemplateIds: [...(state.shared.candidateTemplateIds || [])] };
@@ -910,6 +1003,201 @@
         return {};
     }
     function toggleButtons(disabled) { els.runActiveBtn.disabled = disabled; els.runSelectedBtn.disabled = disabled; els.selectAllBtn.disabled = disabled; els.clearAllBtn.disabled = disabled; }
+
+    // 실행 중 잠금 (P1-11): 환경·Custom URL·설정 모달·프로필 전환을 막고 [중지]를 보인다.
+    // baseUrl()은 요청마다 다시 읽으므로 실행 도중 환경이 바뀌면 다른 서버로 요청이 가게 된다.
+    function setRunLock(locked) {
+        ensureProfileElements();
+        toggleButtons(locked);
+        [els.envSelect, els.customUrlInput, els.openSettingsModalBtn, els.openSettingsModalBtnInline, els.profileSelect].forEach((el) => { if (el) el.disabled = locked; });
+        if (els.authPanelToggle) {
+            els.authPanelToggle.setAttribute("aria-disabled", locked ? "true" : "false");
+            els.authPanelToggle.classList.toggle("locked", locked);
+        }
+        if (els.stopRunBtn) {
+            els.stopRunBtn.style.display = locked ? "" : "none";
+            els.stopRunBtn.disabled = false;
+            els.stopRunBtn.innerHTML = '<i class="fa-solid fa-stop fa-sm"></i> 중지';
+        }
+        if (locked) closeSettingsModal();
+    }
+
+    // ── 실행 안내 메시지 (alert 대체, P1-11/P1-12) ─────────────────────────
+    function showRunNotice(message, tone = "warn") {
+        if (!els.runNotice) return;
+        els.runNotice.textContent = message;
+        els.runNotice.className = `run-notice ${tone}`;
+        els.runNotice.hidden = false;
+    }
+
+    function hideRunNotice() {
+        if (els.runNotice) els.runNotice.hidden = true;
+    }
+
+    // ── 프로필별 OPA 선택 기억 (P1-11) ─────────────────────────────────────
+    function readSelectionMap() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(SELECTION_STORAGE_KEY) || "{}");
+            return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function saveSelection() {
+        try {
+            const map = readSelectionMap();
+            map[currentProfileName()] = [...state.selectedCodes];
+            localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(map));
+        } catch (error) {
+            // 저장 실패(사생활 보호 모드 등)는 무시 — 선택은 현재 탭에서만 유지된다
+        }
+    }
+
+    function restoreSelection() {
+        const saved = readSelectionMap()[currentProfileName()];
+        const known = new Set(scenarios.map((s) => s.code));
+        state.selectedCodes = new Set(Array.isArray(saved) ? saved.filter((code) => known.has(code)) : []);
+    }
+
+    // ── 실행 요청 → 확인 모달 → runSet (P1-11) ──────────────────────────────
+    async function requestRun(codes) {
+        if (state.running) return;
+        const known = new Set(scenarios.map((s) => s.code));
+        const runCodes = (codes || []).filter((code) => known.has(code));
+        if (!runCodes.length) {
+            showRunNotice("실행할 OPA를 1개 이상 선택해 주세요. 왼쪽 목록의 체크박스로 고를 수 있습니다.");
+            return;
+        }
+        hideRunNotice();
+        const confirmed = await confirmRun(runCodes);
+        if (confirmed) await runSet(runCodes);
+    }
+
+    // 데이터 설정 누락만 본다 — 인증은 실행 첫 단계(토큰 준비)에서 따로 검사한다
+    function missingDataKeys(scenario) {
+        return readiness(scenario).missing.filter((key) => key !== "auth.panel");
+    }
+
+    function writeKindsOf(scenario) {
+        const kinds = [];
+        scenario.steps.forEach((stepId) => {
+            const kind = WRITE_STEP_KINDS[stepId];
+            if (kind && !kinds.includes(kind)) kinds.push(kind);
+        });
+        return kinds;
+    }
+
+    let runConfirmResolver = null;
+
+    function confirmRun(codes) {
+        if (!els.runConfirmModal) return Promise.resolve(true);
+        const runScenarios = codes.map((code) => scenarios.find((s) => s.code === code)).filter(Boolean);
+        const envKey = els.envSelect ? els.envSelect.value : config.defaultEnvironment;
+        const env = (config.environments && config.environments[envKey]) || {};
+        const url = baseUrl();
+        const auth = authSnapshot();
+        const body = els.runConfirmBody;
+        body.textContent = "";
+
+        const addRow = (label, value, tone) => {
+            const row = document.createElement("div");
+            row.className = "confirm-row";
+            const key = document.createElement("span");
+            key.className = "confirm-key";
+            key.textContent = label;
+            const val = document.createElement("span");
+            val.className = `confirm-value${tone ? ` ${tone}` : ""}`;
+            val.textContent = value;
+            row.append(key, val);
+            body.appendChild(row);
+        };
+        const addList = (title, items, tone) => {
+            const wrap = document.createElement("div");
+            wrap.className = `confirm-list${tone ? ` ${tone}` : ""}`;
+            const head = document.createElement("div");
+            head.className = "confirm-list-title";
+            head.textContent = title;
+            const ul = document.createElement("ul");
+            items.forEach((text) => {
+                const li = document.createElement("li");
+                li.textContent = text;
+                ul.appendChild(li);
+            });
+            wrap.append(head, ul);
+            body.appendChild(wrap);
+        };
+
+        if (envKey === "saas") {
+            const warn = document.createElement("p");
+            warn.className = "confirm-warn";
+            warn.textContent = "운영(SaaS) 환경입니다. 아래 쓰기 작업은 실제 회사 계정에 문서·멤버·그룹·도장을 만들거나 지웁니다. 지정된 테스트 회사의 인증 정보인지 확인하세요.";
+            body.appendChild(warn);
+        }
+        addRow("대상 환경", `${env.label || envKey} — ${url || "(Base URL 없음)"}`, url ? "" : "danger");
+        addRow("회사 (company_id)", state.companyId || "아직 토큰을 발급하지 않았습니다 — 실행 첫 단계에서 확인됩니다");
+        addRow("프로필 / 인증", `${currentProfileName()} / ${auth.mode === "bearer" ? "Bearer" : "Signature"}${auth.ready ? "" : " (인증 정보 입력 필요)"}`, auth.ready ? "" : "danger");
+        addRow("실행 OPA", `${runScenarios.length}개 (step ${totalScenarioSteps(codes)}개)`);
+
+        const skipped = runScenarios.filter((s) => missingDataKeys(s).length);
+        const runnable = runScenarios.filter((s) => !missingDataKeys(s).length);
+        const writes = runnable.filter((s) => writeKindsOf(s).length);
+        if (writes.length) {
+            addList(`쓰기 작업이 있는 OPA (${writes.length}개)`, writes.map((s) => `${s.code} ${s.name} — ${writeKindsOf(s).join(", ")}`), "write");
+        } else {
+            addList("쓰기 작업", ["없음 — 조회만 실행합니다."]);
+        }
+        if (skipped.length) {
+            addList(`설정 필요로 건너뛸 OPA (${skipped.length}개)`, skipped.map((s) => `${s.code} ${s.name} — 설정 필요: ${missingDataKeys(s).join(", ")}`), "skip");
+        }
+        addRow("중지", "실행 중 [중지]를 누르면 다음 step부터 건너뛰고, 이미 만든 문서·멤버·그룹·도장의 정리 step은 실행합니다.");
+
+        els.runConfirmOkBtn.disabled = !url;
+        els.runConfirmOkBtn.textContent = runnable.length ? `${runScenarios.length}개 OPA 실행` : "실행 (모두 건너뜀)";
+        els.runConfirmModal.classList.add("open");
+        document.body.style.overflow = "hidden";
+        // 실수로 Enter를 눌러 실행되지 않도록 [취소]에 포커스
+        setTimeout(() => els.runConfirmCancelBtn.focus(), 0);
+        return new Promise((resolve) => { runConfirmResolver = resolve; });
+    }
+
+    function closeRunConfirm(confirmed) {
+        if (!els.runConfirmModal || !els.runConfirmModal.classList.contains("open")) return;
+        els.runConfirmModal.classList.remove("open");
+        document.body.style.overflow = "";
+        const resolve = runConfirmResolver;
+        runConfirmResolver = null;
+        if (resolve) resolve(!!confirmed);
+    }
+
+    // ── 중지 (P1-11) ─────────────────────────────────────────────────────
+    function stopError() {
+        const error = new Error(STOP_REASON);
+        error.isStop = true;
+        return error;
+    }
+
+    function requestStop() {
+        if (!state.running || state.stopRequested) return;
+        state.stopRequested = true;
+        if (els.stopRunBtn) {
+            els.stopRunBtn.disabled = true;
+            els.stopRunBtn.textContent = "중지 중…";
+        }
+        // 정리 step 요청은 취소하지 않는다 (cleanupPhase 중에는 중지 버튼이 이미 비활성)
+        state.activeControllers.forEach((controller) => controller.abort());
+        progress(parseInt(els.progressBar.style.width, 10) || 0, "중지 요청됨 — 남은 step은 건너뛰고 정리 step만 실행합니다");
+    }
+
+    function stopCleanupEligible(stepId) {
+        const check = STOP_CLEANUP_TARGETS[stepId];
+        return typeof check === "function" && check();
+    }
+
+    function skipResult(stepId, reason) {
+        const meta = stepMeta(stepId);
+        return { statusType: "SKIP", responseStatus: "-", method: meta.method, label: meta.label, url: "", duration: "-", requestBody: null, responseText: reason };
+    }
     function progress(width, text) { els.progressBar.style.width = `${width}%`; els.progressText.textContent = text; }
     function renderDetail() {
         const scenario = scenarios.find((item) => item.code === state.activeCode);
@@ -939,18 +1227,21 @@
     }
     async function runSet(codes) {
         if (state.running) return;
-        if (!codes.length) return alert("실행할 OPA를 하나 이상 선택해 주세요.");
+        if (!codes.length) { showRunNotice("실행할 OPA를 1개 이상 선택해 주세요."); return; }
 
         state.running = true;
+        state.stopRequested = false;
+        state.cleanupPhase = false;
         state.shared = freshShared();
         state.token = "";
         state.companyId = state.companyId || "";  // 인증 패널에서 발급된 companyId는 유지
         state.lastReportData = null;
         closeReportModal();
         hideHistoryBanner();  // 새 실행은 라이브 결과이므로 과거-이력 배너/선택 해제
+        hideRunNotice();
         if (els.openReportBtn) els.openReportBtn.style.display = "none";
         els.resultTableBody.innerHTML = "";
-        toggleButtons(true);
+        setRunLock(true);
         progress(0, "토큰과 실행 계획 준비 중");
 
         const totalSteps = totalScenarioSteps(codes);
@@ -993,24 +1284,43 @@
 
                 const opaStepResults = [];
                 let opaFailed = false;
+                // readiness 미충족 OPA는 실행하지 않고 SKIP("설정 필요: <누락 키>")으로 기록한다 (P1-11)
+                const missing = missingDataKeys(scenario);
+                const notReadyReason = missing.length ? `설정 필요: ${missing.join(", ")}` : "";
 
                 for (const stepId of scenario.steps) {
                     globalStepIndex += 1;
-                    progress(Math.round((globalStepIndex / Math.max(totalSteps, 1)) * 100), `실행 중: ${code} — ${stepMeta(stepId).label}`);
+                    const progressLabel = state.stopRequested ? "중지 처리 중" : "실행 중";
+                    progress(Math.round((globalStepIndex / Math.max(totalSteps, 1)) * 100), `${progressLabel}: ${code} — ${stepMeta(stepId).label}`);
 
                     let result;
-                    if (opaFailed) {
+                    if (notReadyReason) {
+                        result = skipResult(stepId, notReadyReason);
+                    } else if (opaFailed) {
+                        // 선행 FAIL 시 정리 step까지 SKIP하는 기존 동작은 유지 (기획서 0절: P0-13 제외)
                         result = skippedAfterFailureResult(stepId);
+                    } else if (state.stopRequested && !stopCleanupEligible(stepId)) {
+                        result = skipResult(stepId, STOP_CLEANUP_TARGETS[stepId] ? `${STOP_REASON} (정리 대상 없음)` : STOP_REASON);
                     } else if (SEED_STEPS.has(stepId) && seedCache[stepId]) {
                         Object.assign(state.shared, clone(seedCache[stepId]));
                         result = cachedSeedResult(stepId);
                     } else {
+                        const cleanupAfterStop = state.stopRequested;
+                        state.cleanupPhase = cleanupAfterStop;
                         try {
                             result = await runStep(stepId);
                         } catch (error) {
-                            result = { statusType: "FAIL", responseStatus: "ERROR", method: stepMeta(stepId).method, label: stepMeta(stepId).label, url: "", duration: "-", requestBody: null, responseText: error.message || String(error) };
+                            if (error && error.isStop) {
+                                result = skipResult(stepId, `${STOP_REASON} — 진행 중이던 요청을 취소했습니다. 서버에서 이미 처리되었을 수 있으니 필요하면 eformsign에서 확인하세요.`);
+                            } else {
+                                result = { statusType: "FAIL", responseStatus: "ERROR", method: stepMeta(stepId).method, label: stepMeta(stepId).label, url: "", duration: "-", requestBody: null, responseText: error.message || String(error) };
+                            }
+                        } finally {
+                            state.cleanupPhase = false;
                         }
+                        if (cleanupAfterStop) result = { ...result, label: `${result.label} · 중지 후 정리` };
                         if (SEED_STEPS.has(stepId) && result.statusType === "PASS") seedCache[stepId] = extractSeedData(stepId);
+                        if (stepId === "createMember" && (result.statusType === "PASS" || result.statusType === "CHECK")) state.shared.memberCreated = true;
                         if (result.statusType === "FAIL") opaFailed = true;
                     }
 
@@ -1032,15 +1342,20 @@
             fail = reportData.totalSummary.failedSteps;
             check = reportData.totalSummary.checkSteps;
             skip = reportData.totalSummary.skippedSteps;
+            const stopped = state.stopRequested;
+            reportData.meta.stopped = stopped;
             state.running = false;
-            toggleButtons(false);
+            state.stopRequested = false;
+            state.cleanupPhase = false;
+            setRunLock(false);
             els.lastRunSummary.textContent = `PASS ${pass} / FAIL ${fail} / CHECK ${check} / SKIP ${skip}`;
-            progress(100, `완료: PASS ${pass}, FAIL ${fail}, CHECK ${check}, SKIP ${skip}`);
+            progress(100, `${stopped ? "중지됨" : "완료"}: PASS ${pass}, FAIL ${fail}, CHECK ${check}, SKIP ${skip}`);
             if (els.openReportBtn) els.openReportBtn.style.display = "";
             saveRunHistory({
                 id: String(Date.now()),
                 when: new Date().toLocaleString("ko-KR", { hour12: false }),
                 codes: codes.slice(),
+                stopped,
                 pass,
                 fail,
                 check,
@@ -1823,7 +2138,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 const noteHint = hasReport ? "" : `<br><span class="history-no-detail">상세 데이터 없음</span>`;
                 return `
                 <div class="${rowClass}"${idAttr}>
-                    <span class="config-key">${esc(item.when)}<br>${esc(item.codes.join(", "))}${noteHint}</span>
+                    <span class="config-key">${esc(item.when)}${item.stopped ? " (중지됨)" : ""}<br>${esc(item.codes.join(", "))}${noteHint}</span>
                     <span class="config-value ${item.fail > 0 ? "missing" : "ready"}">PASS ${esc(String(item.pass))} / FAIL ${esc(String(item.fail))} / CHECK ${esc(String(item.check || 0))} / SKIP ${esc(String(item.skip))}<br>${esc(item.environment)} / ${esc(item.authMode)}</span>
                 </div>`;
             }).join("")
@@ -1887,6 +2202,10 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
     }
 
     function loadHistoryRun(id) {
+        if (state.running) {
+            showRunNotice("실행 중에는 과거 이력을 열 수 없습니다. 실행이 끝난 뒤 다시 시도해 주세요.");
+            return;
+        }
         const historyMap = readHistoryMap();
         const list = historyMap[currentProfileName()] || [];
         const entry = list.find((item) => String(item.id) === String(id));
@@ -1971,6 +2290,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         const nextConfig = profiles[nextName] ? merge(clone(baseDefaultConfig()), profiles[nextName]) : baseDefaultConfig();
         replaceConfig(nextConfig);
         setCurrentProfileName(nextName);
+        restoreSelection();  // 프로필마다 마지막 OPA 선택을 따로 기억한다 (P1-11)
         populateProfileSelect();
         populateSettingsFormFromConfig();
         updateEditorFromConfig();
@@ -2046,6 +2366,11 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
 
     function openSettingsModal() {
         ensureProfileElements();
+        // 실행 중에는 설정을 바꿀 수 없다 (P1-11) — 바뀐 값이 진행 중인 요청에 섞이는 것을 막는다
+        if (state.running) {
+            showRunNotice("테스트 실행 중에는 입력값 설정을 열 수 없습니다. 실행이 끝나거나 [중지]한 뒤 다시 시도해 주세요.");
+            return;
+        }
         if (els.settingsModalOverlay) els.settingsModalOverlay.classList.add("open");
         if (els.settingsModalCard) els.settingsModalCard.classList.add("modal-open");
         document.body.style.overflow = "hidden";
@@ -2227,6 +2552,8 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         localStorage.removeItem(PROFILE_STORAGE_KEY);
         localStorage.removeItem(ACTIVE_PROFILE_KEY);
         localStorage.removeItem(HISTORY_STORAGE_KEY);
+        localStorage.removeItem(SELECTION_STORAGE_KEY);
+        state.selectedCodes.clear();
         replaceConfig(baseDefaultConfig());
         bootstrapSettingsUi();
         refreshAll();
