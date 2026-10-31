@@ -794,7 +794,8 @@
             }
 
             var roleBadge = '<span class="badge-role-header ' + meData.role + '">' + meData.role + '</span>';
-            var bellHtml  = meData.role === 'admin' ? '<div id="idxBellWrap"></div>' : '';
+            // 알림 벨은 로그인한 모든 사용자에게 표시 (일반 사용자는 내 버그 리포트 답변 알림, P1-18)
+            var bellHtml  = '<div id="idxBellWrap"></div>';
             var adminBtn  = meData.role === 'admin'
                 ? '<a href="/app/admin" class="btn-header admin">관리자 콘솔</a>'
                 : '';
@@ -811,11 +812,9 @@
                     .finally(function() { location.reload(); });
             });
 
-            if (meData.role === 'admin') {
-                var wrap = document.getElementById('idxBellWrap');
-                if (wrap && window.NotifBell) {
-                    window.NotifBell.init(wrap, meData);
-                }
+            var wrap = document.getElementById('idxBellWrap');
+            if (wrap && window.NotifBell) {
+                window.NotifBell.init(wrap, meData);
             }
         }
 

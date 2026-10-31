@@ -92,8 +92,12 @@ await triggerNewNotification('private-notifications-admin', notificationRows[0],
 | `signup_request` | `POST /api/signup` | admin (target_role) | `/app/admin?tab=signup-requests` |
 | `password_reset_request` | `POST /api/password-reset-request`(새 대기 요청을 만들었을 때만 — 중복·없는 아이디는 알림 없음, 응답은 동일) | admin (target_role) | `/app/admin?tab=users` |
 | `bug_report` | `POST /api/bug-reports` | admin (target_role) | `/app/admin?tab=bug-reports` |
-| `bug_report_status` | 관리자가 bug status 변경 시 | 제보자 (target_user_id) | `/community/bug-report.html#my-reports` |
-| `bug_report_reply` | 관리자가 cause/action_taken 최초 등록 시 | 제보자 (target_user_id) | `/community/bug-report.html#my-reports` |
+| `bug_report_status` | 관리자가 bug status 변경 시 | 제보자 (target_user_id) | `/community/bug-report.html#my-reports/<리포트 id>` |
+| `bug_report_reply` | 관리자가 cause/action_taken 최초 등록 시 | 제보자 (target_user_id) | `/community/bug-report.html#my-reports/<리포트 id>` |
+
+- 이동 경로는 알림의 `reference_id`(숫자 리포트 id)로 만든다(P1-18). `bug_report`(admin)는 `/app/admin?tab=bug-reports&report=<id>`로
+  해당 리포트를 선택한 채 열린다. `bug-report.html`은 `#my-reports/<id>`로 진입하거나 같은 페이지에서 해시만 바뀌어도(`hashchange`)
+  그 상세를 연다. 경로 규칙은 `auth-status.js`의 `getNotificationDest(n)`와 `notification-bell.js`의 `_notificationDest(n)`가 같다(함께 수정).
 
 ---
 
@@ -102,7 +106,7 @@ await triggerNewNotification('private-notifications-admin', notificationRows[0],
 | 파일 | 적용 범위 | 설명 |
 |---|---|---|
 | `auth-status.js` | `/app/*` 등 auth-status.js 적용 페이지 | 벨 로직 내장. **로그인한 모든 사용자** + 기본(상단 바) 모드에서 활성화. admin은 target_role 알림, 일반 사용자는 target_user_id 알림 표시 |
-| `assets/js/notification-bell.js` | `index.html` | 독립 모듈 (IIFE → `window.NotifBell`). `index.html`이 `<script>` 로드 후 `NotifBell.init(containerEl, meData)` 호출 |
+| `assets/js/notification-bell.js` | `index.html` | 독립 모듈 (IIFE → `window.NotifBell`). `index.html`이 `<script>` 로드 후 `NotifBell.init(containerEl, meData)` 호출. **로그인한 모든 사용자**(P1-18) — admin은 `private-notifications-admin`, 그 외는 `private-notifications-{id}` 구독 |
 
 ```html
 <!-- index.html: </body> 직전 로드 -->
@@ -110,11 +114,9 @@ await triggerNewNotification('private-notifications-admin', notificationRows[0],
 <script src="/assets/js/notification-bell.js"></script>
 ```
 ```javascript
-// renderHeaderUser() 내 admin 구간
-if (meData.role === 'admin') {
-    var wrap = document.getElementById('idxBellWrap');
-    if (wrap && window.NotifBell) window.NotifBell.init(wrap, meData);
-}
+// renderHeaderUser() — 로그인 사용자 전체 (역할 무관)
+var wrap = document.getElementById('idxBellWrap');
+if (wrap && window.NotifBell) window.NotifBell.init(wrap, meData);
 ```
 
 **비(非)자명한 동작:**
@@ -124,5 +126,8 @@ if (meData.role === 'admin') {
 - **Fallback 폴링**: Pusher 연결 실패 시 300초(5분) interval로 자동 전환. 재연결 시 폴링 해제
 - **Pusher CDN 필수**: `auth-status.js` / `notification-bell.js` 로드 전에 `pusher.min.js` CDN이 먼저 로드되어야 함. 없으면 fallback 폴링으로 동작
 - **X 버튼 삭제**: DOM 즉시 제거 + 미읽음 배지 카운트 즉시 감소. API 재호출 없음
-- **"전체 삭제" 버튼**: 알림이 하나라도 있을 때만 헤더에 노출 (`._nb-del-all` / `.anp-del-all`)
+- **"전체 삭제" 버튼**: 알림이 하나라도 있을 때만 헤더에 노출 (`._nb-del-all` / `.anp-del-all`). 누르면 `confirm()` 확인 후 삭제(P1-18)
+- **페이지 연동 이벤트**: `auth-status.js`는 `new-notification` 수신 시 `document`에 `auth-status:notification`
+  CustomEvent(`detail` = 서버 payload)를 보낸다. Admin 콘솔은 이를 받아 해당 탭(가입 요청·버그 리포트·사용자)에
+  "새 항목이 있습니다 · [새로고침]" 배너만 띄운다 — 작성 중인 답변을 지키고 Neon 호출을 줄이려고 자동 재조회는 하지 않는다
 - **`/api/me` 응답에 Pusher 설정 포함**: `pusher_key`, `pusher_cluster`, `id` — 클라이언트에서 Pusher 초기화 및 채널 구독에 사용

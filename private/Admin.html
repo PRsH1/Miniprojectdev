@@ -130,6 +130,8 @@
     .alert { border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
     .alert.warning { background: #fff7ed; border: 1px solid #fde68a; color: #92400e; }
     .alert.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .new-items-banner[hidden] { display: none; }
+    .new-items-banner .btn { margin-left: auto; }
     .alert-count { font-weight: 700; font-size: 20px; }
 
     /* ─── 모달 ──────────────────────────────────────────── */
@@ -216,6 +218,11 @@
     <!-- ══════════ 회원가입 요청 탭 ══════════ -->
     <div class="tab-content active" id="tab-signup">
       <div class="section-title">회원가입 요청 관리</div>
+      <!-- 실시간 알림 수신 시 표시 — 자동 재조회 대신 사용자 클릭 1회 (P1-18) -->
+      <div class="alert info new-items-banner" id="newItemsBanner-signup" hidden>
+        <i class="fa fa-bell"></i> <span>새 항목이 있습니다.</span>
+        <button class="btn btn-primary" data-reload-tab="signup"><i class="fa fa-rotate"></i> 새로고침</button>
+      </div>
 
       <!-- 상태 필터 버튼 -->
       <div style="display:flex;gap:8px;margin-bottom:14px">
@@ -247,6 +254,11 @@
     <!-- ══════════ 버그 리포트 탭 ══════════ -->
     <div class="tab-content" id="tab-bug-reports">
       <div class="section-title">버그 리포트 관리</div>
+      <!-- 실시간 알림 수신 시 표시 — 자동 재조회 대신 사용자 클릭 1회 (P1-18) -->
+      <div class="alert info new-items-banner" id="newItemsBanner-bug-reports" hidden>
+        <i class="fa fa-bell"></i> <span>새 항목이 있습니다.</span>
+        <button class="btn btn-primary" data-reload-tab="bug-reports"><i class="fa fa-rotate"></i> 새로고침</button>
+      </div>
 
       <div class="filter-row">
         <select class="form-input" id="bugStatusFilter" style="max-width:220px">
@@ -299,6 +311,11 @@
     <!-- ══════════ 사용자 탭 ══════════ -->
     <div class="tab-content" id="tab-users">
       <div class="section-title">사용자 관리</div>
+      <!-- 실시간 알림 수신 시 표시 — 자동 재조회 대신 사용자 클릭 1회 (P1-18) -->
+      <div class="alert info new-items-banner" id="newItemsBanner-users" hidden>
+        <i class="fa fa-bell"></i> <span>새 항목이 있습니다.</span>
+        <button class="btn btn-primary" data-reload-tab="users"><i class="fa fa-rotate"></i> 새로고침</button>
+      </div>
 
       <!-- 비밀번호 재설정 요청 -->
       <div id="resetRequestSection" style="display:none">
@@ -824,6 +841,7 @@ $(function () {
   function updateTabQuery(tab) {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tabQueryValue(tab));
+    url.searchParams.delete('report'); // 알림 딥링크용 1회성 파라미터 — 탭을 옮기면 지운다
     history.replaceState(null, '', url.pathname + url.search);
   }
 
@@ -886,6 +904,7 @@ $(function () {
 
   function loadUsers() {
     $.getJSON('/api/admin/users', function (data) {
+      hideNewItemsBanner('users');
       _users = data.users || [];
       renderUserList();
     }).fail(function (xhr) {
@@ -1470,6 +1489,7 @@ $(function () {
   function loadSignupRequests(status) {
     status = status || _currentSignupStatus;
     $.getJSON('/api/admin/signup-requests?status=' + status, function (data) {
+      if (status === 'pending') hideNewItemsBanner('signup');
       const reqs = data.requests || [];
       // 사이드바 배지 갱신 (pending만)
       if (status === 'pending') {
@@ -1676,15 +1696,15 @@ $(function () {
           </div>
         </div>
         <div class="detail-block">
-          <div class="detail-label">관리자 메모</div>
-          <textarea class="form-input" id="bugReportAdminNote" rows="7" placeholder="내부 처리 메모를 남길 수 있습니다." style="resize:vertical">${esc(report.admin_note || '')}</textarea>
+          <div class="detail-label">내부 메모(제보자 비공개)</div>
+          <textarea class="form-input" id="bugReportAdminNote" rows="7" placeholder="관리자끼리만 보는 메모입니다. 제보자에게는 표시되지 않습니다." style="resize:vertical">${esc(report.admin_note || '')}</textarea>
         </div>
         <div class="detail-block">
-          <div class="detail-label">버그 원인</div>
+          <div class="detail-label">버그 원인 <span style="font-weight:400;color:var(--text-muted)">(제보자에게 공개)</span></div>
           <textarea class="form-input" id="bugReportCause" rows="5" placeholder="제보자에게 공유할 원인 분석 내용을 입력하세요." style="resize:vertical">${esc(report.cause || '')}</textarea>
         </div>
         <div class="detail-block">
-          <div class="detail-label">조치 사항</div>
+          <div class="detail-label">조치 사항 <span style="font-weight:400;color:var(--text-muted)">(제보자에게 공개)</span></div>
           <textarea class="form-input" id="bugReportActionTaken" rows="5" placeholder="수정 내용, 우회 방법, 배포 여부 등을 입력하세요." style="resize:vertical">${esc(report.action_taken || '')}</textarea>
           <div class="detail-actions">
             <button class="btn btn-primary" id="btnSaveBugReply">답변 저장</button>
@@ -1752,6 +1772,7 @@ $(function () {
     if (severity) params.set('severity', severity);
 
     $.getJSON('/api/bug-reports' + (params.toString() ? `?${params.toString()}` : ''), function (data) {
+      hideNewItemsBanner('bug-reports');
       _bugReports = data.reports || [];
       renderBugReports(_bugReports);
       if (!_bugReports.length) {
@@ -2084,6 +2105,29 @@ $(function () {
     if (e.target === this && !this.hasAttribute('data-keep-open')) $(this).removeClass('open');
   });
 
+  // ─── 실시간 새 항목 배너 (P1-18) ───────────────────────────
+  // auth-status.js가 Pusher new-notification을 받으면 'auth-status:notification' 이벤트를 보낸다.
+  // 목록을 자동으로 다시 불러오지 않고(작성 중인 답변 보호·Neon 호출 최소화) 해당 탭에 배너만 띄운다.
+  const NOTIF_TYPE_TAB = { signup_request: 'signup', bug_report: 'bug-reports', password_reset_request: 'users' };
+
+  function showNewItemsBanner(tab) { $('#newItemsBanner-' + tab).prop('hidden', false); }
+  function hideNewItemsBanner(tab) { $('#newItemsBanner-' + tab).prop('hidden', true); }
+
+  document.addEventListener('auth-status:notification', function (e) {
+    const tab = NOTIF_TYPE_TAB[e.detail && e.detail.type];
+    if (!tab) return;
+    showNewItemsBanner(tab);
+    // 재설정 요청은 사이드바 배지(첫 로드 때 조회)도 바로 맞춘다 — 목록 영역은 배너 클릭 때 갱신
+    if (tab === 'users' && _activeTab !== 'users') loadResetRequests();
+  });
+
+  $('[data-reload-tab]').on('click', function () {
+    const tab = $(this).data('reload-tab');
+    if (tab === 'signup') loadSignupRequests(_currentSignupStatus || 'pending');
+    if (tab === 'bug-reports') loadBugReports(true);
+    if (tab === 'users') loadUsers();
+  });
+
   // ─── 서버 에러 → 화면 문구 (P1-13) ────────────────────────
   // 서버 에러는 { error: { status, code, message, reason, action } } 객체다(respond-error.js).
   // 객체를 그대로 문자열로 쓰면 [object Object]가 되므로 message → reason → action 순으로 이어 붙인다.
@@ -2113,7 +2157,12 @@ $(function () {
   // 사이드바 배지(가입 대기·비밀번호 재설정 대기)는 어느 탭으로 들어와도 첫 로드 때 채운다(P1-14)
   loadSignupRequests('pending');
   loadResetRequests();
-  const initialTab = TAB_ALIAS[new URLSearchParams(window.location.search).get('tab')] || 'signup';
+  const initialParams = new URLSearchParams(window.location.search);
+  const initialTab = TAB_ALIAS[initialParams.get('tab')] || 'signup';
+  const initialReport = initialParams.get('report');
+  if (initialTab === 'bug-reports' && /^[0-9]{1,10}$/.test(initialReport || '')) {
+    _selectedBugReportId = Number(initialReport);
+  }
   activateTab(initialTab, { skipUrlSync: true });
 });
 </script>

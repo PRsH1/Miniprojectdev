@@ -299,13 +299,19 @@
         return (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
     }
 
-    function getNotificationDest(type) {
+    // 알림 이동 경로 — notification-bell.js의 _notificationDest와 같은 규칙 (수정 시 함께 변경)
+    // 버그 리포트 알림은 reference_id(리포트 id)로 해당 상세를 바로 연다 (P1-18)
+    function getNotificationDest(n) {
+        var type = n && n.type;
+        var ref = n && n.reference_id != null ? String(n.reference_id) : '';
+        var reportId = /^[0-9]{1,10}$/.test(ref) ? ref : '';
         if (type === 'signup_request') return '/app/admin?tab=signup-requests';
-        if (type === 'bug_report') return '/app/admin?tab=bug-reports';
+        if (type === 'bug_report') return '/app/admin?tab=bug-reports' + (reportId ? '&report=' + reportId : '');
         if (type === 'password_reset_request') return '/app/admin?tab=users';
-        if (type === 'bug_report_status') return '/community/bug-report.html#my-reports';
-        if (type === 'bug_report_reply') return '/community/bug-report.html#my-reports';
-        return '/app/admin';
+        if (type === 'bug_report_status' || type === 'bug_report_reply') {
+            return '/community/bug-report.html#my-reports' + (reportId ? '/' + reportId : '');
+        }
+        return authStatusCurrentUser && authStatusCurrentUser.role === 'admin' ? '/app/admin' : '/';
     }
 
     function updateNotifBadge(count) {
@@ -406,6 +412,11 @@
                 } else {
                     fetchUnreadCount();
                 }
+                // 페이지가 목록을 직접 갱신할 수 있게 알린다 (예: Admin "새 항목 있음 · 새로고침" 배너, P1-18)
+                // detail에는 type·id·reference_id 등 서버 payload만 담는다 — 받는 쪽은 textContent로만 렌더링
+                try {
+                    document.dispatchEvent(new CustomEvent('auth-status:notification', { detail: data || {} }));
+                } catch (e) { /* CustomEvent 미지원 환경 무시 */ }
             });
             channel.bind('notification-read', function (data) {
                 updateNotifBadge(data && data.unread_count);
@@ -518,16 +529,16 @@
                 var isUnread = !n.is_read;
                 var itemClass = 'anp-item' + (isUnread ? ' unread' : '');
                 var dotClass = 'anp-dot' + (isUnread ? '' : ' read');
-                var dest = getNotificationDest(n.type);
+                var dest = getNotificationDest(n);
                 listHtml +=
-                    '<div class="' + itemClass + '" data-notif-id="' + n.id + '" data-dest="' + escHtml(dest) + '">' +
+                    '<div class="' + itemClass + '" data-notif-id="' + escHtml(n.id) + '" data-dest="' + escHtml(dest) + '">' +
                     '<div class="' + dotClass + '"></div>' +
                     '<div style="flex:1;min-width:0;">' +
                     '<div class="anp-title">' + escHtml(n.title) + '</div>' +
                     (n.body ? '<div class="anp-body">' + escHtml(n.body) + '</div>' : '') +
                     '<div class="anp-time">' + formatRelativeTime(n.created_at) + '</div>' +
                     '</div>' +
-                    '<button class="anp-del" data-del-id="' + n.id + '" title="알림 삭제">&#10005;</button>' +
+                    '<button class="anp-del" data-del-id="' + escHtml(n.id) + '" title="알림 삭제">&#10005;</button>' +
                     '</div>';
             }
             listHtml += '</div>';
@@ -569,6 +580,8 @@
         if (delAllBtnEl) {
             delAllBtnEl.addEventListener('click', function (e) {
                 e.stopPropagation();
+                // 되돌릴 수 없으므로 확인을 받는다 (P1-18)
+                if (!window.confirm('알림을 모두 삭제할까요? 삭제한 알림은 되돌릴 수 없습니다.')) return;
                 deleteNotifAll();
             });
         }

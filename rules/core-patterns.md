@@ -261,6 +261,9 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 - 비로그인 시 코너 모드는 로그인/회원가입 버튼 표시 (`?next=현재경로` 파라미터 포함), 상단 바 모드도 동일
 - admin 로그인 시 모든 모드에서 "관리자 콘솔" 버튼 자동 표시
 - **알림 벨**: 기본(상단 바) 모드 + 로그인 사용자에게 벨 버튼 + 미읽음 배지 표시. Pusher WebSocket으로 실시간 갱신 (Pusher 연결 실패 시 300초 fallback 폴링). 클릭 시 드롭다운 패널 → 알림 목록 + "모두 읽음" 처리. CORNER 모드에서는 미표시
+- **모드별 적용 페이지**: 커뮤니티 두 페이지(`community/bug-report.html`·`developer-notes.html`)는 P1-18부터 **기본(상단 바)** 모드다
+  (허브 링크·벨 필요). 코너 모드는 자체 헤더가 있는 OpenAPITester 등에만 쓴다
+- **[비밀번호 변경] 버튼**: 로그인 사용자에게 모든 모드에서 표시(코너 모드는 "비밀번호") → `/auth/change-password.html?next=<현재 경로>` (P1-13)
 - **주의:** 각 페이지에 `button { width: 100% }` 스타일이 있어도 `.asb-btn`에 `width: auto !important`가 적용되어 버튼이 늘어나지 않음
 - 기본 모드의 `.asb-brand`("eformsign Tools Hub")는 클릭 시 `/`(index)로 이동하는 링크(`<a>` 태그)로 렌더링됨
 
