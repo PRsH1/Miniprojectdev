@@ -15,11 +15,10 @@ $(document).on('click', '.tab-btn', function() {
 $(document).ready(function() {
     updateBaseUrlBadge();
 
-    // Auth panel toggle
+    // Auth panel toggle — 토큰이 없으면 처음부터 펼쳐 둔다 (P1-08)
+    setAuthPanelOpen(!state.accessToken);
     $('#authPanelToggle').on('click', function() {
-        $('#authPanelBody').toggleClass('open');
-        const isOpen = $('#authPanelBody').hasClass('open');
-        $('#authChevron').css('transform', isOpen ? 'rotate(180deg)' : '');
+        setAuthPanelOpen(!$('#authPanelBody').hasClass('open'));
     });
 
     // Auth method tabs
@@ -41,15 +40,12 @@ $(document).ready(function() {
 
     // Clear token
     $('#btnClearToken').on('click', function() {
-        state.accessToken = '';
-        updateAuthUI();
-        $('#headersBody tr').each(function() {
-            if ($(this).find('.header-key').val() === 'Authorization') {
-                $(this).find('.header-val').val('');
-            }
-        });
+        clearAccessToken();
         showToast('토큰이 초기화되었습니다');
     });
+
+    // 토큰 발급 당시와 API Key·Member ID가 달라지면 "다른 설정으로 발급됨" 표시 (P1-08)
+    $('#apiKey, #userId').on('input change', updateAuthUI);
 
     // Copy token
     $('#tokenDisplay').on('click', function() {
@@ -63,10 +59,34 @@ $(document).ready(function() {
         $('#customDomainWrap').toggle(v === 'custom');
         updateBaseUrlBadge();
         updateUrlPreview();
+        updateAuthUI();
+        persistDraftSession();
     });
     $('#customDomainInput').on('input', function() {
         updateBaseUrlBadge();
         updateUrlPreview();
+        updateAuthUI();
+        scheduleDraftPersist();
+    });
+
+    // 새로고침 전 편집 내용(sessionStorage) — 환경은 바로, API·draft는 사이드바를 만든 뒤 복원 (P1-09)
+    const savedSession = readDraftSession();
+    if (savedSession) {
+        if (savedSession.customDomain) $('#customDomainInput').val(savedSession.customDomain);
+        if (savedSession.env && $('#envSelect option').filter((i, o) => o.value === savedSession.env).length) {
+            $('#envSelect').val(savedSession.env).trigger('change');
+        }
+    }
+
+    // 파라미터·헤더·Body·Method 편집 내용을 draft로 보관
+    $('#requestArea').on('input change', 'input, textarea, select', scheduleDraftPersist);
+
+    // 전송 전 검증 오류 표시는 해당 입력을 고치면 바로 지운다
+    $(document).on('input change', '#requestArea .kv-input.has-error', function() {
+        clearFieldError($(this));
+    });
+    $(document).on('change', '#queryBody .param-enabled', function() {
+        clearFieldError($(this).closest('tr').find('.param-val'));
     });
 
     $('#bodyEditor').on('input', _validateBodyJson);
@@ -97,10 +117,23 @@ $(document).ready(function() {
     // 모바일 사이드바 백드롭 클릭 시 닫기
     $('#sidebarBackdrop').on('click', closeMobileSidebar);
 
+    // 단축키 (P1-10): Ctrl/Cmd+Enter = Send, Esc = 열린 모달 닫기, Ctrl+Shift+F = Body JSON 정렬
     $(document).on('keydown', function(e) {
-        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'f') {
+        const key = String(e.key || '');
+        if (e.ctrlKey && e.shiftKey && key.toLowerCase() === 'f') {
             e.preventDefault();
             if ($('#tab-body').hasClass('active')) formatBody();
+            return;
+        }
+        if ((e.ctrlKey || e.metaKey) && key === 'Enter') {
+            if (isAnyModalOpen() || !state.currentEndpoint || !$('#requestArea').is(':visible')) return;
+            e.preventDefault();            // Body 편집 중 줄바꿈이 들어가지 않게
+            if (state.inFlight) return;    // 진행 중 요청의 취소는 [취소] 버튼으로만
+            sendRequest();
+            return;
+        }
+        if (key === 'Escape' && closeTopModal()) {
+            e.preventDefault();
         }
     });
 
@@ -122,6 +155,7 @@ $(document).ready(function() {
     // 로그인 상태 캐시 후 DB 히스토리 초기화
     refreshAuthUser().then(() => initHistory()).then(() => {
         buildSidebar();
+        restoreDraftSession(savedSession);
     });
 });
 
@@ -191,6 +225,44 @@ $(document).ready(function() {
         document.addEventListener('mouseup', onMouseUp);
     });
 })();
+
+// ── 모달 (Esc 닫기 · Ctrl+Enter 차단 판정) ──────────────────────────────────
+// 위에 뜨는 순서대로. open: 열림 여부, close: 닫기
+const MODAL_CLOSERS = [
+    { open: () => $('#choiceModal').hasClass('open'),       close: () => resolveChoiceModal('cancel') },
+    { open: () => $('#authRequiredModal').css('display') === 'flex',   close: () => closeAuthRequiredModal() },
+    { open: () => $('#credentialSaveModal').css('display') === 'flex', close: () => closeCredentialSaveModal() },
+    { open: () => $('#credentialLoadModal').css('display') === 'flex', close: () => closeCredentialLoadModal() },
+    { open: () => $('#saveModal').hasClass('open'),         close: () => closeSaveModal() },
+    { open: () => $('#codeModal').hasClass('open'),         close: () => closeCodeModal() },
+    { open: () => $('#specModal').hasClass('open'),         close: () => closeSpecModal() },
+    { open: () => $('#guideModal').hasClass('open'),        close: () => closeGuide() },
+];
+
+function isAnyModalOpen() {
+    return MODAL_CLOSERS.some(m => m.open());
+}
+
+// 가장 위의 모달 하나를 닫는다. 모달이 없으면 Send 드롭다운·모바일 사이드바를 닫는다
+function closeTopModal() {
+    const top = MODAL_CLOSERS.find(m => m.open());
+    if (top) { top.close(); return true; }
+    if ($('#sendDropdownMenu').hasClass('open')) { $('#sendDropdownMenu').removeClass('open'); return true; }
+    if ($('#sidebar').hasClass('mobile-open')) { closeMobileSidebar(); return true; }
+    return false;
+}
+
+// 새로고침 전에 보던 API와 편집 내용을 복원한다 (인증 헤더 값은 저장하지 않았으므로 현재 토큰 사용)
+function restoreDraftSession(saved) {
+    if (!saved || !saved.drafts || typeof saved.drafts !== 'object') return;
+    Object.keys(saved.drafts).forEach(id => {
+        if (!requestDraftCache[id] && API_LIST.some(ep => ep.id === id)) requestDraftCache[id] = saved.drafts[id];
+    });
+    if (!state.currentEndpoint && saved.current && API_LIST.some(ep => ep.id === saved.current)) {
+        selectEndpoint(saved.current);
+        if (saved.drafts[saved.current]) showToast('새로고침 전 편집 내용을 복원했습니다 (인증 헤더 값 제외)', 3000);
+    }
+}
 
 function updateBaseUrlBadge() {
     const url = getBaseUrl();

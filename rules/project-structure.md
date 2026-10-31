@@ -105,7 +105,7 @@ ProjectImprove/
 │   └── bug-report.html / developer-notes.html
 │
 ├── API(JS,HTML)/               # 개별 도구 HTML (문서 발송/조회/다운로드 등) + js/ css/
-│   └── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버 API 비공개, public)
+│   └── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버·그룹 API 비공개, public)
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구 (HTML)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
