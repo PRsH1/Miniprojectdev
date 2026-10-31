@@ -85,6 +85,22 @@
         .user-connect-form {
             display: flex; gap: 10px; padding: 15px; background-color: #222; border-radius: 8px; margin-bottom: 20px;
         }
+        #connectPusherBtn { white-space: nowrap; }
+        .receiver-line { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+        .mini-btn { padding: 4px 10px; font-size: 0.85em; font-weight: normal; background-color: #444; border: 1px solid #555; }
+        .setup-guide { margin-top: 10px; background: #222; border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 12px; color: var(--text-color); }
+        .setup-guide summary { cursor: pointer; font-weight: bold; color: var(--header-text); }
+        .setup-guide ol { margin: 10px 0 4px; padding-left: 20px; line-height: 1.6; font-size: 0.92em; }
+        .setup-guide li { margin-bottom: 8px; color: #ccc; }
+        .guide-code { background: #111; padding: 10px; border-radius: 4px; white-space: pre-wrap; word-break: break-all; font-size: 0.85em; color: var(--header-text); margin: 6px 0 0; }
+        .history-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .history-actions button { background-color: #444; border: 1px solid #555; font-weight: normal; }
+        .history-note { font-size: 0.85em; margin: -8px 0 15px; }
+        .history-note.warn { color: var(--orange); }
+        .history-empty { text-align: center; padding: 20px; border: 1px dashed var(--border-color); border-radius: 8px; }
+        .wh-toast { position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%); background: #333; color: #fff; border: 1px solid #555; padding: 10px 18px; border-radius: 6px; font-size: 0.92em; z-index: 2000; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 90vw; }
+        .wh-toast.show { opacity: 1; }
+        @media (max-width: 640px) { .user-connect-form { flex-direction: column; } .controls { flex-direction: column; align-items: stretch; } }
     </style>
 </head>
 <body>
@@ -93,15 +109,28 @@
             <a href="/" class="button">← 허브 페이지로 돌아가기</a>
         </div>
         <div class="header">
-            <button id="openTokenModalBtn">엑세스 토큰 발급</button>
+            <button id="openTokenModalBtn">액세스 토큰 발급</button>
             <h1>Webhook & API Tester</h1>
             <p>eformsign 웹훅 이벤트를 실시간으로 확인하고, 문서 정보를 바로 조회합니다.</p>
-            <p>eformsign 웹훅 설정 URL: <code id="webhookReceiverUrl"></code> 엔드포인트를 사용하세요.</p>
+            <p class="receiver-line">eformsign 웹훅 설정 URL: <code id="webhookReceiverUrl"></code>
+                <button type="button" id="copyReceiverUrlBtn" class="mini-btn" title="수신 URL을 클립보드에 복사">복사</button>
+            </p>
+            <details class="setup-guide">
+                <summary>eformsign 설정 방법</summary>
+                <ol>
+                    <li><strong>웹훅 등록</strong> — eformsign에 관리자 계정으로 로그인한 뒤 웹훅(Webhook) 설정 메뉴에서 새 웹훅을 추가하고, 위 수신 URL을 그대로 붙여 넣습니다. 받을 이벤트(문서 이벤트, PDF 생성 완료 등)를 선택해 저장합니다.</li>
+                    <li><strong>company_id가 필요한 이유</strong> — 수신기는 받은 본문의 <code>company_id</code>로 실시간 채널(<code>company-&lt;company_id&gt;</code>)을 골라 전달합니다. 본문에 <code>company_id</code>가 없으면 이벤트는 무시되고, 이 화면에 표시되지 않습니다. 아래 입력란에 같은 Company ID를 넣고 [채널 연결]을 누르세요(토큰을 발급하면 자동으로 채워집니다).</li>
+                    <li><strong>테스트 방법</strong> — eformsign에서 테스트 문서를 작성·처리하거나, 아래처럼 직접 보내 확인합니다.
+                        <pre class="guide-code" id="curlExample"></pre>
+                    </li>
+                    <li><strong>주의</strong> — 채널은 공개 채널이라 같은 Company ID를 아는 사람은 누구나 이벤트를 볼 수 있습니다. 민감한 데이터가 담긴 운영 웹훅에는 사용하지 마세요.</li>
+                </ol>
+            </details>
             <div id="tokenBadgeHeader"></div>
         </div>
-        
+
         <div class="user-connect-form">
-            <input type="text" id="pusherCompanyId" placeholder="이벤트를 수신할 Company ID를 입력하세요">
+            <input type="text" id="pusherCompanyId" placeholder="이벤트를 수신할 Company ID를 입력하세요" autocomplete="off">
             <button id="connectPusherBtn">채널 연결</button>
         </div>
 
@@ -113,9 +142,14 @@
                     <label for="status-filter">상태 필터:</label>
                     <select id="status-filter"></select>
                 </div>
-                <button id="clear-button">로그 지우기</button>
+                <div class="history-actions">
+                    <button type="button" id="export-button" title="현재 회사의 수신 이력을 JSON 파일로 저장">JSON 내보내기</button>
+                    <button type="button" id="clear-button" title="화면과 이 브라우저에 저장된 현재 회사의 이력을 지웁니다">이력 비우기</button>
+                </div>
             </div>
+            <p class="history-note" id="historyNote">수신 이벤트는 <strong>이 브라우저에만</strong> 회사별 최근 200건까지 저장됩니다(새로고침해도 유지). 서버나 다른 사람·기기와 공유되지 않습니다.</p>
             <div id="log-container"></div>
+            <p class="history-empty" id="historyEmpty">아직 수신한 이벤트가 없습니다.</p>
         </div>
     </div>
     
@@ -171,6 +205,7 @@
     </div>
     
     <textarea id="accessToken" style="display: none;"></textarea>
+    <div id="whToast" class="wh-toast" role="status" aria-live="polite"></div>
 
     <template id="log-template">
         <div class="log-entry">
@@ -195,32 +230,116 @@
     </template>
     
 <script>
-    const PUSHER_KEY = '0676069a295da819e2a5'; 
-    const PUSHER_CLUSTER = 'ap3'; 
+    const PUSHER_KEY = '0676069a295da819e2a5';
+    const PUSHER_CLUSTER = 'ap3';
 
-    document.getElementById('webhookReceiverUrl').textContent = `${window.location.origin}/api/webhook-receiver`;
+    const RECEIVER_URL = `${window.location.origin}/api/webhook-receiver`;
+    document.getElementById('webhookReceiverUrl').textContent = RECEIVER_URL;
+    document.getElementById('curlExample').textContent =
+        `curl -X POST ${RECEIVER_URL} \\\n  -H 'content-type: application/json' \\\n  -d '{"company_id":"<Company ID>","event_type":"document","document":{"id":"test-doc","document_title":"웹훅 테스트","status":"doc_complete"}}'`;
+
+    // ── 브라우저 저장소 (localStorage) ─────────────────────────────
+    // 시크릿 모드·사이트 데이터 차단 등으로 접근이 막혀도 페이지는 동작해야 하므로 모든 접근을 try/catch로 감싼다
+    const COMPANY_KEY = 'webhook-monitor-company-id';
+    const HISTORY_KEY_PREFIX = 'webhook-monitor-history-v1:';
+    const HISTORY_MAX = 200;
+
+    function storageGet(key) {
+        try { return window.localStorage.getItem(key); } catch (_) { return null; }
+    }
+    function storageSet(key, value) {
+        try { window.localStorage.setItem(key, value); return true; } catch (e) { return e; }
+    }
+    function storageRemove(key) {
+        try { window.localStorage.removeItem(key); } catch (_) { /* 무시 */ }
+    }
+    function isQuotaError(e) {
+        return e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014);
+    }
+
+    // 회사별 이력 읽기 — 손상된 값은 버린다
+    function loadHistory(companyId) {
+        const raw = storageGet(HISTORY_KEY_PREFIX + companyId);
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed.filter(e => e && typeof e === 'object' && !Array.isArray(e)).slice(0, HISTORY_MAX) : [];
+        } catch (_) {
+            return [];
+        }
+    }
+
+    // 회사별 이력 저장 (최신순 배열). 용량 초과면 오래된 것부터 줄여 재시도, 최소 1건까지.
+    // 반환: 실제 저장된 건수 (0이면 저장 실패)
+    function saveHistory(companyId, events) {
+        let list = events.slice(0, HISTORY_MAX);
+        while (list.length > 0) {
+            const r = storageSet(HISTORY_KEY_PREFIX + companyId, JSON.stringify(list));
+            if (r === true) return list.length;
+            if (!isQuotaError(r)) return 0; // 접근 차단 등 — 더 시도해도 소용없음
+            list = list.slice(0, Math.max(1, Math.floor(list.length / 2)));
+            if (list.length === 1) {
+                const last = storageSet(HISTORY_KEY_PREFIX + companyId, JSON.stringify(list));
+                return last === true ? 1 : 0;
+            }
+        }
+        return 0;
+    }
+
+    // ── 토스트 ─────────────────────────────────────────────────
+    let toastTimer = null;
+    function showToast(message) {
+        const el = document.getElementById('whToast');
+        el.textContent = String(message);
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    // 클립보드 복사 — Clipboard API 실패 시 textarea fallback
+    async function copyText(text) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
+        } catch (_) { /* fallback */ }
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:-1000px;left:-1000px;opacity:0;';
+        document.body.appendChild(ta);
+        ta.select();
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+        ta.remove();
+        return ok;
+    }
 
     $(document).ready(function() {
         let pusher;
         let channel;
+        let currentCompanyId = '';
+        let historyEvents = [];       // 현재 회사 이력 (최신순)
+        let storageWarned = false;
         const logContainer = $('#log-container');
         const logTemplate = $('#log-template');
         const statusDiv = $('#connection-status');
         const clearButton = $('#clear-button');
         const statusFilter = $('#status-filter');
-        
+
         // 도메인 맵핑
-        const DOMAINS = { 
-            op_saas: 'https://kr-api.eformsign.com', 
-            csap: 'https://www.gov-eformsign.com/Service' 
+        const DOMAINS = {
+            op_saas: 'https://kr-api.eformsign.com',
+            csap: 'https://www.gov-eformsign.com/Service'
         };
-        
+
         const statusMap = { "doc_tempsave": "초안 (임시 저장)", "doc_create": "문서 작성", "doc_request_participant": "참여자 요청", "doc_accept_participant": "참여자 승인", "doc_reject_participant": "참여자 반려", "doc_request_reviewer": "검토자 요청", "doc_accept_reviewer": "검토자 승인", "doc_reject_reviewer": "검토자 반려", "doc_reject_request": "반려 요청", "doc_decline_cancel_request": "반려 요청 거절", "doc_delete_request": "삭제 요청", "doc_decline_delete_request": "삭제 요청 거절", "doc_cancel_request": "요청 취소", "doc_revoke" : "문서 취소", "doc_delete" :"문서 삭제" , "doc_request_approval": "결재 요청", "doc_accept_approval": "결재 승인", "doc_reject_approval": "결재 반려", "doc_request_external": "외부자 요청", "doc_remind_external": "외부자 재요청", "doc_open_external": "외부자 열람", "doc_accept_external": "외부자 승인", "doc_reject_external": "외부자 반려", "doc_request_internal": "내부자 요청", "doc_accept_internal": "내부자 승인", "doc_reject_internal": "내부자 반려", "doc_tempsave_internal": "내부자 임시 저장", "doc_complete": "문서 완료" };
-        
+
         const tokenModal = $('#tokenModal');
         const openTokenModalBtn = $('#openTokenModalBtn');
         const downloadModal = $('#downloadModal');
-        
+
         // Modal Event Listeners
         $('.modal-close-btn').on('click', function() {
             $(this).closest('.modal-overlay').fadeOut();
@@ -272,9 +391,47 @@
             return DOMAINS[selection];
         }
 
+        function updateEmptyState() {
+            $('#historyEmpty').toggle(logContainer.children('.log-entry').length === 0);
+        }
+
+        function warnStorage(message) {
+            $('#historyNote').addClass('warn').text(message);
+            if (!storageWarned) showToast(message);
+            storageWarned = true;
+        }
+
+        // 현재 회사 이력 저장 (저장 실패 시 화면에만 남고 안내)
+        function persistHistory() {
+            if (!currentCompanyId) return;
+            const saved = saveHistory(currentCompanyId, historyEvents);
+            if (saved === 0 && historyEvents.length > 0) {
+                warnStorage('이 브라우저에 이력을 저장할 수 없습니다(저장소 차단 또는 용량 부족). 새로고침하면 화면의 이벤트가 사라집니다.');
+            } else if (saved < historyEvents.length) {
+                historyEvents = historyEvents.slice(0, saved);
+                warnStorage(`저장 공간이 부족해 최근 ${saved}건만 이 브라우저에 보관합니다.`);
+            }
+        }
+
+        // 회사 선택 시: 기억 + 저장된 이력을 화면에 복원
+        function selectCompany(companyId) {
+            currentCompanyId = companyId;
+            storageSet(COMPANY_KEY, companyId);
+            historyEvents = loadHistory(companyId);
+            logContainer.empty();
+            // 오래된 것부터 prepend → 최신이 맨 위
+            historyEvents.slice().reverse().forEach(ev => addLogEntry(ev, { persist: false }));
+            filterLogs();
+            updateEmptyState();
+        }
+
         function connectToEvents(channelName) {
             if (!PUSHER_KEY || !PUSHER_CLUSTER) {
                 statusDiv.text('● Pusher 설정을 확인하세요.').removeClass('connected').addClass('disconnected');
+                return;
+            }
+            if (typeof Pusher === 'undefined') {
+                statusDiv.text('● 실시간 연결 라이브러리를 불러오지 못했습니다.').removeClass('connected').addClass('disconnected');
                 return;
             }
             if (pusher && channel) {
@@ -292,19 +449,22 @@
                 }
             });
             channel.bind('new-event', function(data) {
-                addLogEntry(data);
+                addLogEntry(data, { persist: true, notify: true });
             });
         }
-        
+
+        function connectCompany(companyId) {
+            selectCompany(companyId);
+            connectToEvents(`company-${companyId}`);
+        }
+
         $('#connectPusherBtn').on('click', function() {
             const companyId = $('#pusherCompanyId').val().trim();
             if (!companyId) {
                 alert('Company ID를 입력하세요.');
                 return;
             }
-            const companyChannelName = `company-${companyId}`;
-            console.log(`[프론트엔드] 구독 시도 채널: ${companyChannelName}`);
-            connectToEvents(companyChannelName);
+            connectCompany(companyId);
         });
 
         async function getAccessToken() {
@@ -337,7 +497,20 @@
                 const badgeOpts = { onReissue: () => { tokenModal.fadeIn(); return getAccessToken(); } };
                 TokenBadge.attach('#tokenBadge', result, badgeOpts);
                 TokenBadge.attach('#tokenBadgeHeader', result, badgeOpts);
-                alert('Access Token이 발급되었습니다' + (result.via === 'proxy' ? ' (via proxy)' : '') + '. 팝업을 닫아주세요.');
+
+                // 토큰 응답의 api_key.company.company_id로 Company ID 자동 채움 + 기억
+                const data = result.data || {};
+                const companyId = data.api_key && data.api_key.company && data.api_key.company.company_id;
+                let filled = '';
+                if (companyId) {
+                    const id = String(companyId);
+                    $('#pusherCompanyId').val(id);
+                    storageSet(COMPANY_KEY, id);
+                    filled = ' Company ID를 자동으로 채웠습니다.';
+                    // 아직 다른 채널에 연결하지 않았다면 바로 연결
+                    if (!channel || currentCompanyId !== id) connectCompany(id);
+                }
+                showToast('Access Token이 발급되었습니다' + (result.via === 'proxy' ? ' (via proxy)' : '') + '.' + filled);
             } catch (error) {
                 renderPre($('#tokenResult'), '에러: ' + toJsonText(error), { error: true });
             }
@@ -382,15 +555,23 @@
             TokenBadge.markExpired('#tokenBadgeHeader');
         }
 
+        // 서버는 filename*="UTF-8''<인코딩된 이름>" 형식(따옴표 포함)으로 보낸다 — 따옴표 유무 모두 처리
         function parseContentDisposition(dispositionHeader) {
             if (!dispositionHeader) return null;
-            const utf8Match = /filename\*=UTF-8''([^;]+)/i.exec(dispositionHeader);
+            const utf8Match = /filename\*\s*=\s*"?UTF-8''([^;"]+)"?/i.exec(dispositionHeader);
             if (utf8Match && utf8Match[1]) {
                 try { return decodeURIComponent(utf8Match[1]); } catch (e) {}
             }
-            const legacyMatch = /filename="?([^;"]+)"?/i.exec(dispositionHeader);
+            const legacyMatch = /filename\s*=\s*"?([^;"]+)"?/i.exec(dispositionHeader);
             if (legacyMatch && legacyMatch[1]) return legacyMatch[1];
             return null;
+        }
+
+        function extFromContentType(contentType) {
+            const ct = String(contentType || '').toLowerCase();
+            if (ct.includes('application/pdf')) return '.pdf';
+            if (ct.includes('zip')) return '.zip';
+            return '';
         }
 
         async function triggerDownload(documentId, fileType, documentTitle) {
@@ -400,9 +581,11 @@
                 openTokenModalBtn.click();
                 return;
             }
-            alert('파일 다운로드를 시작합니다...');
+            // 제목이 없는 이벤트는 문서 ID를 파일 이름으로 쓴다 (<document_id>.pdf)
+            const baseName = documentTitle ? String(documentTitle) : String(documentId);
+            showToast('파일 다운로드를 시작합니다...');
             const domain = getCurrentDomain();
-            const url = `/api/downloadDocument?domain=${encodeURIComponent(domain)}&documentId=${encodeURIComponent(documentId)}&file_type=${encodeURIComponent(fileType)}&title=${encodeURIComponent(documentTitle)}`;
+            const url = `/api/downloadDocument?domain=${encodeURIComponent(domain)}&documentId=${encodeURIComponent(documentId)}&file_type=${encodeURIComponent(fileType)}&title=${encodeURIComponent(baseName)}`;
             try {
                 const response = await fetch(url, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -413,7 +596,8 @@
                     throw new Error(`서버 오류 ${response.status}: ${JSON.stringify(errorJson, null, 2)}`);
                 }
                 const disposition = response.headers.get('content-disposition');
-                const finalFileName = parseContentDisposition(disposition) || 'downloaded_file';
+                const finalFileName = parseContentDisposition(disposition)
+                    || (baseName + (fileType === 'audit_trail' ? '_audit_trail' : '') + extFromContentType(response.headers.get('content-type')));
                 const blob = await response.blob();
                 const downloadUrl = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -429,11 +613,11 @@
                 alert(`다운로드 실패: ${err.message}`);
             }
         }
-        
+
         function initializeFilter() {
-            statusFilter.html('<option value="all">전체 상태 보기</option>');
+            statusFilter.empty().append($('<option>').val('all').text('전체 상태 보기'));
             for (const [code, description] of Object.entries(statusMap)) {
-                statusFilter.append(`<option value="${code}">${description} (${code})</option>`);
+                statusFilter.append($('<option>').val(code).text(`${description} (${code})`));
             }
         }
 
@@ -441,33 +625,40 @@
             const selectedStatus = statusFilter.val();
             logContainer.find('.log-entry').each(function() {
                 const entry = $(this);
-                if (selectedStatus === 'all' || entry.data('status') === selectedStatus) {
+                if (selectedStatus === 'all' || entry.attr('data-status') === selectedStatus) {
                     entry.show();
                 } else {
                     entry.hide();
                 }
             });
         }
-        
-        function addLogEntry(data) {
+
+        // options.persist: 새로 수신한 이벤트면 이력에 추가·저장 / options.notify: 필터로 숨겨지면 토스트
+        function addLogEntry(data, options) {
+            const opts = options || {};
+            if (!data || typeof data !== 'object') return;
             const newEntry = $(logTemplate.html());
-            
+
             // 데이터 구조 파싱 (헤더 포함 여부 확인)
             // 기존: data = { document: {...}, event_type: ... }
             // 변경: data = { headers: {...}, body: { document: {...}, ... } }
-            const eventBody = data.body || data; 
+            const eventBody = (data.body && typeof data.body === 'object') ? data.body : data;
             const eventHeaders = data.headers || {};
 
             const event = eventBody.document || eventBody.ready_document_pdf || {};
             const status = event.status || event.document_status;
             const eventType = String(eventBody.event_type || 'unknown');
-            
-            newEntry.attr('data-status', status);
-            newEntry.attr('data-document-id', event.document_id || event.id);
-            newEntry.attr('data-document-title', event.document_title);
-            
-            newEntry.find('.event-type').text(eventType.toUpperCase()).addClass(eventType);
-            newEntry.find('.timestamp').text(new Date(data.receivedAt || eventBody.receivedAt).toLocaleString());
+            const documentId = event.document_id || event.id;
+
+            // jQuery .data()는 숫자처럼 보이는 문자열을 변환하므로 attr로 저장·조회한다
+            newEntry.attr('data-status', status === undefined || status === null ? '' : String(status));
+            newEntry.attr('data-document-id', documentId === undefined || documentId === null ? '' : String(documentId));
+            newEntry.attr('data-document-title', event.document_title === undefined || event.document_title === null ? '' : String(event.document_title));
+
+            newEntry.find('.event-type').text(eventType.toUpperCase());
+            if (eventType === 'document' || eventType === 'ready_document_pdf') newEntry.find('.event-type').addClass(eventType);
+            const received = new Date(data.receivedAt || eventBody.receivedAt);
+            newEntry.find('.timestamp').text(isNaN(received.getTime()) ? '-' : received.toLocaleString());
             if (data.truncated) {
                 // 서버가 Pusher 10KB 제한으로 요약본만 보낸 경우
                 newEntry.find('.timestamp').append(' ', $('<span>').text('(요약본 — 원본이 커서 일부 필드만 전달됨)'));
@@ -480,35 +671,75 @@
                 $('<td>').text(key),
                 $('<td>').text(value === undefined || value === null || value === '' ? '-' : String(value))
             );
-            
+
             tableBody.append(createRow('웹훅 ID', eventBody.webhook_id));
-            tableBody.append(createRow('문서 ID', event.document_id || event.id));
+            tableBody.append(createRow('문서 ID', documentId));
             tableBody.append(createRow('문서 제목', event.document_title));
             tableBody.append(createRow('상태', statusText));
-            
+
             if (eventType === 'ready_document_pdf') {
                 newEntry.find('.download-pdf-btn').show();
             }
-            
+
             // Body JSON 표시
             newEntry.find('.json-viewer code').text(JSON.stringify(eventBody, null, 2));
-            
+
             // Header JSON 표시
             newEntry.find('.header-viewer code').text(JSON.stringify(eventHeaders, null, 2));
-            
+
             logContainer.prepend(newEntry);
-            
-            // 필터 적용
-            if (statusFilter.val() !== 'all' && statusFilter.val() !== status) {
-                statusFilter.val('all');
+
+            if (opts.persist) {
+                historyEvents.unshift(data);
+                if (historyEvents.length > HISTORY_MAX) historyEvents.length = HISTORY_MAX;
+                persistHistory();
+                // 화면도 이력과 같은 건수로 유지 (가장 오래된 항목 제거)
+                const entries = logContainer.children('.log-entry');
+                if (entries.length > historyEvents.length) entries.slice(historyEvents.length).remove();
             }
-            filterLogs();
+
+            // 사용자가 고른 필터는 유지한다 (예전에는 새 이벤트가 오면 "전체"로 초기화됨)
+            const selected = statusFilter.val();
+            if (selected !== 'all' && selected !== String(status)) {
+                newEntry.hide();
+                if (opts.notify) showToast(`새 이벤트 수신: ${statusText} — 현재 필터로 숨겨짐`);
+            }
+            updateEmptyState();
         }
 
         $('#getAccessTokenBtn').on('click', getAccessToken);
-        clearButton.on('click', () => logContainer.html(''));
+        clearButton.on('click', () => {
+            if (!historyEvents.length && !logContainer.children('.log-entry').length) return;
+            if (!confirm('화면과 이 브라우저에 저장된 현재 회사의 수신 이력을 모두 지울까요?')) return;
+            logContainer.empty();
+            historyEvents = [];
+            if (currentCompanyId) storageRemove(HISTORY_KEY_PREFIX + currentCompanyId);
+            updateEmptyState();
+            showToast('이력을 비웠습니다.');
+        });
+        $('#export-button').on('click', () => {
+            if (!historyEvents.length) { showToast('내보낼 이력이 없습니다.'); return; }
+            const pad = (n) => String(n).padStart(2, '0');
+            const d = new Date();
+            const stamp = `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+            const safeId = String(currentCompanyId || 'unknown').replace(/[\\/:*?"<>|\s]+/g, '_');
+            const blob = new Blob([JSON.stringify(historyEvents, null, 2)], { type: 'application/json;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `webhook_history_${safeId}_${stamp}.json`;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+        });
         statusFilter.on('change', filterLogs);
-        
+
+        $('#copyReceiverUrlBtn').on('click', async () => {
+            const ok = await copyText(RECEIVER_URL);
+            showToast(ok ? '수신 URL을 복사했습니다.' : '복사하지 못했습니다. 직접 선택해 복사하세요.');
+        });
+
         // 버튼 이벤트 핸들러
         logContainer.on('click', '.toggle-json', function() {
             $(this).closest('.log-body').find('.json-viewer').slideToggle();
@@ -518,42 +749,53 @@
             $(this).closest('.log-body').find('.header-viewer').slideToggle();
         });
 
-        logContainer.on('click', '.copy-json', function() {
+        logContainer.on('click', '.copy-json', async function() {
             const jsonText = $(this).closest('.log-body').find('.json-viewer code').text();
-            navigator.clipboard.writeText(jsonText).then(() => { alert('JSON이 클립보드에 복사되었습니다!'); });
+            const ok = await copyText(jsonText);
+            showToast(ok ? 'JSON을 클립보드에 복사했습니다.' : '복사하지 못했습니다.');
         });
 
         logContainer.on('click', '.get-doc-info', function() {
             const logEntry = $(this).closest('.log-entry');
-            const docId = logEntry.data('document-id');
+            const docId = logEntry.attr('data-document-id');
             const resultContainer = logEntry.find('.doc-info-result');
+            if (!docId) { showToast('이 이벤트에는 문서 ID가 없습니다.'); return; }
             if (resultContainer.is(':visible')) {
                 resultContainer.slideUp();
             } else {
                 fetchDocumentInfo(docId, resultContainer);
             }
         });
-        
+
         logContainer.on('click', '.download-pdf-btn', function() {
             const logEntry = $(this).closest('.log-entry');
-            const docId = logEntry.data('document-id');
-            const docTitle = logEntry.data('document-title');
-            downloadModal.data('documentId', docId);
-            downloadModal.data('documentTitle', docTitle);
+            downloadModal.data('documentId', logEntry.attr('data-document-id'));
+            downloadModal.data('documentTitle', logEntry.attr('data-document-title'));
             downloadModal.fadeIn();
         });
 
         $('.download-choice-btn').on('click', function() {
-            const fileType = $(this).data('file-type');
+            const fileType = $(this).attr('data-file-type');
             const docId = downloadModal.data('documentId');
             const docTitle = downloadModal.data('documentTitle');
-            if (docId && fileType && docTitle) {
+            if (!docId) {
+                showToast('이 이벤트에는 문서 ID가 없어 다운로드할 수 없습니다.');
+            } else if (fileType) {
                 triggerDownload(docId, fileType, docTitle);
             }
             downloadModal.fadeOut();
         });
-        
+
         initializeFilter();
+
+        // 기억한 Company ID가 있으면 입력란을 채우고, 저장된 이력을 복원한 뒤 채널에 다시 연결한다
+        const rememberedCompany = (storageGet(COMPANY_KEY) || '').trim();
+        if (rememberedCompany) {
+            $('#pusherCompanyId').val(rememberedCompany);
+            connectCompany(rememberedCompany);
+        } else {
+            updateEmptyState();
+        }
     });
 </script>
 <script>
