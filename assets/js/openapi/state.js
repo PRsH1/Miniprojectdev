@@ -15,6 +15,8 @@ let state = {
     authMethod: 'signature',   // 'signature' | 'bearer'
     currentEndpoint: null,
     currentHistoryId: null,
+    // 토큰을 발급할 때의 설정 { baseUrl, apiKey, memberId } — 바뀌면 "다른 설정으로 발급됨" (P1-08)
+    tokenContext: null,
 };
 
 // 엔드포인트별 응답 캐시 { [endpointId]: { statusText, statusClass, time, size, bodyHtml } }
@@ -385,18 +387,18 @@ function escHtml(str) {
 
 async function applyCredentialTester(id) {
     try {
-        const res = await fetch(`/api/credentials/${id}`);
+        const res = await fetch(`/api/credentials/${encodeURIComponent(id)}`);
         if (handleApiAuthExpired(res)) return;
         if (!res.ok) return alert('불러오기 실패');
         const c = await res.json();
 
-        // 환경 선택
+        // 직접 입력 URL을 먼저 넣고 나서 환경 change를 발생시킨다 (P1-08)
+        // — 순서가 반대면 change 핸들러가 옛 URL로 Base URL 배지·URL 미리보기를 그린다
+        const $cu = document.getElementById('customDomainInput');
+        if ($cu && c.environment === 'custom') $cu.value = c.custom_url || '';
         const $env = document.getElementById('envSelect');
         if ($env) { $env.value = c.environment; $env.dispatchEvent(new Event('change')); }
-        if (c.environment === 'custom' && c.custom_url) {
-            const $cu = document.getElementById('customDomainInput');
-            if ($cu) $cu.value = c.custom_url;
-        }
+
         // 인증 필드
         const $apiKey = document.getElementById('apiKey');
         const $userId = document.getElementById('userId');
@@ -416,6 +418,8 @@ async function applyCredentialTester(id) {
             showToast(`"${c.name}" 불러오기 완료  비밀 키를 직접 입력해주세요.`);
         }
 
+        // 기존 토큰이 다른 계정·환경으로 발급된 것이면 "다른 설정으로 발급됨"으로 표시
+        if (typeof updateAuthUI === 'function') updateAuthUI();
         closeCredentialLoadModal();
     } catch (e) {
         alert('불러오기 중 오류가 발생했습니다.');

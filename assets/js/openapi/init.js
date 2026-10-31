@@ -15,11 +15,10 @@ $(document).on('click', '.tab-btn', function() {
 $(document).ready(function() {
     updateBaseUrlBadge();
 
-    // Auth panel toggle
+    // Auth panel toggle — 토큰이 없으면 처음부터 펼쳐 둔다 (P1-08)
+    setAuthPanelOpen(!state.accessToken);
     $('#authPanelToggle').on('click', function() {
-        $('#authPanelBody').toggleClass('open');
-        const isOpen = $('#authPanelBody').hasClass('open');
-        $('#authChevron').css('transform', isOpen ? 'rotate(180deg)' : '');
+        setAuthPanelOpen(!$('#authPanelBody').hasClass('open'));
     });
 
     // Auth method tabs
@@ -41,15 +40,12 @@ $(document).ready(function() {
 
     // Clear token
     $('#btnClearToken').on('click', function() {
-        state.accessToken = '';
-        updateAuthUI();
-        $('#headersBody tr').each(function() {
-            if ($(this).find('.header-key').val() === 'Authorization') {
-                $(this).find('.header-val').val('');
-            }
-        });
+        clearAccessToken();
         showToast('토큰이 초기화되었습니다');
     });
+
+    // 토큰 발급 당시와 API Key·Member ID가 달라지면 "다른 설정으로 발급됨" 표시 (P1-08)
+    $('#apiKey, #userId').on('input change', updateAuthUI);
 
     // Copy token
     $('#tokenDisplay').on('click', function() {
@@ -63,10 +59,20 @@ $(document).ready(function() {
         $('#customDomainWrap').toggle(v === 'custom');
         updateBaseUrlBadge();
         updateUrlPreview();
+        updateAuthUI();
     });
     $('#customDomainInput').on('input', function() {
         updateBaseUrlBadge();
         updateUrlPreview();
+        updateAuthUI();
+    });
+
+    // 전송 전 검증 오류 표시는 해당 입력을 고치면 바로 지운다
+    $(document).on('input change', '#requestArea .kv-input.has-error', function() {
+        clearFieldError($(this));
+    });
+    $(document).on('change', '#queryBody .param-enabled', function() {
+        clearFieldError($(this).closest('tr').find('.param-val'));
     });
 
     $('#bodyEditor').on('input', _validateBodyJson);

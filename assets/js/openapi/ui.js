@@ -190,6 +190,9 @@ function selectEndpoint(id) {
         $('#btnMenu i').removeClass('fa-xmark').addClass('fa-bars');
     }
 
+    // 이전 API의 전송 전 검증 표시 제거
+    clearRequestValidation();
+
     // Show request area
     $('#emptyState').hide();
     $('#requestArea').css('display', 'flex');
@@ -303,7 +306,7 @@ function makeQueryRow(key = '', value = '', desc = '', required = false, enabled
         : `<input class="kv-input param-key" value="${escHtml(key)}" readonly>`;
     const deleteBtn = userAdded ? `<button class="btn-icon" onclick="removeRow(this)" title="삭제"><i class="fa-solid fa-xmark"></i></button>` : '';
 
-    const $tr = $(`<tr data-user-added="${userAdded}">
+    const $tr = $(`<tr data-user-added="${userAdded}" data-required="${required ? 'true' : 'false'}">
         <td class="col-check"><input type="checkbox" class="param-enabled" ${checkedAttr}></td>
         <td class="col-key">
             ${keyField}
@@ -584,13 +587,16 @@ async function getAccessToken() {
         signature = 'Bearer ' + secretKey;
     }
 
+    // 발급 요청 시점의 설정을 기억한다 — 이후 환경·API Key·Member ID가 바뀌면 "다른 설정으로 발급됨" (P1-08)
+    const issuedContext = currentTokenContext();
+
     $('#btnGetToken').prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin fa-sm"></i> 발급 중...');
     try {
         // 공유 모듈(assets/js/token-issuer.js): direct → CORS/네트워크 실패 시에만 /api/getToken 프록시
         const result = await window.issueAccessToken({ domain, apiKey, memberId, signature, execTime });
         if (result.ok) {
             hideTokenError();
-            applyIssuedToken(result.token);
+            applyIssuedToken(result.token, issuedContext);
             if (window.TokenBadge) {
                 window.TokenBadge.attach('#tokenBadge', result, { onReissue: () => getAccessToken() });
             }
@@ -630,36 +636,294 @@ function hideTokenError() {
     el.style.display = 'none';
 }
 
-function applyIssuedToken(token) {
-    state.accessToken = token;
-    updateAuthUI();
+// 현재 화면의 Authorization 헤더 행에 토큰 값을 넣는다.
+// requiresAuth:false API(OPA2_007/048 — base64 회사 API Key를 직접 입력)는 사용자가 넣은 값을 건드리지 않는다.
+function syncAuthorizationHeader() {
+    const ep = state.currentEndpoint;
+    if (!ep || !ep.requiresAuth) return;
     $('#headersBody tr').each(function() {
+        if ($(this).attr('data-user-added') === 'true') return;
         if ($(this).find('.header-key').val() === 'Authorization') {
-            $(this).find('.header-val').val(`Bearer ${token}`);
+            const $val = $(this).find('.header-val');
+            $val.val(state.accessToken ? `Bearer ${state.accessToken}` : '');
+            if (state.accessToken) clearFieldError($val);
         }
     });
 }
 
+function applyIssuedToken(token, context) {
+    state.accessToken = token;
+    state.tokenContext = context || currentTokenContext();
+    updateAuthUI();
+    syncAuthorizationHeader();
+}
+
+// 토큰 비우기 — [초기화] 버튼, "다른 설정으로 발급됨" 상태에서 Send 확인창의 기본 동작
+function clearAccessToken() {
+    state.accessToken = '';
+    state.tokenContext = null;
+    updateAuthUI();
+    syncAuthorizationHeader();
+}
+
+// ── 토큰 발급 설정 추적 (P1-08) ────────────────────────────────────────────
+// 토큰은 발급할 때의 환경(도메인)·API Key·Member ID에 묶인다. 이 중 하나라도 바뀌면
+// 그 토큰으로 보낸 요청은 다른 계정·다른 환경으로 간다 — "다른 설정으로 발급됨"으로 표시하고 Send 때 확인한다.
+function currentTokenContext() {
+    return {
+        baseUrl:  getBaseUrl(),
+        apiKey:   String($('#apiKey').val() || '').trim(),
+        memberId: String($('#userId').val() || '').trim(),
+    };
+}
+
+function tokenContextChanges() {
+    if (!state.accessToken || !state.tokenContext) return [];
+    const now = currentTokenContext();
+    const prev = state.tokenContext;
+    const changes = [];
+    if (now.baseUrl !== prev.baseUrl) changes.push('환경/도메인');
+    if (now.apiKey !== prev.apiKey) changes.push('API Key');
+    if (now.memberId !== prev.memberId) changes.push('Member ID');
+    return changes;
+}
+
+function isTokenStale() {
+    return tokenContextChanges().length > 0;
+}
+
+function setAuthPanelOpen(open) {
+    $('#authPanelBody').toggleClass('open', !!open);
+    $('#authChevron').css('transform', open ? 'rotate(180deg)' : '');
+}
+
 function updateAuthUI() {
     if (!state.accessToken && window.TokenBadge) window.TokenBadge.clear('#tokenBadge');
+    const changes = tokenContextChanges();
+    const stale = changes.length > 0;
+    const $status = $('#authStatusBadge').removeClass('has-token no-token stale-token');
     if (state.accessToken) {
         const short = state.accessToken.substring(0, 40) + '...';
         $('#tokenDisplay').text(short).addClass('has-token');
-        $('#authStatusBadge').text('토큰 보유').removeClass('no-token').addClass('has-token');
+        if (stale) $status.text('다른 설정으로 발급됨').addClass('stale-token');
+        else $status.text('토큰 보유').addClass('has-token');
     } else {
         $('#tokenDisplay').text('토큰을 발급받아 주세요').removeClass('has-token');
-        $('#authStatusBadge').text('토큰 없음').removeClass('has-token').addClass('no-token');
+        $status.text('토큰 없음').addClass('no-token');
     }
+    // 유효 시간 배지(token-badge.js) 대신 "다른 설정으로 발급됨" 안내를 보여 준다
+    $('#tokenBadge').toggle(!stale);
+    renderTokenStaleNotice(changes);
+}
+
+function renderTokenStaleNotice(changes) {
+    const el = document.getElementById('tokenStaleNotice');
+    if (!el) return;
+    el.textContent = '';
+    if (!changes || !changes.length) { el.style.display = 'none'; return; }
+
+    const strong = document.createElement('strong');
+    strong.textContent = '다른 설정으로 발급됨';
+    const text = document.createElement('span');
+    text.style.flex = '1';
+    text.textContent = ` · 변경: ${changes.join(', ')} — 이 토큰으로 보내면 발급 당시의 계정·환경으로 요청됩니다.`;
+    const reissue = document.createElement('button');
+    reissue.type = 'button';
+    reissue.textContent = '현재 설정으로 재발급';
+    reissue.addEventListener('click', () => getAccessToken());
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.textContent = '토큰 비우기';
+    clear.addEventListener('click', () => { clearAccessToken(); showToast('토큰이 초기화되었습니다'); });
+
+    const head = document.createElement('span');
+    head.appendChild(strong);
+    head.appendChild(text);
+    el.appendChild(head);
+    el.appendChild(reissue);
+    el.appendChild(clear);
+    el.style.display = '';
+}
+
+// ── 선택 확인 모달 (#choiceModal) ─────────────────────────────────────────
+// showChoiceModal({ title, message, choices: [{ value, label, primary }] }) → Promise<value | 'cancel'>
+let _choiceResolver = null;
+
+function showChoiceModal({ title, message, choices }) {
+    return new Promise(resolve => {
+        if (_choiceResolver) _choiceResolver('cancel');
+        _choiceResolver = resolve;
+        $('#choiceModalTitle').text(title || '확인');
+        $('#choiceModalBody').text(message || '');
+        const $actions = $('#choiceModalActions').empty();
+        (choices || []).forEach(c => {
+            $('<button type="button">')
+                .addClass(c.primary ? 'btn-primary' : 'btn-ghost')
+                .attr('data-choice', c.value)
+                .text(c.label)
+                .on('click', () => resolveChoiceModal(c.value))
+                .appendTo($actions);
+        });
+        $('#choiceModal').addClass('open');
+        setTimeout(() => $actions.find('.btn-primary').first().trigger('focus'), 30);
+    });
+}
+
+function resolveChoiceModal(value) {
+    $('#choiceModal').removeClass('open');
+    const resolve = _choiceResolver;
+    _choiceResolver = null;
+    if (resolve) resolve(value || 'cancel');
 }
 
 // ──────────────────────────────────────────────────────────────────────────
 // SEND REQUEST
 // ──────────────────────────────────────────────────────────────────────────
+// ── 전송 전 검증 (P1-08) ────────────────────────────────────────────────
+// 필수 path/query 값, 토큰(requiresAuth), 헤더 플레이스홀더, Body JSON을 확인하고
+// 문제가 있으면 해당 입력에 빨간 테두리 + 메시지를 표시하고 전송하지 않는다.
+function clearFieldError($input) {
+    $input.removeClass('has-error');
+    $input.closest('td').find('.param-error-msg').remove();
+}
+
+function markFieldError($input, message) {
+    $input.addClass('has-error');
+    const $cell = $input.closest('td');
+    $cell.find('.param-error-msg').remove();
+    $('<div class="param-error-msg">').text(message).appendTo($cell);
+}
+
+function clearRequestValidation() {
+    $('#requestArea .kv-input.has-error').removeClass('has-error');
+    $('#requestArea .param-error-msg').remove();
+    $('#requestValidationMsg').hide().empty();
+}
+
+function findAuthorizationRow() {
+    let $row = null;
+    $('#headersBody tr').each(function() {
+        if ($row) return;
+        if (String($(this).find('.header-key').val() || '').trim().toLowerCase() === 'authorization') $row = $(this);
+    });
+    return $row;
+}
+
+function validateRequestBeforeSend() {
+    clearRequestValidation();
+    const ep = state.currentEndpoint;
+    const errors = [];   // { tab, message, $input, auth }
+
+    $('#pathBody tr').each(function() {
+        const key = $(this).find('.param-key').val();
+        const $val = $(this).find('.param-val');
+        if (!String($val.val() || '').trim()) {
+            markFieldError($val, '필수 값입니다');
+            errors.push({ tab: 'path', $input: $val, message: `Path 파라미터 {${key}}가 비어 있습니다` });
+        }
+    });
+
+    $('#queryBody tr').each(function() {
+        if ($(this).attr('data-required') !== 'true') return;
+        const key = $(this).find('.param-key').val();
+        const $val = $(this).find('.param-val');
+        const enabled = $(this).find('.param-enabled').is(':checked');
+        if (!enabled) {
+            markFieldError($val, '필수 파라미터입니다 — 체크하고 값을 입력하세요');
+            errors.push({ tab: 'query', $input: $val, message: `필수 Query 파라미터 ${key}의 체크가 해제되어 있습니다` });
+        } else if (!String($val.val() || '').trim()) {
+            markFieldError($val, '필수 값입니다');
+            errors.push({ tab: 'query', $input: $val, message: `필수 Query 파라미터 ${key}가 비어 있습니다` });
+        }
+    });
+
+    if (ep && ep.requiresAuth) {
+        const $row = findAuthorizationRow();
+        const value = $row ? String($row.find('.header-val').val() || '').trim() : '';
+        const enabled = $row ? $row.find('.header-enabled').is(':checked') : false;
+        if (!enabled || !value || /^bearer\s*$/i.test(value)) {
+            if ($row) markFieldError($row.find('.header-val'), 'Access Token이 없습니다');
+            errors.push({ tab: 'headers', auth: true, message: 'Access Token이 없습니다 — 인증 패널에서 [토큰 발급]을 눌러 주세요' });
+        }
+    }
+
+    $('#headersBody tr').each(function() {
+        if (!$(this).find('.header-enabled').is(':checked')) return;
+        const key = String($(this).find('.header-key').val() || '').trim();
+        const $val = $(this).find('.header-val');
+        const m = String($val.val() || '').match(/\{[A-Za-z0-9_]+\}/);
+        if (key && m && !$val.hasClass('has-error')) {
+            markFieldError($val, `${m[0]}를 실제 값으로 바꾸세요`);
+            errors.push({ tab: 'headers', $input: $val, message: `${key} 헤더의 ${m[0]}를 실제 값으로 바꾸세요` });
+        }
+    });
+
+    const method = $('#methodSelect').val();
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        const raw = String($('#bodyEditor').val() || '').trim();
+        if (raw) {
+            try { JSON.parse(raw); }
+            catch (e) {
+                showBodyError(e.message);
+                errors.push({ tab: 'body', $input: $('#bodyEditor'), message: 'Body의 JSON 형식이 올바르지 않습니다' });
+            }
+        }
+    }
+
+    if (!errors.length) return true;
+
+    // 토큰이 없으면 인증 패널을 펼친다. 그 밖의 첫 오류는 해당 탭으로 이동해 포커스
+    if (errors.some(e => e.auth)) setAuthPanelOpen(true);
+    const firstField = errors.find(e => !e.auth) || errors[0];
+    if (firstField.tab) $(`.tab-btn[data-tab="${firstField.tab}"]`).click();
+    if (firstField.$input) firstField.$input.trigger('focus');
+    else if (firstField.auth) {
+        const $empty = ['#apiKey', '#userId', '#secretKey'].map(s => $(s)).find($el => !String($el.val() || '').trim());
+        ($empty || $('#btnGetToken')).trigger('focus');
+    }
+
+    const $msg = $('#requestValidationMsg').empty();
+    $('<i class="fa-solid fa-circle-exclamation fa-sm" style="margin-top:3px"></i>').appendTo($msg);
+    const $wrap = $('<div>').appendTo($msg);
+    $('<strong>').text('요청을 보내지 않았습니다 — 아래 항목을 확인하세요').appendTo($wrap);
+    const $ul = $('<ul>').appendTo($wrap);
+    errors.forEach(e => $('<li>').text(e.message).appendTo($ul));
+    $msg.show();
+    return false;
+}
+
 async function sendRequest(forceDownload = false) {
+    $('#sendDropdownMenu').removeClass('open');
+    if (!state.currentEndpoint) { showToast('API를 먼저 선택해주세요'); return; }
+    if (!validateRequestBeforeSend()) return;
+
+    // 다른 설정(환경·API Key·Member ID)으로 발급된 토큰이면 확인한다. 기본 동작은 토큰 비움 + 재발급 안내
+    if (state.currentEndpoint.requiresAuth && isTokenStale()) {
+        const changes = tokenContextChanges();
+        const choice = await showChoiceModal({
+            title: '다른 설정으로 발급된 토큰',
+            message: `현재 토큰은 지금과 다른 설정으로 발급되었습니다 (변경: ${changes.join(', ')}).\n`
+                + '이대로 보내면 발급 당시의 계정·환경 권한으로 요청됩니다.\n\n'
+                + '토큰을 비우고 현재 설정으로 다시 발급하는 것을 권장합니다.',
+            choices: [
+                { value: 'cancel', label: '취소' },
+                { value: 'send', label: '그대로 전송' },
+                { value: 'reissue', label: '토큰 비우고 재발급', primary: true },
+            ],
+        });
+        if (choice === 'reissue') {
+            clearAccessToken();
+            setAuthPanelOpen(true);
+            $('#btnGetToken').trigger('focus');
+            showToast('토큰을 비웠습니다. [토큰 발급]으로 다시 발급한 뒤 전송하세요', 3500);
+            return;
+        }
+        if (choice !== 'send') return;
+    }
+
     const url = $('#urlInput').val().trim();
     const method = $('#methodSelect').val();
     if (!url) { showToast('URL이 비어있습니다'); return; }
-    $('#sendDropdownMenu').removeClass('open');
 
     // Build headers
     const headers = {};
@@ -836,7 +1100,7 @@ function buildTokenExpiredBanner() {
             btn.disabled = false;
             btn.textContent = '토큰 재발급';
             // 인증 정보가 비어 있으면 인증 패널을 보여 준다
-            $('#authPanelBody').addClass('open');
+            setAuthPanelOpen(true);
         }
     });
     banner.appendChild(text);

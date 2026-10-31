@@ -170,6 +170,19 @@
         .auth-panel-header .auth-status { font-size: 0.8rem; font-weight: 400; }
         .auth-panel-header .auth-status.has-token { color: #27ae60; }
         .auth-panel-header .auth-status.no-token { color: #e74c3c; }
+        .auth-panel-header .auth-status.stale-token { color: #b45309; font-weight: 600; }
+        /* 토큰이 다른 설정(환경·API Key·Member ID)으로 발급됨 (P1-08) */
+        .token-stale-notice {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 0;
+            padding: 6px 12px; border: 1px solid #f3d48a; border-left: 4px solid #e8a200; border-radius: 6px;
+            background: #fff7e0; color: #7a4f00; font-size: 0.8rem; line-height: 1.5;
+        }
+        .token-stale-notice > span { flex: 1; min-width: 200px; }
+        .token-stale-notice button {
+            padding: 2px 10px; border: 1px solid #e6c46e; border-radius: 5px; background: #fff;
+            color: #7a5600; cursor: pointer; font-size: 0.76rem; font-weight: 600;
+        }
+        .token-stale-notice button:hover { background: #fffaeb; }
         .auth-panel-body { padding: 0 20px 16px; display: none; }
         .auth-panel-body.open { display: block; }
 
@@ -363,6 +376,16 @@
         }
         .kv-input:focus { outline: none; border-color: var(--blue); }
         .kv-input[readonly] { background: #f7fafc; color: #718096; }
+        /* 전송 전 검증 오류 (P1-08) */
+        .kv-input.has-error { border-color: #e74c3c; background: #fff5f5; }
+        .kv-input.has-error:focus { border-color: #e74c3c; box-shadow: 0 0 0 3px rgba(231,76,60,0.12); }
+        .param-error-msg { margin-top: 3px; font-size: 0.74rem; color: #c0392b; }
+        .request-validation-msg {
+            display: flex; align-items: flex-start; gap: 8px; margin-top: 10px; padding: 8px 12px;
+            border: 1px solid #f3c2bd; border-left: 4px solid #d93025; border-radius: 6px;
+            background: #fdf3f2; color: #8a1c14; font-size: 0.8rem; line-height: 1.5;
+        }
+        .request-validation-msg ul { margin: 2px 0 0; padding-left: 18px; }
         .type-badge {
             display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 2px 6px;
             border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px;
@@ -1225,9 +1248,10 @@
                 <i class="fa-solid fa-key fa-sm" style="color:#e6a817"></i>
                 <span class="auth-title">인증 설정 (Access Token)</span>
                 <span class="auth-status no-token" id="authStatusBadge">토큰 없음</span>
-                <i class="fa-solid fa-chevron-down fa-xs" id="authChevron" style="color:#a0aec0;transition:transform 0.2s"></i>
+                <i class="fa-solid fa-chevron-down fa-xs" id="authChevron" style="color:#a0aec0;transition:transform 0.2s;transform:rotate(180deg)"></i>
             </div>
-            <div class="auth-panel-body" id="authPanelBody">
+            <!-- 토큰이 없으면 펼친 상태로 시작한다 (P1-08) -->
+            <div class="auth-panel-body open" id="authPanelBody">
                 <div class="auth-grid">
                     <div class="auth-field">
                         <label>API Key</label>
@@ -1258,6 +1282,8 @@
                 </div>
                 <!-- 토큰 상태 배지(token-badge.js) · 발급 실패 메시지(닫을 때까지 유지) -->
                 <div id="tokenBadge"></div>
+                <!-- 발급 후 환경·API Key·Member ID가 바뀌면 "다른 설정으로 발급됨" (P1-08) -->
+                <div id="tokenStaleNotice" class="token-stale-notice" style="display:none" role="status"></div>
                 <div id="tokenErrorMsg" style="display:none"></div>
             </div>
         </div>
@@ -1307,6 +1333,8 @@
                         </div>
                     </div>
                 </div>
+                <!-- 전송 전 검증 오류 요약 (P1-08) -->
+                <div id="requestValidationMsg" class="request-validation-msg" style="display:none" role="alert"></div>
             </div>
 
             <!-- REQUEST TABS -->
@@ -1641,6 +1669,20 @@
                 <i class="fa-solid fa-floppy-disk fa-xs"></i> 저장
             </button>
         </div>
+    </div>
+</div>
+
+<!-- CHOICE MODAL — showChoiceModal() (ui.js): 다른 설정 토큰 확인 등 -->
+<div id="choiceModal" class="modal-overlay" onclick="if(event.target===this)resolveChoiceModal('cancel')">
+    <div class="modal-box" style="width:440px;max-width:calc(100vw - 32px)" role="dialog" aria-modal="true" aria-labelledby="choiceModalTitle">
+        <div class="modal-header">
+            <span id="choiceModalTitle">확인</span>
+            <button class="modal-close" onclick="resolveChoiceModal('cancel')">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div id="choiceModalBody" style="padding:20px;font-size:0.88rem;line-height:1.6;color:#374151;white-space:pre-line;"></div>
+        <div id="choiceModalActions" style="padding:12px 20px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;border-top:1px solid #eee;"></div>
     </div>
 </div>
 

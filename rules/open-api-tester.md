@@ -3,7 +3,7 @@
 Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 
 **파일:**
-- `API(JS,HTML)/OpenAPITesterProd.html` — 공개 배포판 UI (멤버 API 비공개)
+- `API(JS,HTML)/OpenAPITesterProd.html` — 공개 배포판 UI (멤버·그룹 API 비공개 — Q5, 명세 데이터는 공개 번들에 남아 있음)
 - `private/OpenAPITesterFull.html` — 전체판 UI (`/app/OpenAPITesterFull`, manager 이상)
 - `assets/js/openapi/api-list.js` — API_LIST 데이터
 - `assets/js/openapi/api-specs.js` — API_SPECS 데이터
@@ -15,8 +15,8 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 > 전역 변수로 공유되므로 `<script>` 태그 순서를 변경하면 안 됨.
 
 > **Prod와 Full은 거의 동일한 복제본이다.** 두 HTML의 실질적 차이는 Prod에만 있는
-> 인라인 스크립트 한 블록(`api-list.js` 로드 직후, `API_LIST`에서 `group === '멤버'` 항목을
-> `splice`로 제거)뿐이다. **UI를 수정할 때는 반드시 두 파일 모두 고쳐야 한다** — 한쪽만
+> 인라인 스크립트 한 블록(`api-list.js` 로드 직후, `API_LIST`에서 `group === '멤버'`·`'그룹'` 항목을
+> `splice`로 제거)뿐이다. `diff private/OpenAPITesterFull.html "API(JS,HTML)/OpenAPITesterProd.html"`의 결과가 이 블록뿐이어야 한다. **UI를 수정할 때는 반드시 두 파일 모두 고쳐야 한다** — 한쪽만
 > 고치면 조용히 갈라진다. JS 모듈은 공유하므로 로직 수정은 한 번으로 충분하다.
 
 ### 파일 역할 및 편집 가이드
@@ -217,6 +217,28 @@ const API_SPECS = {
 - 로드 순서: `api-error.js` → `token-issuer.js` → `token-badge.js` → `openapi/api-list.js` …(공유 모듈 → openapi 모듈). 두 HTML 모두 동일.
 
 ---
+
+### 토큰 혼선 방지 · 전송 전 검증 (P1-08)
+
+- **토큰 발급 설정 추적**: `getAccessToken()`은 발급 요청 시점의 `{ baseUrl(환경·직접 입력 도메인), apiKey, memberId }`를
+  `state.tokenContext`에 기억한다(`currentTokenContext()`). 환경 select·직접 입력 URL·API Key·Member ID 입력이 바뀔 때마다
+  `updateAuthUI()`가 비교해 하나라도 다르면 헤더 상태를 **"다른 설정으로 발급됨"**(주황)으로 바꾸고, 유효 시간 배지(`#tokenBadge`)
+  대신 `#tokenStaleNotice`(변경 항목 + [현재 설정으로 재발급] [토큰 비우기])를 보여 준다. 원래 값으로 되돌리면 정상 표시로 돌아온다.
+  크리덴셜 불러오기도 같은 규칙을 탄다(토큰을 자동으로 지우지 않음).
+- **Send 확인창**: `requiresAuth` API를 "다른 설정으로 발급됨" 상태에서 보내면 `#choiceModal`(`showChoiceModal()`)이 뜬다.
+  기본(포커스) 버튼은 **[토큰 비우고 재발급]** — 토큰을 비우고 인증 패널을 펼친 뒤 전송하지 않는다. [그대로 전송]은 기존 토큰으로 보낸다.
+- **토큰 비우기**: `clearAccessToken()`(초기화 버튼·확인창 공통)은 `state.tokenContext`도 지운다. Authorization 헤더 자동 채움/비움
+  (`syncAuthorizationHeader()`)은 `requiresAuth: true` API에서만 한다 — OPA2_007/048처럼 base64 회사 API Key를 직접 넣는 헤더는 건드리지 않는다.
+- **크리덴셜 적용 순서**: `applyCredentialTester()`는 직접 입력 URL을 먼저 넣고 그다음 환경 `change`를 발생시킨다
+  (반대 순서면 Base URL 배지·URL 미리보기가 옛 URL을 보여 줬다).
+- **전송 전 검증** `validateRequestBeforeSend()`: 아래 중 하나라도 걸리면 요청을 보내지 않고, 해당 입력에 빨간 테두리(`.kv-input.has-error`)와
+  `.param-error-msg`, URL 바 아래 `#requestValidationMsg`에 목록을 표시한 뒤 첫 오류의 탭으로 이동한다. 입력을 고치면 그 칸의 표시는 바로 사라진다.
+  - path 파라미터 빈 값(모든 path 파라미터는 필수 — 비우면 URL에 `{document_id}`가 남는다)
+  - `required: true` query 파라미터의 빈 값 또는 체크 해제 (query 행의 `data-required`)
+  - `requiresAuth` API인데 Authorization 헤더가 없음/비활성/빈 값/`Bearer`만 있음 → 인증 패널 자동 펼침
+  - 활성 헤더 값에 `{base64_encoded_api_key}` 같은 플레이스홀더가 남아 있음
+  - Body JSON 형식 오류
+- **인증 패널 기본 펼침**: 토큰이 없으면 펼친 상태로 시작한다(`setAuthPanelOpen()`, HTML도 `open` 클래스로 시작).
 
 ### 비(非)자명한 동작 — 수정 시 주의
 
