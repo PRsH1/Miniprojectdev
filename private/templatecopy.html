@@ -38,6 +38,16 @@
       font-size: 12px; overflow: auto; white-space: pre-wrap; color: #d1fae5; }
     .tips li { margin: 6px 0; }
     .footer { margin-top: 18px; font-size: 12px; color: var(--muted); }
+    /* 필드 검증 (P1-20) */
+    input.invalid, select.invalid { border-color: var(--err); box-shadow: 0 0 0 3px rgba(239,68,68,.2); }
+    .field-error { color: #fca5a5; font-size: 12px; margin: 4px 2px 0; display: none; }
+    .field-error.show { display: block; }
+    /* 북마클릿 비활성 (Generate 전·입력 변경 후) */
+    a.btn.bm-disabled { opacity: .4; cursor: not-allowed; border-style: dashed; }
+    .bm-status { font-size: 12px; color: var(--muted); }
+    .stale-warn { display: none; margin-top: 10px; padding: 10px 12px; border-radius: 10px;
+      background: rgba(245,158,11,.14); border: 1px solid rgba(245,158,11,.45); color: #fde68a; font-size: 13px; }
+    .stale-warn.show { display: block; }
   </style>
 </head>
 <body>
@@ -56,25 +66,30 @@
           <option value="custom">직접 입력…</option>
         </select>
         <input id="hostCustom" type="text" placeholder="custom-host.example.com" style="margin-top:6px; display:none;" />
+        <div class="field-error" data-error-for="hostCustom"></div>
       </div>
       <div>
         <label>복제 받을 회사 companyId</label>
         <input id="companyId" type="text" placeholder="0605ef55..." />
+        <div class="field-error" data-error-for="companyId"></div>
       </div>
       <div>
         <label>복제 받을 회사 memberId (createId)</label>
         <input id="memberId" type="text" placeholder="sgdemo_admin@forcs.com 또는 UUID" />
+        <div class="field-error" data-error-for="memberId"></div>
       </div>
       <div>
         <label>복제 받을 회사 formId</label>
         <input id="formId" type="text" placeholder="031badd7..." />
+        <div class="field-error" data-error-for="formId"></div>
       </div>
       <div>
         <label>복제 받을 회사 access_token</label>
         <input id="accessToken" type="password" placeholder="Bearer 없이 토큰 본문만" />
+        <div class="field-error" data-error-for="accessToken"></div>
       </div>
       <div>
-        <label>복제 받을 회사 refresh_token</label>
+        <label>복제 받을 회사 refresh_token <span class="muted">(선택)</span></label>
         <input id="refreshToken" type="password" />
       </div>
     </div>
@@ -94,9 +109,11 @@
       <h3>1. 북마클릿 생성</h3>
       <div class="row">
         <button class="primary" id="gen">Generate</button>
-        <a class="btn" id="bmOn" href="#" draggable="true" title="이걸 북마크바로 드래그해서 저장하세요">EFS Cross-Clone ON</a>
-        <a class="btn" id="bmOff" href="#" draggable="true" title="이걸 북마크바로 드래그해서 저장하세요">EFS Cross-Clone OFF</a>
+        <a class="btn bm-disabled" id="bmOn" draggable="false" aria-disabled="true" title="먼저 Generate를 눌러 북마클릿을 생성하세요">EFS Cross-Clone ON</a>
+        <a class="btn bm-disabled" id="bmOff" draggable="false" aria-disabled="true" title="먼저 Generate를 눌러 북마클릿을 생성하세요">EFS Cross-Clone OFF</a>
+        <span class="bm-status" id="bmStatus">Generate 전에는 북마클릿을 드래그할 수 없습니다.</span>
       </div>
+      <div class="stale-warn" id="staleWarn" role="alert">⚠ 입력값이 바뀌었습니다. <b>Generate</b>를 다시 눌러 북마클릿을 다시 생성한 뒤 북마크바에 다시 드래그하세요. (이미 저장한 북마클릿은 바뀌기 전 값으로 동작합니다)</div>
       <p class="muted">생성 후 <b>eformsign 템플릿 복제 설정 페이지</b>에서 <em>EFS Cross-Clone ON</em> 북마클릿을 클릭하면 활성화됩니다. 비활성화하려면 OFF를 클릭.</p>
     </div>
 
@@ -187,7 +204,7 @@
       toast(remember ? '저장 완료 (토큰은 이 브라우저에 기억됨)' : '저장 완료 (토큰은 이 탭을 닫으면 삭제됨)');
     }
 
-    function loadLocal() {
+    function loadLocal(silent) {
       const savedHost = localStorage.getItem(stateKeys.host) || 'kr-service.eformsign.com';
       const known = ['kr-service.eformsign.com','sg-service.eformsign.com','us-service.eformsign.com','jp-service.eformsign.com'];
       const sel = document.querySelector('#host');
@@ -209,10 +226,17 @@
           : (localStorage.getItem(stateKeys[id]) || '');
         document.querySelector('#' + id).value = v;
       }
-      toast('불러오기 완료');
+      // 실제로 불러온 값이 있을 때만 완료 토스트 (P1-20)
+      const loadedAny = Object.keys(stateKeys).some((id) => id !== 'host' && document.querySelector('#' + id).value)
+        || localStorage.getItem(stateKeys.host) !== null;
+      if (loadedAny) toast('불러오기 완료');
+      else if (!silent) toast('저장된 값이 없습니다');
+      clearFieldErrors();
+      checkStale();
     }
 
     function clearLocal() {
+      if (!confirm('저장된 회사·멤버·폼 ID와 토큰을 이 브라우저에서 모두 삭제하고 입력란을 비울까요?')) return;
       for (const id of Object.keys(stateKeys)) {
         localStorage.removeItem(stateKeys[id]);
         sessionStorage.removeItem(stateKeys[id]);
@@ -222,11 +246,13 @@
       localStorage.removeItem(REMEMBER_KEY);
       const rememberEl = document.querySelector('#rememberTokens');
       if (rememberEl) rememberEl.checked = false;
+      clearFieldErrors();
+      checkStale();
       toast('초기화 완료');
     }
 
     $('#save').onclick = saveLocal;
-    $('#load').onclick = loadLocal;
+    $('#load').onclick = () => loadLocal(false);
     $('#clear').onclick = clearLocal;
 
     function b64Placeholder(){ return '___CONFIG_B64___'; }
@@ -387,7 +413,87 @@
 })();`;
     }
 
+    // ── 필수값 검증·북마클릿 상태 (P1-20) ─────────────────────────
+    let generatedSnapshot = null; // 마지막 Generate 시점의 { json: collectCfg() JSON, hrefOn, hrefOff }
+
+    const REQUIRED_FIELDS = [
+      { id: 'companyId', msg: '복제 받을 회사 companyId를 입력하세요.' },
+      { id: 'memberId', msg: '복제 받을 회사 memberId(createId)를 입력하세요.' },
+      { id: 'formId', msg: '복제 받을 회사 formId를 입력하세요.' },
+      { id: 'accessToken', msg: 'access_token을 입력하세요.' },
+    ];
+
+    function setFieldError(id, msg) {
+      const input = document.getElementById(id);
+      const box = document.querySelector('[data-error-for="' + id + '"]');
+      if (input) input.classList.toggle('invalid', !!msg);
+      if (box) { box.textContent = msg || ''; box.classList.toggle('show', !!msg); }
+    }
+
+    function clearFieldErrors() {
+      REQUIRED_FIELDS.forEach((f) => setFieldError(f.id, ''));
+      setFieldError('hostCustom', '');
+    }
+
+    function validateInputs() {
+      let firstInvalid = null;
+      for (const f of REQUIRED_FIELDS) {
+        const el = document.getElementById(f.id);
+        const empty = !(el.value || '').trim();
+        setFieldError(f.id, empty ? f.msg : '');
+        if (empty && !firstInvalid) firstInvalid = el;
+      }
+      const isCustom = $('#host').value === 'custom';
+      const hostCustom = ($('#hostCustom').value || '').trim();
+      let hostMsg = '';
+      if (isCustom && !hostCustom) hostMsg = '직접 입력할 Service Host를 입력하세요.';
+      else if (isCustom && !/^[a-z0-9.-]+(:\d+)?$/i.test(hostCustom)) hostMsg = '호스트 이름만 입력하세요 (예: custom-host.example.com, https:// 없이).';
+      setFieldError('hostCustom', hostMsg);
+      if (hostMsg && !firstInvalid) firstInvalid = $('#hostCustom');
+      if (firstInvalid) firstInvalid.focus();
+      return !firstInvalid;
+    }
+
+    // 북마클릿 링크 활성/비활성. 비활성 시 href를 지워 드래그·클릭을 모두 막는다.
+    function setBookmarkletsEnabled(enabled, hrefOn, hrefOff) {
+      [['#bmOn', hrefOn], ['#bmOff', hrefOff]].forEach(([sel, href]) => {
+        const a = $(sel);
+        if (enabled) {
+          a.href = href;
+          a.draggable = true;
+          a.removeAttribute('aria-disabled');
+          a.classList.remove('bm-disabled');
+          a.title = '이걸 북마크바로 드래그해서 저장하세요';
+        } else {
+          a.removeAttribute('href');
+          a.draggable = false;
+          a.setAttribute('aria-disabled', 'true');
+          a.classList.add('bm-disabled');
+          a.title = '먼저 Generate를 눌러 북마클릿을 생성하세요';
+        }
+      });
+    }
+
+    // Generate 이후 입력이 바뀌었는지 확인 → 경고 + 북마클릿 비활성
+    function checkStale() {
+      const status = $('#bmStatus');
+      if (!generatedSnapshot) {
+        $('#staleWarn').classList.remove('show');
+        setBookmarkletsEnabled(false);
+        status.textContent = 'Generate 전에는 북마클릿을 드래그할 수 없습니다.';
+        return;
+      }
+      const stale = JSON.stringify(collectCfg()) !== generatedSnapshot.json;
+      $('#staleWarn').classList.toggle('show', stale);
+      setBookmarkletsEnabled(!stale, generatedSnapshot.hrefOn, generatedSnapshot.hrefOff);
+      status.textContent = stale ? '입력값이 바뀌어 비활성화됨 — Generate를 다시 누르세요.' : '생성 완료 — ON/OFF를 북마크바로 드래그하세요.';
+    }
+
     function genBookmarklets() {
+      if (!validateInputs()) {
+        toast('필수 입력값을 확인하세요');
+        return;
+      }
       const cfg = collectCfg();
       const cfgJson = JSON.stringify(cfg);
       const b64 = btoa(cfgJson);
@@ -396,9 +502,9 @@
       const hrefOn  = 'javascript:' + encodeURIComponent(code);
       const hrefOff = 'javascript:' + encodeURIComponent('(function(){ if(window.__efs_xclone_off__) window.__efs_xclone_off__(); })();');
 
-      $('#bmOn').href = hrefOn;
-      $('#bmOff').href = hrefOff;
+      generatedSnapshot = { json: JSON.stringify(cfg), hrefOn, hrefOff };
       $('#snippetOut').textContent = code;
+      checkStale();
       toast('북마클릿/스니펫 생성 완료');
     }
 
@@ -428,7 +534,8 @@
     $('#gen').onclick = genBookmarklets;
     $('#copySnippet').onclick = async () => {
       const txt = $('#snippetOut').textContent || '';
-      if (!txt || /Generate/.test(txt)) { toast('먼저 Generate를 눌러 스니펫을 생성하세요'); return; }
+      if (!generatedSnapshot || !txt) { toast('먼저 Generate를 눌러 스니펫을 생성하세요'); return; }
+      if (JSON.stringify(collectCfg()) !== generatedSnapshot.json) { toast('입력값이 바뀌었습니다. Generate를 다시 누른 뒤 복사하세요'); return; }
       try { await navigator.clipboard.writeText(txt); toast('복사되었습니다'); } catch(e) { toast('복사 실패: 수동으로 선택 후 복사하세요'); }
     };
 
@@ -437,11 +544,34 @@
       const isCustom = $('#host').value === 'custom';
       $('#hostCustom').style.display = isCustom ? 'block' : 'none';
       if (!isCustom) $('#hostCustom').value = '';
+      setFieldError('hostCustom', '');
+      checkStale();
     };
+
+    // 이 페이지에서 북마클릿을 클릭하면 허브 페이지 자체에 주입되므로 막는다 (드래그만 허용)
+    ['#bmOn', '#bmOff'].forEach((sel) => {
+      $(sel).addEventListener('click', (e) => {
+        e.preventDefault();
+        toast($(sel).getAttribute('aria-disabled') === 'true'
+          ? (generatedSnapshot ? '입력값이 바뀌었습니다. Generate를 다시 누르세요' : '먼저 Generate를 눌러 북마클릿을 생성하세요')
+          : '클릭하지 말고 북마크바로 드래그해서 저장하세요');
+      });
+      $(sel).addEventListener('dragstart', (e) => {
+        if ($(sel).getAttribute('aria-disabled') === 'true') e.preventDefault();
+      });
+    });
+
+    // 입력 변경 시: 해당 필드 오류 해제 + Generate 이후 변경 감지
+    ['companyId', 'memberId', 'formId', 'accessToken', 'refreshToken', 'hostCustom'].forEach((id) => {
+      document.getElementById(id).addEventListener('input', () => {
+        if ((document.getElementById(id).value || '').trim()) setFieldError(id, '');
+        checkStale();
+      });
+    });
 
     // 초기 자동 불러오기 (구버전 localStorage 토큰 정리 후)
     migrateLegacyTokens();
-    loadLocal();
+    loadLocal(true);
   </script>
 <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
 <script src="/assets/js/auth-status.js"></script>

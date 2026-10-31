@@ -3,17 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMTP 발송 테스트 (Serverless)</title>
     <style>
+        * { box-sizing: border-box; }
         body { font-family: Arial, sans-serif; margin: 2em; }
         .container { max-width: 800px; margin: auto; }
-        label { display: inline-block; width: 120px; margin-top: .5em; }
-        input, select { width: 250px; padding: .4em; box-sizing: border-box; }
+        /* 라벨 + 입력 한 줄 배치 — 고정 폭 대신 max-width (좁은 화면에서는 세로 배치) */
+        .field { display: flex; align-items: center; gap: 8px; margin-top: .5em; }
+        .field label { flex: 0 0 120px; }
+        .field input, .field select { flex: 1 1 auto; width: 100%; max-width: 320px; min-width: 0; padding: .4em; }
         button { margin: 1em .2em; padding: .5em 1em; }
         #result { margin-top: 1em; font-weight: bold; padding: .5em; border-radius: 4px; }
         .hidden { display: none; }
         .back-link { margin-bottom: 2em; display: block; }
+        #result.result-ok { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+        #result.result-error { background: #fdecea; color: #b71c1c; border: 1px solid #f5c2c0; }
+        #result .result-detail { font-weight: normal; margin-top: .3em; color: #444; }
         #logDisplaySection { margin-top: 1.5em; }
+        .log-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .log-header h4 { margin: 0; }
+        .log-header button { margin: 0; padding: .3em .8em; }
+        .log-note { margin: .4em 0; font-size: .85em; color: #666; }
         #logOutput {
             background: #f4f4f4;
             border: 1px solid #ddd;
@@ -21,9 +32,17 @@
             max-height: 400px;
             overflow-y: auto;
             white-space: pre-wrap;
+            word-break: break-all;
             font-family: monospace;
             font-size: 0.9em;
             border-radius: 4px;
+        }
+
+        @media (max-width: 480px) {
+            body { margin: 1em; }
+            .field { flex-direction: column; align-items: stretch; gap: 4px; }
+            .field label { flex: none; }
+            .field input, .field select { max-width: none; }
         }
     </style>
 </head>
@@ -32,35 +51,51 @@
         <a href="/" class="back-link">&larr; 허브 페이지로 돌아가기</a>
         <h2>SMTP 발송 테스트</h2>
         <form id="smtpForm">
-            <label>SMTP Host:</label>
-            <input name="host" placeholder="예: smtp.gmail.com"><br>
-            <label>Port:</label>
-            <input name="port" placeholder="예: 587"><br>
-            <label>Use Auth:</label>
-            <select name="authRequired" id="authRequired">
-                <option value="false">No</option>
-                <option value="true" selected>Yes</option>
-            </select><br>
-            <div id="authFields">
-                <label>User:</label>
-                <input name="user" placeholder="이메일 주소"><br>
-                <label>Password:</label>
-                <input type="password" name="pass" placeholder="비밀번호 또는 앱 비밀번호"><br>
+            <div class="field">
+                <label for="smtpHost">SMTP Host:</label>
+                <input id="smtpHost" name="host" placeholder="예: smtp.gmail.com">
             </div>
-            <label>From:</label>
-            <input name="from" placeholder="보내는 사람 이메일"><br>
-            <label>To:</label>
-            <input name="to" placeholder="받는 사람 이메일"><br>
-            <label>Security:</label>
-            <select name="security">
-                <option value="none">None</option>
-                <option value="tls" selected>STARTTLS</option>
-                <option value="ssl">SSL/TLS</option>
-            </select><br>
+            <div class="field">
+                <label for="smtpPort">Port:</label>
+                <input id="smtpPort" name="port" placeholder="예: 587">
+            </div>
+            <div class="field">
+                <label for="authRequired">Use Auth:</label>
+                <select name="authRequired" id="authRequired">
+                    <option value="false">No</option>
+                    <option value="true" selected>Yes</option>
+                </select>
+            </div>
+            <div id="authFields">
+                <div class="field">
+                    <label for="smtpUser">User:</label>
+                    <input id="smtpUser" name="user" placeholder="이메일 주소">
+                </div>
+                <div class="field">
+                    <label for="smtpPass">Password:</label>
+                    <input id="smtpPass" type="password" name="pass" placeholder="비밀번호 또는 앱 비밀번호">
+                </div>
+            </div>
+            <div class="field">
+                <label for="smtpFrom">From:</label>
+                <input id="smtpFrom" name="from" placeholder="보내는 사람 이메일">
+            </div>
+            <div class="field">
+                <label for="smtpTo">To:</label>
+                <input id="smtpTo" name="to" placeholder="받는 사람 이메일">
+            </div>
+            <div class="field">
+                <label for="smtpSecurity">Security:</label>
+                <select id="smtpSecurity" name="security">
+                    <option value="none">None</option>
+                    <option value="tls" selected>STARTTLS</option>
+                    <option value="ssl">SSL/TLS</option>
+                </select>
+            </div>
             <button type="submit">메일 발송 테스트</button>
             <button type="reset">초기화</button>
         </form>
-        
+
         <div>
             <h4>⚠️ 25번 포트 사용 안내</h4>
             <p>Vercel의 정책상 25번 포트는 차단되어 있으므로 이 페이지에서 테스트할 수 없습니다. 25번 포트 테스트가 필요한 경우, 내부망에서 <a href="http://192.168.130.114:8080">로컬 서버 테스트 페이지</a>를 이용해 주세요.</p>
@@ -70,7 +105,11 @@
         <div id="result"></div>
 
         <div id="logDisplaySection" class="hidden">
-            <h4>SMTP 통신 로그</h4>
+            <div class="log-header">
+                <h4>SMTP 통신 로그</h4>
+                <button type="button" id="copyLogBtn">로그 복사</button>
+            </div>
+            <p class="log-note">비밀번호는 로그에서 <code>/* secret */</code>로 가려집니다.</p>
             <pre id="logOutput"></pre>
         </div>
     </div>
@@ -83,12 +122,37 @@
             const resultEl = document.getElementById('result');
             const logSectionEl = document.getElementById('logDisplaySection');
             const logOutputEl = document.getElementById('logOutput');
+            const copyLogBtn = document.getElementById('copyLogBtn');
 
             function toggleAuthFields() {
                 authFields.classList.toggle('hidden', authRequiredSelect.value === 'false');
             }
             authRequiredSelect.addEventListener('change', toggleAuthFields);
             toggleAuthFields();
+
+            // 결과 표시 — 서버 문자열은 모두 textContent (XSS 방지, "undefined" 방지)
+            function renderResult(kind, title, details) {
+                resultEl.textContent = '';
+                resultEl.className = kind === 'ok' ? 'result-ok' : 'result-error';
+                const head = document.createElement('div');
+                head.textContent = title;
+                resultEl.appendChild(head);
+                (details || []).filter(Boolean).forEach((line) => {
+                    const p = document.createElement('div');
+                    p.className = 'result-detail';
+                    p.textContent = line;
+                    resultEl.appendChild(p);
+                });
+            }
+
+            copyLogBtn.addEventListener('click', async () => {
+                const txt = logOutputEl.textContent || '';
+                if (!txt) return;
+                let ok = false;
+                try { await navigator.clipboard.writeText(txt); ok = true; } catch (_) { ok = false; }
+                copyLogBtn.textContent = ok ? '복사됨' : '복사 실패 — 직접 선택하세요';
+                setTimeout(() => { copyLogBtn.textContent = '로그 복사'; }, 1500);
+            });
 
             form.addEventListener('submit', async e => {
                 e.preventDefault();
@@ -97,7 +161,8 @@
                 // UI 초기화
                 btn.disabled = true;
                 btn.textContent = '전송 중…';
-                resultEl.innerHTML = '';
+                resultEl.textContent = '';
+                resultEl.className = '';
                 logOutputEl.textContent = '';
                 logSectionEl.classList.add('hidden');
 
@@ -107,19 +172,32 @@
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: new URLSearchParams(new FormData(form))
                     });
-                    
-                    const data = await resp.json(); // 응답을 JSON으로 파싱
 
-                    resultEl.innerHTML = data.message; // 결과 메시지 표시
+                    // 상태 코드 확인 후 본문 파싱 (HTML 게이트웨이 페이지 대비)
+                    const text = await resp.text();
+                    let data = null;
+                    try { data = JSON.parse(text); } catch (_) { data = null; }
 
-                    // 로그 데이터가 있으면 화면에 표시
-                    if (data.logs && data.logs.length > 0) {
+                    if (resp.ok && data && data.success) {
+                        renderResult('ok', '✅ ' + (data.message || '메일 발송 성공!'));
+                    } else if (data && data.error) {
+                        // 표준 에러: message + reason + action (P1-22)
+                        renderResult('error', '❌ ' + (data.error.message || '메일 발송 테스트에 실패했습니다.'),
+                            [data.error.reason, data.error.action]);
+                    } else {
+                        renderResult('error', `❌ 서버 응답을 해석하지 못했습니다 (HTTP ${resp.status}).`,
+                            [text ? text.slice(0, 300) : '']);
+                    }
+
+                    // 성공·실패 모두 SMTP 로그 표시 — 실패 원인 확인이 이 도구의 목적
+                    if (data && Array.isArray(data.logs) && data.logs.length > 0) {
                         logOutputEl.textContent = data.logs.join('\n');
                         logSectionEl.classList.remove('hidden');
                     }
-                    
+
                 } catch (err) {
-                    resultEl.innerHTML = `<span style='color:red;'>⚠️ 클라이언트 오류: ${err.message}</span>`;
+                    renderResult('error', '⚠️ 요청을 보내지 못했습니다: ' + (err && err.message ? err.message : String(err)),
+                        ['네트워크 연결을 확인한 뒤 다시 시도하세요.']);
                 } finally {
                     btn.disabled = false;
                     btn.textContent = '메일 발송 테스트';

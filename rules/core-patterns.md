@@ -229,12 +229,13 @@ Step 1. 자동 매칭 (SHA-256(data-original-url) ↔ protected_pages.file_path_
   → data-protected-path 없고 data-original-url 있는 카드
   → /api/me가 file_path 대신 SHA-256 해시(file_path_hash)만 내려줌 (실제 경로 비노출, me.js)
   → 클라이언트가 normalizeFilePath(data-original-url)를 Web Crypto로 해시해 비교 (대소문자 구분)
-  → 매칭 성공 시: data-protected-path 동적 주입, onclick → navigateCard
+  → 매칭 성공 시: data-protected-path 동적 주입 (href는 Step 2에서 /app/{path}로 바뀜)
 
 Step 2. data-protected-path 카드 처리 (Step 1 주입 카드 포함)
   → DB에서 path 기준으로 required_role 조회
   → DB에 없고 data-original-url 있음 → public (보호 해제, 공개 복원)
   → DB에 없고 data-original-url 없음 → admin (공개 복원 경로 없음, 최고 제한 유지)
+  → 보이는 카드는 resolveCardHref()로 실제 href를 세팅 (아래 "카드 이동" 참고)
 
 Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
   → 하드코딩된 역할로 가시성 결정
@@ -247,13 +248,21 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 | `data-min-role` | 하드코딩 역할 제어 (정적) | `data-protected-path` 없는 카드에 필수 |
 | `data-protected-path` | DB 기반 역할 제어 (동적) | `/app/*` 경로 카드에 사용 |
 | `data-original-url` | 보호 해제 시 복원 경로 | 모든 카드에 설정 권장 |
+| `data-keywords` | 검색 전용 키워드(공백 구분, 화면 비표시) — 예: AutoTest 카드 `"OPA 자동 회귀 테스트"` | 권장 (P1-19) |
+
+**카드 이동 (P1-19 — 모든 카드 같은 탭):** 보호 카드도 `href`에 실제 경로(`/app/...`)를 두고 인라인 `onclick`·`window.open`을 쓰지 않는다.
+`navigateCard()`는 제거됐고, `applyRoleFilter()` Step 2가 `resolveCardHref(card, pageInfo)` 결과로 `href`를 다시 세팅한다.
+그래서 클릭은 같은 탭, Ctrl/가운데 클릭은 브라우저 기본 동작으로 새 탭이다.
 
 ```javascript
-// navigateCard(card) 동작
-// - data-protected-path 있고 DB에 존재 → /app/{path} 이동
-// - data-protected-path 있고 DB에 없음 + data-original-url 있음 → 원래 URL 이동
-// - data-original-url 없음 → 이동하지 않음
+// resolveCardHref(card, pageInfo)
+// - DB(protected_pages)에 path 존재 → /app/{path}
+// - DB에 없음 + data-original-url 있음 → '/' + 원래 URL (공개 복원)
+// - 둘 다 없음 → null → href 제거 + aria-disabled="true" (이동하지 않음)
 ```
+
+**검색:** `runSearch()`는 카드 제목·설명·`data-keywords`를 합친 문자열에서 공백으로 나눈 검색어가 **모두** 포함된 카드만 보인다.
+`/` 키(입력란 밖)로 검색창 포커스, 검색창에서 `Esc`로 검색어 지우기.
 
 ### 전 페이지 로그인 상태 바 패턴 (`assets/js/auth-status.js`)
 
@@ -354,7 +363,8 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 ```html
 <a href="/utils/pageName.html" class="card" data-card
    data-min-role="public"
-   data-original-url="utils/pageName.html">
+   data-original-url="utils/pageName.html"
+   data-keywords="검색에 걸릴 키워드">
 ```
 
 - `data-original-url`은 `href`의 앞 슬래시를 제거한 값 — Admin UI에서 `file_path`로 등록 시 자동 매칭에 사용됨
