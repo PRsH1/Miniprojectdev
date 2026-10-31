@@ -866,7 +866,9 @@
                 return;
             }
 
-            var roleBadge = '<span class="badge-role-header ' + meData.role + '">' + meData.role + '</span>';
+            var roleBadge = '<span class="badge-role-header ' + escHtml(meData.role) + '">' + escHtml(meData.role) + '</span>';
+            // 자발적 비밀번호 변경 (F-5) — auth-status.js의 [비밀번호 변경]과 같은 동작: 변경 후 허브로 돌아온다
+            var pwBtn = '<a href="/auth/change-password.html?next=/" class="btn-header" id="btnChangePw" title="비밀번호 변경">비밀번호 변경</a>';
             // 알림 벨은 로그인한 모든 사용자에게 표시 (일반 사용자는 내 버그 리포트 답변 알림, P1-18)
             var bellHtml  = '<div id="idxBellWrap"></div>';
             var adminBtn  = meData.role === 'admin'
@@ -878,6 +880,7 @@
                 roleBadge +
                 bellHtml +
                 adminBtn +
+                pwBtn +
                 '<button class="btn-header" id="btnLogout">로그아웃</button>';
 
             document.getElementById('btnLogout').addEventListener('click', function() {
