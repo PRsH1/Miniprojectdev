@@ -204,7 +204,7 @@
         { code: "OPA 028", group: "회사 도장", method: "DELETE", name: "회사 도장 삭제", desc: "임의 생성한 도장 이미지로 회사 도장을 추가한 뒤 삭제 API를 검증합니다. 별도 입력값이 필요 없습니다.", steps: ["createStamp", "deleteStamp"], keys: ["auth.mode"] },
         { code: "OPA 029", group: "회사 도장", method: "GET", name: "회사 도장 목록 조회", desc: "회사 도장 목록 조회를 검증합니다.", steps: ["listStamps"], keys: ["auth.mode"] },
         { code: "OPA 030", group: "멤버", method: "POST", name: "멤버 일괄 추가", desc: "일괄 멤버 추가와 정리를 검증합니다.", steps: ["bulkCreateMembers", "cleanupBulk1", "cleanupBulk2"], keys: ["auth.mode", "data.memberId"] },
-        { code: "OPA 037", group: "문서", method: "POST", name: "일괄 완료 문서 PDF 전송", desc: "완료 문서 최대 5개를 수집한 뒤 2개 조합으로 PDF 전송을 시도하고, 하나라도 성공하면 통과합니다. company_id는 토큰 발급 정보에서 자동으로 채워집니다.", steps: ["listDocsBasic", "trySendPdfAuto"], keys: ["auth.mode", "data.pdfTargetEmail"] },
+        { code: "OPA 037", group: "문서", method: "POST", name: "일괄 완료 문서 PDF 전송", desc: "완료 문서 최대 5개를 수집한 뒤 2개 조합으로 PDF 전송을 시도하고, 하나라도 성공하면 통과합니다. company_id는 토큰 발급 정보에서 자동으로 채워집니다.", steps: ["listDocsBasic", "trySendPdfAuto"], keys: ["auth.mode", "data.pdfTargetEmail|data.pdfTargetPhone"] },
         { code: "OPA 040", group: "문서", method: "POST", name: "문서 파일 일괄 다운로드", desc: "완료 문서 최대 5개를 수집한 뒤 2개 조합으로 일괄 다운로드를 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listDocsBasic", "tryDownloadMultiAuto"], keys: ["auth.mode"] },
         { code: "OPA 042", group: "문서", method: "POST", name: "문서 취소", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 취소 API를 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 045", group: "문서", method: "POST", name: "완료 토큰 기한 연장", desc: "완료 문서 최대 5개를 수집한 뒤 순차적으로 기한 연장을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listDocsBasic", "tryRefreshCompleteTokenAuto"], keys: ["auth.mode"] }
@@ -1017,13 +1017,17 @@
         ];
     }
 
+    // keys 항목 하나가 채워졌는지. "a|b" 형태는 둘 중 하나만 채워져도 된다 (예: OPA 037 email 또는 phone — D-2)
+    function keyFilled(key) {
+        if (key.includes("|")) return key.split("|").some((alt) => keyFilled(alt));
+        if (key.startsWith("data.")) return has(getByPath(data(), key.slice(5)));
+        return has(getByPath(config, key));
+    }
+
     function readiness(scenario) {
-        const missing = (scenario.keys || []).filter((key) => {
-            if (key === "auth.mode") return false;
-            if (key.startsWith("data.")) return !has(getByPath(data(), key.slice(5)));
-            if (key === "data.companyId") return !has(data().companyId);
-            return !has(getByPath(config, key));
-        });
+        const missing = (scenario.keys || [])
+            .filter((key) => key !== "auth.mode" && !keyFilled(key))
+            .map((key) => key.split("|").join(" 또는 "));
         if (scenario.keys.includes("auth.mode")) {
             if (!authSnapshot().ready && !missing.includes("auth.panel")) missing.push("auth.panel");
         }

@@ -51,7 +51,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 
 ### 준비 상태(readiness) 시스템
 
-- `readiness(scenario)`: `scenario.keys`를 순회하여 비어 있는 항목을 `missing` 배열로 반환
+- `readiness(scenario)`: `scenario.keys`를 순회하여 비어 있는 항목을 `missing` 배열로 반환 (`"a|b"` 항목은 둘 중 하나만 있으면 충족)
 - `missing.length === 0` → 준비됨 / 하나라도 있으면 → 설정 필요
 - 상세 패널 "누락된 설정" 섹션(`#missingSectionWrap`)은 누락 시에만 표시
 - **실행 시 readiness SKIP (P1-11)**: `runSet()`은 데이터 설정이 빠진 OPA(`missingDataKeys()` — `auth.panel` 제외)를 실행하지 않고
@@ -150,7 +150,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 
 - **완료 문서 판별 기준**: `doc.current_status.status_type === "003"` — 숫자 3이 아닌 **문자열** `"003"`으로 엄격 비교
 - **토큰 발급은 공유 모듈 사용**: `issueTokenFromPanel()`은 `window.issueAccessToken`(`assets/js/token-issuer.js`)을 호출한다(direct → 전송실패 시에만 `/api/getToken` 프록시, 인증거부는 즉시 실패 → 설정 모달 `#modalAuthMessage`에 `토큰 발급 실패: [코드] 메시지` 인라인 표시). 자체 `fetchTokenDirect`/`fetchTokenViaProxy`는 제거됨. 성공 시 헤더 런처의 `#authTokenBadge`와 설정 모달의 `#modalTokenBadge`에 토큰 상태 배지(token-badge.js — [토큰 재발급]은 설정 모달을 열고 모달의 토큰 발급 실행), `request()`가 토큰 요청에서 401을 받으면 배지를 "만료됨"으로 바꾼다. `private/OpenAPIAutoTest.html` 로드 순서: `token-issuer.js` → `token-badge.js` → `api-error.js` → `OpenAPIAutoTest.js`
-- **OPA 037 pdfTargetPhone은 선택**: email 또는 phone 중 하나만 있으면 실행 가능. `keys`에는 `data.pdfTargetEmail`만 포함
+- **OPA 037 pdfTargetPhone은 선택**: email 또는 phone 중 하나만 있으면 실행 가능. `keys`는 `"data.pdfTargetEmail|data.pdfTargetPhone"` — `readiness()`의 `keyFilled()`가 `|`로 나뉜 대안 중 하나라도 채워지면 충족으로 본다(D-2, 누락 표시는 "A 또는 B"). 설정 모달에는 phone 입력란이 없어 프로필 JSON(`data.pdfRecipient.phone`)으로만 넣을 수 있다. 다른 OPA에는 "둘 중 하나" 조건이 없다(OPA 014 재요청은 `targetEmail` 필수)
 - **`freshShared()`**: 실행 시마다 초기화되는 step 간 공유 상태. 새 공유 변수 추가 시 이 함수에도 추가할 것
 - **`globalChecks()`의 "주 템플릿" 항목 없음**: 모든 문서 생성 OPA가 자동탐색으로 전환되어 제거됨
 - **상세 패널 제목**: `renderDetail()`에서 `activeScenarioTitle` 요소에 `"OPA XXX — API 이름"` 형식으로 동적 설정
