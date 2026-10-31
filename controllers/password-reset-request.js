@@ -2,12 +2,57 @@
  * controllers/password-reset-request.js
  * 비밀번호 재설정 요청 생성 (사용자 → 관리자 알림)
  * POST /api/password-reset-request
+ *
+ * P1-14: 새 대기 요청을 만들었을 때만 admin 알림(`password_reset_request`)을 INSERT하고
+ * Pusher `private-notifications-admin`으로 `new-notification`을 보낸다(이동 경로 /app/admin?tab=users).
+ * 알림 실패는 무시한다 — 요청 자체는 성공. 응답은 계정 존재·중복 여부와 무관하게 항상 같다(열거 방지).
  */
 
 const { getDb } = require('./_shared/db');
 const { insertAuditLog } = require('./_shared/audit');
+const pusher = require('./_shared/pusher');
 const { methodNotAllowed } = require('./_shared/respond-error');
 const { INPUT_LIMITS, requireMaxLengths } = require('./_shared/input-limits');
+
+async function triggerNewNotification(channel, notification, unreadCount) {
+  try {
+    await pusher.trigger(channel, 'new-notification', {
+      id: notification.id,
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+      created_at: notification.created_at,
+      unread_count: unreadCount,
+    });
+  } catch (error) {
+    console.error('알림 Pusher trigger 오류 (무시):', error);
+  }
+}
+
+/** admin 알림 INSERT + 실시간 전달 (rules/notifications.md 패턴). 실패해도 예외를 밖으로 던지지 않는다 */
+async function notifyAdmins(sql, requestId, username) {
+  try {
+    const notificationRows = await sql`
+      INSERT INTO notifications (type, reference_id, title, body, target_role)
+      VALUES (
+        'password_reset_request',
+        ${String(requestId)},
+        '비밀번호 재설정 요청',
+        ${username + ' 님이 비밀번호 재설정을 요청했습니다.'},
+        'admin'
+      )
+      RETURNING id, type, title, body, created_at
+    `;
+    const [{ count }] = await sql`
+      SELECT COUNT(*)::int AS count
+      FROM notifications
+      WHERE target_role = 'admin' AND target_user_id IS NULL AND is_read = FALSE
+    `;
+    await triggerNewNotification('private-notifications-admin', notificationRows[0], count);
+  } catch (error) {
+    console.error('password_reset_request 알림 INSERT 오류 (무시):', error);
+  }
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -54,6 +99,7 @@ module.exports = async function handler(req, res) {
         ipAddress: ip,
         result: 'success',
       });
+      await notifyAdmins(sql, inserted[0].id, username);
     }
     // 사용자가 없어도 동일한 성공 응답 반환 (열거 방지)
   } catch (err) {

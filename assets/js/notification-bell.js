@@ -4,7 +4,12 @@
  *
  * 사용법:
  *   <script src="/assets/js/notification-bell.js"></script>
- *   window.NotifBell.init(containerEl, meData);  // admin 로그인 확인 후 호출
+ *   window.NotifBell.init(containerEl, meData);  // 로그인 확인 후 호출 (역할 무관, P1-18)
+ *
+ * - admin: private-notifications-admin 채널 (가입·재설정 요청, 버그 접수)
+ * - 그 외 로그인 사용자: private-notifications-{id} 채널 (내 버그 리포트 상태 변경·답변)
+ * - /api/notifications가 역할별로 목록을 나눠 주므로 API 호출은 같다
+ * - 이동 경로는 auth-status.js의 getNotificationDest와 같은 규칙 (수정 시 함께 변경)
  */
 (function () {
     // 이미 로드된 경우 스킵
@@ -92,6 +97,7 @@
     }
 
     // ─── 내부 상태 ────────────────────────────────────────────
+    var _isAdmin = false;
     var _bellEl = null;
     var _badgeEl = null;
     var _fallbackTimer = null;
@@ -126,10 +132,22 @@
         _badgeEl.style.display = _unreadCount > 0 ? 'flex' : 'none';
     }
 
-    function _notificationDest(type) {
+    // reference_id가 숫자(버그 리포트 id)일 때만 경로에 붙인다
+    function _reportId(n) {
+        var ref = n && n.reference_id != null ? String(n.reference_id) : '';
+        return /^[0-9]{1,10}$/.test(ref) ? ref : '';
+    }
+
+    function _notificationDest(n) {
+        var type = n && n.type;
+        var reportId = _reportId(n);
         if (type === 'signup_request') return '/app/admin?tab=signup-requests';
-        if (type === 'bug_report') return '/app/admin?tab=bug-reports';
-        return '/app/admin';
+        if (type === 'bug_report') return '/app/admin?tab=bug-reports' + (reportId ? '&report=' + reportId : '');
+        if (type === 'password_reset_request') return '/app/admin?tab=users';
+        if (type === 'bug_report_status' || type === 'bug_report_reply') {
+            return '/community/bug-report.html#my-reports' + (reportId ? '/' + reportId : '');
+        }
+        return _isAdmin ? '/app/admin' : '/';
     }
 
     function _positionPanel() {
@@ -187,16 +205,16 @@
                 var isUnread = !n.is_read;
                 var itemClass = '_nb-item' + (isUnread ? ' unread' : '');
                 var dotClass = '_nb-dot' + (isUnread ? '' : ' read');
-                var dest = _notificationDest(n.type);
+                var dest = _notificationDest(n);
                 listHtml +=
-                    '<div class="' + itemClass + '" data-notif-id="' + n.id + '" data-dest="' + _esc(dest) + '">' +
+                    '<div class="' + itemClass + '" data-notif-id="' + _esc(n.id) + '" data-dest="' + _esc(dest) + '">' +
                     '<div class="' + dotClass + '"></div>' +
                     '<div style="flex:1;min-width:0;">' +
                     '<div class="_nb-item-title">' + _esc(n.title) + '</div>' +
                     (n.body ? '<div class="_nb-item-body">' + _esc(n.body) + '</div>' : '') +
                     '<div class="_nb-item-time">' + _relTime(n.created_at) + '</div>' +
                     '</div>' +
-                    '<button class="_nb-del" data-del-id="' + n.id + '" title="알림 삭제">&#10005;</button>' +
+                    '<button class="_nb-del" data-del-id="' + _esc(n.id) + '" title="알림 삭제">&#10005;</button>' +
                     '</div>';
             }
             listHtml += '</div>';
@@ -233,6 +251,8 @@
         if (delAllBtnEl) {
             delAllBtnEl.addEventListener('click', function (e) {
                 e.stopPropagation();
+                // 되돌릴 수 없으므로 확인을 받는다 (P1-18)
+                if (!window.confirm('알림을 모두 삭제할까요? 삭제한 알림은 되돌릴 수 없습니다.')) return;
                 _deleteAll();
             });
         }
@@ -328,7 +348,11 @@
             _pusherClient = null;
         }
 
-        if (!window.Pusher || !meData || !meData.pusher_key || !meData.pusher_cluster) {
+        var channelName = _isAdmin
+            ? 'private-notifications-admin'
+            : (meData && meData.id ? 'private-notifications-' + meData.id : '');
+
+        if (!window.Pusher || !meData || !meData.pusher_key || !meData.pusher_cluster || !channelName) {
             _startFallbackPolling();
             return;
         }
@@ -339,7 +363,7 @@
                 authEndpoint: '/api/pusher/auth',
             });
 
-            var channel = _pusherClient.subscribe('private-notifications-admin');
+            var channel = _pusherClient.subscribe(channelName);
 
             channel.bind('new-notification', function (data) {
                 if (data && typeof data.unread_count === 'number') {
@@ -380,6 +404,7 @@
 
     function init(containerEl, meData) {
         _injectStyles();
+        _isAdmin = !!(meData && meData.role === 'admin');
 
         // 벨 버튼 삽입
         containerEl.innerHTML =

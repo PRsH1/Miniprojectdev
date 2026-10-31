@@ -14,12 +14,19 @@
  * - 새 비밀번호는 현재 비밀번호와 달라야 한다(임시 비밀번호 재사용 방지).
  * - 변경 후 이 사용자의 **다른** refresh 토큰을 모두 폐기한다(다른 기기 세션 종료).
  *   현재 요청의 refresh 토큰(그리고 이번 요청에서 로테이션됐다면 그 후속 토큰)은 남겨 현재 세션을 유지한다.
- *   JWT 재서명(mustChangePw:false)과 현재 refresh 로테이션은 P1-13에서 처리한다.
+ *
+ * P1-13
+ * - 변경 성공 시 현재 세션을 새로 발급한다: refresh 토큰을 로테이션(auth-middleware의 tryRefreshToken 재사용)하고
+ *   auth_token을 mustChangePw:false로 다시 서명한다. 임시 비밀번호 변경 직후 JWT에 mustChangePw:true가 남아
+ *   변경 페이지로 되돌아가는 일을 막고, 변경 전 refresh 토큰 값은 더 이상 쓸 수 없게 한다.
+ *   이번 요청에서 requireRole이 이미 로테이션했다면(액세스 토큰 만료) 그 새 refresh 쿠키를 유지하고 auth_token만 바꾼다.
  */
 
 const crypto = require('crypto');
-const { parse } = require('cookie');
+const { parse, serialize } = require('cookie');
 const { getDb } = require('./_shared/db');
+const { sign } = require('./_shared/jwt');
+const { tryRefreshToken } = require('./_shared/auth-middleware');
 const { insertAuditLog } = require('./_shared/audit');
 const { methodNotAllowed, respondError } = require('./_shared/respond-error');
 const { requireRole } = require('./_shared/session');
@@ -56,6 +63,42 @@ async function revokeOtherRefreshTokens(sql, userId, currentHash) {
     RETURNING id
   `;
   return rows ? rows.length : 0;
+}
+
+function setCookieList(res) {
+  const existing = res.getHeader('Set-Cookie');
+  if (!existing) return [];
+  return Array.isArray(existing) ? existing.slice() : [String(existing)];
+}
+
+/**
+ * 비밀번호 변경 후 현재 세션 재발급 (P1-13)
+ * 1. 이번 요청에서 이미 refresh가 로테이션됐으면(Set-Cookie에 refresh_token 있음) 그대로 둔다
+ * 2. 아니면 요청 쿠키의 refresh 토큰을 tryRefreshToken으로 로테이션한다(경합 안전한 단일 승자 claim)
+ * 3. 어느 경우든 auth_token을 mustChangePw:false로 다시 서명해 덮어쓴다
+ * 반환: { rotated } — refresh 쿠키가 새로 나갔는지
+ */
+async function reissueSession(sql, res, user, currentRefresh) {
+  const isSecure = process.env.NODE_ENV !== 'development';
+  const hasRefreshCookie = () => setCookieList(res).some((c) => /^refresh_token=/.test(c));
+
+  let rotated = hasRefreshCookie();
+  if (!rotated && currentRefresh) {
+    try {
+      await tryRefreshToken(sql, currentRefresh, res, isSecure);
+    } catch (err) {
+      console.error('change-password: 세션 로테이션 실패:', err);
+    }
+    rotated = hasRefreshCookie();
+  }
+
+  const accessToken = sign({ sub: user.sub, role: user.role, mustChangePw: false });
+  const cookies = setCookieList(res).filter((c) => !/^auth_token=/.test(c));
+  cookies.push(serialize('auth_token', accessToken, {
+    httpOnly: true, secure: isSecure, sameSite: 'strict', path: '/', maxAge: 3600,
+  }));
+  res.setHeader('Set-Cookie', cookies);
+  return { rotated };
 }
 
 module.exports = async function handler(req, res) {
@@ -182,13 +225,16 @@ module.exports = async function handler(req, res) {
     console.error('change-password: 다른 refresh 토큰 폐기 실패:', err);
   }
 
+  // 현재 세션 재발급 — 다른 세션 폐기 뒤에 해야 새로 만든 refresh 토큰이 폐기 대상에 들지 않는다
+  const { rotated } = await reissueSession(sql, res, user, currentRefresh);
+
   await insertAuditLog({
     userId: user.sub,
     username: user.username,
     action: 'password_changed',
     ipAddress: ip,
     result: 'success',
-    metadata: { forced: Boolean(user.mustChangePw), revoked_sessions: revokedSessions },
+    metadata: { forced: Boolean(user.mustChangePw), revoked_sessions: revokedSessions, session_rotated: rotated },
   });
 
   return res.status(200).json({ ok: true, message: '비밀번호가 변경되었습니다.', revokedSessions });

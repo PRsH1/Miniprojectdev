@@ -37,7 +37,8 @@ function handlers({ mustChange = false, lockedUntil = null, failRows = [] } = {}
     },
     { match: /SELECT password_hash, locked_until/, rows: [{ password_hash: STORED, locked_until: lockedUntil }] },
     { match: /failed_login_count = CASE/, rows: failRows },
-    { match: /UPDATE refresh_tokens/, rows: [{ id: 'r1' }, { id: 'r2' }] },
+    // 다른 세션 폐기 쿼리만 — P1-13의 세션 로테이션(WITH claimed AS … UPDATE refresh_tokens rt)과 구분
+    { match: /UPDATE refresh_tokens\s+SET revoked_at = now\(\)\s+WHERE user_id/, rows: [{ id: 'r1' }, { id: 'r2' }] },
   ];
 }
 

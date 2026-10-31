@@ -85,7 +85,11 @@ const DOMAINS = {
 - 리프레시 토큰: 7일 (`refresh_token` httpOnly 쿠키, DB 저장, 사용 시마다 로테이션)
 - 미인증: `/auth/login.html?next=<page>` 리다이렉트
 - 권한 부족: `/auth/403.html`
-- 강제 비밀번호 변경 필요: `/auth/change-password.html`
+- 강제 비밀번호 변경 필요: `/auth/change-password.html?next=<page>` — 로그인(`login.js`)과 `/app/*`(`auth-middleware.js`)가
+  검증된 `next`를 넘기고, 변경 페이지는 `safeNext`로 다시 검증한 뒤 변경 성공 시 그 경로로 바로 이동한다(P1-13).
+  변경 API가 세션을 재발급하므로(아래 "비밀번호 변경") 재로그인이나 변경 페이지 재진입 없이 원래 페이지가 열린다.
+- 자발적 비밀번호 변경: `auth-status.js` 사용자 영역의 [비밀번호 변경] 버튼 → `/auth/change-password.html?next=<현재 경로>`
+  (현재 비밀번호 확인 필요, [변경하지 않고 돌아가기] 링크 제공)
 
 ### 세션 갱신 / 리프레시 토큰 로테이션 (경합 안전)
 
@@ -109,7 +113,17 @@ const DOMAINS = {
   API 권한은 `requireRole`이 매 요청 DB로 판단하므로 즉시 반영되고, 액세스 토큰 만료 후에는 재로그인으로 JWT도 갱신된다.
   본인 강등·비활성화와 마지막 활성 admin 강등·비활성화는 400(DELETE와 동일 정책).
 - **클라이언트 single-flight**: `auth-status.js`/`credential-panel.js`/`openapi/state.js`가 `window.AUTH_STATUS_ME_PROMISE = window.AUTH_STATUS_ME_PROMISE || …` 멱등 가드로 `/api/me` 부트스트랩을 1회로 공유하고, `navigator.locks.request('eform-auth-bootstrap', …)`로 탭 간 직렬화한다(미지원 시 lock 없이 진행 — 서버 원자성이 정확성 보장).
-- **로그아웃 graceful 처리**: 같은-오리진 `/api/*` 호출이 갱신 후에도 401이거나(=리프레시 만료) `visibilitychange`/`focus` 재확인에서 `authenticated:false`면 `window.handleAuthExpired()`(auth-status.js)가 1회 안내 후 `location.reload()`. (interval 폴링은 쓰지 않음 — Neon idle suspend 유지)
+- **로그아웃 graceful 처리**: 같은-오리진 `/api/*` 호출이 갱신 후에도 401이거나(=리프레시 만료) `visibilitychange`/`focus` 재확인에서 `authenticated:false`면 `window.handleAuthExpired()`(auth-status.js)가 1회 처리한다. (interval 폴링은 쓰지 않음 — Neon idle suspend 유지)
+  - **입력 보존 (P1-21)**: 페이지가 `window.AUTH_STATUS_HAS_UNSAVED = function () { return 미저장 입력 있음; }`을 등록했고 `true`를 반환하면
+    자동 새로고침하지 않고 상단 고정 배너 "세션이 만료되었습니다 … [새 탭에서 로그인] [새로고침]"(`#asbSessionExpiredBanner`)을 띄운다.
+    [새 탭에서 로그인]은 `/auth/login.html?next=/auth/login-complete.html`을 새 탭으로 연다(완료 페이지: "이 탭을 닫고 돌아가세요").
+    원래 탭으로 돌아오면 `focus`/`visibilitychange` 재확인이 `authenticated:true`를 보고 배너를 닫고 사용자 영역·알림을 다시 붙인다(쿠키 공유 → 그대로 저장 가능).
+    [새로고침]은 미저장 입력이 있으면 한 번 더 확인한다. 훅이 없거나 `false`·미정의면 기존처럼 안내 토스트 후 1.2초 뒤 `location.reload()`.
+    훅이 예외를 던지면 입력 보호를 위해 "미저장 있음"으로 본다. 등록 페이지: `private/Admin.html`(버그 답변 패널이 렌더링 때 값과 다름 · 열린 모달에 입력값),
+    `community/developer-notes.html`(편집기 변경), `community/bug-report.html`(제출 전 제보 글), `private/MemberV2.html`(C6 담당).
+  - **탭 복귀 재확인 1회**: `visibilitychange`와 `focus`가 연달아 와도 진행 중인 `/api/me` promise를 공유하고, 끝난 뒤 1초 안의 재요청은 건너뛴다 → 탭 복귀 1회당 `/api/me` 1건.
+  - Admin 콘솔의 목록 로드 401은 로그인 페이지로 바로 이동하지 않고 `onAuthLost()` → `handleAuthExpired()`로 넘긴다. 버그 답변 저장이 401이면 입력을 그대로 두고 안내한다.
+    작성 중인 답변이 있으면 목록 새로고침·다른 리포트 선택·필터 변경 전에 확인하고, 탭을 다시 열어도 다시 그리지 않는다.
 - **마이그레이션**: `refresh_tokens.replaced_by UUID` 컬럼 필요. `scripts/migrate-refresh-rotation.js`로 추가(멱등). **반드시 코드 배포 전에 실행** — 없으면 claim/grace 쿼리가 실패해 갱신 전체가 막힌다.
 
 ```javascript
@@ -139,6 +153,14 @@ const DOMAINS = {
 - `error=inactive`는 **잠기지 않은 계정에서 비밀번호가 맞을 때만** 보낸다. 정답 여부가 드러나는 정도는 활성 계정의
   로그인 성공과 같고, 틀린 시도는 같은 카운터로 5회 후 잠긴다(잠긴 뒤에는 위 규칙대로 `invalid`).
 - 아이디 50자·비밀번호 256자를 넘으면 DB·scrypt 없이 `error=invalid`.
+- **승인 대기 안내 `error=pending` (P1-13)**: `users`에 없는 아이디이고 `signup_requests`에 `pending` 신청이 있으며
+  **비밀번호가 신청 때 비밀번호(`signup_requests.password_hash`)와 일치할 때만** 보낸다. 비밀번호를 모르면 `invalid`와
+  구별되지 않으므로 가입 신청 존재 여부는 드러나지 않는다. 가입 대기 조회는 `users` 조회와 `Promise.all`로 **항상** 함께
+  실행하고(쿼리 순서 동일), 더미 해시 대신 신청 해시로 scrypt를 1회 돌린다(비용 동일). 그 아이디의 최근 30분 `login_failed`
+  감사 로그(`pending_approval` 제외)가 5건 이상이면 정답이어도 `invalid`(잠금과 같은 D-1 원칙 — 무제한 추측 오라클 방지).
+  화면은 "가입 승인 대기 중" 문구와, 이 브라우저에서 가입했다면(`localStorage['eform-signup-request-id']`) 상태 확인 링크를 보여 준다.
+- 로그인 실패 후 아이디 유지: `auth/login.html`이 제출 시 아이디를 **sessionStorage**(`eform-login-username`)에만 두고
+  `?error=`로 돌아오면 채운다(URL·서버 로그에 아이디를 싣지 않음, 비밀번호는 저장하지 않음). 로그인 화면에 회원가입 링크가 있다.
 - IP 단위 제한은 코드가 아니라 **Vercel WAF rate limit** 규칙으로 건다(대시보드 설정, 사용자 작업).
   권장: `POST /api/login` IP당 10회/60초 초과 시 429(또는 Deny 10분), `POST /api/signup`·`/api/password-reset-request`
   IP당 5회/10분. Firewall 규칙은 배포와 별개라 코드 머지만으로는 적용되지 않는다.
@@ -153,7 +175,15 @@ const DOMAINS = {
 - 새 비밀번호가 현재(임시) 비밀번호와 같으면 400. 길이 8~256자.
 - 성공 시 `failed_login_count`·`locked_until` 초기화 + **현재 세션을 뺀** 이 사용자의 refresh 토큰을 모두 폐기한다
   (`replaced_by` 없이 `revoked_at`만 → grace 차단). 현재 세션 = 요청 쿠키의 refresh 토큰 + 같은 요청에서 로테이션됐다면 그 후속 토큰.
-  다른 기기의 액세스 토큰(최대 1시간)은 만료 전까지 남는다. JWT 재서명(`mustChangePw:false`)·현재 refresh 로테이션은 P1-13.
+  다른 기기의 액세스 토큰(최대 1시간)은 만료 전까지 남는다.
+- **세션 재발급 (P1-13)**: 다른 세션 폐기 **다음에** 현재 세션을 다시 발급한다(`reissueSession`).
+  요청 쿠키의 refresh 토큰을 `tryRefreshToken`(auth-middleware 정본, 원자적 claim)으로 로테이션해 새 `refresh_token` 쿠키를 내보내고,
+  `auth_token`은 `mustChangePw:false`로 다시 서명해 덮어쓴다. 같은 요청에서 `requireRole`이 이미 로테이션했다면(액세스 토큰 만료)
+  그 refresh 쿠키를 그대로 두고 `auth_token`만 바꾼다(이중 로테이션·쿠키 중복 없음). 실패 응답에는 쿠키를 새로 발급하지 않는다.
+- 클라이언트 에러 표시: 서버 에러는 `{ error: { message, reason, action } }` 객체다. 화면은 문자열로 바꿔 보여 준다
+  (`auth/*.html`은 message·reason, `private/Admin.html`은 공용 `errorMessage(xhr)` — message → reason → action 순). `xhr.responseJSON?.error`를
+  그대로 문자열로 쓰지 않는다(`[object Object]`).
+- 회원가입 중복은 409 `VALIDATION_FAILED` + "이미 사용 중인 아이디입니다." / "이미 사용 중인 이메일입니다."
 
 ### 역할(Role) 계층
 
@@ -259,6 +289,9 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 - 비로그인 시 코너 모드는 로그인/회원가입 버튼 표시 (`?next=현재경로` 파라미터 포함), 상단 바 모드도 동일
 - admin 로그인 시 모든 모드에서 "관리자 콘솔" 버튼 자동 표시
 - **알림 벨**: 기본(상단 바) 모드 + 로그인 사용자에게 벨 버튼 + 미읽음 배지 표시. Pusher WebSocket으로 실시간 갱신 (Pusher 연결 실패 시 300초 fallback 폴링). 클릭 시 드롭다운 패널 → 알림 목록 + "모두 읽음" 처리. CORNER 모드에서는 미표시
+- **모드별 적용 페이지**: 커뮤니티 두 페이지(`community/bug-report.html`·`developer-notes.html`)는 P1-18부터 **기본(상단 바)** 모드다
+  (허브 링크·벨 필요). 코너 모드는 자체 헤더가 있는 OpenAPITester 등에만 쓴다
+- **[비밀번호 변경] 버튼**: 로그인 사용자에게 모든 모드에서 표시(코너 모드는 "비밀번호") → `/auth/change-password.html?next=<현재 경로>` (P1-13)
 - **주의:** 각 페이지에 `button { width: 100% }` 스타일이 있어도 `.asb-btn`에 `width: auto !important`가 적용되어 버튼이 늘어나지 않음
 - 기본 모드의 `.asb-brand`("eformsign Tools Hub")는 클릭 시 `/`(index)로 이동하는 링크(`<a>` 태그)로 렌더링됨
 

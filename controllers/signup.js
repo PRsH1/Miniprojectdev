@@ -130,9 +130,9 @@ module.exports = async function handler(req, res) {
   if ((usersWithName && usersWithName.length > 0) || (pendingWithName && pendingWithName.length > 0)) {
     return respondError(req, res, 409, {
       code: 'VALIDATION_FAILED',
-      message: '이미 사용 중인 username입니다.',
-      reason: '같은 username을 사용하는 계정 또는 대기 중인 요청이 있습니다.',
-      action: '다른 username을 입력하세요.',
+      message: '이미 사용 중인 아이디입니다.',
+      reason: '같은 아이디를 쓰는 계정이나 승인 대기 중인 가입 요청이 있습니다.',
+      action: '다른 아이디를 입력하세요. 이미 가입을 요청했다면 승인을 기다리세요.',
     });
   }
 
@@ -144,9 +144,9 @@ module.exports = async function handler(req, res) {
   if ((usersWithEmail && usersWithEmail.length > 0) || (pendingWithEmail && pendingWithEmail.length > 0)) {
     return respondError(req, res, 409, {
       code: 'VALIDATION_FAILED',
-      message: '이미 사용 중인 email입니다.',
-      reason: '같은 email을 사용하는 계정 또는 대기 중인 요청이 있습니다.',
-      action: '다른 email을 입력하세요.',
+      message: '이미 사용 중인 이메일입니다.',
+      reason: '같은 이메일을 쓰는 계정이나 승인 대기 중인 가입 요청이 있습니다.',
+      action: '다른 이메일을 입력하세요. 이미 가입을 요청했다면 승인을 기다리세요.',
     });
   }
 

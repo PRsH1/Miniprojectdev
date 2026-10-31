@@ -15,6 +15,10 @@
  * - '비활성' 안내는 잠기지 않은 계정에서 비밀번호가 맞을 때만 준다. 정답 여부가 드러나는 것은 활성 계정의
  *   로그인 성공과 같은 수준이며, 틀린 시도는 같은 실패 카운터로 5회 후 잠긴다(잠긴 뒤에는 위 규칙으로 'invalid').
  * - IP 단위 제한은 코드가 아니라 Vercel WAF rate limit 규칙으로 건다(rules/core-patterns.md 참고).
+ * - 승인 대기 안내(P1-13): users에 없는 아이디이고 signup_requests에 pending 요청이 있으며 **비밀번호가 신청 때
+ *   비밀번호와 일치할 때만** 'pending'으로 응답한다. 비밀번호를 모르면 'invalid'와 구별되지 않으므로 가입 신청 존재
+ *   여부가 드러나지 않는다. 가입 대기 조회는 users 조회와 함께 항상 실행하고(쿼리 순서 동일), 더미 해시 대신 신청
+ *   해시로 scrypt를 1회 돌리므로 비용도 같다. 잠금·없는 계정·틀린 비밀번호 응답은 바꾸지 않는다.
  */
 
 const crypto = require('crypto');
@@ -25,6 +29,8 @@ const { insertAuditLog } = require('./_shared/audit');
 const { respondError } = require('./_shared/respond-error');
 const {
   DUMMY_PASSWORD_HASH,
+  LOCK_MINUTES,
+  MAX_FAILED_LOGINS,
   isLockedAt,
   recordFailedLogin,
   verifyPassword,
@@ -59,23 +65,57 @@ module.exports = async function handler(req, res) {
 
   const sql = getDb();
 
-  // 1. username으로 사용자 조회
+  // 1. username으로 사용자 조회 + 승인 대기 가입 신청 조회 (항상 함께 실행 — 쿼리 순서로 계정 존재가 드러나지 않게)
   let users;
+  let pendingSignups;
   try {
-    users = await sql`SELECT * FROM users WHERE username = ${username} LIMIT 1`;
+    [users, pendingSignups] = await Promise.all([
+      sql`SELECT * FROM users WHERE username = ${username} LIMIT 1`,
+      // recent_failures: 이 아이디의 최근 로그인 실패 수 — 승인 대기 안내가 무제한 추측 오라클이 되지 않도록
+      // 계정과 같은 기준(5회/30분)으로 막는다. 대기 신청 행이 있을 때만 계산된다.
+      Promise.resolve(sql`
+        SELECT sr.password_hash,
+               (SELECT COUNT(*)::int FROM audit_logs a
+                 WHERE a.username = sr.username
+                   AND a.action = 'login_failed'
+                   AND COALESCE(a.metadata->>'reason', '') <> 'pending_approval'
+                   AND a.created_at > now() - (${LOCK_MINUTES}::int * interval '1 minute')) AS recent_failures
+        FROM signup_requests sr
+        WHERE sr.username = ${username} AND sr.status = 'pending'
+        ORDER BY sr.created_at DESC
+        LIMIT 1
+      `).catch((err) => {
+        // 승인 대기 안내는 부가 기능 — 조회 실패가 로그인 자체를 막지 않게 한다
+        console.error('가입 대기 조회 오류 (무시):', err);
+        return [];
+      }),
+    ]);
   } catch (err) {
     return respondError(req, res, 500, { code: 'DATABASE_ERROR', logMessage: '사용자 조회 오류', error: err });
   }
   const user = users && users.length > 0 ? users[0] : null;
+  // users에 없을 때만 가입 대기 신청을 본다
+  const pendingSignup = !user && pendingSignups && pendingSignups.length > 0 ? pendingSignups[0] : null;
 
-  // 2. 비밀번호 검증 — 계정이 없어도 더미 해시로 같은 scrypt 비용을 치른다.
+  // 2. 비밀번호 검증 — 계정이 없어도 더미 해시(가입 대기 신청이 있으면 신청 해시)로 같은 scrypt 비용을 치른다.
   //    잠긴 계정도 scrypt는 똑같이 1회 돌리되 결과는 버린다(응답 지연·쿼리 순서를 다른 실패와 맞춤).
   const wasLocked = Boolean(user) && isLockedAt(user.locked_until);
   let passwordOk = false;
   try {
-    passwordOk = await verifyPassword(password, user ? user.password_hash : DUMMY_PASSWORD_HASH);
+    const storedHash = user
+      ? user.password_hash
+      : (pendingSignup ? pendingSignup.password_hash : DUMMY_PASSWORD_HASH);
+    passwordOk = await verifyPassword(password, storedHash);
   } catch (err) {
     return respondError(req, res, 500, { code: 'INTERNAL_ERROR', logMessage: '비밀번호 검증 오류', error: err });
+  }
+
+  // 2-1. 계정은 없지만 승인 대기 중인 가입 신청의 비밀번호와 일치 → 본인에게만 승인 대기 안내
+  //      최근 실패가 잠금 기준 이상이면 정답이어도 'invalid'(로그인 잠금과 같은 D-1 원칙)
+  const pendingLocked = Boolean(pendingSignup) && (Number(pendingSignup.recent_failures) || 0) >= MAX_FAILED_LOGINS;
+  if (!user && pendingSignup && passwordOk && !pendingLocked) {
+    await insertAuditLog({ username, action: 'login_failed', ipAddress: ip, result: 'failure', metadata: { reason: 'pending_approval' } });
+    return errorRedirect('pending');
   }
   // 잠긴 계정은 정답이어도 실패로 취급한다 — 정답/오답이 같은 경로·같은 응답을 타야 오라클이 생기지 않는다(D-1)
   const isValid = Boolean(user) && !wasLocked && passwordOk;
@@ -90,7 +130,7 @@ module.exports = async function handler(req, res) {
       return respondError(req, res, 500, { code: 'DATABASE_ERROR', logMessage: '로그인 실패 카운트 갱신 오류', error: err });
     }
 
-    const reason = !user ? 'not_found' : (wasLocked ? 'locked' : (user.is_active ? 'bad_password' : 'inactive'));
+    const reason = !user ? (pendingSignup ? 'pending_signup' : 'not_found') : (wasLocked ? 'locked' : (user.is_active ? 'bad_password' : 'inactive'));
     if (updated && !wasLocked && isLockedAt(updated.locked_until)) {
       await insertAuditLog({ userId: user.id, username, action: 'account_locked', ipAddress: ip, result: 'failure', metadata: { failed_count: updated.failed_login_count } });
     }
