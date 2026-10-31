@@ -42,6 +42,7 @@
       --teal-subtle:     rgba(0, 194, 168, 0.10);
       --shadow-card:     0 1px 4px rgba(0,0,0,.08);
       --shadow-card-h:   0 4px 16px rgba(0,0,0,.12);
+      --auth-bar-h:      40px;  /* auth-status.js 상단 바 높이 — 사이드바·햄버거 버튼 오프셋 */
     }
 
     html, body { height: 100%; }
@@ -69,8 +70,8 @@
       display: flex;
       flex-direction: column;
       position: sticky;
-      top: 0;
-      height: 100vh;
+      top: var(--auth-bar-h);              /* 스크롤 시 상단 바에 가려지지 않게 */
+      height: calc(100vh - var(--auth-bar-h));
       overflow-y: auto;
       flex-shrink: 0;
     }
@@ -687,11 +688,63 @@
       border: 1px solid transparent;
     }
 
+    /* ─── 비밀 키 입력 + 표시 토글 ───────────────────────── */
+    .secret-input-wrap { display: flex; gap: 8px; align-items: center; }
+    .secret-input-wrap input { flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 12.5px; }
+    .secret-input-wrap .secret-toggle { height: 40px; flex-shrink: 0; width: auto; }
+
+    /* ─── 체크박스 라벨 · 입력 안내 ──────────────────────── */
+    label.inline-check {
+      display: flex; align-items: center; gap: 6px;
+      font-weight: 400; font-size: 13px; color: var(--text-main); cursor: pointer;
+    }
+    label.inline-check input[type="checkbox"] { width: auto; height: auto; }
+    .field-hint { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+
+    /* ─── 엑셀 일괄 처리 진행 패널 (P1-16, member/ui.js renderBulkPanel) ─ */
+    .bulk-panel {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: var(--radius-md);
+      background: #fff;
+    }
+    .bulk-panel.bulk-ok   { border-left-color: var(--success); }
+    .bulk-panel.bulk-warn { border-left-color: #e8a200; background: #fffbeb; }
+    .bulk-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+    .bulk-state { font-size: 13px; font-weight: 700; color: var(--primary); }
+    .bulk-ok .bulk-state { color: var(--success); }
+    .bulk-warn .bulk-state { color: #a16207; }
+    .bulk-progress-text { font-family: var(--font-mono); font-size: 12px; color: var(--text-sub); }
+    .bulk-bar { display: flex; height: 10px; background: #e5eaf1; border-radius: 99px; overflow: hidden; }
+    .bulk-bar-ok   { background: var(--success); transition: width .2s; }
+    .bulk-bar-fail { background: var(--danger);  transition: width .2s; }
+    .bulk-stats { font-size: 12px; color: var(--text-sub); margin-top: 6px; }
+    .bulk-note { font-size: 12px; color: #a16207; margin-top: 4px; line-height: 1.5; }
+    .bulk-note:empty { display: none; }
+    .bulk-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .bulk-actions button { height: 32px; font-size: 12px; width: auto; }
+
+    /* ─── 토스트 (복사 피드백 등) ────────────────────────── */
+    .member-toast {
+      position: fixed; left: 50%; bottom: 28px; z-index: 100001;
+      transform: translate(-50%, 12px);
+      max-width: calc(100vw - 32px);
+      background: rgba(17, 24, 39, .94); color: #fff;
+      padding: 10px 16px; border-radius: 10px;
+      font-size: 13px; line-height: 1.5; box-shadow: 0 6px 20px rgba(0,0,0,.25);
+      opacity: 0; pointer-events: none;
+      transition: opacity .18s, transform .18s;
+    }
+    .member-toast.show { opacity: 1; transform: translate(-50%, 0); }
+
     /* ─── 모바일 햄버거 버튼 ────────────────────────────── */
+    /* auth-status.js 상단 바(position:fixed, 높이 40px, z-index 99999) 아래로 내린다 (P1-19) */
     #mobileMenuBtn {
       display: none;
       position: fixed;
-      top: 14px;
+      top: calc(var(--auth-bar-h) + 14px);
       left: 14px;
       z-index: 300;
       width: 40px;
@@ -718,9 +771,9 @@
 
       .sidebar {
         position: fixed;
-        top: 0;
+        top: var(--auth-bar-h);            /* 드로어도 상단 바 아래에서 열린다 */
         left: 0;
-        height: 100vh;
+        height: calc(100vh - var(--auth-bar-h));
         z-index: 250;
         transform: translateX(-100%);
         transition: transform .25s ease;
@@ -728,6 +781,8 @@
       .sidebar.open {
         transform: translateX(0);
       }
+      /* 드로어가 열려도 햄버거 버튼(고정 위치)이 제목을 가리지 않게 */
+      .sidebar-logo { padding-left: 66px; min-height: 54px; }
       #sidebarBackdrop.open { display: block; }
 
       .main-panel {
@@ -742,6 +797,13 @@
 
       .btn-row { flex-direction: column; }
       .btn-row button { width: 100%; }
+
+      /* 좁은 화면 줄바꿈 — 카드 헤더 배지·복사 버튼, 엑셀 단계 행, 목록 옵션 */
+      .card-header { flex-wrap: wrap; gap: 8px; }
+      .step-row { flex-wrap: wrap; }
+      .step-row .btn-secondary { margin-left: 0 !important; }
+      .section-header { flex-wrap: wrap; }
+      .bulk-actions button { flex: 1 1 auto; }
 
       #listResultTable, #groupListResultTable {
         font-size: 12px;
@@ -876,7 +938,10 @@
             </div>
             <div class="form-group full">
               <label id="secretKeyLabel" for="privateKeyHex">비밀 키 (Secret key, Hex) <span class="required">*</span></label>
-              <input type="text" id="privateKeyHex" placeholder="예: 30... (Signature 방식)">
+              <div class="secret-input-wrap">
+                <input type="password" id="privateKeyHex" placeholder="예: 30... (Signature 방식)" autocomplete="off" spellcheck="false">
+                <button type="button" class="btn-secondary secret-toggle" aria-pressed="false" aria-controls="privateKeyHex" onclick="toggleSecretVisibility('privateKeyHex', this)">표시</button>
+              </div>
             </div>
           </div>
           <div class="btn-row">
@@ -898,7 +963,7 @@
           <span class="card-title">발급 결과</span>
           <div style="display:flex;gap:8px;align-items:center;">
             <span id="tokenResultBadge" class="result-status-badge" style="display:none;"></span>
-            <button class="btn-ghost" onclick="var el=document.getElementById('tokenResult');navigator.clipboard.writeText(el.innerText||el.textContent)">복사</button>
+            <button class="btn-ghost" onclick="copyResultText('tokenResult')">복사</button>
           </div>
         </div>
         <div class="card-body">
@@ -940,7 +1005,7 @@
           <div style="display:flex;gap:8px;align-items:center;">
             <span class="card-badge">필수 정보</span>
             <span id="addResultBadge" class="result-status-badge" style="display:none;"></span>
-            <button class="btn-ghost" onclick="var el=document.getElementById('result');navigator.clipboard.writeText(el.innerText||el.textContent)">복사</button>
+            <button class="btn-ghost" onclick="copyResultText('result')">복사</button>
           </div>
         </div>
         <div class="card-body">
@@ -1100,7 +1165,7 @@
           <span class="card-title">수동 삭제</span>
           <div style="display:flex;gap:8px;align-items:center;">
             <span id="deleteResultBadge" class="result-status-badge" style="display:none;"></span>
-            <button class="btn-ghost" onclick="var el=document.getElementById('deleteResult');navigator.clipboard.writeText(el.innerText||el.textContent)">복사</button>
+            <button class="btn-ghost" onclick="copyResultText('deleteResult')">복사</button>
           </div>
         </div>
         <div class="card-body">
@@ -1195,7 +1260,7 @@
           <span class="card-title">수정 정보 입력</span>
           <div style="display:flex;gap:8px;align-items:center;">
             <span id="updateResultBadge" class="result-status-badge" style="display:none;"></span>
-            <button class="btn-ghost" onclick="var el=document.getElementById('updateResult');navigator.clipboard.writeText(el.innerText||el.textContent)">복사</button>
+            <button class="btn-ghost" onclick="copyResultText('updateResult')">복사</button>
           </div>
         </div>
         <div class="card-body">
@@ -1213,10 +1278,11 @@
               <input type="text" id="updateName" placeholder="예: 홍길동">
             </div>
             <div class="form-group">
-              <label for="updateEnabled">account.enabled</label>
+              <label for="updateEnabled">account.enabled (활성 상태)</label>
               <select id="updateEnabled">
-                <option value="true">true</option>
-                <option value="false">false</option>
+                <option value="" selected>변경 안 함</option>
+                <option value="true">true (활성화)</option>
+                <option value="false">false (비활성화)</option>
               </select>
             </div>
             <div class="form-group">
@@ -1360,7 +1426,7 @@
           <span class="card-title">수동 추가</span>
           <div style="display:flex;gap:8px;align-items:center;">
             <span id="groupAddResultBadge" class="result-status-badge" style="display:none;"></span>
-            <button class="btn-ghost" onclick="var el=document.getElementById('groupResult');navigator.clipboard.writeText(el.innerText||el.textContent)">복사</button>
+            <button class="btn-ghost" onclick="copyResultText('groupResult')">복사</button>
           </div>
         </div>
         <div class="card-body">
@@ -1448,13 +1514,13 @@
           <span class="card-title">수동 수정</span>
           <div style="display:flex;gap:8px;align-items:center;">
             <span id="groupUpdateResultBadge" class="result-status-badge" style="display:none;"></span>
-            <button class="btn-ghost" onclick="var el=document.getElementById('groupUpdateResult');navigator.clipboard.writeText(el.innerText||el.textContent)">복사</button>
+            <button class="btn-ghost" onclick="copyResultText('groupUpdateResult')">복사</button>
           </div>
         </div>
         <div class="card-body">
           <div class="form-grid">
             <div class="form-group">
-              <label for="updGroupId">수정할 그룹 ID</label>
+              <label for="updGroupId">수정할 그룹 ID <span class="required">*</span></label>
               <input type="text" id="updGroupId" placeholder="예: a1b1f52d896044f6a651624f0f5114ab">
             </div>
             <div class="form-group">
@@ -1468,6 +1534,12 @@
             <div class="form-group">
               <label for="updGroupMembers">그룹 멤버 ID 리스트 (콤마 구분)</label>
               <input type="text" id="updGroupMembers" placeholder="예: test1@forcs.com,test2@forcs.com">
+            </div>
+            <div class="form-group full">
+              <label class="inline-check">
+                <input type="checkbox" id="updGroupClearMembers"> 멤버 비우기 (그룹의 멤버를 모두 제거)
+              </label>
+              <p class="field-hint">빈 칸은 보내지 않습니다 — 입력한 항목만 수정됩니다. 멤버를 모두 빼려면 "멤버 비우기"를 선택하세요.</p>
             </div>
           </div>
           <div class="btn-row">
@@ -1540,7 +1612,7 @@
           <span class="card-title">수동 삭제</span>
           <div style="display:flex;gap:8px;align-items:center;">
             <span id="groupDeleteResultBadge" class="result-status-badge" style="display:none;"></span>
-            <button class="btn-ghost" onclick="var el=document.getElementById('groupDeleteResult');navigator.clipboard.writeText(el.innerText||el.textContent)">복사</button>
+            <button class="btn-ghost" onclick="copyResultText('groupDeleteResult')">복사</button>
           </div>
         </div>
         <div class="card-body">
@@ -1630,6 +1702,7 @@
             <button type="button" id="toggleIncludeField" class="toggle-small off">OFF</button>
           </label>
         </div>
+        <div id="groupCountLabel" style="font-size:12px;color:var(--text-muted);margin-bottom:8px;"></div>
         <div class="view-toggle">
           <button onclick="listGroups('json', this)">JSON</button>
           <button onclick="listGroups('table', this)">TABLE</button>
