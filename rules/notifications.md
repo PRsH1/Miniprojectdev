@@ -90,6 +90,7 @@ await triggerNewNotification('private-notifications-admin', notificationRows[0],
 | type | 발생 시점 | 수신자 | 이동 경로 |
 |---|---|---|---|
 | `signup_request` | `POST /api/signup` | admin (target_role) | `/app/admin?tab=signup-requests` |
+| `password_reset_request` | `POST /api/password-reset-request`(새 대기 요청을 만들었을 때만 — 중복·없는 아이디는 알림 없음, 응답은 동일) | admin (target_role) | `/app/admin?tab=users` |
 | `bug_report` | `POST /api/bug-reports` | admin (target_role) | `/app/admin?tab=bug-reports` |
 | `bug_report_status` | 관리자가 bug status 변경 시 | 제보자 (target_user_id) | `/community/bug-report.html#my-reports` |
 | `bug_report_reply` | 관리자가 cause/action_taken 최초 등록 시 | 제보자 (target_user_id) | `/community/bug-report.html#my-reports` |

@@ -302,6 +302,7 @@
     function getNotificationDest(type) {
         if (type === 'signup_request') return '/app/admin?tab=signup-requests';
         if (type === 'bug_report') return '/app/admin?tab=bug-reports';
+        if (type === 'password_reset_request') return '/app/admin?tab=users';
         if (type === 'bug_report_status') return '/community/bug-report.html#my-reports';
         if (type === 'bug_report_reply') return '/community/bug-report.html#my-reports';
         return '/app/admin';

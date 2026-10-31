@@ -222,6 +222,7 @@
         <button class="btn btn-primary signup-filter-btn" data-status="pending">대기 중</button>
         <button class="btn btn-ghost signup-filter-btn" data-status="approved">승인됨</button>
         <button class="btn btn-ghost signup-filter-btn" data-status="rejected">거절됨</button>
+        <button class="btn btn-ghost" id="btnReloadSignup" style="margin-left:auto"><i class="fa fa-rotate"></i> 새로고침</button>
       </div>
 
       <div class="card">
@@ -324,8 +325,12 @@
       <!-- 사용자 목록 -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">사용자 목록</span>
-          <button class="btn btn-primary" id="btnCreateUser"><i class="fa fa-plus"></i> 사용자 생성</button>
+          <span class="card-title">사용자 목록 <span id="userSearchCount" style="font-size:12px;font-weight:400;color:var(--text-muted)"></span></span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="search" class="form-input" id="userSearch" placeholder="아이디·이메일 검색" style="width:220px" aria-label="사용자 검색">
+            <button class="btn btn-ghost" id="btnReloadUsers" title="사용자 목록 새로고침"><i class="fa fa-rotate"></i></button>
+            <button class="btn btn-primary" id="btnCreateUser"><i class="fa fa-plus"></i> 사용자 생성</button>
+          </div>
         </div>
         <div class="card-body" style="padding:0">
           <div class="tbl-wrap">
@@ -511,11 +516,18 @@
 </div>
 
 <!-- 임시 비밀번호 표시 모달 -->
-<div class="modal-overlay" id="tempPwModal">
+<div class="modal-overlay" id="tempPwModal" data-keep-open="1">
   <div class="modal" style="text-align:center">
-    <h2>사용자 생성 완료</h2>
-    <p style="color:var(--text-sub);font-size:13px;margin-bottom:4px">임시 비밀번호 (최초 로그인 후 변경 필요)</p>
+    <h2 id="tempPwTitle">사용자 생성 완료</h2>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:4px">
+      아이디 <strong id="tempPwUsername"></strong> · 임시 비밀번호 (최초 로그인 후 변경 필요)
+    </p>
     <div class="temp-pw-box" id="tempPwDisplay"></div>
+    <div class="modal-actions" style="justify-content:center;margin-top:0;flex-wrap:wrap">
+      <button class="btn btn-ghost" id="btnCopyTempPw"><i class="fa fa-copy"></i> 비밀번호 복사</button>
+      <button class="btn btn-ghost" id="btnCopyTempPwMsg"><i class="fa fa-paper-plane"></i> 사용자 전달용 문구 복사</button>
+    </div>
+    <p class="form-msg ok" id="tempPwCopyMsg" style="text-align:center"></p>
     <p style="color:var(--danger);font-size:12px;margin-bottom:16px">이 창을 닫으면 비밀번호를 다시 볼 수 없습니다.</p>
     <div class="modal-actions" style="justify-content:center">
       <button class="btn btn-primary" id="closeTempPw">확인</button>
@@ -850,19 +862,43 @@ $(function () {
   // 사용자 관리
   // ═══════════════════════════════════════════════════════════
 
+  let _users = [];
+
+  // 아이디·이메일 부분 일치 (대소문자 무시) — 서버 호출 없이 이미 받은 목록에서 거른다
+  function filterUsers(users) {
+    const q = String($('#userSearch').val() || '').trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(function (u) {
+      return String(u.username || '').toLowerCase().includes(q)
+        || String(u.email || '').toLowerCase().includes(q);
+    });
+  }
+
+  function renderUserList() {
+    const shown = filterUsers(_users);
+    const q = String($('#userSearch').val() || '').trim();
+    $('#userSearchCount').text(q ? `(${shown.length} / ${_users.length})` : (_users.length ? `(${_users.length})` : ''));
+    renderUsers(shown, q);
+  }
+
+  $('#userSearch').on('input', renderUserList);
+  $('#btnReloadUsers').on('click', function () { loadUsers(); });
+
   function loadUsers() {
     $.getJSON('/api/admin/users', function (data) {
-      renderUsers(data.users || []);
+      _users = data.users || [];
+      renderUserList();
     }).fail(function (xhr) {
       if (xhr.status === 401) location.href = '/auth/login.html';
     });
     loadResetRequests();
   }
 
-  function renderUsers(users) {
+  function renderUsers(users, query) {
     const $tbody = $('#usersBody').empty();
     if (!users.length) {
-      $tbody.append('<tr class="empty-row"><td colspan="6">사용자 없음</td></tr>');
+      $tbody.append($('<tr class="empty-row">').append($('<td colspan="6">').text(
+        query ? `"${query}"와(과) 일치하는 사용자가 없습니다.` : '사용자 없음')));
       return;
     }
     users.forEach(function (u) {
@@ -926,8 +962,7 @@ $(function () {
       if (!confirm(`"${username}" 의 비밀번호를 초기화하시겠습니까?`)) return;
       $.post(`/api/admin/users/${id}/reset-password`)
         .done(function (data) {
-          $('#tempPwDisplay').text(data.temporaryPassword);
-          $('#tempPwModal').addClass('open');
+          showTempPassword({ title: '임시 비밀번호 발급', username, password: data.temporaryPassword });
           loadUsers();
         })
         .fail(function (xhr) { alert(errorMessage(xhr)); });
@@ -982,8 +1017,7 @@ $(function () {
         if (!confirm(`"${username}" 의 비밀번호를 초기화하시겠습니까?`)) return;
         $.post(`/api/admin/users/${userId}/reset-password`)
           .done(function (data) {
-            $('#tempPwDisplay').text(data.temporaryPassword);
-            $('#tempPwModal').addClass('open');
+            showTempPassword({ title: '임시 비밀번호 발급', username, password: data.temporaryPassword });
             loadUsers();
           })
           .fail(function (xhr) { alert(errorMessage(xhr)); });
@@ -1019,14 +1053,70 @@ $(function () {
       data: JSON.stringify({ username, email, role }),
     }).done(function (data) {
       $('#createUserModal').removeClass('open');
-      $('#tempPwDisplay').text(data.temporaryPassword);
-      $('#tempPwModal').addClass('open');
+      showTempPassword({ title: '사용자 생성 완료', username, password: data.temporaryPassword });
       loadUsers();
     }).fail(function (xhr) {
       $msg.text(errorMessage(xhr)).addClass('err');
     });
   });
-  $('#closeTempPw').on('click', function () { $('#tempPwModal').removeClass('open'); });
+  $('#closeTempPw').on('click', function () {
+    $('#tempPwModal').removeClass('open');
+    $('#tempPwDisplay').text('');
+    _tempPw = null;
+  });
+
+  // ─── 임시 비밀번호 모달 (P1-14) ─────────────────────────────
+  // 생성/재설정 결과를 같은 모달로 보여 주되 제목을 나누고, 비밀번호와 "사용자 전달용 문구"를 복사할 수 있게 한다.
+  let _tempPw = null;
+  function showTempPassword({ title, username, password }) {
+    _tempPw = { username: String(username || ''), password: String(password || '') };
+    $('#tempPwTitle').text(title);
+    $('#tempPwUsername').text(_tempPw.username);
+    $('#tempPwDisplay').text(_tempPw.password);
+    $('#tempPwCopyMsg').text('');
+    $('#tempPwModal').addClass('open');
+  }
+
+  function tempPwHandoffText() {
+    return [
+      '[eformsign Tools Hub] 임시 비밀번호 안내',
+      `아이디: ${_tempPw.username}`,
+      `임시 비밀번호: ${_tempPw.password}`,
+      `로그인: ${window.location.origin}/auth/login.html`,
+      '첫 로그인 후 새 비밀번호로 변경해야 계속 이용할 수 있습니다.',
+    ].join('\n');
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    // clipboard API가 없는 환경 — 임시 textarea로 복사
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if (!ok) throw new Error('copy failed');
+  }
+
+  $('#btnCopyTempPw').on('click', function () {
+    if (!_tempPw) return;
+    copyText(_tempPw.password)
+      .then(function () { $('#tempPwCopyMsg').removeClass('err').addClass('ok').text('비밀번호를 복사했습니다.'); })
+      .catch(function () { $('#tempPwCopyMsg').removeClass('ok').addClass('err').text('복사하지 못했습니다. 직접 선택해 복사하세요.'); });
+  });
+  $('#btnCopyTempPwMsg').on('click', function () {
+    if (!_tempPw) return;
+    copyText(tempPwHandoffText())
+      .then(function () { $('#tempPwCopyMsg').removeClass('err').addClass('ok').text('로그인 URL과 임시 비밀번호가 담긴 안내 문구를 복사했습니다.'); })
+      .catch(function () { $('#tempPwCopyMsg').removeClass('ok').addClass('err').text('복사하지 못했습니다. 직접 선택해 복사하세요.'); });
+  });
 
   // ═══════════════════════════════════════════════════════════
   // 보호 페이지 관리
@@ -1374,6 +1464,8 @@ $(function () {
     $('#signupTabTitle').text(titles[status] || '요청 목록');
     loadSignupRequests(status);
   });
+
+  $('#btnReloadSignup').on('click', function () { loadSignupRequests(_currentSignupStatus || 'pending'); });
 
   function loadSignupRequests(status) {
     status = status || _currentSignupStatus;
@@ -1987,8 +2079,9 @@ $(function () {
   });
 
   // ─── 모달 배경 클릭 닫기 ─────────────────────────────────
+  // data-keep-open 모달(임시 비밀번호)은 배경 클릭으로 닫지 않는다 — 비밀번호를 다시 볼 수 없으므로 [확인]으로만 닫음
   $('.modal-overlay').on('click', function (e) {
-    if (e.target === this) $(this).removeClass('open');
+    if (e.target === this && !this.hasAttribute('data-keep-open')) $(this).removeClass('open');
   });
 
   // ─── 서버 에러 → 화면 문구 (P1-13) ────────────────────────
@@ -2017,7 +2110,9 @@ $(function () {
   }
 
   // ─── 초기 로드 ────────────────────────────────────────────
+  // 사이드바 배지(가입 대기·비밀번호 재설정 대기)는 어느 탭으로 들어와도 첫 로드 때 채운다(P1-14)
   loadSignupRequests('pending');
+  loadResetRequests();
   const initialTab = TAB_ALIAS[new URLSearchParams(window.location.search).get('tab')] || 'signup';
   activateTab(initialTab, { skipUrlSync: true });
 });

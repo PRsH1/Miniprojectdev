@@ -129,6 +129,7 @@
     function _notificationDest(type) {
         if (type === 'signup_request') return '/app/admin?tab=signup-requests';
         if (type === 'bug_report') return '/app/admin?tab=bug-reports';
+        if (type === 'password_reset_request') return '/app/admin?tab=users';
         return '/app/admin';
     }
 
