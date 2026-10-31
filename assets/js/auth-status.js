@@ -176,7 +176,39 @@
         '  background: none; border: none; cursor: pointer; padding: 0;',
         '}',
         '#asbNotifPanel .anp-del-all:hover { color: #ef4444; }',
+        /* 아이콘(좁은 화면 전용) — 기본은 숨기고 라벨을 보인다 */
+        '#authStatusBar .asb-ico { display: none; width: 15px; height: 15px; flex-shrink: 0; }',
     ].join('\n');
+
+    // 좁은 화면: 상단 바 높이 40px는 그대로 두고(MemberV2 --auth-bar-h 등 의존)
+    // 브랜드·버튼 라벨을 아이콘으로 줄이고 사용자명은 말줄임 → 375px에서 버튼이 잘리지 않는다 (F-3)
+    // 코너 모드(우측 하단 패널)도 같은 아이콘 축약을 쓴다 — 라벨 그대로면 375px에서 왼쪽이 화면 밖으로 나간다
+    var compactCss = [
+        '@media (max-width: 720px) {',
+        CORNER ? '  #authStatusBar { gap: 6px; max-width: calc(100vw - 32px); }' : '  #authStatusBar { padding: 0 10px; gap: 6px; }',
+        '  #authStatusBar .asb-lbl { display: none; }',
+        '  #authStatusBar .asb-ico { display: block; }',
+        '  #authStatusBar .asb-brand { display: inline-flex; align-items: center; margin-right: 0; padding: 4px; }',
+        '  #authStatusBar .asb-btn.asb-icon-btn { padding: 6px 8px; }',
+        '  #authStatusBar .asb-username { min-width: 0; max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+        '  #authStatusBar .asb-role { flex-shrink: 0; }',
+        '  #asbNotifPanel { right: 8px; width: calc(100vw - 16px); max-width: 320px; }',
+        '}',
+    ].join('\n');
+
+    // 버튼 아이콘 (SVG — Font Awesome을 로드하지 않는 페이지에서도 동작, 장식용이라 aria-hidden)
+    function svgIcon(paths) {
+        return '<svg class="asb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + paths + '</svg>';
+    }
+    var ICON = {
+        home: svgIcon('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>'),
+        admin: svgIcon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'),
+        key: svgIcon('<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2"/><path d="M16 7l3 3"/><path d="M18 5l2 2"/>'),
+        logout: svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'),
+    };
+    var BRAND_HTML = '<a href="/" class="asb-brand" title="eformsign Tools Hub" aria-label="eformsign Tools Hub">' +
+        ICON.home + '<span class="asb-lbl">eformsign Tools Hub</span></a>';
 
     // 상단 바 모드에서만 body 여백 주입 (INLINE·CORNER는 기존 레이아웃 유지)
     var paddingCss = (!INLINE && !CORNER)
@@ -184,7 +216,7 @@
         : '';
 
     var styleEl = document.createElement('style');
-    styleEl.textContent = barCss + '\n' + commonCss + '\n' + paddingCss;
+    styleEl.textContent = barCss + '\n' + commonCss + '\n' + compactCss + '\n' + paddingCss;
     document.head.appendChild(styleEl);
 
     // ─── 바 DOM 삽입 ─────────────────────────────────────────
@@ -223,7 +255,7 @@
             // 기본 상단 바 모드 — 로그인 후 현재 페이지로 돌아오도록 next 전달(코너 모드와 동일)
             var barNext = '?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);
             el.innerHTML =
-                '<a href="/" class="asb-brand">eformsign Tools Hub</a>' +
+                BRAND_HTML +
                 '<span class="asb-spacer"></span>' +
                 '<a href="/auth/login.html' + escHtml(barNext) + '" class="asb-btn primary">로그인</a>' +
                 '<a href="/auth/signup.html" class="asb-btn">회원가입</a>';
@@ -231,14 +263,15 @@
         }
 
         var adminBtn = user.role === 'admin'
-            ? '<a href="/app/admin" class="asb-btn">관리자 콘솔</a>'
+            ? '<a href="/app/admin" class="asb-btn asb-icon-btn" title="관리자 콘솔" aria-label="관리자 콘솔">' +
+              ICON.admin + '<span class="asb-lbl">관리자 콘솔</span></a>'
             : '';
 
         // 자발적 비밀번호 변경 (P1-13) — 변경 후 지금 페이지로 돌아온다. 현재 비밀번호 확인은 변경 페이지가 요구한다
         var pwHref = '/auth/change-password.html?next=' +
             encodeURIComponent(window.location.pathname + window.location.search);
-        var pwBtn = '<a href="' + escHtml(pwHref) + '" class="asb-btn" id="asbBtnChangePw" title="비밀번호 변경">' +
-            (CORNER ? '비밀번호' : '비밀번호 변경') + '</a>';
+        var pwBtn = '<a href="' + escHtml(pwHref) + '" class="asb-btn asb-icon-btn" id="asbBtnChangePw" title="비밀번호 변경" aria-label="비밀번호 변경">' +
+            ICON.key + '<span class="asb-lbl">' + (CORNER ? '비밀번호' : '비밀번호 변경') + '</span></a>';
 
         // 벨 아이콘 — 상단 바 모드 로그인 사용자 공통
         var bellHtml = '';
@@ -252,18 +285,19 @@
         }
 
         // 코너 모드: brand 없이 유저 정보만
-        var brandHtml = CORNER ? '' : '<a href="/" class="asb-brand">eformsign Tools Hub</a>';
+        var brandHtml = CORNER ? '' : BRAND_HTML;
         var spacerHtml = CORNER ? '' : '<span class="asb-spacer"></span>';
 
         el.innerHTML =
             brandHtml +
             spacerHtml +
-            '<span class="asb-username">' + escHtml(user.username) + '</span>' +
+            '<span class="asb-username" title="' + escHtml(user.username) + '">' + escHtml(user.username) + '</span>' +
             '<span class="asb-role ' + escHtml(user.role) + '">' + escHtml(user.role) + '</span>' +
             bellHtml +
             adminBtn +
             pwBtn +
-            '<button class="asb-btn danger" id="asbBtnLogout">로그아웃</button>';
+            '<button class="asb-btn danger asb-icon-btn" id="asbBtnLogout" title="로그아웃" aria-label="로그아웃">' +
+            ICON.logout + '<span class="asb-lbl">로그아웃</span></button>';
 
         document.getElementById('asbBtnLogout').addEventListener('click', function () {
             fetch('/api/logout', { method: 'POST' })
