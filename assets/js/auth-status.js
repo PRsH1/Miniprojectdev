@@ -227,6 +227,12 @@
             ? '<a href="/app/admin" class="asb-btn">관리자 콘솔</a>'
             : '';
 
+        // 자발적 비밀번호 변경 (P1-13) — 변경 후 지금 페이지로 돌아온다. 현재 비밀번호 확인은 변경 페이지가 요구한다
+        var pwHref = '/auth/change-password.html?next=' +
+            encodeURIComponent(window.location.pathname + window.location.search);
+        var pwBtn = '<a href="' + escHtml(pwHref) + '" class="asb-btn" id="asbBtnChangePw" title="비밀번호 변경">' +
+            (CORNER ? '비밀번호' : '비밀번호 변경') + '</a>';
+
         // 벨 아이콘 — 상단 바 모드 로그인 사용자 공통
         var bellHtml = '';
         if (!CORNER) {
@@ -249,6 +255,7 @@
             '<span class="asb-role ' + escHtml(user.role) + '">' + escHtml(user.role) + '</span>' +
             bellHtml +
             adminBtn +
+            pwBtn +
             '<button class="asb-btn danger" id="asbBtnLogout">로그아웃</button>';
 
         document.getElementById('asbBtnLogout').addEventListener('click', function () {

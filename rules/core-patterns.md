@@ -67,7 +67,11 @@ const DOMAINS = {
 - 리프레시 토큰: 7일 (`refresh_token` httpOnly 쿠키, DB 저장, 사용 시마다 로테이션)
 - 미인증: `/auth/login.html?next=<page>` 리다이렉트
 - 권한 부족: `/auth/403.html`
-- 강제 비밀번호 변경 필요: `/auth/change-password.html`
+- 강제 비밀번호 변경 필요: `/auth/change-password.html?next=<page>` — 로그인(`login.js`)과 `/app/*`(`auth-middleware.js`)가
+  검증된 `next`를 넘기고, 변경 페이지는 `safeNext`로 다시 검증한 뒤 변경 성공 시 그 경로로 바로 이동한다(P1-13).
+  변경 API가 세션을 재발급하므로(아래 "비밀번호 변경") 재로그인이나 변경 페이지 재진입 없이 원래 페이지가 열린다.
+- 자발적 비밀번호 변경: `auth-status.js` 사용자 영역의 [비밀번호 변경] 버튼 → `/auth/change-password.html?next=<현재 경로>`
+  (현재 비밀번호 확인 필요, [변경하지 않고 돌아가기] 링크 제공)
 
 ### 세션 갱신 / 리프레시 토큰 로테이션 (경합 안전)
 
@@ -121,6 +125,14 @@ const DOMAINS = {
 - `error=inactive`는 **잠기지 않은 계정에서 비밀번호가 맞을 때만** 보낸다. 정답 여부가 드러나는 정도는 활성 계정의
   로그인 성공과 같고, 틀린 시도는 같은 카운터로 5회 후 잠긴다(잠긴 뒤에는 위 규칙대로 `invalid`).
 - 아이디 50자·비밀번호 256자를 넘으면 DB·scrypt 없이 `error=invalid`.
+- **승인 대기 안내 `error=pending` (P1-13)**: `users`에 없는 아이디이고 `signup_requests`에 `pending` 신청이 있으며
+  **비밀번호가 신청 때 비밀번호(`signup_requests.password_hash`)와 일치할 때만** 보낸다. 비밀번호를 모르면 `invalid`와
+  구별되지 않으므로 가입 신청 존재 여부는 드러나지 않는다. 가입 대기 조회는 `users` 조회와 `Promise.all`로 **항상** 함께
+  실행하고(쿼리 순서 동일), 더미 해시 대신 신청 해시로 scrypt를 1회 돌린다(비용 동일). 그 아이디의 최근 30분 `login_failed`
+  감사 로그(`pending_approval` 제외)가 5건 이상이면 정답이어도 `invalid`(잠금과 같은 D-1 원칙 — 무제한 추측 오라클 방지).
+  화면은 "가입 승인 대기 중" 문구와, 이 브라우저에서 가입했다면(`localStorage['eform-signup-request-id']`) 상태 확인 링크를 보여 준다.
+- 로그인 실패 후 아이디 유지: `auth/login.html`이 제출 시 아이디를 **sessionStorage**(`eform-login-username`)에만 두고
+  `?error=`로 돌아오면 채운다(URL·서버 로그에 아이디를 싣지 않음, 비밀번호는 저장하지 않음). 로그인 화면에 회원가입 링크가 있다.
 - IP 단위 제한은 코드가 아니라 **Vercel WAF rate limit** 규칙으로 건다(대시보드 설정, 사용자 작업).
   권장: `POST /api/login` IP당 10회/60초 초과 시 429(또는 Deny 10분), `POST /api/signup`·`/api/password-reset-request`
   IP당 5회/10분. Firewall 규칙은 배포와 별개라 코드 머지만으로는 적용되지 않는다.
@@ -135,7 +147,15 @@ const DOMAINS = {
 - 새 비밀번호가 현재(임시) 비밀번호와 같으면 400. 길이 8~256자.
 - 성공 시 `failed_login_count`·`locked_until` 초기화 + **현재 세션을 뺀** 이 사용자의 refresh 토큰을 모두 폐기한다
   (`replaced_by` 없이 `revoked_at`만 → grace 차단). 현재 세션 = 요청 쿠키의 refresh 토큰 + 같은 요청에서 로테이션됐다면 그 후속 토큰.
-  다른 기기의 액세스 토큰(최대 1시간)은 만료 전까지 남는다. JWT 재서명(`mustChangePw:false`)·현재 refresh 로테이션은 P1-13.
+  다른 기기의 액세스 토큰(최대 1시간)은 만료 전까지 남는다.
+- **세션 재발급 (P1-13)**: 다른 세션 폐기 **다음에** 현재 세션을 다시 발급한다(`reissueSession`).
+  요청 쿠키의 refresh 토큰을 `tryRefreshToken`(auth-middleware 정본, 원자적 claim)으로 로테이션해 새 `refresh_token` 쿠키를 내보내고,
+  `auth_token`은 `mustChangePw:false`로 다시 서명해 덮어쓴다. 같은 요청에서 `requireRole`이 이미 로테이션했다면(액세스 토큰 만료)
+  그 refresh 쿠키를 그대로 두고 `auth_token`만 바꾼다(이중 로테이션·쿠키 중복 없음). 실패 응답에는 쿠키를 새로 발급하지 않는다.
+- 클라이언트 에러 표시: 서버 에러는 `{ error: { message, reason, action } }` 객체다. 화면은 문자열로 바꿔 보여 준다
+  (`auth/*.html`은 message·reason, `private/Admin.html`은 공용 `errorMessage(xhr)` — message → reason → action 순). `xhr.responseJSON?.error`를
+  그대로 문자열로 쓰지 않는다(`[object Object]`).
+- 회원가입 중복은 409 `VALIDATION_FAILED` + "이미 사용 중인 아이디입니다." / "이미 사용 중인 이메일입니다."
 
 ### 역할(Role) 계층
 

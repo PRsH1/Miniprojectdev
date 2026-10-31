@@ -77,7 +77,7 @@
     }
     .btn-copy:hover{ background:#f1f5f9; }
     .copy-ok{ color:var(--success); font-size:12px; text-align:center; margin-top:6px; min-height:1.2em; }
-    .warn-text{ color:var(--danger); font-size:11px; margin-top:8px; text-align:center; }
+    .warn-text{ color:#92400e; font-size:12px; margin-top:8px; text-align:center; line-height:1.6; }
   </style>
 </head>
 <body>
@@ -135,7 +135,9 @@
       <div class="url-box" id="statusUrl"></div>
       <button class="btn-copy" id="btnCopy">🔗 URL 복사</button>
       <p class="copy-ok" id="copyOk"></p>
-      <p class="warn-text">이 URL을 저장해두세요. 다시 확인할 수 없습니다.</p>
+      <p class="warn-text">이 URL로 언제든 승인 여부를 확인할 수 있습니다. 브라우저 북마크에 추가해 두세요(Ctrl+D).</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px">승인 전에 로그인하면 이 브라우저에서는 상태 확인 링크가 함께 표시됩니다.</p>
+      <a class="btn-copy" id="btnOpenStatus" href="#" style="display:block;text-align:center;text-decoration:none;margin-top:8px">상태 확인 페이지 열기</a>
     </div>
   </div>
 
@@ -180,8 +182,11 @@
         const data = await r.json().catch(() => ({}));
 
         if (r.ok) {
-          const statusUrl = `${location.origin}/auth/signup-status.html?id=${data.requestId}`;
+          const statusUrl = `${location.origin}/auth/signup-status.html?id=${encodeURIComponent(data.requestId)}`;
           document.getElementById('statusUrl').textContent = statusUrl;
+          document.getElementById('btnOpenStatus').href = statusUrl;
+          // 승인 전 로그인 시 login.html이 상태 확인 링크를 보여 줄 수 있도록 이 브라우저에 요청 ID만 기억(P1-14)
+          try { localStorage.setItem('eform-signup-request-id', String(data.requestId)); } catch (e) { /* 저장 불가 환경 무시 */ }
           document.getElementById('formArea').style.display = 'none';
           document.getElementById('successArea').classList.add('show');
         } else {
