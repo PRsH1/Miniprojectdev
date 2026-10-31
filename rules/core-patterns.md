@@ -300,7 +300,10 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 - **알림 벨**: 기본(상단 바) 모드 + 로그인 사용자에게 벨 버튼 + 미읽음 배지 표시. Pusher WebSocket으로 실시간 갱신 (Pusher 연결 실패 시 300초 fallback 폴링). 클릭 시 드롭다운 패널 → 알림 목록 + "모두 읽음" 처리. CORNER 모드에서는 미표시
 - **모드별 적용 페이지**: 커뮤니티 두 페이지(`community/bug-report.html`·`developer-notes.html`)는 P1-18부터 **기본(상단 바)** 모드다
   (허브 링크·벨 필요). 코너 모드는 자체 헤더가 있는 OpenAPITester 등에만 쓴다
-- **[비밀번호 변경] 버튼**: 로그인 사용자에게 모든 모드에서 표시(코너 모드는 "비밀번호") → `/auth/change-password.html?next=<현재 경로>` (P1-13)
+- **[비밀번호 변경] 버튼**: 로그인 사용자에게 모든 모드에서 표시(코너 모드는 "비밀번호") → `/auth/change-password.html?next=<현재 경로>` (P1-13).
+  `index.html` 자체 헤더(`renderHeaderUser`)에도 같은 [비밀번호 변경] 링크(`?next=/`)가 있다(F-5)
+- **좁은 화면(720px 이하, F-3)**: 브랜드·관리자 콘솔·비밀번호 변경·로그아웃이 SVG 아이콘 버튼(`.asb-ico`, 라벨 `.asb-lbl`은 숨김, `title`·`aria-label` 유지)으로 바뀌고 사용자명은 말줄임(28vw). 코너 모드도 동일.
+  **상단 바 높이는 항상 40px** — `body { padding-top: 40px }`, 세션 만료 배너 `top:40px`, MemberV2 `--auth-bar-h`, Admin 사이드바/가로 탭 `top: 40px`가 이 값에 의존하므로 높이를 바꾸면 모두 함께 고친다
 - **주의:** 각 페이지에 `button { width: 100% }` 스타일이 있어도 `.asb-btn`에 `width: auto !important`가 적용되어 버튼이 늘어나지 않음
 - 기본 모드의 `.asb-brand`("eformsign Tools Hub")는 클릭 시 `/`(index)로 이동하는 링크(`<a>` 태그)로 렌더링됨
 
