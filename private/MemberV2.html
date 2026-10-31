@@ -700,6 +700,31 @@
     label.inline-check input[type="checkbox"] { width: auto; height: auto; }
     .field-hint { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
 
+    /* ─── 엑셀 일괄 처리 진행 패널 (P1-16, member/ui.js renderBulkPanel) ─ */
+    .bulk-panel {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      border-radius: var(--radius-md);
+      background: #fff;
+    }
+    .bulk-panel.bulk-ok   { border-left-color: var(--success); }
+    .bulk-panel.bulk-warn { border-left-color: #e8a200; background: #fffbeb; }
+    .bulk-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-bottom: 8px; }
+    .bulk-state { font-size: 13px; font-weight: 700; color: var(--primary); }
+    .bulk-ok .bulk-state { color: var(--success); }
+    .bulk-warn .bulk-state { color: #a16207; }
+    .bulk-progress-text { font-family: var(--font-mono); font-size: 12px; color: var(--text-sub); }
+    .bulk-bar { display: flex; height: 10px; background: #e5eaf1; border-radius: 99px; overflow: hidden; }
+    .bulk-bar-ok   { background: var(--success); transition: width .2s; }
+    .bulk-bar-fail { background: var(--danger);  transition: width .2s; }
+    .bulk-stats { font-size: 12px; color: var(--text-sub); margin-top: 6px; }
+    .bulk-note { font-size: 12px; color: #a16207; margin-top: 4px; line-height: 1.5; }
+    .bulk-note:empty { display: none; }
+    .bulk-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .bulk-actions button { height: 32px; font-size: 12px; width: auto; }
+
     /* ─── 토스트 (복사 피드백 등) ────────────────────────── */
     .member-toast {
       position: fixed; left: 50%; bottom: 28px; z-index: 100001;

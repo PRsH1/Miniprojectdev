@@ -138,3 +138,23 @@ setResultBadge('addResultBadge', false);  // → "Error" (빨강)
   파싱 실패는 "엑셀 파일을 읽을 수 없습니다…"로 안내한다. 6개 검증 함수는 `runExcelValidation()`을 거쳐 실패해도 스피너가 항상 해제된다.
   검증 통과 행은 `{ rowNumber(엑셀 행 번호), row(원본) }`로 보관한다.
 - **비밀 키 입력은 `type=password`** + [표시] 토글(`toggleSecretVisibility`).
+
+### 엑셀 일괄 처리 큐 (P1-16)
+
+엑셀 일괄 추가·삭제·수정(멤버 3종·그룹 3종)은 `Promise.all` 동시 전송 대신 공용 큐를 쓴다(`member/api.js`).
+
+- **`runQueue(items, worker, { concurrency, onProgress, signal })`**: 동시 요청 `BULK_CONCURRENCY`(=3)개.
+  `signal`이 abort되면 **새 행을 시작하지 않고** 진행 중인 요청은 끝까지 기다린다(이미 보낸 POST·DELETE는 서버에서 처리되므로 결과를 받아 기록).
+- **작업 정의 `BULK_JOBS`**: `memberAdd`·`memberDelete`·`memberUpdate`·`groupAdd`·`groupDelete`·`groupUpdate`.
+  각 항목은 `entries()`(검증 통과 행) · `prepare(targets)`(토큰·Base URL 확인, 삭제는 건수 확인창 — 취소 시 `null` → 요청 0건) ·
+  `request(item, ctx)`(URL·fetch init)로 구성된다. HTML의 기존 `executeExcel…()` 이름은 `startBulkJob(key)` 래퍼로 남겨 두었다.
+  새 일괄 작업을 추가할 때는 `BULK_JOBS`에 항목을 추가하고 실행 버튼을 `#…ExecuteSection`의 **직계 자식 `<button>`**으로 둔다(진행 패널이 그 섹션 안에 붙는다).
+- **행 상태**: `pending`(대기) → `running` → `success`(성공) / `fail`(실패) / `skipped`(미실행 — 중지·401로 시작하지 않은 행).
+  401을 받으면 남은 행도 실패하므로 큐를 자동 중지하고 토큰 배지를 "만료됨"으로 바꾼다.
+- **진행 패널** (`renderBulkPanel`, ui.js): 실행 섹션 안에 `n / 총` 진행률 막대(성공 초록·실패 빨강), 성공·실패·미실행 건수,
+  실행 중 [중지], 끝난 뒤 [실패 건만 재시도](실패 행만 다시 보냄) · [미실행 건 이어서 실행] · [결과 엑셀 다운로드].
+  실패가 있거나 중지되면 경고(노란) 상태로 "완료 (실패 N건)" / "중지됨 (미실행 N건)"을 표시한다.
+- **결과 엑셀** `{작업}_결과_YYYYMMDD_HHmmss.xlsx`: 엑셀 행 번호 + 원본 열 + 결과 + HTTP 상태 + 에러 코드·메시지(api-error 파서).
+  이름에 `password`·`pwd`·`secret`이 들어간 열은 `***`로 바꾼다(`maskBulkRow`).
+- **화면 결과**: 원본 JSON(비밀번호 포함)을 출력하지 않는다. 요약 한 줄 + 실패 목록(행 번호·ID·`HTTP 400 · [코드] 메시지`) + 미실행 행 번호만 표시한다.
+- 같은 섹션에서 파일을 다시 검증하면 이전 작업 결과 패널은 지워진다(실행 중이면 유지). 실행 중 페이지를 떠나면 `beforeunload` 경고.

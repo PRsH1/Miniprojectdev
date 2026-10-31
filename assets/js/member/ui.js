@@ -82,6 +82,83 @@ function copyResultText(elementId) {
   }
 }
 
+// ─── 엑셀 일괄 처리 진행 패널 (P1-16) ────────────────────
+// 실행 섹션(#excel…ExecuteSection) 안에 진행률 막대·건수·[중지]·[재시도]·[결과 엑셀]을 그린다.
+// 상태 계산은 api.js(bulkCounts 등), 여기서는 DOM만 다룬다. 모든 문자열은 textContent.
+function _bulkButton(label, cls, onClick) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = cls;
+  b.textContent = label;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function removeBulkPanel(sectionId) {
+  const section = document.getElementById(sectionId);
+  const panel = section && section.querySelector('.bulk-panel');
+  if (panel) panel.remove();
+}
+
+function renderBulkPanel(job) {
+  const section = document.getElementById(job.cfg.sectionId);
+  if (!section) return;
+  let panel = section.querySelector('.bulk-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.className = 'bulk-panel';
+    panel.setAttribute('aria-live', 'polite');
+    panel.innerHTML =
+      '<div class="bulk-head"><span class="bulk-state"></span><span class="bulk-progress-text"></span></div>' +
+      '<div class="bulk-bar" role="progressbar" aria-valuemin="0"><div class="bulk-bar-ok"></div><div class="bulk-bar-fail"></div></div>' +
+      '<div class="bulk-stats"></div>' +
+      '<div class="bulk-note"></div>' +
+      '<div class="bulk-actions"></div>';
+    section.appendChild(panel);
+  }
+  const c = bulkCounts(job);
+  const done = c.success + c.fail;
+  const pct = n => (c.total ? (n / c.total) * 100 : 0);
+
+  let state, stateCls;
+  if (job.running) {
+    state = job.stopReason ? '중지 중…' : '진행 중';
+    stateCls = 'running';
+  } else if (c.skipped) {
+    state = `중지됨 (미실행 ${c.skipped}건)`;
+    stateCls = 'warn';
+  } else if (c.fail) {
+    state = `완료 (실패 ${c.fail}건)`;
+    stateCls = 'warn';
+  } else {
+    state = '완료';
+    stateCls = 'ok';
+  }
+  panel.className = 'bulk-panel bulk-' + stateCls;
+  panel.querySelector('.bulk-state').textContent = state;
+  panel.querySelector('.bulk-progress-text').textContent = `${done} / ${c.total}`;
+  const bar = panel.querySelector('.bulk-bar');
+  bar.setAttribute('aria-valuemax', String(c.total));
+  bar.setAttribute('aria-valuenow', String(done));
+  panel.querySelector('.bulk-bar-ok').style.width = pct(c.success) + '%';
+  panel.querySelector('.bulk-bar-fail').style.width = pct(c.fail) + '%';
+  panel.querySelector('.bulk-stats').textContent =
+    `성공 ${c.success} · 실패 ${c.fail} · 미실행 ${c.skipped}` + (job.running ? ` · 대기 ${c.pending + c.running}` : '') + ` · 총 ${c.total}`;
+  panel.querySelector('.bulk-note').textContent = job.stopReason || '';
+
+  const actions = panel.querySelector('.bulk-actions');
+  actions.textContent = '';
+  if (job.running) {
+    const stop = _bulkButton('중지', 'btn-secondary bulk-stop', () => stopBulkJob(job.key));
+    if (job.stopReason) stop.disabled = true;
+    actions.appendChild(stop);
+  } else {
+    if (c.fail) actions.appendChild(_bulkButton(`실패 건만 재시도 (${c.fail})`, 'btn-secondary', () => retryBulkJob(job.key, 'fail')));
+    if (c.skipped) actions.appendChild(_bulkButton(`미실행 건 이어서 실행 (${c.skipped})`, 'btn-secondary', () => retryBulkJob(job.key, 'skipped')));
+    actions.appendChild(_bulkButton('결과 엑셀 다운로드', 'btn-teal', () => downloadBulkResult(job.key)));
+  }
+}
+
 // 비밀 키 표시/숨기기 토글
 function toggleSecretVisibility(inputId, button) {
   const input = document.getElementById(inputId);
