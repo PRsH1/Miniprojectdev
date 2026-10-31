@@ -140,7 +140,9 @@ const API_SPECS = {
 | `initHistory()` | async | 로그인 시 DB fetch → `historyCache` 세팅. 비로그인 시 no-op |
 | `historyLoad()` | 동기 | 캐시 또는 localStorage에서 배열 반환 |
 | `historySave(entries)` | 동기 | localStorage에만 저장 (비로그인 전용) |
-| `historyCaptureAndSave(name)` | **async** | 현재 요청 캡처 후 로그인=DB POST+캐시 / 비로그인=localStorage |
+| `historyCaptureAndSave(name, { replaceId })` | **async** | 현재 요청 캡처(`captureRequestSnapshot()`) 후 로그인=DB POST+캐시 / 비로그인=localStorage. `replaceId`가 있으면 덮어쓰기(아래) |
+| `captureRequestSnapshot()` | 동기 | 화면의 `{ method, pathParams, queryParams, headers, body }` — draft·저장 공용 |
+| `rememberCurrentDraft()` / `persistDraftSession()` / `readDraftSession()` | 동기 | draft 캐시·sessionStorage 보관/읽기 |
 | `historyDelete(id)` | **async** | 로그인=DB DELETE+캐시 / 비로그인=localStorage |
 | `historyClear()` | **async** | 로그인=DB 전체삭제+캐시 초기화 / 비로그인=localStorage 제거 |
 | `historyByEndpoint(endpointId)` | 동기 | `historyLoad()` 결과에서 필터링 |
@@ -150,12 +152,28 @@ const API_SPECS = {
 | 함수 | 역할 |
 |---|---|
 | `openSaveModal()` / `closeSaveModal()` | Save 모달 열기/닫기 |
-| `confirmSave()` | **async** — 저장 실행 → 실패 시 모달 유지 → 해당 엔드포인트 자동 펼침 → `buildSidebar()` 재호출 |
+| `openSaveModal()` / `confirmSave(mode)` | **async** — 불러온 항목이 있으면 기본 버튼이 [덮어쓰기], `confirmSave('new')`는 [새로 저장]. 실패 시 모달 유지 → 해당 엔드포인트 자동 펼침 → `buildSidebar()` 재호출. 저장 후 `state.currentHistoryId`를 방금 저장한 항목으로 바꾼다 |
 | `buildHistoryPanel()` | 저장됨 탭 flat 목록 렌더링 |
-| `loadHistoryEntry(entry)` | 저장 항목 불러오기: `selectEndpoint()` → 50ms 후 파라미터/Body/Authorization 복원 |
+| `loadHistoryEntry(entry)` | 저장 항목 불러오기: 환경이 다르면 바꾸고 토스트(`환경 변경: A → B`) → `selectEndpoint(id, { skipDraft: true })` → `applyRequestSnapshot(entry)` (지연 없음) |
+| `applyRequestSnapshot(snap)` | path·query·헤더를 **key로** 맞춰 복원, 정의에 없는 query·헤더는 사용자 추가 행으로 복원. requiresAuth API의 Authorization과 값이 빈 인증 헤더는 현재 값 유지 |
+| `resetRequestToDefault()` | [기본값 복원] — 현재 API의 draft를 버리고 정의 기본값으로 |
 | `historyClearConfirm()` | **async** — 전체 삭제 확인 → `expandedSaveEndpoints.clear()` → 재빌드 |
 
-**`state.currentHistoryId`:** 현재 불러온 히스토리 항목 ID. `loadHistoryEntry()` 시 설정, `selectEndpoint()` 직접 클릭 시 `null` 초기화.
+**`state.currentHistoryId`:** 현재 불러온 히스토리 항목 ID. `loadHistoryEntry()`·저장 시 설정, `selectEndpoint()` 직접 클릭·해당 항목 삭제 시 `null` 초기화.
+
+**덮어쓰기 (P1-09):** 저장 항목을 불러온 상태(같은 엔드포인트)에서 Save → [덮어쓰기]/[새로 저장].
+- 비로그인: localStorage에서 같은 id 항목을 빼고 새 내용으로 맨 앞에 넣는다(id 유지, 개수 그대로).
+- 로그인: 서버에 PATCH가 없어 **새로 POST → 성공하면 이전 id DELETE** 순서로 한다(기획서의 DELETE→POST와 반대 — POST 실패 시 원본을 잃지 않기 위해).
+  DELETE가 실패하면 두 항목이 모두 남고 토스트로 알린다. 저장 id는 서버가 새로 만들므로 덮어쓰면 id가 바뀐다. PATCH 도입은 서버(`controllers/requestHistory.js`) 변경 사항.
+
+**편집 내용 보존 — draft (P1-09):**
+- `requestDraftCache`(state.js, `responseCache`와 같은 엔드포인트별 캐시): `selectEndpoint()`가 떠나는 API의 `captureRequestSnapshot()`을 저장하고,
+  들어오는 API는 기본값으로 만든 뒤(`renderEndpointDefaults()`) draft가 있으면 `applyRequestSnapshot()`으로 덮는다. 메서드 select 변경도 포함.
+- sessionStorage `openapi_tester_draft_v1` = `{ v:1, current, env, customDomain, drafts }`: 입력이 멈춘 뒤 0.4초(`scheduleDraftPersist`) 및 API 전환 시 기록.
+  **인증 헤더 값은 `maskSensitiveHeaders()`로 비워서 저장**한다(메모리 캐시는 값 보유 — OPA2_007의 직접 입력 Authorization은 같은 탭 안에서 API를 오가도 유지).
+  용량 초과면 현재 API draft만 저장. 새로고침하면 환경·직접 입력 URL을 먼저 복원하고, 사이드바를 만든 뒤 마지막으로 보던 API를 열어 draft를 복원한다(토스트 안내).
+  토큰·API Key·Member ID·비밀 키는 저장하지 않는다(P0-08).
+- 진행 중인 요청이 있는데 API를 바꾸면 그 요청은 취소된다(응답이 다른 API 화면에 표시되는 것 방지).
 
 **DB API 엔드포인트 (`/api/request-history`):**
 

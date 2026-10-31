@@ -166,13 +166,20 @@ function debounce(fn, delay) {
     };
 }
 
-function selectEndpoint(id) {
+// options.skipDraft: 저장된 편집 내용(draft)을 복원하지 않고 기본값으로 연다 (저장 항목 불러오기용)
+function selectEndpoint(id, options = {}) {
     const ep = API_LIST.find(e => e.id === id);
     if (!ep) return;
 
-    // 이전 엔드포인트 응답 저장
+    // 진행 중인 요청은 취소한다 — 그대로 두면 응답이 새로 연 API 화면에 표시된다
+    if (state.inFlight && typeof cancelInFlightRequest === 'function') {
+        cancelInFlightRequest('switch');
+    }
+
+    // 이전 엔드포인트 응답·편집 내용 저장 (P1-09)
     if (state.currentEndpoint) {
         saveResponseState(state.currentEndpoint.id);
+        requestDraftCache[state.currentEndpoint.id] = captureRequestSnapshot();
     }
 
     state.currentEndpoint = ep;
@@ -197,10 +204,35 @@ function selectEndpoint(id) {
     $('#emptyState').hide();
     $('#requestArea').css('display', 'flex');
 
-    // Method & URL
+    $('#requestDesc').text(ep.description || '');
+
+    // 기본값으로 요청 구성 → 이 API에서 편집하던 내용이 있으면 덮어 복원
+    renderEndpointDefaults(ep);
+    const draft = options.skipDraft ? null : requestDraftCache[ep.id];
+    if (draft) applyRequestSnapshot(draft);
+
+    // 탭 자동 전환: Path 파라미터 있으면 Path → Body 있으면 Body → 기본 Query
+    if (ep.pathParams && ep.pathParams.length > 0) {
+        $('[data-tab="path"]').click();
+    } else if (ep.defaultBody && ['POST','PUT','PATCH','DELETE'].includes(ep.method)) {
+        $('[data-tab="body"]').click();
+    } else {
+        $('[data-tab="query"]').click();
+    }
+
+    // 현재 엔드포인트 응답 복원 (없으면 초기화)
+    $('#exampleResponsePanel').hide();
+    hideResponseNotice();
+    restoreResponseState(ep.id);
+    updateExampleResponseBtn(ep);
+
+    persistDraftSession();
+}
+
+// API 정의의 기본값으로 method·파라미터·Body·헤더를 다시 만든다
+function renderEndpointDefaults(ep) {
     $('#methodSelect').val(ep.method);
     updateMethodStyle();
-    $('#requestDesc').text(ep.description || '');
 
     // Build params table first, then update URL (order matters)
     buildParamsTable(ep);
@@ -214,26 +246,87 @@ function selectEndpoint(id) {
     }
     clearBodyError();
 
-    // 탭 자동 전환: Path 파라미터 있으면 Path → Body 있으면 Body → 기본 Query
-    if (ep.pathParams && ep.pathParams.length > 0) {
-        $('[data-tab="path"]').click();
-    } else if (ep.defaultBody && ['POST','PUT','PATCH','DELETE'].includes(ep.method)) {
-        $('[data-tab="body"]').click();
-    } else {
-        $('[data-tab="query"]').click();
-    }
-
     // Headers (auto-set Authorization if requiresAuth)
     buildHeadersTable(ep);
 
     updateParamsBadge();
     updateHeadersBadge();
+}
 
-    // 현재 엔드포인트 응답 복원 (없으면 초기화)
-    $('#exampleResponsePanel').hide();
-    hideResponseNotice();
-    restoreResponseState(ep.id);
-    updateExampleResponseBtn(ep);
+// [기본값 복원] — 이 API의 편집 내용(draft)을 버리고 API 정의 기본값으로 되돌린다
+function resetRequestToDefault() {
+    const ep = state.currentEndpoint;
+    if (!ep) return;
+    if (!confirm('이 API의 파라미터·헤더·Body 편집 내용을 버리고 기본값으로 되돌릴까요?')) return;
+    clearRequestValidation();
+    renderEndpointDefaults(ep);
+    delete requestDraftCache[ep.id];
+    persistDraftSession();
+    showToast('기본값으로 되돌렸습니다');
+}
+
+// 저장 항목·draft 스냅샷을 현재 화면(기본값으로 만든 상태)에 덮어 적용한다 (P1-09)
+//  - path·query·헤더는 행 순서가 아니라 key로 맞춘다. 정의에 없는 key는 사용자 추가 행으로 복원한다
+//  - Authorization(requiresAuth API)은 저장 값 대신 현재 발급된 토큰을 유지한다 (P0-08)
+//  - 값이 비어 있는 인증 헤더(저장 시 마스킹됨)는 기본값을 유지한다
+function applyRequestSnapshot(snap) {
+    const ep = state.currentEndpoint;
+    if (!snap || !ep) return;
+
+    if (snap.method && $(`#methodSelect option[value="${String(snap.method).replace(/[^A-Z]/gi, '')}"]`).length) {
+        $('#methodSelect').val(snap.method);
+        updateMethodStyle();
+    }
+
+    const savedPath = Array.isArray(snap.pathParams) ? snap.pathParams : [];
+    $('#pathBody tr').each(function() {
+        const key = $(this).find('.param-key').val();
+        const saved = savedPath.find(p => p && p.key === key);
+        if (saved) $(this).find('.param-val').val(saved.value == null ? '' : saved.value);
+    });
+
+    const savedQuery = (Array.isArray(snap.queryParams) ? snap.queryParams : []).filter(q => q && (q.key || q.value));
+    const usedQuery = new Set();
+    $('#queryBody tr').each(function() {
+        if ($(this).attr('data-user-added') === 'true') return;
+        const key = $(this).find('.param-key').val();
+        const idx = savedQuery.findIndex((q, i) => !usedQuery.has(i) && q.key === key);
+        if (idx < 0) return;
+        usedQuery.add(idx);
+        $(this).find('.param-enabled').prop('checked', savedQuery[idx].enabled !== false);
+        $(this).find('.param-val').val(savedQuery[idx].value == null ? '' : savedQuery[idx].value);
+    });
+    savedQuery.forEach((q, i) => {
+        if (usedQuery.has(i)) return;
+        $('#queryBody').append(makeQueryRow(q.key || '', q.value == null ? '' : q.value, '', false, q.enabled !== false, true));
+    });
+
+    const savedHeaders = (Array.isArray(snap.headers) ? snap.headers : []).filter(h => h && (h.key || h.value));
+    const usedHeaders = new Set();
+    $('#headersBody tr').each(function() {
+        if ($(this).attr('data-user-added') === 'true') return;
+        const key = $(this).find('.header-key').val();
+        const idx = savedHeaders.findIndex((h, i) => !usedHeaders.has(i) && h.key === key);
+        if (idx < 0) return;
+        usedHeaders.add(idx);
+        const saved = savedHeaders[idx];
+        $(this).find('.header-enabled').prop('checked', saved.enabled !== false);
+        const keepCurrent = (ep.requiresAuth && key === 'Authorization') || (isSensitiveHeaderKey(key) && !saved.value);
+        if (!keepCurrent) $(this).find('.header-val').val(saved.value == null ? '' : saved.value);
+    });
+    savedHeaders.forEach((h, i) => {
+        if (usedHeaders.has(i)) return;
+        const $row = makeHeaderRow(h.key || '', h.value == null ? '' : h.value, true);
+        $row.find('.header-enabled').prop('checked', h.enabled !== false);
+        $('#headersBody').append($row);
+    });
+
+    if (typeof snap.body === 'string') $('#bodyEditor').val(snap.body);
+    clearBodyError();
+
+    updateUrlPreview();
+    updateParamsBadge();
+    updateHeadersBadge();
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -324,13 +417,19 @@ function makeQueryRow(key = '', value = '', desc = '', required = false, enabled
 function addQueryRow() {
     $('#queryBody').append(makeQueryRow('', '', '', false, true, true));
     updateParamsBadge();
+    scheduleDraftPersist();
 }
 
 function removeRow(btn) {
     $(btn).closest('tr').remove();
     updateUrlPreview();
     updateParamsBadge();
+    updateHeadersBadge();
+    scheduleDraftPersist();
 }
+
+// 편집 내용을 sessionStorage에 보관 (입력이 멈춘 뒤 0.4초) — P1-09
+const scheduleDraftPersist = debounce(() => rememberCurrentDraft(), 400);
 
 function updateParamsBadge() {
     // Path 배지: 값 입력 여부와 무관하게 존재하는 파라미터 수
@@ -386,6 +485,7 @@ function makeHeaderRow(key = '', value = '', userAdded = true, description = '')
 function addHeaderRow() {
     $('#headersBody').append(makeHeaderRow());
     updateHeadersBadge();
+    scheduleDraftPersist();
 }
 
 function updateHeadersBadge() {
@@ -540,6 +640,7 @@ function formatBody() {
     try {
         $('#bodyEditor').val(JSON.stringify(JSON.parse(raw), null, 2));
         markBodyValid();
+        scheduleDraftPersist();
     } catch (e) {
         showBodyError(e.message);
     }
@@ -548,6 +649,7 @@ function formatBody() {
 function clearBody() {
     $('#bodyEditor').val('');
     clearBodyError();
+    scheduleDraftPersist();
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1356,10 +1458,30 @@ $(document).on('click', '#codeModal', function(e) {
 // ──────────────────────────────────────────────────────────────────────────
 // SAVE MODAL
 // ──────────────────────────────────────────────────────────────────────────
+// 저장된 요청을 불러온 상태에서 Save → [덮어쓰기]/[새로 저장] 선택 (P1-09)
+let saveModalReplaceId = null;
+
+function currentLoadedHistoryEntry() {
+    const ep = state.currentEndpoint;
+    if (!ep || !state.currentHistoryId) return null;
+    return historyLoad().find(e => e.id === state.currentHistoryId && e.endpointId === ep.id) || null;
+}
+
 function openSaveModal() {
     const ep = state.currentEndpoint;
     if (!ep) { showToast('API를 먼저 선택해주세요'); return; }
-    $('#saveNameInput').val(ep.name);
+    const loaded = currentLoadedHistoryEntry();
+    saveModalReplaceId = loaded ? loaded.id : null;
+    $('#saveNameInput').val(loaded ? loaded.name : ep.name);
+    if (loaded) {
+        $('#saveOverwriteHint').text(`불러온 저장 항목 "${loaded.name}"을(를) 지금 내용으로 덮어쓰거나, 새 항목으로 저장할 수 있습니다.`).show();
+        $('#btnSaveConfirmLabel').text('덮어쓰기');
+        $('#btnSaveAsNew').show();
+    } else {
+        $('#saveOverwriteHint').hide().text('');
+        $('#btnSaveConfirmLabel').text('저장');
+        $('#btnSaveAsNew').hide();
+    }
     $('#saveModal').addClass('open');
     setTimeout(() => $('#saveNameInput').select(), 50);
 }
@@ -1368,12 +1490,24 @@ function closeSaveModal() {
     $('#saveModal').removeClass('open');
 }
 
-async function confirmSave() {
+// mode: 'new'면 항상 새 항목, 생략하면 열 때 정한 기본 동작(불러온 항목이 있으면 덮어쓰기)
+let _saveInProgress = false;
+async function confirmSave(mode) {
+    if (_saveInProgress) return;
     const name = $('#saveNameInput').val().trim() || state.currentEndpoint?.name;
-    const entry = await historyCaptureAndSave(name);
+    const replaceId = mode === 'new' ? null : saveModalReplaceId;
+    _saveInProgress = true;
+    let entry;
+    try {
+        entry = await historyCaptureAndSave(name, { replaceId });
+    } finally {
+        _saveInProgress = false;
+    }
     if (!entry) return;
     closeSaveModal();
-    showToast(`"${name}" 저장됨`);
+    showToast(replaceId ? `"${name}" 덮어씀` : `"${name}" 저장됨`);
+    // 방금 저장한 항목을 "불러온 항목"으로 삼아 다음 저장 때 덮어쓰기를 고를 수 있게 한다
+    state.currentHistoryId = entry.id;
     if (state.currentEndpoint) {
         expandedSaveEndpoints.add(state.currentEndpoint.id);
     }
@@ -1438,46 +1572,37 @@ function loadHistoryEntry(entry) {
     const ep = API_LIST.find(e => e.id === entry.endpointId);
     if (!ep) { showToast('해당 API를 찾을 수 없습니다'); return; }
 
-    selectEndpoint(ep.id);
+    // 저장 당시 환경으로 맞춘다 — 바뀌면 토스트로 알린다 (예전에는 말없이 바뀌었다)
+    const $env = $('#envSelect');
+    const prevEnvLabel = $env.find('option:selected').text();
+    let envChanged = false;
+    if (entry.environment && entry.environment !== $env.val()
+        && $env.find('option').filter((i, o) => o.value === entry.environment).length) {
+        if (entry.environment === 'custom' && !String($('#customDomainInput').val() || '').trim() && entry.url) {
+            // 직접 입력 환경인데 도메인이 비어 있으면 저장된 URL에서 도메인 부분을 가져온다
+            const idx = String(entry.url).indexOf('/v2.0/');
+            if (idx > 0) $('#customDomainInput').val(String(entry.url).slice(0, idx));
+        }
+        $env.val(entry.environment).trigger('change');
+        envChanged = true;
+    }
+
+    // 다른 draft가 섞이지 않게 기본값에서 시작해 저장 항목을 적용한다
+    selectEndpoint(ep.id, { skipDraft: true });
     state.currentHistoryId = entry.id;
     $('.save-item').removeClass('active');
     $(`.save-item[data-history-id="${entry.id}"]`).addClass('active');
 
-    setTimeout(() => {
-        if (entry.environment) {
-            $('#envSelect').val(entry.environment).trigger('change');
-        }
+    // path·query·헤더는 key로 맞추고, 사용자가 추가한 query·헤더 행도 복원한다.
+    // 인증 헤더(Authorization, eformsign_signature 등)는 저장 항목 값으로 덮어쓰지 않는다 (P0-08).
+    applyRequestSnapshot(entry);
+    rememberCurrentDraft();
 
-        if (entry.pathParams?.length) {
-            $('#pathBody tr').each(function(i) {
-                const saved = entry.pathParams[i];
-                if (saved) $(this).find('.param-val').val(saved.value);
-            });
-        }
-
-        if (entry.queryParams?.length) {
-            $('#queryBody tr').each(function(i) {
-                const saved = entry.queryParams[i];
-                if (saved && !$(this).data('user-added')) {
-                    $(this).find('.param-enabled').prop('checked', saved.enabled);
-                    $(this).find('.param-val').val(saved.value);
-                }
-            });
-        }
-
-        // 인증 헤더(Authorization, eformsign_signature 등)는 저장 항목 값으로 덮어쓰지 않는다.
-        // selectEndpoint()가 현재 발급된 토큰으로 헤더를 채우므로 그대로 유지한다 (P0-08).
-        // (과거에는 저장 당시 토큰으로 덮어써서 재발급 후 불러오면 401이 났다)
-
-        if (entry.body) {
-            $('#bodyEditor').val(entry.body);
-        }
-
-        updateUrlPreview();
-        updateParamsBadge();
-        updateHeadersBadge();
+    if (envChanged) {
+        showToast(`"${entry.name}" 불러옴 · 환경 변경: ${prevEnvLabel} → ${$env.find('option:selected').text()}`, 3500);
+    } else {
         showToast(`"${entry.name}" 불러옴`);
-    }, 50);
+    }
 }
 
 async function historyClearConfirm() {

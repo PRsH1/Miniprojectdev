@@ -60,12 +60,26 @@ $(document).ready(function() {
         updateBaseUrlBadge();
         updateUrlPreview();
         updateAuthUI();
+        persistDraftSession();
     });
     $('#customDomainInput').on('input', function() {
         updateBaseUrlBadge();
         updateUrlPreview();
         updateAuthUI();
+        scheduleDraftPersist();
     });
+
+    // 새로고침 전 편집 내용(sessionStorage) — 환경은 바로, API·draft는 사이드바를 만든 뒤 복원 (P1-09)
+    const savedSession = readDraftSession();
+    if (savedSession) {
+        if (savedSession.customDomain) $('#customDomainInput').val(savedSession.customDomain);
+        if (savedSession.env && $('#envSelect option').filter((i, o) => o.value === savedSession.env).length) {
+            $('#envSelect').val(savedSession.env).trigger('change');
+        }
+    }
+
+    // 파라미터·헤더·Body·Method 편집 내용을 draft로 보관
+    $('#requestArea').on('input change', 'input, textarea, select', scheduleDraftPersist);
 
     // 전송 전 검증 오류 표시는 해당 입력을 고치면 바로 지운다
     $(document).on('input change', '#requestArea .kv-input.has-error', function() {
@@ -128,6 +142,7 @@ $(document).ready(function() {
     // 로그인 상태 캐시 후 DB 히스토리 초기화
     refreshAuthUser().then(() => initHistory()).then(() => {
         buildSidebar();
+        restoreDraftSession(savedSession);
     });
 });
 
@@ -197,6 +212,18 @@ $(document).ready(function() {
         document.addEventListener('mouseup', onMouseUp);
     });
 })();
+
+// 새로고침 전에 보던 API와 편집 내용을 복원한다 (인증 헤더 값은 저장하지 않았으므로 현재 토큰 사용)
+function restoreDraftSession(saved) {
+    if (!saved || !saved.drafts || typeof saved.drafts !== 'object') return;
+    Object.keys(saved.drafts).forEach(id => {
+        if (!requestDraftCache[id] && API_LIST.some(ep => ep.id === id)) requestDraftCache[id] = saved.drafts[id];
+    });
+    if (!state.currentEndpoint && saved.current && API_LIST.some(ep => ep.id === saved.current)) {
+        selectEndpoint(saved.current);
+        if (saved.drafts[saved.current]) showToast('새로고침 전 편집 내용을 복원했습니다 (인증 헤더 값 제외)', 3000);
+    }
+}
 
 function updateBaseUrlBadge() {
     const url = getBaseUrl();
