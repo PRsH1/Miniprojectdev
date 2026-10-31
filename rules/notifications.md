@@ -110,7 +110,7 @@ await triggerNewNotification('private-notifications-admin', notificationRows[0],
 
 ```html
 <!-- index.html: </body> 직전 로드 -->
-<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+<script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
 <script src="/assets/js/notification-bell.js"></script>
 ```
 ```javascript

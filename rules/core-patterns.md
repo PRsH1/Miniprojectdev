@@ -270,7 +270,7 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 `</body>` 직전에 Pusher CDN + `auth-status.js` 순서로 로드한다. Pusher CDN이 없으면 알림 실시간 갱신이 fallback 폴링(300초)으로 동작한다.
 
 ```html
-<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+<script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
 <script src="/assets/js/auth-status.js"></script>
 ```
 
@@ -290,7 +290,7 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 
 ```html
 <!-- 코너 모드 예시 (OpenAPITesterFull.html) -->
-<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+<script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
 <script>window.AUTH_STATUS_CORNER = true;</script>
 <script src="/assets/js/auth-status.js"></script>
 ```

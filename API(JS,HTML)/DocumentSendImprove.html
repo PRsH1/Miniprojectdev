@@ -188,7 +188,7 @@
     <template id="tpl-param"><div class="list-item"><span class="remove-btn">✕</span><label>파라미터 ID:<input name="param_id" required/></label><label>값:<input name="param_value"/></label></div></template>
     <template id="tpl-notify"><div class="list-item"><span class="remove-btn">✕</span><label>이름:<input name="notify_name" required/></label><label>이메일:<input name="notify_email" required/></label><label>국가코드:<input name="notify_cc"/></label><label>번호:<input name="notify_num"/></label><label>기한 (일):<input name="notify_day" type="number" value="0"/></label><label>기한 (시간):<input name="notify_hour" type="number" value="0"/></label><label>비밀번호:<input name="notify_pwd"/></label></div></template>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js" integrity="sha384-CYM1EjcB6PBH9xEVtC9Mbegj0ZIphHj14fUBspgRcPBqZeGsjqyu242Sh9P4BNPa" crossorigin="anonymous"></script>
     <script src="/assets/js/token-issuer.js"></script>
     <script src="/assets/js/result-panel.js"></script>
     <script src="/assets/js/api-error.js"></script>
@@ -601,7 +601,7 @@ window.CREDENTIAL_CONFIG = {
 };
 </script>
 <script src="/assets/js/credential-panel.js"></script>
-<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+<script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>
