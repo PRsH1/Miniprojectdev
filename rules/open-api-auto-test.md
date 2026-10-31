@@ -46,7 +46,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 ### 자동 채움 값
 
 - `companyId`: 토큰 발급 응답의 `api_key.company.company_id`에서 자동 추출 → `state.companyId`
-- `companyApiKey`: 인증 패널의 API Key 입력값에서 자동 채움 (`els.authApiKey.value`)
+- `companyApiKey`: 설정 모달의 API Key 입력값에서 자동 채움 (`authInputs().apiKey` = `#formApiKey`)
 - 두 값 모두 설정 모달에 입력 필드 없음 — 직접 입력 불필요
 
 ### 준비 상태(readiness) 시스템
@@ -54,6 +54,34 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 - `readiness(scenario)`: `scenario.keys`를 순회하여 비어 있는 항목을 `missing` 배열로 반환
 - `missing.length === 0` → 준비됨 / 하나라도 있으면 → 설정 필요
 - 상세 패널 "누락된 설정" 섹션(`#missingSectionWrap`)은 누락 시에만 표시
+- **실행 시 readiness SKIP (P1-11)**: `runSet()`은 데이터 설정이 빠진 OPA(`missingDataKeys()` — `auth.panel` 제외)를 실행하지 않고
+  모든 step을 `SKIP("설정 필요: data.attachTemplateId")`로 기록한다. FAIL이 아니다. 인증 누락은 실행 첫 단계(토큰 준비) 실패로 드러난다.
+
+### 실행 안전장치 (P1-11)
+
+- **처음 방문 시 선택 없음**: 기본으로 아무 OPA도 선택하지 않는다. 마지막 선택은 프로필별로 localStorage
+  `open-api-auto-test-selection-v1`(`{ 프로필명: [code…] }`)에 기억하고, 프로필 전환(`loadProfile`) 시 해당 프로필 선택을 복원한다.
+  기본 환경(SaaS 운영)은 그대로다(Q12).
+- **선택 없이 실행** → `alert` 대신 요약 패널의 인라인 안내(`#runNotice`, `showRunNotice()`/`hideRunNotice()`).
+- **실행 전 확인 모달** `#runConfirmModal`: [현재 OPA만 실행]·[선택한 OPA 실행]·재실행 버튼 모두 `requestRun(codes)` → `confirmRun()`
+  (Promise) → 확인 시에만 `runSet()`. 표시: 대상 환경 + Base URL, 회사(company_id, 발급 전이면 안내), 프로필/인증, OPA·step 수,
+  쓰기 작업이 있는 OPA 목록(`WRITE_STEP_KINDS` 분류 — 문서 작성·발송·취소·삭제, 멤버·그룹 추가·수정·삭제, 도장 생성·삭제 등),
+  설정 필요로 건너뛸 OPA. SaaS 운영이면 빨간 경고 문구, Base URL이 비면 실행 버튼 비활성. 기본 포커스는 [취소], Esc·바깥 클릭은 취소.
+  모달 내용은 전부 `textContent`로 채운다.
+- **실행 중 잠금** `setRunLock(true)`: 실행 버튼·전체 선택/해제, 헤더 환경 select·Custom URL, 입력값 설정 버튼(모달), 프로필 select를
+  비활성화하고 열린 설정 모달을 닫는다. `baseUrl()`은 요청마다 다시 읽으므로 잠그지 않으면 실행 도중 다른 서버로 요청이 간다.
+  실행 중 과거 이력 열기도 막는다. 실행 중 탭 닫기·새로고침은 `beforeunload` 경고.
+- **[중지]** `#stopRunBtn` → `requestStop()`: `state.stopRequested = true` + 진행 중 요청의 `AbortController`를 모두 취소한다.
+  - 취소된 step은 `SKIP("사용자 중지 — 진행 중이던 요청을 취소했습니다…")` (서버에서 이미 처리됐을 수 있음).
+  - 이후 step은 `SKIP("사용자 중지")`. **단, 정리 step은 정리할 자원이 있으면 실행**한다(`STOP_CLEANUP_TARGETS`:
+    `cancelDocs`/`deleteDocs`=`createdIdList`, `deleteGroup`=`createdGroupId`, `deleteMember`=`memberCreated`,
+    `cleanupBulk1/2`=`bulkMemberIds`, `deleteStamp`=`companyStampId`). 결과 행 이름에 "· 중지 후 정리"가 붙고,
+    자원이 없으면 `SKIP("사용자 중지 (정리 대상 없음)")`. 정리 요청은 `state.cleanupPhase` 동안만 `request()`가 허용한다.
+  - **선행 FAIL 시 정리 step도 SKIP하는 기존 동작은 바꾸지 않는다**(기획서 0절 — P0-13 제외). 중지 후 정리는 FAIL이 없던 OPA에만 해당한다.
+  - `state.shared.memberCreated`(createMember가 PASS/CHECK)는 `freshShared()`에 추가된 공유 변수다.
+  - 중지된 실행은 진행 문구가 "중지됨: …", 이력 항목에 "(중지됨)", 리포트 `meta.stopped = true`.
+- **요청 타임아웃**: step 요청마다 60초(`REQUEST_TIMEOUT_MS`). 넘으면 요청을 취소하고 `FAIL`(`responseStatus: "TIMEOUT"`)로 기록한다
+  — 예외가 아니라 결과를 반환하므로 `try*` 자동 시도 step은 다음 후보로 넘어간다. 토큰 발급(`issueAccessToken`)은 대상이 아니다.
 
 ### 설정 모달 입력 필드
 
@@ -99,6 +127,14 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 - 1회 마이그레이션: `init()`에서 `migrateStoredSecrets()`가 이전 버전이 남긴 `open-api-auto-test-profiles-v1`/`open-api-auto-test-config-v1`의 비밀값을 제거한다. 구버전 Export 파일을 Import하면 비밀값은 현재 탭 메모리에만 반영되고 저장소에는 기록되지 않는다.
 - 설정 모달 프로필 툴바 아래에 "비밀키는 [인증 저장]으로" 안내 문구가 있다.
 
+### 인증 입력 (P1-12)
+
+- 인증 입력·토큰 발급·초기화는 **설정 모달**(`formAuthMode`/`formApiKey`/`formAuthMemberId`/`formSecretKey`, `#modalIssueTokenBtn`)에서만 한다.
+  예전의 항상 숨겨진 인라인 인증 패널(`authApiKey`·`btnIssueToken` 등)은 삭제했다. 코드는 `authInputs()`로 모달 필드를 읽는다.
+- 헤더 아래 "사용자 설정" 줄(`#authPanelToggle`)은 설정 모달 런처이며 토큰 상태 배지(`#authTokenBadge`), Company ID, 상태 문구(`#authStatusBadge`:
+  토큰 없음 / Bearer 토큰 입력됨 / 토큰 보유)를 보여 준다. 실행 중에는 `locked` 클래스로 비활성.
+- 화면 오류·안내는 `alert()`를 쓰지 않는다 — 요약 패널 `#runNotice`(`showRunNotice`), 설정 모달 `#modalAuthMessage`(`showModalAuthMessage`), `#settingsStatusText`.
+
 ### 사용 가이드
 
 가이드 모달 내용은 `OpenAPIAutoTest.js` 하단의 `hydrateGuideContent()` 함수에서 주입한다.
@@ -107,7 +143,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 ### 비(非)자명한 동작 — 수정 시 주의
 
 - **완료 문서 판별 기준**: `doc.current_status.status_type === "003"` — 숫자 3이 아닌 **문자열** `"003"`으로 엄격 비교
-- **토큰 발급은 공유 모듈 사용**: `issueTokenFromPanel()`은 `window.issueAccessToken`(`assets/js/token-issuer.js`)을 호출한다(direct → 전송실패 시에만 `/api/getToken` 프록시, 인증거부는 즉시 실패 → `[코드] 메시지` alert). 자체 `fetchTokenDirect`/`fetchTokenViaProxy`는 제거됨. 성공 시 `#authTokenBadge`·`#modalTokenBadge`에 토큰 상태 배지(token-badge.js), `request()`가 토큰 요청에서 401을 받으면 배지를 "만료됨"으로 바꾼다. `private/OpenAPIAutoTest.html` 로드 순서: `token-issuer.js` → `token-badge.js` → `api-error.js` → `OpenAPIAutoTest.js`
+- **토큰 발급은 공유 모듈 사용**: `issueTokenFromPanel()`은 `window.issueAccessToken`(`assets/js/token-issuer.js`)을 호출한다(direct → 전송실패 시에만 `/api/getToken` 프록시, 인증거부는 즉시 실패 → 설정 모달 `#modalAuthMessage`에 `토큰 발급 실패: [코드] 메시지` 인라인 표시). 자체 `fetchTokenDirect`/`fetchTokenViaProxy`는 제거됨. 성공 시 헤더 런처의 `#authTokenBadge`와 설정 모달의 `#modalTokenBadge`에 토큰 상태 배지(token-badge.js — [토큰 재발급]은 설정 모달을 열고 모달의 토큰 발급 실행), `request()`가 토큰 요청에서 401을 받으면 배지를 "만료됨"으로 바꾼다. `private/OpenAPIAutoTest.html` 로드 순서: `token-issuer.js` → `token-badge.js` → `api-error.js` → `OpenAPIAutoTest.js`
 - **OPA 037 pdfTargetPhone은 선택**: email 또는 phone 중 하나만 있으면 실행 가능. `keys`에는 `data.pdfTargetEmail`만 포함
 - **`freshShared()`**: 실행 시마다 초기화되는 step 간 공유 상태. 새 공유 변수 추가 시 이 함수에도 추가할 것
 - **`globalChecks()`의 "주 템플릿" 항목 없음**: 모든 문서 생성 OPA가 자동탐색으로 전환되어 제거됨
@@ -158,7 +194,22 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 - 새 실행 시작 시 이전 리포트 데이터는 덮어써진다
 - **Step별 요청/응답 인라인 펼침**: OPA별 결과 표의 각 step 행 아래에 표준 `<details>` 행이 추가되어 Request Body·Response를 펼쳐 볼 수 있다. 모달·내보낸 HTML(JS 없이 동작)·Markdown(GitHub 호환 `<details>`) 모두 반영. 본문은 `truncateBody()`로 절단(기본 16384자)하며, 본문 없는 step은 "(본문 없음)" 표기. 공통 헬퍼: `truncateBody()` / `stepDetailToRow()`
 
+#### 결과 표 필터·복사 (P1-12)
+
+- 결과 패널 상단 툴바: **[전체|FAIL|CHECK|SKIP]** 필터(`#resultFilterBar`, 버튼별 건수) + **[모두 펼치기/접기]**(`#expandAllBtn`) + **[실패 OPA만 재실행 (N)]**(`#rerunFailedBtn`).
+  필터는 `state.resultFilter`, 행 `tr.result-row[data-status]`와 짝 `tr.log-row[data-for]`를 함께 숨긴다. OPA 구분 행(`tr.opa-divider-row[data-group]`)은
+  그 OPA에 보이는 행이 있을 때만 표시. CACHE는 SKIP 필터에 포함되지 않는다(PASS 취급). 결과 표를 비울 때는 `resetResultTable()`을 쓴다(행 맵·필터·펼침 초기화).
+- 행 데이터는 `resultRows`(rowId → result + `stepId`) 맵에 보관하고, 결과 보기 토글·복사 버튼은 `#resultTableBody` 하나의 위임 리스너(`bindResultTable()`)가 처리한다.
+  `appendRow(index, result, stepId)` — 세 번째 인자로 stepId를 넘긴다(이력 복원은 `stepDetailToRow()`가 `stepId`를 포함).
+- step 상세(결과 보기) 안: **[요청 복사]**(`METHOD URL` + 본문), **[응답 복사]**, **[cURL로 복사]**. cURL의 인증 헤더는 항상 플레이스홀더
+  `Authorization: Bearer <ACCESS_TOKEN>`(OPA 007 `createExternalDoc`은 `<BASE64_COMPANY_API_KEY>`) — 실제 토큰·키는 넣지 않는다. 셸 인용은 작은따옴표(`'''` 이스케이프).
+  URL이 없는 step(SKIP·사전 준비 실패)은 cURL 버튼 비활성. OpenAPITester 스니펫 생성기(`openapi/ui.js`)는 재사용하지 않고 독립 구현(`buildCurl()`).
+- **[실패 OPA만 재실행]**: `state.lastReportData.opaSummary`에서 결과가 `FAIL`인 OPA만(CHECK·사전 준비 제외) 선택 상태로 바꾸고 실행 확인 모달을 연다(`selectAndRequestRun()`).
+  과거 이력을 열었을 때도 그 이력 기준으로 표시된다.
+
 #### 프로필별 실행 이력 복원
 
 - 사이드바 "프로필별 실행 이력" 항목을 클릭하면 우측 결과 패널에 과거 실행 결과 행이 복원되고(`loadHistoryRun(id)`), "리포트 보기"로 해당 실행 리포트를 다시 열 수 있다. 복원 시 결과 패널 상단에 `#historyViewBanner` 경고 배너(과거 이력 안내)가 표시되고, 새 실행을 시작하면 배너가 사라지며 라이브로 복귀한다.
 - 이력은 localStorage(`open-api-auto-test-history-v1`)에 프로필명 키로 최대 10건 저장되며, 각 엔트리에 `id` + 리포트 스냅샷(`report`)이 포함된다. 저장 시 `snapshotReportForHistory()`가 본문을 `truncateBody`로 절단해 용량을 절감하고, `QuotaExceededError` 발생 시 가장 오래된 엔트리부터 제거하며 재시도(최소 1건) → 그래도 실패하면 `report`를 뺀 요약-only 엔트리로 저장한다(`persistHistoryMap()`). `report`가 없는 구(舊) 엔트리는 클릭 비활성("상세 데이터 없음" 표기).
+- 각 이력 항목의 **[같은 OPA 다시 실행]**(P1-12)은 그 이력의 `codes`를 선택 상태로 바꾸고 실행 확인 모달을 연다(상세 데이터가 없는 구 엔트리도 가능). 중지된 실행은 "(중지됨)" 표기.
+- 실행 중에는 과거 이력 열기·다시 실행이 막힌다.

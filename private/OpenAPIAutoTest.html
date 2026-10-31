@@ -122,6 +122,36 @@
         .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
         .btn-secondary { border: 1px solid var(--border); background: #fff; color: #475569; }
         .btn-secondary:hover { border-color: #94a3b8; }
+        .btn-secondary:disabled { color: #94a3b8; background: #f8fafc; cursor: not-allowed; }
+        .btn-danger { border: none; background: var(--red); color: #fff; border-radius: 6px; padding: 10px 14px; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+        .btn-danger:hover { background: #b83232; }
+        .btn-danger:disabled { background: #e8a0a0; cursor: progress; }
+        .header-tools select:disabled, .header-tools input:disabled { opacity: 0.55; cursor: not-allowed; }
+        /* 실행 안내 (alert 대체) */
+        .run-notice { margin-top: 12px; padding: 9px 12px; border-radius: 8px; font-size: 0.84rem; line-height: 1.5; border: 1px solid; }
+        .run-notice.warn { background: #fffbeb; border-color: #fde68a; color: #92670c; }
+        .run-notice.error { background: #fdecec; border-color: #f5c2c2; color: #b42318; }
+        .run-notice.info { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+        /* 실행 확인 모달 (P1-11) */
+        .confirm-overlay { display: none; position: fixed; inset: 0; z-index: 2300; background: rgba(10,18,28,0.72); backdrop-filter: blur(3px); align-items: center; justify-content: center; padding: 16px; }
+        .confirm-overlay.open { display: flex; }
+        .confirm-modal { background: #fff; border-radius: 14px; width: min(640px, 100%); max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.28); }
+        .confirm-header { background: var(--sidebar-bg); padding: 16px 22px; }
+        .confirm-header h2 { color: #fff; font-size: 1rem; }
+        .confirm-header p { color: var(--sidebar-muted); font-size: 0.8rem; margin-top: 2px; }
+        .confirm-body { padding: 18px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .confirm-warn { background: #fdecec; border: 1px solid #f5c2c2; color: #b42318; border-radius: 8px; padding: 10px 12px; font-size: 0.82rem; line-height: 1.5; font-weight: 600; }
+        .confirm-row { display: flex; gap: 12px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 0.84rem; }
+        .confirm-key { color: #64748b; flex: 0 0 120px; }
+        .confirm-value { color: #0f172a; font-weight: 600; word-break: break-all; }
+        .confirm-value.danger { color: var(--red); }
+        .confirm-list { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 0.82rem; }
+        .confirm-list.write { border-color: #fdba74; background: #fff7ed; }
+        .confirm-list.skip { border-color: #fde68a; background: #fffbeb; }
+        .confirm-list-title { font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+        .confirm-list ul { padding-left: 18px; max-height: 180px; overflow-y: auto; }
+        .confirm-list li { color: #334155; line-height: 1.6; }
+        .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--border); background: #f8fafc; }
         .status-grid { margin-top: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
         .status-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: #f8fafc; }
         .status-card .label { color: #64748b; font-size: 0.77rem; margin-bottom: 6px; }
@@ -300,6 +330,22 @@
             background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow-x: auto;
         }
         .log-box h3 { font-size: 0.8rem; margin-bottom: 8px; color: #334155; }
+        .log-btn:disabled { color: #cbd5e1; cursor: not-allowed; border-color: var(--border); }
+        .log-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+        /* 결과 필터·모두 펼치기 (P1-12) */
+        .result-toolbar { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .result-filters { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .filter-btn { border: none; border-right: 1px solid var(--border); background: #fff; color: #475569; padding: 6px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+        .filter-btn:last-child { border-right: none; }
+        .filter-btn:hover { background: #f1f5f9; }
+        .filter-btn.active { background: var(--blue); color: #fff; }
+        .filter-count { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: rgba(15,23,42,0.08); font-size: 0.72rem; }
+        .filter-btn.active .filter-count { background: rgba(255,255,255,0.25); }
+        .result-toolbar .log-btn { padding: 6px 10px; }
+        .result-toolbar .rerun-btn { margin-left: auto; border-color: #fca5a5; color: var(--red); font-weight: 600; }
+        .history-rerun-btn { margin-top: 6px; border: 1px solid #bcd4f5; background: #fff; color: var(--blue); border-radius: 6px; padding: 3px 8px; font-size: 0.74rem; font-weight: 600; cursor: pointer; }
+        .history-rerun-btn:hover { background: #eaf2fe; }
+        .history-rerun-btn:disabled { color: #94a3b8; border-color: var(--border); cursor: not-allowed; }
         /* ===== AUTH PANEL ===== */
         .auth-panel { background: var(--white); border-bottom: 1px solid var(--border); flex-shrink: 0; }
         .auth-panel-header {
@@ -315,18 +361,10 @@
         .auth-panel-header .auth-status.action { color: #4fa8ff; font-weight: 600; }
         .auth-panel-header.launcher { cursor: pointer; }
         .auth-panel-header.launcher:hover { background: #f3f8ff; }
-        .auth-panel-header.launcher #authChevron { display: none; }
-        .auth-panel-body.hidden { display: none !important; }
-        .auth-panel-body { padding: 0 20px 16px; display: none; }
-        .auth-panel-body.open { display: block; }
-        .auth-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; margin-bottom: 12px; }
-        .auth-grid .span2 { grid-column: span 2; }
-        .auth-field label { display: block; font-size: 0.78rem; font-weight: 600; color: #718096; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.4px; }
-        .auth-field input { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.85rem; background: #fff; color: #1a202c; }
-        .auth-field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(45,123,224,0.1); }
-        .auth-method-tabs { display: flex; gap: 8px; }
-        .auth-method-tab { flex: 1; padding: 7px; border: 1px solid var(--border); border-radius: 6px; background: #fff; font-size: 0.84rem; cursor: pointer; text-align: center; color: #718096; transition: all 0.15s; }
-        .auth-method-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+        .auth-panel-header.launcher.locked { cursor: not-allowed; opacity: 0.6; }
+        .auth-panel-header .auth-hint { font-weight: 400; color: #94a3b8; font-size: 0.78rem; }
+        .header-token-badge:empty { display: none; }
+        .header-token-badge .tb-badge { margin: 0; }
         .auth-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .token-display { flex: 1; min-width: 180px; font-size: 0.78rem; color: #718096; background: #f7fafc; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: monospace; cursor: pointer; }
         .token-display:hover { border-color: #a0aec0; }
@@ -435,8 +473,8 @@
             .summary-top { flex-direction: column; }
             .run-actions { width: 100%; }
             .run-actions button { flex: 1; }
-            .auth-grid { grid-template-columns: 1fr; }
-            .auth-grid .span2 { grid-column: span 1; }
+            .auth-panel-header { flex-wrap: wrap; }
+            .result-toolbar { flex-wrap: wrap; }
             .guide-steps { grid-template-columns: 1fr; }
             .report-header { align-items: flex-start; flex-wrap: wrap; }
             .report-header-actions { margin-left: 0; width: 100%; }
@@ -481,39 +519,10 @@
         <div class="auth-panel">
             <div class="auth-panel-header launcher" id="authPanelToggle" role="button" tabindex="0">
                 <i class="fa-solid fa-key fa-sm" style="color:#e6a817"></i>
-                <span class="auth-title">사용자 설정</span>
-                <span class="auth-status action" id="authStatusBadge">입력값 설정 열기</span>
-                <i class="fa-solid fa-chevron-down fa-xs" id="authChevron" style="color:#a0aec0;transition:transform 0.2s"></i>
-            </div>
-            <div class="auth-panel-body hidden" id="authPanelBody" aria-hidden="true">
-                <div class="auth-grid">
-                    <div class="auth-field">
-                        <label>API Key</label>
-                        <input type="text" id="authApiKey" placeholder="API Key 입력">
-                    </div>
-                    <div class="auth-field">
-                        <label>User ID (member_id)</label>
-                        <input type="text" id="authMemberId" placeholder="User ID 입력">
-                    </div>
-                    <div class="auth-field span2">
-                        <label>인증 방식</label>
-                        <div class="auth-method-tabs">
-                            <button class="auth-method-tab active" data-method="signature" id="authTabSignature">Signature 방식 (비밀키 Hex)</button>
-                            <button class="auth-method-tab" data-method="bearer" id="authTabBearer">Bearer Token 방식</button>
-                        </div>
-                    </div>
-                    <div class="auth-field span2">
-                        <label id="authSecretLabel">비밀 키 (Secret Key, Hex)</label>
-                        <input type="password" id="authSecretKey" placeholder="비밀 키 입력 (Hex 형식)">
-                    </div>
-                </div>
-                <div class="auth-actions">
-                    <button class="btn-primary" id="btnIssueToken"><i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급</button>
-                    <button class="btn-secondary" id="btnClearToken"><i class="fa-solid fa-xmark fa-sm"></i> 초기화</button>
-                    <div class="token-display" id="authTokenDisplay" title="클릭하여 복사">토큰을 발급받아 주세요</div>
-                    <div class="company-id-display" id="authCompanyIdDisplay" style="display:none">Company ID: <span id="authCompanyIdValue">-</span></div>
-                </div>
-                <div id="authTokenBadge"></div>
+                <span class="auth-title">사용자 설정 <small class="auth-hint">— 클릭해 인증·테스트 값 입력</small></span>
+                <span class="company-id-display" id="authCompanyIdDisplay" style="display:none">Company ID: <span id="authCompanyIdValue">-</span></span>
+                <span id="authTokenBadge" class="header-token-badge"></span>
+                <span class="auth-status no-token" id="authStatusBadge">토큰 없음 · 클릭해 입력값 설정에서 발급</span>
             </div>
         </div>
 
@@ -527,9 +536,11 @@
                     <button class="btn-secondary" id="openSettingsModalBtn">입력값 설정</button>
                     <button class="btn-secondary" id="runActiveBtn">현재 OPA만 실행</button>
                     <button class="btn-primary" id="runSelectedBtn">선택한 OPA 실행</button>
+                    <button class="btn-danger" id="stopRunBtn" type="button" style="display:none"><i class="fa-solid fa-stop fa-sm"></i> 중지</button>
                     <button class="btn-secondary" id="openReportBtn" style="display:none"><i class="fa-solid fa-chart-bar fa-sm"></i> 리포트 보기</button>
                 </div>
             </div>
+            <div id="runNotice" class="run-notice warn" role="status" aria-live="polite" hidden></div>
 
             <div class="status-grid">
                 <div class="status-card"><div class="label">선택된 OPA</div><div class="value" id="selectedCount">0개</div></div>
@@ -668,6 +679,7 @@
                             <div class="company-id-display" id="modalCompanyIdDisplay" style="display:none">Company ID: <span id="modalCompanyIdValue">-</span></div>
                         </div>
                         <div id="modalTokenBadge"></div>
+                        <div id="modalAuthMessage" class="run-notice error" role="status" aria-live="polite" hidden></div>
                         <div class="settings-divider"></div>
                         <div class="settings-subtitle">고급 JSON 편집</div>
                         <div class="settings-toolbar">
@@ -705,6 +717,16 @@
                     </div>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
                     <div id="historyViewBanner" class="history-view-banner" style="display:none;"></div>
+                    <div class="result-toolbar">
+                        <div class="result-filters" id="resultFilterBar" role="group" aria-label="결과 필터">
+                            <button class="filter-btn active" type="button" data-filter="all" aria-pressed="true">전체<span class="filter-count">0</span></button>
+                            <button class="filter-btn" type="button" data-filter="FAIL" aria-pressed="false">FAIL<span class="filter-count">0</span></button>
+                            <button class="filter-btn" type="button" data-filter="CHECK" aria-pressed="false">CHECK<span class="filter-count">0</span></button>
+                            <button class="filter-btn" type="button" data-filter="SKIP" aria-pressed="false">SKIP<span class="filter-count">0</span></button>
+                        </div>
+                        <button class="log-btn" type="button" id="expandAllBtn" disabled>모두 펼치기</button>
+                        <button class="log-btn rerun-btn" type="button" id="rerunFailedBtn" style="display:none">실패 OPA만 재실행</button>
+                    </div>
                 </div>
 
                 <div class="table-wrap">
@@ -747,6 +769,21 @@
 </div>
 
 <div class="settings-modal-overlay" id="settingsModalOverlay"></div>
+
+<!-- RUN CONFIRM MODAL (P1-11) — 내용은 OpenAPIAutoTest.js confirmRun()이 textContent로 채움 -->
+<div class="confirm-overlay" id="runConfirmModal" role="dialog" aria-modal="true" aria-labelledby="runConfirmTitle">
+    <div class="confirm-modal">
+        <div class="confirm-header">
+            <h2 id="runConfirmTitle">테스트 실행 확인</h2>
+            <p>대상 환경과 실행할 작업을 확인한 뒤 실행하세요.</p>
+        </div>
+        <div class="confirm-body" id="runConfirmBody"></div>
+        <div class="confirm-actions">
+            <button class="btn-secondary" id="runConfirmCancelBtn" type="button">취소</button>
+            <button class="btn-primary" id="runConfirmOkBtn" type="button">실행</button>
+        </div>
+    </div>
+</div>
 
 <!-- GUIDE MODAL -->
 <div class="guide-overlay" id="guideModal" onclick="closeGuideOutside(event)">
