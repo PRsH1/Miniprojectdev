@@ -38,6 +38,24 @@ API 도구의 결과 영역은 `<pre>`를 직접 만들지 말고 `window.Result
 - 로드 순서: `token-issuer.js` 바로 다음(페이지 인라인 스크립트보다 앞).
 - DocumentDownload는 direct 호출이 CORS/네트워크로 실패하면 `/api/downloadDocument` 프록시로 재시도하고(결과 배지 `via proxy`), 확장자는 content-type으로 추론한다. 프록시는 Vercel 응답 한도(약 4.5MB)를 넘는 파일을 전달하지 못한다.
 
+### CSV 내보내기 공유 모듈 (`assets/js/csv-export.js`)
+
+표 데이터를 CSV로 내려받을 때는 직접 문자열을 조립하지 말고 `window.CsvExport`를 쓴다(IIFE, 의존성 없음).
+
+- `CsvExport.download(prefix, headers, rows)` → `<prefix>_<YYYYMMDD_HHmmss>.csv`. **UTF-8 BOM**을 붙여 Excel에서 한글이 깨지지 않고, 줄 구분은 CRLF.
+- 모든 값을 큰따옴표로 감싸고(내부 `"`는 `""`), `=`·`+`·`-`·`@`·탭·CR로 시작하는 값 앞에 `'`를 붙여 **CSV 수식 주입**을 막는다(문서 제목·템플릿 이름은 외부 데이터).
+- `CsvExport.build(headers, rows)`(BOM 없는 문자열), `CsvExport.formatDate(epochMs)` → `YYYY-MM-DD HH:mm:ss`(로컬, 잘못된 값은 `''`).
+- 적용: `API(JS,HTML)/listdocuments.html`(현재 페이지 5열), `utils/DocumentDelete.html`·`utils/templateDeletetool.html`(대상 CSV·결과 CSV). 테스트: `test/csv-export.test.js`.
+
+### 일괄 삭제 도구 안전장치 (`utils/DocumentDelete.html`, `utils/templateDeletetool.html`, P1-06)
+
+- 조회 후 **미리보기 표**(문서: #·ID·제목·상태·생성일 / 템플릿: #·ID·이름·카테고리·생성일·수정일)와 [대상 CSV 다운로드].
+- `confirm()`을 쓰지 않는다. 확인 모달에서 **삭제 건수를 정확히 입력**해야 [삭제 실행]이 활성화된다(문서는 휴지통·완전 삭제 모두, 템플릿은 항상).
+- [중지]는 플래그만 세운다. 문서는 배치(100건) 사이·대기 중, 템플릿은 다음 요청 전·20건 대기 중에 확인하며 **진행 중 요청은 완료를 기다린다**.
+- 대상별 결과를 `deleteResults`에 남겨 [결과 CSV](ID·결과 `성공`/`실패`/`미실행`·에러 코드·메시지)를 제공한다. 문서 `fail_result` 항목은 ID 문자열/객체 모두 해석하고, 응답 어디에도 없는 ID는 `실패`("응답에 결과가 없음")로 둔다.
+- 진행 문구는 항상 `pct% (n / total)`. DocumentDelete는 상태 체크박스가 0개면 요청 없이 "상태를 1개 이상 선택하세요"를 표시한다.
+- 기본 종료일은 로컬 날짜로 채운다(`toISOString()`은 UTC라 KST 09시 전에는 어제가 된다).
+
 ### API 에러 표시 공유 모듈 (`assets/js/api-error.js`)
 
 eformsign API·허브 프록시의 에러 응답은 raw JSON 대신 `window.renderApiError(container, info)`로 보여 준다(IIFE, jQuery 불필요, 모든 외부 문자열 textContent).
@@ -255,6 +273,11 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 - **크기 제한**: 직렬화한 이벤트가 9000바이트(Pusher 10KB 제한 여유분)를 넘으면 `company_id`/`webhook_id`/`event_type`/문서 핵심 필드만 남긴 요약본에 `truncated: true`, `originalSize`를 붙여 보낸다. 모니터는 "(요약본…)"을 표시한다.
 - **모니터 렌더링**: `utils/webhook.html`은 표 셀·토큰 결과·문서 정보 결과를 모두 `.text()`/`textContent`로만 렌더링한다(`createRow`, `renderPre`).
 - **문서 정보 조회 토큰 전달**: `/api/getDocumentInfo`에는 `Authorization: Bearer <token>` 헤더로 보낸다. 서버는 헤더를 우선 읽고, 쿼리 `token=`은 하위 호환으로만 허용하며 폐기 예정 경고 로그를 남긴다.
+- **모니터 로컬 이력 (P1-07)**: 채널은 공개 `company-{company_id}` 그대로(Q3 기본안). 수신 이벤트 원본(`{headers, body, receivedAt, truncated?}`)을 localStorage `webhook-monitor-history-v1:<company_id>`에 **회사별 최신순 최대 200건** 보관하고, 다시 그릴 때도 같은 `addLogEntry`(textContent)로 렌더링한다.
+  마지막 Company ID는 `webhook-monitor-company-id`에 기억해 다음 방문 시 이력 복원 + 채널 재연결. 토큰 발급 성공 시 응답 `api_key.company.company_id`로 자동 채운다.
+  모든 저장소 접근은 try/catch — 차단되면 화면에만 표시하고 안내 문구를 바꾸며, 용량 초과면 오래된 것부터 줄여 재시도한다. 서버 저장은 P2-05.
+- **모니터 기타**: 수신 URL [복사]·"eformsign 설정 방법" 안내, 새 이벤트가 와도 상태 필터 유지(숨겨지면 토스트), 제목 없는 PDF는 `<document_id>.pdf`로 다운로드.
+  `/api/downloadDocument`의 `Content-Disposition: filename*="UTF-8''…"`(따옴표 포함)를 그대로 파싱한다.
 - 테스트: `test/webhook-receiver.test.js`
 
 ---
