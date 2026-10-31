@@ -19,8 +19,8 @@
 - **DB:** Postgres (Neon) — `@neondatabase/serverless` ^0.10.4, `controllers/_shared/db.js`의 `sql` 태그 사용
 - **인증:** JWT (`jsonwebtoken` ^9.0.2) — 액세스/리프레시 토큰 + httpOnly 쿠키
 - **eformsign 서명:** jsrsasign (ECDSA SHA256) — 브라우저에서 CDN으로 로드해 서명한다.
-  서버 코드는 jsrsasign을 `require`하지 않는다. CDN 버전이 페이지마다 다름
-  (`Embedding/*` 8.0.20, 그 외 10.5.25)
+  서버 코드는 jsrsasign을 `require`하지 않는다. 전 페이지 10.5.25로 통일(P0b-08 — `Embedding/*`의 8.0.20을 올림.
+  같은 DUMMY 키·입력으로 두 버전 서명을 WebCrypto와 상대 버전으로 교차 검증해 호환 확인)
 - **SAML:** samlify ^2.15.1 + uuid ^11.1.1 (`lib/saml.js`의 Assertion/Response ID 생성)
   — samlify 2.13 미만의 AttributeValue XML 주입 취약점 수정 버전. 회귀 테스트: `test/saml-response.test.js`
   (openssl로 일회성 키·인증서를 만들어 서명·속성·이스케이프를 검사, openssl이 없으면 skip)

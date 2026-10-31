@@ -7,7 +7,7 @@
     <title>템플릿 관리 임베딩(CSAP 공공)</title>
 
     <script src="https://code.jquery.com/jquery-2.1.4.min.js" integrity="sha384-R4/ztc4ZlRqWjqIuvf6RX5yb/v90qNGx6fS48N0tRxiGkqveZETq72KgDVJCp2TC" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js" integrity="sha384-iEb928DoTETut8P+mWPU2V+aSAkEMbwPcXss4i3lXxYDc/BDoVblYRGX0dJxqZ3X" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js" integrity="sha384-CYM1EjcB6PBH9xEVtC9Mbegj0ZIphHj14fUBspgRcPBqZeGsjqyu242Sh9P4BNPa" crossorigin="anonymous"></script>
     <script src="https://www.gov-eformsign.com/lib/js/efs_embedded_form.js"></script>
 
     <style>
@@ -352,6 +352,12 @@
         }
 
         // 템플릿 생성 (핵심 로직)
+        // P0b-08: 콘솔 로그에 토큰·서명·키 값을 남기지 않는다 (access_token·refresh_token·signature·api_key·secret·password 키는 '***')
+        function redactForLog(obj) {
+          return JSON.stringify(obj, function (k, v) {
+            return (k && /token|signature|secret|api_?key|password|private/i.test(k) && v !== null && v !== undefined && v !== '') ? '***' : v;
+          }, 4);
+        }
         function createTemplate(){
             // 토큰 및 필수값 확인
             var at = $('#access_token').val();
@@ -476,17 +482,17 @@
                 }
             };
             
-            console.log("🚀 [eformsign.template Request Options]", JSON.stringify(opts, null, 4));
+            console.log("🚀 [eformsign.template Request Options]", redactForLog(opts));
 
             eformsign.template(opts, targetIframeId, 
                 res => {
-                    console.log("✅ Success Callback:", JSON.stringify(res, null, 4));
+                    console.log("✅ Success Callback:", redactForLog(res));
                     if(res.template_id) alert("성공 (Template ID): " + res.template_id);
                     else if(res.document_id) alert("성공 (Document ID): " + res.document_id);
                 },
                 err => {
                     alert("오류: " + err.message);
-                    console.log("❌ Error Callback:", JSON.stringify(err, null, 4));
+                    console.log("❌ Error Callback:", redactForLog(err));
                     if(displayMode === 'modal') closeModal();
                 },
                 actions => {

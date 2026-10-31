@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>eformsign 템플릿 관리 임베딩 (통합 환경)</title>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js" integrity="sha384-iEb928DoTETut8P+mWPU2V+aSAkEMbwPcXss4i3lXxYDc/BDoVblYRGX0dJxqZ3X" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js" integrity="sha384-CYM1EjcB6PBH9xEVtC9Mbegj0ZIphHj14fUBspgRcPBqZeGsjqyu242Sh9P4BNPa" crossorigin="anonymous"></script>
     <script src="/assets/js/token-issuer.js"></script>
     <style>
         /* --- 기본 레이아웃 --- */
@@ -569,6 +569,12 @@
             }
         }
 
+        // P0b-08: 콘솔 로그에 토큰·서명·키 값을 남기지 않는다 (access_token·refresh_token·signature·api_key·secret·password 키는 '***')
+        function redactForLog(obj) {
+          return JSON.stringify(obj, function (k, v) {
+            return (k && /token|signature|secret|api_?key|password|private/i.test(k) && v !== null && v !== undefined && v !== '') ? '***' : v;
+          }, 4);
+        }
         function createTemplate(){
             var at  = $('#access_token').val();
             var rt  = $('#refresh_token').val();
@@ -699,17 +705,17 @@
                 }
             };
 
-            console.log("🚀 [eformsign.template Request Options]", JSON.stringify(opts, null, 4));
+            console.log("🚀 [eformsign.template Request Options]", redactForLog(opts));
 
             eformsign.template(opts, targetIframeId,
                 res => {
-                    console.log("✅ Success Callback:", JSON.stringify(res, null, 4));
+                    console.log("✅ Success Callback:", redactForLog(res));
                     var id = res.template_id || res.document_id || '';
                     showMsg('createMsgBox', 'success', '성공' + (id ? ' (ID: ' + id + ')' : ''));
                 },
                 err => {
                     showMsg('createMsgBox', 'error', '오류: ' + err.message);
-                    console.log("❌ Error Callback:", JSON.stringify(err, null, 4));
+                    console.log("❌ Error Callback:", redactForLog(err));
                     if(displayMode === 'modal') closeModal();
                 },
                 actions => {

@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>이폼사인 문서 임베딩 통합</title>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js" integrity="sha384-iEb928DoTETut8P+mWPU2V+aSAkEMbwPcXss4i3lXxYDc/BDoVblYRGX0dJxqZ3X" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js" integrity="sha384-CYM1EjcB6PBH9xEVtC9Mbegj0ZIphHj14fUBspgRcPBqZeGsjqyu242Sh9P4BNPa" crossorigin="anonymous"></script>
     <script src="/assets/js/token-issuer.js"></script>
     <script src="/assets/js/result-panel.js"></script>
     
@@ -559,6 +559,12 @@
         $("#formParamsList").append(entry);
       }
 
+      // P0b-08: 콘솔 로그에 토큰·서명·키 값을 남기지 않는다 (access_token·refresh_token·signature·api_key·secret·password 키는 '***')
+      function redactForLog(obj) {
+        return JSON.stringify(obj, function (k, v) {
+          return (k && /token|signature|secret|api_?key|password|private/i.test(k) && v !== null && v !== undefined && v !== '') ? '***' : v;
+        }, 4);
+      }
       function startDocument() {
         if (!validateInputs()) return;
 
@@ -584,7 +590,7 @@
         }
 
         buildDocOpt();
-        console.log("🚀 [Request Options]", JSON.stringify(docOpt, null, 4));
+        console.log("🚀 [Request Options]", redactForLog(docOpt));
 
         showLoading();
         if(window.eformsign) {
@@ -612,7 +618,7 @@
 
       function success_callback(response) {
         hideLoading();
-        console.log("✅ Success:", JSON.stringify(response, null, 4));
+        console.log("✅ Success:", redactForLog(response));
         // alert 대신 페이지 내 메시지 박스에 문서 ID + 복사 버튼 표시 (외부 문자열은 textContent로만)
         const createdId = response && (response.document_id || (response.document && response.document.id));
         if (createdId) {
@@ -632,7 +638,7 @@
 
       function error_callback(err) {
         hideLoading();
-        console.log("❌ Error:", JSON.stringify(err, null, 4));
+        console.log("❌ Error:", redactForLog(err));
         document.getElementById("embedDocLinks").textContent = "";
         ResultPanel.render("#embedResultBox", err, {
           title: `실패: ${(err && err.message) || "알 수 없는 오류"}${err && err.code ? ` (${err.code})` : ""}`,
@@ -646,7 +652,7 @@
 
       function actions_callback(actions) {
         hideLoading();
-        console.log("🔘 Actions Received:", JSON.stringify(actions, null, 4));
+        console.log("🔘 Actions Received:", redactForLog(actions));
 
         $("#buttonList button").hide();
         const arr = Array.isArray(actions.data) ? actions.data : [actions.data];

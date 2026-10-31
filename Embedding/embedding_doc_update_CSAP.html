@@ -7,7 +7,7 @@
   <title>공공 서버용 문서 작성 임베딩</title>
 
   <script src="https://code.jquery.com/jquery-2.1.4.min.js" integrity="sha384-R4/ztc4ZlRqWjqIuvf6RX5yb/v90qNGx6fS48N0tRxiGkqveZETq72KgDVJCp2TC" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js" integrity="sha384-iEb928DoTETut8P+mWPU2V+aSAkEMbwPcXss4i3lXxYDc/BDoVblYRGX0dJxqZ3X" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js" integrity="sha384-CYM1EjcB6PBH9xEVtC9Mbegj0ZIphHj14fUBspgRcPBqZeGsjqyu242Sh9P4BNPa" crossorigin="anonymous"></script>
   <script src="https://www.gov-eformsign.com/lib/js/efs_embedded_v2.js"></script>
 
   <style>
@@ -345,6 +345,12 @@
     function showLoading(){ $('#loadingIndicator').show(); }
     function hideLoading(){ $('#loadingIndicator').hide(); }
 
+    // P0b-08: 콘솔 로그에 토큰·서명·키 값을 남기지 않는다 (access_token·refresh_token·signature·api_key·secret·password 키는 '***')
+    function redactForLog(obj) {
+      return JSON.stringify(obj, function (k, v) {
+        return (k && /token|signature|secret|api_?key|password|private/i.test(k) && v !== null && v !== undefined && v !== '') ? '***' : v;
+      }, 4);
+    }
     function startDocument(){
       if (!validateInputs()) return;
       
@@ -362,7 +368,7 @@
       }
 
       buildDocOpt();
-      console.log('🚀 [Request Options]', JSON.stringify(docOpt, null, 4));
+      console.log('🚀 [Request Options]', redactForLog(docOpt));
 
       showLoading();
       eformsign.document(
@@ -378,7 +384,7 @@
 
     function success_callback(response){
       hideLoading();
-      console.log("✅ Success:", JSON.stringify(response, null, 4));
+      console.log("✅ Success:", redactForLog(response));
       alert(`성공!\nID: ${response.document_id}\n제목: ${response.title}`);
       const displayMode = $('input[name="display_mode"]:checked').val();
       if(displayMode === 'modal') closeModal();
@@ -386,7 +392,7 @@
 
     function error_callback(err){
       hideLoading();
-      console.log("❌ Error:", JSON.stringify(err, null, 4));
+      console.log("❌ Error:", redactForLog(err));
       alert(`실패:\n${err.message} (${err.code})`);
       const displayMode = $('input[name="display_mode"]:checked').val();
       if(displayMode === 'modal') closeModal();
@@ -394,7 +400,7 @@
 
     function actions_callback(actions){
       hideLoading();
-      console.log("🔘 Actions Received:", JSON.stringify(actions, null, 4));
+      console.log("🔘 Actions Received:", redactForLog(actions));
       
       $('#buttonList button').hide();
       const arr = Array.isArray(actions.data) ? actions.data : [actions.data];
