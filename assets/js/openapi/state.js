@@ -303,11 +303,15 @@ async function historyCaptureAndSave(customName, options = {}) {
             }
             entry.id = String(data.id);
             historyCache.unshift(entry);
+            // 서버는 POST 직후 최신 100건만 남긴다 — 같은 순서로 캐시도 자른다.
+            // (덮어쓰기 DELETE 뒤에 자르면 100건이 찬 상태에서 서버보다 1건 많아진다 — D-9)
+            if (historyCache.length > HISTORY_MAX) historyCache.splice(HISTORY_MAX);
         } catch (e) {
             showToast('요청 저장 중 오류가 발생했습니다', 2000);
             return null;
         }
-        if (replaceId && replaceId !== entry.id) {
+        // 이전 항목이 위 100건 정리로 이미 빠졌다면(서버도 같은 기준으로 지웠다) DELETE할 필요가 없다
+        if (replaceId && replaceId !== entry.id && historyCache.some(e => e.id === replaceId)) {
             // 새 항목 저장에 성공한 뒤 이전 항목을 지운다. 실패하면 두 항목이 모두 남는다(데이터 손실 없음)
             let deleted = false;
             try {
@@ -316,9 +320,9 @@ async function historyCaptureAndSave(customName, options = {}) {
                 deleted = delRes.ok;
             } catch (e) { deleted = false; }
             if (deleted) historyCache = historyCache.filter(e => e.id !== replaceId);
-            else showToast('새 내용은 저장했지만 이전 항목을 지우지 못했습니다 — 목록에서 직접 삭제하세요', 4000);
+            // 경고 토스트는 confirmSave()가 성공 토스트 대신 띄운다 — 여기서 띄우면 곧바로 "덮어씀"에 가려진다 (D-3)
+            else entry.replaceFailed = true;
         }
-        if (historyCache.length > HISTORY_MAX) historyCache.splice(HISTORY_MAX);
         return entry;
     }
 

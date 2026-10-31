@@ -164,7 +164,10 @@ const API_SPECS = {
 **덮어쓰기 (P1-09):** 저장 항목을 불러온 상태(같은 엔드포인트)에서 Save → [덮어쓰기]/[새로 저장].
 - 비로그인: localStorage에서 같은 id 항목을 빼고 새 내용으로 맨 앞에 넣는다(id 유지, 개수 그대로).
 - 로그인: 서버에 PATCH가 없어 **새로 POST → 성공하면 이전 id DELETE** 순서로 한다(기획서의 DELETE→POST와 반대 — POST 실패 시 원본을 잃지 않기 위해).
-  DELETE가 실패하면 두 항목이 모두 남고 토스트로 알린다. 저장 id는 서버가 새로 만들므로 덮어쓰면 id가 바뀐다. PATCH 도입은 서버(`controllers/requestHistory.js`) 변경 사항.
+  DELETE가 실패하면 두 항목이 모두 남는다 — `historyCaptureAndSave()`는 `entry.replaceFailed = true`만 표시하고,
+  `confirmSave()`가 "덮어씀" 대신 "새 내용은 저장했지만 이전 항목을 지우지 못했습니다" 토스트(5초)를 띄운다(D-3 — 예전엔 경고 직후 "덮어씀"이 덮었다).
+  캐시는 POST 직후(서버가 100건으로 자르는 시점과 같게) 100건으로 자르고, 이전 항목이 그 정리로 이미 빠졌으면 DELETE하지 않는다
+  (D-9 — DELETE 뒤에 자르면 100건이 찬 상태에서 캐시가 서버보다 1건 많았다). 저장 id는 서버가 새로 만들므로 덮어쓰면 id가 바뀐다. PATCH 도입은 서버(`controllers/requestHistory.js`) 변경 사항.
 
 **편집 내용 보존 — draft (P1-09):**
 - `requestDraftCache`(state.js, `responseCache`와 같은 엔드포인트별 캐시): `selectEndpoint()`가 떠나는 API의 `captureRequestSnapshot()`을 저장하고,

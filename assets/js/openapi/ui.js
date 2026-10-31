@@ -1579,7 +1579,12 @@ async function confirmSave(mode) {
     }
     if (!entry) return;
     closeSaveModal();
-    showToast(replaceId ? `"${name}" 덮어씀` : `"${name}" 저장됨`);
+    if (entry.replaceFailed) {
+        // 새 항목은 저장됐지만 이전 항목 DELETE 실패 — 목록에 두 항목이 남았음을 알린다 (D-3)
+        showToast(`"${name}" 새 내용은 저장했지만 이전 항목을 지우지 못했습니다 — 목록에서 직접 삭제하세요`, 5000);
+    } else {
+        showToast(replaceId ? `"${name}" 덮어씀` : `"${name}" 저장됨`);
+    }
     // 방금 저장한 항목을 "불러온 항목"으로 삼아 다음 저장 때 덮어쓰기를 고를 수 있게 한다
     state.currentHistoryId = entry.id;
     if (state.currentEndpoint) {
