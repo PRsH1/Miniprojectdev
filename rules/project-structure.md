@@ -123,6 +123,7 @@ ProjectImprove/
 │   ├── api-error.js            # API 에러 표시 공유 모듈 (IIFE → window.renderApiError·ApiError: 요약·에러 코드 링크·원본 토글·CORS 안내)
 │   ├── token-badge.js          # 토큰 상태 배지 공유 모듈 (IIFE → window.TokenBadge: 남은 시간·via proxy·만료됨+재발급, 1분 타이머)
 │   ├── result-panel.js         # 결과 패널 공유 모듈 (IIFE → window.ResultPanel·withLoading: JSON 표시·복사·다운로드·접기, 버튼 로딩, 문서 ID 링크)
+│   ├── csv-export.js           # CSV 내보내기 공유 모듈 (IIFE → window.CsvExport: UTF-8 BOM·수식 주입 방지·epoch→날짜 — listdocuments·일괄 삭제 2종)
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── member/                 # MemberV2 분할 모듈 (로드 순서 중요)
 │   │   ├── api.js              #   API 호출, 엑셀 처리 (전역 함수)
