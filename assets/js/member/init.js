@@ -25,11 +25,13 @@ $(document).ready(function () {
 
   // secretKey 방식 토글
   $('input[name="secretKeyMethod"]').on('change', function () {
+    // 라벨 문구만 바꾸고 필수(*) 표시는 유지한다
+    const $star = $('<span class="required">*</span>');
     if (this.value === 'signature') {
-      $('#secretKeyLabel').text('비밀 키 (Secret key, Hex):');
+      $('#secretKeyLabel').empty().append(document.createTextNode('비밀 키 (Secret key, Hex) '), $star);
       $('#privateKeyHex').attr('placeholder', '예: 30... (Signature 방식)');
     } else {
-      $('#secretKeyLabel').text('비밀 토큰:');
+      $('#secretKeyLabel').empty().append(document.createTextNode('비밀 토큰 '), $star);
       $('#privateKeyHex').attr('placeholder', '예: test (Bearer token 방식)');
     }
   });

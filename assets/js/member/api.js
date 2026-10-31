@@ -49,6 +49,81 @@ function clearApiErrorSummary(resultSelector) {
   $(resultSelector).prev('.member-api-error').remove();
 }
 
+// ─── 입력값 헬퍼 (P1-15) ─────────────────────────────────
+// 엑셀 셀 값이 "입력됨"인지 — FALSE·0 같은 값도 입력으로 본다 (truthy 검사로는 enabled=FALSE가 빠진다)
+function hasValue(v) {
+  return v !== undefined && v !== null && String(v).trim() !== '';
+}
+
+// 콤마 구분 문자열(또는 엑셀 셀 값)을 배열로
+function splitList(v) {
+  return hasValue(v) ? String(v).split(',').map(s => s.trim()).filter(s => s) : [];
+}
+
+// 그룹 수정 PATCH 본문 — 입력한 필드만 담는다. clearMembers면 members: [] (의도적으로 비우기)
+function buildGroupPatch({ name, description, members, clearMembers }) {
+  const group = {};
+  if (hasValue(name)) group.name = String(name).trim();
+  if (hasValue(description)) group.description = String(description).trim();
+  if (clearMembers) group.members = [];
+  else if (hasValue(members)) group.members = splitList(members);
+  return group;
+}
+
+// ─── 엑셀 파일 읽기 (P1-15) ──────────────────────────────
+// 형식 확인(xlsx=ZIP, xls=OLE 시그니처) + 파싱 실패를 안내 문구로 바꾼다.
+// 이전에는 그룹 검증에 try/catch가 없어 잘못된 파일이면 스피너가 멈추지 않았다.
+const EXCEL_READ_ERROR = '엑셀 파일을 읽을 수 없습니다. .xlsx 또는 .xls 형식의 파일인지 확인해 주세요.';
+function readExcelRows(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const bytes = new Uint8Array(e.target.result);
+        const isZip = bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4B && bytes[2] === 0x03 && bytes[3] === 0x04;
+        const isOle = bytes.length >= 4 && bytes[0] === 0xD0 && bytes[1] === 0xCF && bytes[2] === 0x11 && bytes[3] === 0xE0;
+        if (!isZip && !isOle) throw new Error('엑셀 형식이 아님');
+        const wb = XLSX.read(bytes, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        if (!sheet) throw new Error('시트 없음');
+        resolve(XLSX.utils.sheet_to_json(sheet));
+      } catch (err) {
+        reject(new Error(EXCEL_READ_ERROR));
+      }
+    };
+    reader.onerror = () => reject(new Error(EXCEL_READ_ERROR));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+// 엑셀 검증 공통 흐름: 파일 확인 → 읽기 → validate(rows) → 결과 표시. 실패해도 스피너는 항상 해제된다.
+// validate는 { summary, validCount }를 반환한다.
+async function runExcelValidation({ inputId, resultId, executeSectionId, button, validate }) {
+  const input = document.getElementById(inputId);
+  if (!input || !input.files || !input.files.length) return alert('엑셀 파일을 선택해주세요.');
+  if (button) showLoading(button);
+  const $result = $('#' + resultId);
+  const $exec = $('#' + executeSectionId);
+  try {
+    const rows = await readExcelRows(input.files[0]);
+    if (!rows.length) {
+      $exec.hide();
+      $result.text('엑셀에 데이터 행이 없습니다. 첫 행은 헤더, 둘째 행부터 데이터를 입력하세요.');
+      return;
+    }
+    const { summary, validCount } = validate(rows);
+    $result.text(summary);
+    $exec.toggle(validCount > 0);
+    if (typeof resetBulkJob === 'function') resetBulkJob(executeSectionId);
+  } catch (err) {
+    $exec.hide();
+    $result.text(err.message || EXCEL_READ_ERROR);
+    if (typeof showToast === 'function') showToast(err.message || EXCEL_READ_ERROR, 3500);
+  } finally {
+    if (button) hideLoading(button);
+  }
+}
+
 // ─── 상수 ───────────────────────────────────────────────
 // 토큰 발급 도메인 (경로는 공유 모듈 token-issuer.js가 붙인다)
 const tokenDomainMap = {
@@ -265,7 +340,10 @@ function updateMember(button) {
 
   let account = { id: memberId };
   const name = $('#updateName').val().trim(); if (name) account.name = name;
-  account.enabled = ($('#updateEnabled').val() === 'true');
+  // enabled는 "변경 안 함"(빈 값)이 기본 — 사용자가 true/false를 고른 경우에만 보낸다 (P1-15)
+  // 항상 보내면 비활성 멤버의 이름만 바꿔도 다시 활성화된다
+  const enabledSel = $('#updateEnabled').val();
+  if (enabledSel === 'true' || enabledSel === 'false') account.enabled = (enabledSel === 'true');
   const num = $('#updateContactNumber').val().trim();
   const tel = $('#updateContactTel').val().trim();
   if (num || tel) {
@@ -312,15 +390,30 @@ function listMembers(viewType, button) {
   const url = params.toString() ? `${baseUrl}?${params}` : baseUrl;
 
   fetch(url, { method: 'GET', headers: { 'Authorization': 'Bearer ' + token } })
-    .then(res => res.json())
+    // 상태 코드를 먼저 확인한다 — 401 등을 "검색 결과 없음"으로 보이지 않게 (P1-15)
+    .then(res => { if (!res.ok) return res.text().then(t => { throw apiHttpError(res, t); }); return res.json(); })
     .then(data => {
+      clearApiErrorSummary('#memberCountLabel');
       const members = data.members || [];
       members.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
       _membersCache = members;
       _renderMemberView();
     })
-    .catch(err => { $('#listResultJson').text('조회 실패: ' + err); })
+    .catch(err => {
+      _membersCache = [];
+      _renderListFailure('#memberCountLabel', '#jsonContainer', '#tableContainer', '#listResultTable', '#memberPaginator', err);
+    })
     .finally(() => hideLoading(button));
+}
+
+// 목록 조회 실패 — 표/JSON 영역을 비우고 라벨 위에 에러 요약(api-error)을 보여 준다
+function _renderListFailure(labelSel, jsonSel, tableSel, tableId, paginatorSel, err) {
+  $(jsonSel).hide();
+  $(tableSel).hide();
+  $(`${tableId} tbody`).empty();
+  if (paginatorSel) $(paginatorSel).empty();
+  $(labelSel).text('조회 실패 — 위 에러 내용을 확인하세요.');
+  showApiErrorSummary(labelSel, err);
 }
 
 function _renderMemberView() {
@@ -434,9 +527,28 @@ function updateGroup(button) {
   const baseUrl = getGroupBaseUrl();
   if (!baseUrl.startsWith('http')) { hideLoading(button); return alert('사용자 지정 Base URL을 입력해주세요.'); }
 
-  const url = `${baseUrl}/${encodeURIComponent($('#updGroupId').val().trim())}`;
-  const members = $('#updGroupMembers').val().split(',').map(s => s.trim()).filter(s => s);
-  const body = { group: { name: $('#updGroupName').val().trim(), description: $('#updGroupDescription').val().trim(), members } };
+  const groupId = $('#updGroupId').val().trim();
+  if (!groupId) { hideLoading(button); return alert('수정할 그룹 ID를 입력해주세요.'); }
+  const url = `${baseUrl}/${encodeURIComponent(groupId)}`;
+
+  // 빈 필드는 보내지 않는다 — PATCH에 빈 이름·설명·멤버를 보내면 그룹이 비워질 수 있다 (P1-15)
+  // 멤버를 의도적으로 비우려면 "멤버 비우기" 체크박스를 쓴다
+  const group = buildGroupPatch({
+    name: $('#updGroupName').val(),
+    description: $('#updGroupDescription').val(),
+    members: $('#updGroupMembers').val(),
+    clearMembers: $('#updGroupClearMembers').is(':checked'),
+  });
+  if (!Object.keys(group).length) {
+    hideLoading(button);
+    return alert('수정할 항목(이름·설명·멤버)을 하나 이상 입력하거나 "멤버 비우기"를 선택해주세요.');
+  }
+  if (group.members && !group.members.length &&
+      !confirm('그룹의 멤버를 모두 비웁니다. 계속하시겠습니까?')) {
+    hideLoading(button);
+    return;
+  }
+  const body = { group };
 
   $('#groupUpdateResult').text('수정 중...');
   fetch(url, {
@@ -492,8 +604,11 @@ function listGroups(viewType, button) {
   if (params.length) url += '?' + params.join('&');
 
   fetch(url, { method: 'GET', headers: { 'Authorization': 'Bearer ' + token } })
-    .then(res => res.json())
+    .then(res => { if (!res.ok) return res.text().then(t => { throw apiHttpError(res, t); }); return res.json(); })
     .then(data => {
+      clearApiErrorSummary('#groupCountLabel');
+      const total = (data.groups || []).length;
+      $('#groupCountLabel').text(total > 0 ? `총 ${total}개` : '검색 결과 없음');
       (data.groups || []).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
       if (viewType === 'json') {
         $('#groupJsonContainer').show();
@@ -515,7 +630,9 @@ function listGroups(viewType, button) {
         });
       }
     })
-    .catch(err => { $('#groupListResultJson').text('조회 실패: ' + err); })
+    .catch(err => {
+      _renderListFailure('#groupCountLabel', '#groupJsonContainer', '#groupTableContainer', '#groupListResultTable', null, err);
+    })
     .finally(() => hideLoading(button));
 }
 
@@ -573,41 +690,28 @@ function downloadGroupUpdateTemplate() {
 }
 
 // ─── 엑셀 검증/실행 (멤버 추가) ─────────────────────────
+// 검증 통과 행은 { rowNumber(엑셀 행 번호), row(원본) }로 보관한다
 let validExcelRows = [], invalidExcelRows = [];
 function validateExcelFile(button) {
-  const fileInput = document.getElementById('excelFileInput');
-  if (!fileInput.files || !fileInput.files.length) return alert('엑셀 파일을 선택해주세요.');
-  if (button) showLoading(button);
-  const reader = new FileReader();
-  reader.onload = e => {
-    let workbook;
-    try { workbook = XLSX.read(e.target.result, { type: 'binary' }); }
-    catch (err) { alert('파싱 오류: ' + err); if (button) hideLoading(button); return; }
-    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-    if (!rows.length) { alert('데이터 없음'); if (button) hideLoading(button); return; }
-    validExcelRows = []; invalidExcelRows = [];
-    rows.forEach((row, i) => {
-      const id = row['id'] || row['account_id'] || '';
-      if (id && row['password'] && row['first_name']) validExcelRows.push(row);
-      else invalidExcelRows.push({ rowNumber: i + 2, row });
-    });
-    let summary = `검증 완료\n총:${rows.length} 유효:${validExcelRows.length} 오류:${invalidExcelRows.length}\n`;
-    if (invalidExcelRows.length) {
-      summary += '오류행:\n';
-      invalidExcelRows.forEach(x => {
+  return runExcelValidation({
+    inputId: 'excelFileInput', resultId: 'excelResult', executeSectionId: 'excelExecuteSection', button,
+    validate: rows => {
+      validExcelRows = []; invalidExcelRows = [];
+      rows.forEach((row, i) => {
         const missing = [];
-        if (!x.row['id'] && !x.row['account_id']) missing.push('id');
-        if (!x.row['password']) missing.push('password');
-        if (!x.row['first_name']) missing.push('first_name');
-        summary += `행 ${x.rowNumber}: ${missing.join(',')}\n`;
+        if (!hasValue(row['id']) && !hasValue(row['account_id'])) missing.push('id');
+        if (!hasValue(row['password'])) missing.push('password');
+        if (!hasValue(row['first_name'])) missing.push('first_name');
+        if (missing.length) invalidExcelRows.push({ rowNumber: i + 2, missing });
+        else validExcelRows.push({ rowNumber: i + 2, row });
       });
-    }
-    document.getElementById('excelResult').innerText = summary;
-    document.getElementById('excelExecuteSection').style.display = validExcelRows.length > 0 ? 'block' : 'none';
-    if (button) hideLoading(button);
-  };
-  reader.onerror = err => { alert('읽기 오류: ' + err); if (button) hideLoading(button); };
-  reader.readAsBinaryString(fileInput.files[0]);
+      let summary = `검증 완료\n총:${rows.length} 유효:${validExcelRows.length} 오류:${invalidExcelRows.length}\n`;
+      if (invalidExcelRows.length) {
+        summary += '오류행:\n' + invalidExcelRows.map(x => `행 ${x.rowNumber}: ${x.missing.join(',')} 누락`).join('\n');
+      }
+      return { summary, validCount: validExcelRows.length };
+    },
+  });
 }
 
 function executeExcelMemberAddition(button) {
@@ -618,7 +722,7 @@ function executeExcelMemberAddition(button) {
   let url = baseUrl;
   if ($('input[name="mailOption"]:checked').val() === 'false') url += '?mailOption=false';
 
-  Promise.all(validExcelRows.map(row => {
+  Promise.all(validExcelRows.map(({ row }) => {
     let account = { id: row['id'] || row['account_id'] || '', password: row['password'] || '', first_name: row['first_name'] || '' };
     if (row['contact_tel']) account.contact = { tel: row['contact_tel'] };
     if (row['contact_number']) account.contact = Object.assign(account.contact || {}, { number: row['contact_number'] });
@@ -626,7 +730,7 @@ function executeExcelMemberAddition(button) {
     if (row['department']) account.department = row['department'];
     if (row['position']) account.position = row['position'];
     if (row['agreement_marketing'] === 'true' || row['agreement_marketing'] === true) account.agreement = { marketing: true };
-    if (row['role']) account.role = row['role'].split(',').map(s => s.trim());
+    if (row['role']) account.role = splitList(row['role']);
     if (row['external_uuid']) account.external_sso_info = Object.assign(account.external_sso_info || {}, { uuid: row['external_uuid'] });
     if (row['external_idp_name']) account.external_sso_info = Object.assign(account.external_sso_info || {}, { idp_name: row['external_idp_name'] });
     if (row['external_account_id']) account.external_sso_info = Object.assign(account.external_sso_info || {}, { account_id: row['external_account_id'] });
@@ -647,38 +751,32 @@ function executeExcelMemberAddition(button) {
 // ─── 엑셀 검증/실행 (멤버 삭제) ─────────────────────────
 let validDeleteRows = [], invalidDeleteRows = [];
 function validateExcelFileForDeletion(button) {
-  const fileInput = document.getElementById('excelFileDeleteInput');
-  if (!fileInput.files || !fileInput.files.length) return alert('파일 선택');
-  if (button) showLoading(button);
-  const reader = new FileReader();
-  reader.onload = e => {
-    let wb;
-    try { wb = XLSX.read(e.target.result, { type: 'binary' }); }
-    catch (err) { alert('파싱 오류:' + err); if (button) hideLoading(button); return; }
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    validDeleteRows = []; invalidDeleteRows = [];
-    rows.forEach((row, i) => {
-      if (row['id'] || row['account_id']) validDeleteRows.push(row);
-      else invalidDeleteRows.push({ rowNumber: i + 2 });
-    });
-    let s = `검증 완료 삭제\n총:${rows.length} 유효:${validDeleteRows.length} 오류:${invalidDeleteRows.length}\n`;
-    if (invalidDeleteRows.length) s += '오류 행 번호:\n' + invalidDeleteRows.map(x => `행 ${x.rowNumber}`).join('\n');
-    document.getElementById('excelDeleteResult').innerText = s;
-    document.getElementById('excelDeleteExecuteSection').style.display = validDeleteRows.length > 0 ? 'block' : 'none';
-    if (button) hideLoading(button);
-  };
-  reader.onerror = err => { alert('읽기 오류:' + err); if (button) hideLoading(button); };
-  reader.readAsBinaryString(fileInput.files[0]);
+  return runExcelValidation({
+    inputId: 'excelFileDeleteInput', resultId: 'excelDeleteResult', executeSectionId: 'excelDeleteExecuteSection', button,
+    validate: rows => {
+      validDeleteRows = []; invalidDeleteRows = [];
+      rows.forEach((row, i) => {
+        if (hasValue(row['id']) || hasValue(row['account_id'])) validDeleteRows.push({ rowNumber: i + 2, row });
+        else invalidDeleteRows.push({ rowNumber: i + 2 });
+      });
+      let s = `검증 완료 삭제\n총:${rows.length} 유효:${validDeleteRows.length} 오류:${invalidDeleteRows.length}\n`;
+      if (invalidDeleteRows.length) s += '오류 행 번호(id 누락):\n' + invalidDeleteRows.map(x => `행 ${x.rowNumber}`).join('\n');
+      return { summary: s, validCount: validDeleteRows.length };
+    },
+  });
 }
 
 function executeExcelMemberDeletion(button) {
+  // 일괄 삭제는 단건 삭제처럼 건수를 보여 주고 확인을 받는다 (P1-15) — 취소하면 요청 0건
+  if (!validDeleteRows.length) return alert('삭제할 행이 없습니다. 먼저 파일을 검증해주세요.');
+  if (!confirm(`멤버 ${validDeleteRows.length}명을 삭제합니다.\n삭제 시 이메일이 발송될 수 있으며 되돌릴 수 없습니다. 계속하시겠습니까?`)) return;
   showLoading(button);
   const token = $('#accessToken').val().trim();
   if (!token) { hideLoading(button); return alert('먼저 Access Token 발급해주세요.'); }
   const baseUrl = getMemberBaseUrl();
   const mailOpt = $('input[name="mailOptionDeleteExcel"]:checked').val();
 
-  Promise.all(validDeleteRows.map(row => {
+  Promise.all(validDeleteRows.map(({ row }) => {
     let url = `${baseUrl}/${encodeURIComponent(row['id'] || row['account_id'])}`;
     if (mailOpt === 'false') url += '?mailOption=false';
     return fetch(url, {
@@ -696,31 +794,36 @@ function executeExcelMemberDeletion(button) {
 }
 
 // ─── 엑셀 검증/실행 (멤버 수정) ─────────────────────────
+const MEMBER_UPDATE_FIELDS = ['name', 'enabled', 'contact_number', 'contact_tel', 'department', 'position', 'role'];
 let validUpdateRows = [], invalidUpdateRows = [];
 function validateExcelFileForUpdate(button) {
-  const fileInput = document.getElementById('excelFileUpdateInput');
-  if (!fileInput.files || !fileInput.files.length) return alert('파일 선택');
-  if (button) showLoading(button);
-  const reader = new FileReader();
-  reader.onload = e => {
-    let wb;
-    try { wb = XLSX.read(e.target.result, { type: 'binary' }); }
-    catch (err) { alert('파싱 오류:' + err); if (button) hideLoading(button); return; }
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    validUpdateRows = []; invalidUpdateRows = [];
-    rows.forEach((row, i) => {
-      const hasField = row['name'] || row['enabled'] || row['contact_number'] || row['contact_tel'] || row['department'] || row['position'] || row['role'];
-      if (row['id'] && hasField) validUpdateRows.push(row);
-      else invalidUpdateRows.push({ rowNumber: i + 2 });
-    });
-    let s = `검증 완료 수정\n총:${rows.length} 유효:${validUpdateRows.length} 오류:${invalidUpdateRows.length}\n`;
-    if (invalidUpdateRows.length) s += '오류 행 번호:\n' + invalidUpdateRows.map(x => `행 ${x.rowNumber}`).join('\n');
-    document.getElementById('excelUpdateResult').innerText = s;
-    document.getElementById('excelUpdateExecuteSection').style.display = validUpdateRows.length > 0 ? 'block' : 'none';
-    if (button) hideLoading(button);
-  };
-  reader.onerror = err => { alert('읽기 오류:' + err); if (button) hideLoading(button); };
-  reader.readAsBinaryString(fileInput.files[0]);
+  return runExcelValidation({
+    inputId: 'excelFileUpdateInput', resultId: 'excelUpdateResult', executeSectionId: 'excelUpdateExecuteSection', button,
+    validate: rows => {
+      validUpdateRows = []; invalidUpdateRows = [];
+      rows.forEach((row, i) => {
+        const hasField = MEMBER_UPDATE_FIELDS.some(k => hasValue(row[k]));
+        if (hasValue(row['id']) && hasField) validUpdateRows.push({ rowNumber: i + 2, row });
+        else invalidUpdateRows.push({ rowNumber: i + 2 });
+      });
+      let s = `검증 완료 수정\n총:${rows.length} 유효:${validUpdateRows.length} 오류:${invalidUpdateRows.length}\n`;
+      if (invalidUpdateRows.length) s += '오류 행 번호(id 또는 수정 항목 누락):\n' + invalidUpdateRows.map(x => `행 ${x.rowNumber}`).join('\n');
+      return { summary: s, validCount: validUpdateRows.length };
+    },
+  });
+}
+
+// 엑셀 멤버 수정 본문 — 값이 있는 열만 보낸다. enabled는 셀에 값이 있을 때만(FALSE 포함)
+function buildMemberUpdateAccount(row) {
+  const updateObj = { id: String(row['id']).trim() };
+  if (hasValue(row['name'])) updateObj.name = String(row['name']).trim();
+  if (hasValue(row['enabled'])) updateObj.enabled = (String(row['enabled']).trim().toLowerCase() === 'true');
+  if (hasValue(row['contact_number'])) updateObj.contact = Object.assign(updateObj.contact || {}, { number: String(row['contact_number']) });
+  if (hasValue(row['contact_tel'])) updateObj.contact = Object.assign(updateObj.contact || {}, { tel: String(row['contact_tel']) });
+  if (hasValue(row['department'])) updateObj.department = String(row['department']);
+  if (hasValue(row['position'])) updateObj.position = String(row['position']);
+  if (hasValue(row['role'])) updateObj.role = splitList(row['role']);
+  return updateObj;
 }
 
 function executeExcelMemberUpdate(button) {
@@ -729,17 +832,9 @@ function executeExcelMemberUpdate(button) {
   if (!token) { hideLoading(button); return alert('먼저 Access Token 발급해주세요.'); }
   const baseUrl = getMemberBaseUrl();
 
-  Promise.all(validUpdateRows.map(row => {
-    const id = row['id'] || '';
-    let updateObj = { id };
-    if (row['name']) updateObj.name = row['name'];
-    if (row['enabled']) updateObj.enabled = (row['enabled'].toString().toLowerCase() === 'true');
-    if (row['contact_number']) updateObj.contact = Object.assign(updateObj.contact || {}, { number: row['contact_number'] });
-    if (row['contact_tel']) updateObj.contact = Object.assign(updateObj.contact || {}, { tel: row['contact_tel'] });
-    if (row['department']) updateObj.department = row['department'];
-    if (row['position']) updateObj.position = row['position'];
-    if (row['role']) updateObj.role = row['role'].split(',').map(s => s.trim());
-    return fetch(`${baseUrl}/${encodeURIComponent(id)}`, {
+  Promise.all(validUpdateRows.map(({ row }) => {
+    const updateObj = buildMemberUpdateAccount(row);
+    return fetch(`${baseUrl}/${encodeURIComponent(updateObj.id)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ account: updateObj }),
@@ -756,25 +851,19 @@ function executeExcelMemberUpdate(button) {
 // ─── 엑셀 검증/실행 (그룹 추가) ─────────────────────────
 let validGroupRows = [], invalidGroupRows = [];
 function validateExcelGroupFile(button) {
-  const fileInput = document.getElementById('excelGroupFileInput');
-  if (!fileInput.files || !fileInput.files.length) return alert('엑셀 파일을 선택해주세요.');
-  if (button) showLoading(button);
-  const reader = new FileReader();
-  reader.onload = e => {
-    const wb = XLSX.read(e.target.result, { type: 'binary' });
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    validGroupRows = []; invalidGroupRows = [];
-    rows.forEach((row, idx) => {
-      if (row.name && row.members) validGroupRows.push(row);
-      else invalidGroupRows.push(idx + 2);
-    });
-    let msg = `검증 완료\n총 행: ${rows.length}\n유효 행: ${validGroupRows.length}\n오류 행: ${invalidGroupRows.length}`;
-    if (invalidGroupRows.length) msg += '\n오류 행 번호: ' + invalidGroupRows.join(', ');
-    document.getElementById('excelGroupResult').innerText = msg;
-    document.getElementById('excelGroupExecuteSection').style.display = validGroupRows.length ? 'block' : 'none';
-    if (button) hideLoading(button);
-  };
-  reader.readAsBinaryString(fileInput.files[0]);
+  return runExcelValidation({
+    inputId: 'excelGroupFileInput', resultId: 'excelGroupResult', executeSectionId: 'excelGroupExecuteSection', button,
+    validate: rows => {
+      validGroupRows = []; invalidGroupRows = [];
+      rows.forEach((row, idx) => {
+        if (hasValue(row.name) && hasValue(row.members)) validGroupRows.push({ rowNumber: idx + 2, row });
+        else invalidGroupRows.push(idx + 2);
+      });
+      let msg = `검증 완료\n총 행: ${rows.length}\n유효 행: ${validGroupRows.length}\n오류 행: ${invalidGroupRows.length}`;
+      if (invalidGroupRows.length) msg += '\n오류 행 번호(name 또는 members 누락): ' + invalidGroupRows.join(', ');
+      return { summary: msg, validCount: validGroupRows.length };
+    },
+  });
 }
 
 function executeExcelGroupAddition(button) {
@@ -784,12 +873,11 @@ function executeExcelGroupAddition(button) {
   const baseUrl = getGroupBaseUrl();
   if (!baseUrl.startsWith('http')) { hideLoading(button); return alert('사용자 지정 Base URL을 입력해주세요.'); }
 
-  Promise.all(validGroupRows.map(row => {
-    const members = row.members.split(',').map(s => s.trim());
+  Promise.all(validGroupRows.map(({ row }) => {
     return fetch(baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ group: { name: row.name, description: row.description || '', members } }),
+      body: JSON.stringify({ group: { name: String(row.name).trim(), description: hasValue(row.description) ? String(row.description) : '', members: splitList(row.members) } }),
     })
       .then(res => { if (!res.ok) return res.text().then(txt => { throw new Error(txt || `HTTP ${res.status}`); }); return res.json(); })
       .then(json => ({ success: true, row, response: json }))
@@ -801,37 +889,37 @@ function executeExcelGroupAddition(button) {
 }
 
 // ─── 엑셀 검증/실행 (그룹 삭제) ─────────────────────────
+// 한 행의 group_ids(콤마 구분)를 한 번의 DELETE로 보낸다
 let validGroupDeleteRows = [], invalidGroupDeleteRows = [];
 function validateExcelGroupDeleteFile(button) {
-  const input = document.getElementById('excelGroupDeleteFileInput');
-  if (!input.files.length) return alert('파일을 선택해주세요.');
-  if (button) showLoading(button);
-  const reader = new FileReader();
-  reader.onload = e => {
-    const wb = XLSX.read(e.target.result, { type: 'binary' });
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    validGroupDeleteRows = []; invalidGroupDeleteRows = [];
-    rows.forEach((r, i) => {
-      if (r.group_ids) validGroupDeleteRows.push(r.group_ids.split(',').map(s => s.trim()).filter(s => s));
-      else invalidGroupDeleteRows.push(i + 2);
-    });
-    let msg = `검증 완료\n총행:${rows.length} 유효행:${validGroupDeleteRows.length} 오류행:${invalidGroupDeleteRows.length}`;
-    if (invalidGroupDeleteRows.length) msg += `\n오류행 번호: ${invalidGroupDeleteRows.join(',')}`;
-    $('#excelGroupDeleteResult').text(msg);
-    $('#excelGroupDeleteExecuteSection').toggle(validGroupDeleteRows.length > 0);
-    if (button) hideLoading(button);
-  };
-  reader.readAsBinaryString(input.files[0]);
+  return runExcelValidation({
+    inputId: 'excelGroupDeleteFileInput', resultId: 'excelGroupDeleteResult', executeSectionId: 'excelGroupDeleteExecuteSection', button,
+    validate: rows => {
+      validGroupDeleteRows = []; invalidGroupDeleteRows = [];
+      rows.forEach((r, i) => {
+        const ids = splitList(r.group_ids);
+        if (ids.length) validGroupDeleteRows.push({ rowNumber: i + 2, row: r, ids });
+        else invalidGroupDeleteRows.push(i + 2);
+      });
+      const idCount = validGroupDeleteRows.reduce((n, e) => n + e.ids.length, 0);
+      let msg = `검증 완료\n총행:${rows.length} 유효행:${validGroupDeleteRows.length}(그룹 ${idCount}개) 오류행:${invalidGroupDeleteRows.length}`;
+      if (invalidGroupDeleteRows.length) msg += `\n오류행 번호(group_ids 누락): ${invalidGroupDeleteRows.join(',')}`;
+      return { summary: msg, validCount: validGroupDeleteRows.length };
+    },
+  });
 }
 
 function executeExcelGroupDeletion(button) {
+  if (!validGroupDeleteRows.length) return alert('삭제할 행이 없습니다. 먼저 파일을 검증해주세요.');
+  const idCount = validGroupDeleteRows.reduce((n, e) => n + e.ids.length, 0);
+  if (!confirm(`그룹 ${idCount}개(엑셀 ${validGroupDeleteRows.length}행)를 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`)) return;
   showLoading(button);
   const token = $('#accessToken').val().trim();
   if (!token) { hideLoading(button); return alert('먼저 Access Token을 발급받아주세요.'); }
   const baseUrl = getGroupBaseUrl();
   if (!baseUrl.startsWith('http')) { hideLoading(button); return alert('사용자 지정 Base URL을 입력해주세요.'); }
 
-  Promise.all(validGroupDeleteRows.map(ids =>
+  Promise.all(validGroupDeleteRows.map(({ ids }) =>
     fetch(baseUrl, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
@@ -847,30 +935,26 @@ function executeExcelGroupDeletion(button) {
 }
 
 // ─── 엑셀 검증/실행 (그룹 수정) ─────────────────────────
+// 수동 수정과 같은 규칙: 값이 있는 열만 보낸다 (빈 description·members로 그룹을 비우지 않음)
 let validGroupUpdateRows = [], invalidGroupUpdateRows = [];
 function validateExcelGroupUpdateFile(button) {
-  const input = document.getElementById('excelGroupUpdateFileInput');
-  if (!input.files.length) return alert('파일을 선택해주세요.');
-  if (button) showLoading(button);
-  const reader = new FileReader();
-  reader.onload = e => {
-    const wb = XLSX.read(e.target.result, { type: 'binary' });
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-    validGroupUpdateRows = []; invalidGroupUpdateRows = [];
-    rows.forEach((r, i) => {
-      if (r.group_id && r.name && r.members) {
-        validGroupUpdateRows.push({ group_id: r.group_id, name: r.name, description: r.description || '', members: r.members.split(',').map(s => s.trim()) });
-      } else {
-        invalidGroupUpdateRows.push(i + 2);
-      }
-    });
-    let msg = `검증 완료\n총:${rows.length} 유효:${validGroupUpdateRows.length} 오류:${invalidGroupUpdateRows.length}`;
-    if (invalidGroupUpdateRows.length) msg += `\n오류행:${invalidGroupUpdateRows.join(',')}`;
-    $('#excelGroupUpdateResult').text(msg);
-    $('#excelGroupUpdateExecuteSection').toggle(validGroupUpdateRows.length > 0);
-    if (button) hideLoading(button);
-  };
-  reader.readAsBinaryString(input.files[0]);
+  return runExcelValidation({
+    inputId: 'excelGroupUpdateFileInput', resultId: 'excelGroupUpdateResult', executeSectionId: 'excelGroupUpdateExecuteSection', button,
+    validate: rows => {
+      validGroupUpdateRows = []; invalidGroupUpdateRows = [];
+      rows.forEach((r, i) => {
+        const group = buildGroupPatch({ name: r.name, description: r.description, members: r.members });
+        if (hasValue(r.group_id) && Object.keys(group).length) {
+          validGroupUpdateRows.push({ rowNumber: i + 2, row: r, groupId: String(r.group_id).trim(), group });
+        } else {
+          invalidGroupUpdateRows.push(i + 2);
+        }
+      });
+      let msg = `검증 완료\n총:${rows.length} 유효:${validGroupUpdateRows.length} 오류:${invalidGroupUpdateRows.length}`;
+      if (invalidGroupUpdateRows.length) msg += `\n오류행(group_id 또는 수정 항목 누락):${invalidGroupUpdateRows.join(',')}`;
+      return { summary: msg, validCount: validGroupUpdateRows.length };
+    },
+  });
 }
 
 function executeExcelGroupUpdate(button) {
@@ -881,14 +965,14 @@ function executeExcelGroupUpdate(button) {
   if (!baseUrl.startsWith('http')) { hideLoading(button); return alert('사용자 지정 Base URL을 입력해주세요.'); }
 
   Promise.all(validGroupUpdateRows.map(r =>
-    fetch(`${baseUrl}/${encodeURIComponent(r.group_id)}`, {
+    fetch(`${baseUrl}/${encodeURIComponent(r.groupId)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ group: { name: r.name, description: r.description, members: r.members } }),
+      body: JSON.stringify({ group: r.group }),
     })
       .then(res => { if (!res.ok) return res.text().then(t => { throw new Error(t || `HTTP ${res.status}`); }); return res.json(); })
-      .then(json => ({ success: true, row: r, response: json }))
-      .catch(err => ({ success: false, row: r, error: err.toString() }))
+      .then(json => ({ success: true, row: r.row, response: json }))
+      .catch(err => ({ success: false, row: r.row, error: err.toString() }))
   )).then(results => {
     const ok = results.filter(r => r.success).length;
     $('#excelGroupUpdateResult').text(JSON.stringify({ summary: `엑셀 그룹 수정 완료 (성공 ${ok}건, 실패 ${results.length - ok}건)`, details: results }, null, 2));

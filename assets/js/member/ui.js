@@ -49,3 +49,47 @@ function renderSection(id) {
   const target = document.getElementById(id);
   if (target) target.style.display = 'block';
 }
+
+// ─── 토스트 (P1-15) ──────────────────────────────────────
+// 전역 showToast가 있으면 credential-panel.js·auth-status.js도 같은 토스트를 쓴다
+function showToast(msg, duration) {
+  let t = document.getElementById('memberToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'memberToast';
+    t.className = 'member-toast';
+    t.setAttribute('role', 'status');
+    t.setAttribute('aria-live', 'polite');
+    document.body.appendChild(t);
+  }
+  t.textContent = String(msg);   // 외부 문자열이 섞일 수 있으므로 textContent
+  t.classList.add('show');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => t.classList.remove('show'), duration || 2000);
+}
+
+// 결과 영역 복사 — 성공/실패를 토스트로 알려 준다 (이전에는 피드백 없음)
+function copyResultText(elementId) {
+  const el = document.getElementById(elementId);
+  const text = el ? (el.innerText || el.textContent || '') : '';
+  if (!text.trim()) { showToast('복사할 내용이 없습니다.'); return; }
+  const done = () => showToast('복사했습니다.');
+  const fail = () => showToast('복사하지 못했습니다. 직접 선택해 복사하세요.', 3000);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, fail);
+  } else {
+    fail();
+  }
+}
+
+// 비밀 키 표시/숨기기 토글
+function toggleSecretVisibility(inputId, button) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const show = input.type === 'password';
+  input.type = show ? 'text' : 'password';
+  if (button) {
+    button.textContent = show ? '숨기기' : '표시';
+    button.setAttribute('aria-pressed', show ? 'true' : 'false');
+  }
+}
