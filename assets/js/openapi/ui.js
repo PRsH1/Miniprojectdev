@@ -171,7 +171,18 @@ function selectEndpoint(id, options = {}) {
     const ep = API_LIST.find(e => e.id === id);
     if (!ep) return;
 
-    // 진행 중인 요청은 취소한다 — 그대로 두면 응답이 새로 연 API 화면에 표시된다
+    // 보고 있는 API를 다시 클릭한 경우 — 화면은 그대로 두고 진행 중인 요청도 취소하지 않는다 (D-11)
+    // (저장 항목 불러오기는 skipDraft로 같은 API도 다시 그려야 하므로 제외)
+    if (state.currentEndpoint && state.currentEndpoint.id === id && !options.skipDraft) {
+        // API 항목 직접 클릭은 "불러온 저장 항목" 상태를 해제한다 (기존 동작 유지)
+        state.currentHistoryId = null;
+        $('.save-item').removeClass('active');
+        $(`.endpoint-item[data-id="${id}"]`).addClass('active');
+        if (window.innerWidth <= 768 && typeof closeMobileSidebar === 'function') closeMobileSidebar();
+        return;
+    }
+
+    // 다른 API로 옮기면 진행 중인 요청은 취소한다 — 그대로 두면 응답이 새로 연 API 화면에 표시된다
     if (state.inFlight && typeof cancelInFlightRequest === 'function') {
         cancelInFlightRequest('switch');
     }

@@ -179,7 +179,7 @@ const API_SPECS = {
   (D-10 — 환경 select 복원의 change 이벤트가 빈 draft를 먼저 써서, `/api/me`가 느릴 때 다시 새로고침하면 편집 내용이 사라졌다).
   `refreshAuthUser()`/`initHistory()`가 실패해도 `.catch()` 뒤에 복원은 실행된다.
   토큰·API Key·Member ID·비밀 키는 저장하지 않는다(P0-08).
-- 진행 중인 요청이 있는데 API를 바꾸면 그 요청은 취소된다(응답이 다른 API 화면에 표시되는 것 방지).
+- 진행 중인 요청이 있는데 다른 API로 바꾸면 그 요청은 취소된다(응답이 다른 API 화면에 표시되는 것 방지). 같은 API 재클릭은 취소하지 않는다(D-11).
 
 **DB API 엔드포인트 (`/api/request-history`):**
 
@@ -269,7 +269,8 @@ const API_SPECS = {
 - **취소·타임아웃**: `sendRequest()`는 `AbortController`를 `state.inFlight`에 두고 **60초**(`REQUEST_TIMEOUT_MS`) 타이머를 건다.
   진행 중에는 Send 버튼이 회색 **[취소]**(`.btn-send.is-cancel`, `setSendButtonBusy()`)로 바뀌고 드롭다운 화살표는 비활성.
   [취소] → "요청이 취소되었습니다", 타임아웃 → "응답이 60초 안에 오지 않아 요청을 취소했습니다"를 응답 영역에 표시한다(CORS 안내는 띄우지 않음).
-  진행 중에 다른 API를 고르면 `cancelInFlightRequest('switch')`로 취소하고 토스트만 띄운다.
+  진행 중에 다른 API를 고르면 `cancelInFlightRequest('switch')`로 취소하고 토스트만 띄운다. **보고 있는 API를 다시 클릭하면** 화면을 다시 그리지 않고
+  요청도 취소하지 않는다(`selectEndpoint()` 조기 반환 — 불러온 저장 항목 상태만 해제, D-11). 저장 항목 불러오기(`skipDraft`)는 같은 API여도 다시 그린다.
 - **단축키**(`init.js` keydown): **Ctrl/Cmd+Enter** = Send(모달이 열려 있거나 요청 진행 중이면 무시, Body 편집 중에도 줄바꿈 대신 전송),
   **Esc** = 가장 위 모달 하나 닫기(`MODAL_CLOSERS` 순서: 확인창 → 로그인 필요 → 인증 저장 → 인증 불러오기 → 요청 저장 → Code → API 명세 → 가이드),
   모달이 없으면 Send 드롭다운·모바일 사이드바를 닫는다. **Ctrl+Shift+F** = Body JSON 정렬(기존). 새 모달을 추가하면 `MODAL_CLOSERS`에도 넣는다.
