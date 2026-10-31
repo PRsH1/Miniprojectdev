@@ -9,6 +9,12 @@
  *
  * 인라인 모드 (사용 안 함 — 이전 방식):
  *   <script>window.AUTH_STATUS_INLINE = true;</script>
+ *
+ * 세션 만료 시 입력 보존 (P1-21):
+ *   페이지가 window.AUTH_STATUS_HAS_UNSAVED = function () { return 미저장 입력 있음; } 를 등록하면
+ *   세션 만료 때 자동 새로고침 대신 상단 고정 배너([새 탭에서 로그인] [새로고침])를 띄운다.
+ *   새 탭에서 로그인하고 돌아오면(focus/visibilitychange 재확인) 배너가 사라지고 이어서 저장할 수 있다(쿠키 공유).
+ *   훅이 없거나 false면 기존처럼 안내 후 새로고침한다.
  */
 (function () {
     var CORNER = window.AUTH_STATUS_CORNER === true;
@@ -214,11 +220,12 @@
                     '<a href="/auth/signup.html" class="asb-btn">회원가입</a>';
                 return;
             }
-            // 기본 상단 바 모드 (기존 동작 유지)
+            // 기본 상단 바 모드 — 로그인 후 현재 페이지로 돌아오도록 next 전달(코너 모드와 동일)
+            var barNext = '?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);
             el.innerHTML =
                 '<a href="/" class="asb-brand">eformsign Tools Hub</a>' +
                 '<span class="asb-spacer"></span>' +
-                '<a href="/auth/login.html" class="asb-btn primary">로그인</a>' +
+                '<a href="/auth/login.html' + escHtml(barNext) + '" class="asb-btn primary">로그인</a>' +
                 '<a href="/auth/signup.html" class="asb-btn">회원가입</a>';
             return;
         }
@@ -346,14 +353,97 @@
         toast.textContent = msg;
     }
 
+    // 페이지가 등록한 미저장 입력 훅 (P1-21 계약: 함수, 미저장 입력이 있으면 true)
+    function pageHasUnsaved() {
+        try {
+            return typeof window.AUTH_STATUS_HAS_UNSAVED === 'function' && window.AUTH_STATUS_HAS_UNSAVED() === true;
+        } catch (e) {
+            // 훅 오류로 입력을 잃지 않도록 "미저장 있음"으로 본다
+            return true;
+        }
+    }
+
+    var EXPIRED_BANNER_ID = 'asbSessionExpiredBanner';
+
+    function showSessionExpiredBanner() {
+        if (document.getElementById(EXPIRED_BANNER_ID)) return;
+        var banner = document.createElement('div');
+        banner.id = EXPIRED_BANNER_ID;
+        banner.setAttribute('role', 'alert');
+        banner.style.cssText = [
+            'position:fixed', 'left:0', 'right:0', 'top:' + ((!INLINE && !CORNER) ? '40px' : '0'),
+            'z-index:1000000', 'background:#fef3c7', 'color:#78350f', 'border-bottom:1px solid #f59e0b',
+            'box-shadow:0 4px 12px rgba(0,0,0,.12)', 'padding:10px 16px',
+            'display:flex', 'flex-wrap:wrap', 'align-items:center', 'gap:8px 12px',
+            'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', 'font-size:13px',
+        ].join(';');
+
+        var text = document.createElement('span');
+        text.style.cssText = 'flex:1;min-width:220px;line-height:1.5';
+        var strong = document.createElement('strong');
+        strong.textContent = '세션이 만료되었습니다. ';
+        text.appendChild(strong);
+        text.appendChild(document.createTextNode(
+            '입력한 내용은 이 탭에 그대로 있습니다. 새 탭에서 다시 로그인한 뒤 이 탭으로 돌아오면 이어서 저장할 수 있습니다.'));
+
+        function makeBtn(label, primary) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = label;
+            b.style.cssText = [
+                'width:auto', 'padding:6px 14px', 'border-radius:8px', 'font-size:12px', 'font-weight:600',
+                'cursor:pointer', 'white-space:nowrap',
+                primary ? 'background:#b45309;color:#fff;border:1px solid #92400e'
+                        : 'background:#fff;color:#78350f;border:1px solid #f59e0b',
+            ].join(';');
+            return b;
+        }
+
+        var loginBtn = makeBtn('새 탭에서 로그인', true);
+        loginBtn.id = 'asbExpiredLoginBtn';
+        loginBtn.addEventListener('click', function () {
+            // 로그인을 마치면 "이 탭을 닫고 돌아가세요" 페이지로 이동한다(쿠키는 탭 간 공유)
+            window.open('/auth/login.html?next=' + encodeURIComponent('/auth/login-complete.html'), '_blank');
+        });
+
+        var reloadBtn = makeBtn('새로고침', false);
+        reloadBtn.id = 'asbExpiredReloadBtn';
+        reloadBtn.addEventListener('click', function () {
+            if (pageHasUnsaved() && !window.confirm('새로고침하면 입력한 내용이 사라집니다. 계속할까요?')) return;
+            window.location.reload();
+        });
+
+        banner.appendChild(text);
+        banner.appendChild(loginBtn);
+        banner.appendChild(reloadBtn);
+        document.body.appendChild(banner);
+    }
+
+    function hideSessionExpiredBanner() {
+        var banner = document.getElementById(EXPIRED_BANNER_ID);
+        if (banner) banner.remove();
+    }
+
     function handleAuthExpired() {
         if (authExpiredHandled) return;
         authExpiredHandled = true;
         stopNotificationFallbackPolling();
+        if (pageHasUnsaved()) {
+            // 입력 중인 내용이 있으면 새로고침하지 않고 배너로 안내 (P1-21)
+            showSessionExpiredBanner();
+            return;
+        }
         showAuthExpiredNotice();
         setTimeout(function () {
             window.location.reload();
         }, 1200);
+    }
+
+    // 새 탭에서 다시 로그인해 세션이 돌아온 경우 — 배너를 닫고 사용자 영역·알림을 다시 붙인다
+    function handleAuthRestored(user) {
+        authExpiredHandled = false;
+        hideSessionExpiredBanner();
+        render(user);
     }
 
     window.handleAuthExpired = handleAuthExpired;
@@ -655,14 +745,35 @@
         return !!authStatusCurrentUser || !!document.getElementById('asbBtnLogout');
     }
 
+    // 탭 복귀 재확인 — visibilitychange와 focus가 연달아 와도 /api/me는 1번만 (P1-21)
+    // 진행 중인 요청은 같은 promise를 공유하고, 끝난 뒤 1초 안의 재요청은 건너뛴다
+    var recheckInFlight = null;
+    var recheckLastAt = 0;
+    var RECHECK_DEBOUNCE_MS = 1000;
+
     function recheckAuthOnReturn() {
-        if (authExpiredHandled || !authBarShowsLoggedIn()) return;
-        fetch('/api/me')
+        var waitingForRelogin = authExpiredHandled && !!document.getElementById(EXPIRED_BANNER_ID);
+        if (!waitingForRelogin && (authExpiredHandled || !authBarShowsLoggedIn())) return null;
+        if (recheckInFlight) return recheckInFlight;
+        if (Date.now() - recheckLastAt < RECHECK_DEBOUNCE_MS) return null;
+
+        recheckInFlight = fetch('/api/me')
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
-                if (data && data.authenticated === false && authBarShowsLoggedIn()) handleAuthExpired();
+                if (!data) return;
+                var isAuth = data.authenticated !== false && !!data.username;
+                if (waitingForRelogin) {
+                    if (isAuth) handleAuthRestored(data);
+                    return;
+                }
+                if (!isAuth && authBarShowsLoggedIn()) handleAuthExpired();
             })
-            .catch(function () {});
+            .catch(function () {})
+            .then(function () {
+                recheckLastAt = Date.now();
+                recheckInFlight = null;
+            });
+        return recheckInFlight;
     }
 
     // ─── /api/me 호출 ────────────────────────────────────────

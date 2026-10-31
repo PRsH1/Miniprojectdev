@@ -858,7 +858,8 @@ $(function () {
     if (!opts.skipUrlSync) updateTabQuery(normalizedTab);
 
     if (normalizedTab === 'signup') loadSignupRequests(_currentSignupStatus || 'pending');
-    if (normalizedTab === 'bug-reports') loadBugReports(true);
+    // 작성 중인 답변이 있으면 탭을 다시 열어도 목록·상세를 다시 그리지 않는다(입력 보존)
+    if (normalizedTab === 'bug-reports' && !bugDetailDirty()) loadBugReports(true);
     if (normalizedTab === 'users') loadUsers();
     if (normalizedTab === 'pages') loadPages();
     if (normalizedTab === 'audit') loadAuditLogs(1);
@@ -908,7 +909,7 @@ $(function () {
       _users = data.users || [];
       renderUserList();
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
     });
     loadResetRequests();
   }
@@ -1204,7 +1205,7 @@ $(function () {
         $('#deletePageModal').data('target-id', id).addClass('open');
       });
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
     });
   }
 
@@ -1337,7 +1338,7 @@ $(function () {
       renderAuditLogs(data.logs || []);
       renderPagination(data.page, data.totalPages, data.total);
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
     });
   }
 
@@ -1498,7 +1499,7 @@ $(function () {
       }
       renderSignupRequests(reqs, status);
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
     });
   }
 
@@ -1636,13 +1637,34 @@ $(function () {
 
     $tbody.find('tr[data-id]').on('click', function () {
       const id = $(this).data('id');
+      if (String(id) === String(_selectedBugReportId)) return;
+      if (!confirmDiscardBugDraft()) return;
       selectBugReport(id);
     });
 
     highlightBugReportRow();
   }
 
+  // 상세 패널 입력값 — 렌더링 때 값과 비교해 미저장 답변을 판단한다 (P1-21)
+  let _bugDetailSnapshot = null;
+  function bugDetailValues() {
+    if (!$('#bugReportStatusSelect').length) return null;
+    return JSON.stringify([
+      $('#bugReportStatusSelect').val(), $('#bugReportAdminNote').val(),
+      $('#bugReportCause').val(), $('#bugReportActionTaken').val(),
+    ]);
+  }
+  function bugDetailDirty() {
+    const now = bugDetailValues();
+    return now !== null && _bugDetailSnapshot !== null && now !== _bugDetailSnapshot;
+  }
+  // 목록 새로고침·다른 리포트 선택은 상세 패널을 다시 그리므로 작성 중인 답변이 있으면 먼저 묻는다
+  function confirmDiscardBugDraft() {
+    return !bugDetailDirty() || confirm('저장하지 않은 답변이 있습니다. 버리고 계속할까요?');
+  }
+
   function renderBugReportDetail(report, message) {
+    _bugDetailSnapshot = null;
     const $detail = $('#bugReportDetail').empty();
     if (!report) {
       $detail.html('<div class="detail-empty">목록에서 리포트를 선택하면 상세 내용을 확인하고 상태나 메모를 관리할 수 있습니다.</div>');
@@ -1716,6 +1738,8 @@ $(function () {
     `);
 
     $('#bugReportStatusSelect').val(report.status);
+    // 저장하지 않은 답변 판단용 기준값 (P1-21)
+    _bugDetailSnapshot = bugDetailValues();
 
     $('#btnSaveBugReply').on('click', function () {
       const status = $('#bugReportStatusSelect').val();
@@ -1728,8 +1752,15 @@ $(function () {
         contentType: 'application/json',
         data: JSON.stringify({ status, admin_note, cause, action_taken }),
       }).done(function () {
+        _bugDetailSnapshot = bugDetailValues(); // 저장됨 — 새로고침 전까지도 미저장으로 보지 않는다
         loadBugReports(true, '답변을 저장했습니다.');
       }).fail(function (xhr) {
+        if (xhr.status === 401) {
+          onAuthLost();
+          $('#bugReportDetailMsg').text('세션이 만료되어 저장하지 못했습니다. 입력한 내용은 그대로 있습니다. 다시 로그인한 뒤 [답변 저장]을 누르세요.')
+            .removeClass('ok').addClass('err');
+          return;
+        }
         $('#bugReportDetailMsg').text(errorMessage(xhr)).removeClass('ok').addClass('err');
       });
     });
@@ -1759,7 +1790,7 @@ $(function () {
       renderBugReportDetail(data.report, message);
     }).fail(function (xhr) {
       if (requestSeq !== _bugReportDetailRequestSeq) return;
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
       else $('#bugReportDetail').html(`<div class="detail-empty" style="color:var(--danger)">상세 조회 실패: ${esc(errorMessage(xhr))}</div>`);
     });
   }
@@ -1786,16 +1817,16 @@ $(function () {
       const nextId = shouldKeepSelection ? _selectedBugReportId : _bugReports[0].id;
       selectBugReport(nextId, message);
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
       else $('#bugReportsBody').html(`<tr class="empty-row"><td colspan="5">로드 실패: ${esc(errorMessage(xhr))}</td></tr>`);
     });
   }
 
   $('#bugStatusFilter, #bugSeverityFilter').on('change', function () {
-    if (_activeTab === 'bug-reports') loadBugReports(false);
+    if (_activeTab === 'bug-reports' && confirmDiscardBugDraft()) loadBugReports(false);
   });
   $('#btnReloadBugReports').on('click', function () {
-    loadBugReports(true);
+    if (confirmDiscardBugDraft()) loadBugReports(true);
   });
 
   // ═══════════════════════════════════════════════════════════
@@ -1813,7 +1844,7 @@ $(function () {
       populateScopeFilter(data.scopes);
       populateRuleScopeSelect(data.scopes);
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
       else alert('IP 화이트리스트 로드 실패');
     });
   }
@@ -2105,6 +2136,28 @@ $(function () {
     if (e.target === this && !this.hasAttribute('data-keep-open')) $(this).removeClass('open');
   });
 
+  // ─── 세션 만료 시 입력 보존 (P1-21) ─────────────────────────
+  // auth-status.js 계약: window.AUTH_STATUS_HAS_UNSAVED()가 true면 자동 새로고침 대신 "세션 만료" 배너를 띄운다.
+  // 미저장 = 버그 답변 패널이 렌더링 때 값과 다름 / 열린 모달에 입력한 값이 있음
+  function openModalHasInput() {
+    let found = false;
+    $('.modal-overlay.open').find('input, textarea').each(function () {
+      const type = (this.getAttribute('type') || 'text').toLowerCase();
+      if (['radio', 'checkbox', 'hidden', 'button', 'submit'].includes(type)) return;
+      if (!this.readOnly && String(this.value || '').trim() !== '') found = true;
+    });
+    return found;
+  }
+  window.AUTH_STATUS_HAS_UNSAVED = function () {
+    return bugDetailDirty() || openModalHasInput();
+  };
+
+  // API가 401(리프레시까지 만료)일 때 — 로그인 페이지로 바로 보내지 않고 auth-status의 만료 처리에 맡긴다
+  function onAuthLost() {
+    if (typeof window.handleAuthExpired === 'function') window.handleAuthExpired();
+    else if (!window.AUTH_STATUS_HAS_UNSAVED()) location.href = '/auth/login.html?next=' + encodeURIComponent(location.pathname + location.search);
+  }
+
   // ─── 실시간 새 항목 배너 (P1-18) ───────────────────────────
   // auth-status.js가 Pusher new-notification을 받으면 'auth-status:notification' 이벤트를 보낸다.
   // 목록을 자동으로 다시 불러오지 않고(작성 중인 답변 보호·Neon 호출 최소화) 해당 탭에 배너만 띄운다.
@@ -2124,7 +2177,7 @@ $(function () {
   $('[data-reload-tab]').on('click', function () {
     const tab = $(this).data('reload-tab');
     if (tab === 'signup') loadSignupRequests(_currentSignupStatus || 'pending');
-    if (tab === 'bug-reports') loadBugReports(true);
+    if (tab === 'bug-reports' && confirmDiscardBugDraft()) loadBugReports(true);
     if (tab === 'users') loadUsers();
   });
 

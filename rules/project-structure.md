@@ -92,7 +92,8 @@ ProjectImprove/
 │   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/testjp/dev/prod 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, parseAuthnRequest(Redirect·POST 바인딩 SAMLRequest → ACS URL·요청 ID), loginResponseTemplate.context + createTemplateCallback로 AttributeStatement 생성, debugDeliver 진단 헬퍼)
 │
 ├── auth/
-│   └── login.html              # 인증 보호 페이지용 로그인 UI (+ signup/change-password/403 등)
+│   └── login.html              # 인증 보호 페이지용 로그인 UI (+ signup/signup-status/change-password/403,
+│                               #   login-complete = 세션 만료 배너의 '새 탭에서 로그인' 완료 안내)
 │
 ├── errors/                     # HTML 에러 페이지 (403/404/405/500)
 │

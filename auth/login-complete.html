@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <title>다시 로그인됨</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!--
+    세션 만료 배너(assets/js/auth-status.js, P1-21)의 [새 탭에서 로그인]이 로그인 후 이동하는 안내 페이지.
+    로그인 쿠키는 탭 간에 공유되므로, 작업하던 탭으로 돌아가면 그 탭이 세션을 다시 확인하고 배너를 닫는다.
+  -->
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(1100px 700px at 20% 0%, #eef3ff, #f6f7fb 60%);
+      display:grid; place-items:center; padding:24px; color:#111827;
+    }
+    .card{
+      width:min(420px,92vw); background:#fff; border:1px solid #e5e7eb;
+      border-radius:16px; box-shadow:0 10px 25px rgba(0,0,0,.08);
+      padding:32px 26px; text-align:center;
+    }
+    .icon{font-size:48px; margin-bottom:16px;}
+    h1{font-size:20px; margin-bottom:8px;}
+    p{color:#6b7280; font-size:14px; line-height:1.6; margin-bottom:20px;}
+    .btn{
+      display:inline-block; padding:10px 24px; border-radius:10px; cursor:pointer;
+      background:linear-gradient(90deg,#1a7bf7,#0070f3); color:#fff;
+      text-decoration:none; font-weight:600; font-size:14px; border:1px solid #1570ef;
+    }
+    .btn:hover{filter:brightness(.95)}
+    .sub{display:block; margin-top:14px; font-size:12px; color:#6b7280;}
+    .sub a{color:#0070f3;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">✅</div>
+    <h1>다시 로그인되었습니다</h1>
+    <p>이 탭을 닫고 작업하던 탭으로 돌아가세요.<br>입력하던 내용을 이어서 저장할 수 있습니다.</p>
+    <button type="button" class="btn" id="btnClose">이 탭 닫기</button>
+    <span class="sub" id="closeHint" hidden>탭이 닫히지 않으면 직접 닫아 주세요. <a href="/">허브로 이동</a></span>
+  </div>
+  <script>
+    document.getElementById('btnClose').addEventListener('click', function () {
+      window.close();
+      // 스크립트로 연 탭이 아니면 브라우저가 닫기를 막는다 → 안내 표시
+      setTimeout(function () { document.getElementById('closeHint').hidden = false; }, 300);
+    });
+  </script>
+</body>
+</html>

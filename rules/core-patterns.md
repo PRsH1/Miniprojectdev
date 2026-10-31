@@ -95,7 +95,17 @@ const DOMAINS = {
   API 권한은 `requireRole`이 매 요청 DB로 판단하므로 즉시 반영되고, 액세스 토큰 만료 후에는 재로그인으로 JWT도 갱신된다.
   본인 강등·비활성화와 마지막 활성 admin 강등·비활성화는 400(DELETE와 동일 정책).
 - **클라이언트 single-flight**: `auth-status.js`/`credential-panel.js`/`openapi/state.js`가 `window.AUTH_STATUS_ME_PROMISE = window.AUTH_STATUS_ME_PROMISE || …` 멱등 가드로 `/api/me` 부트스트랩을 1회로 공유하고, `navigator.locks.request('eform-auth-bootstrap', …)`로 탭 간 직렬화한다(미지원 시 lock 없이 진행 — 서버 원자성이 정확성 보장).
-- **로그아웃 graceful 처리**: 같은-오리진 `/api/*` 호출이 갱신 후에도 401이거나(=리프레시 만료) `visibilitychange`/`focus` 재확인에서 `authenticated:false`면 `window.handleAuthExpired()`(auth-status.js)가 1회 안내 후 `location.reload()`. (interval 폴링은 쓰지 않음 — Neon idle suspend 유지)
+- **로그아웃 graceful 처리**: 같은-오리진 `/api/*` 호출이 갱신 후에도 401이거나(=리프레시 만료) `visibilitychange`/`focus` 재확인에서 `authenticated:false`면 `window.handleAuthExpired()`(auth-status.js)가 1회 처리한다. (interval 폴링은 쓰지 않음 — Neon idle suspend 유지)
+  - **입력 보존 (P1-21)**: 페이지가 `window.AUTH_STATUS_HAS_UNSAVED = function () { return 미저장 입력 있음; }`을 등록했고 `true`를 반환하면
+    자동 새로고침하지 않고 상단 고정 배너 "세션이 만료되었습니다 … [새 탭에서 로그인] [새로고침]"(`#asbSessionExpiredBanner`)을 띄운다.
+    [새 탭에서 로그인]은 `/auth/login.html?next=/auth/login-complete.html`을 새 탭으로 연다(완료 페이지: "이 탭을 닫고 돌아가세요").
+    원래 탭으로 돌아오면 `focus`/`visibilitychange` 재확인이 `authenticated:true`를 보고 배너를 닫고 사용자 영역·알림을 다시 붙인다(쿠키 공유 → 그대로 저장 가능).
+    [새로고침]은 미저장 입력이 있으면 한 번 더 확인한다. 훅이 없거나 `false`·미정의면 기존처럼 안내 토스트 후 1.2초 뒤 `location.reload()`.
+    훅이 예외를 던지면 입력 보호를 위해 "미저장 있음"으로 본다. 등록 페이지: `private/Admin.html`(버그 답변 패널이 렌더링 때 값과 다름 · 열린 모달에 입력값),
+    `community/developer-notes.html`(편집기 변경), `community/bug-report.html`(제출 전 제보 글), `private/MemberV2.html`(C6 담당).
+  - **탭 복귀 재확인 1회**: `visibilitychange`와 `focus`가 연달아 와도 진행 중인 `/api/me` promise를 공유하고, 끝난 뒤 1초 안의 재요청은 건너뛴다 → 탭 복귀 1회당 `/api/me` 1건.
+  - Admin 콘솔의 목록 로드 401은 로그인 페이지로 바로 이동하지 않고 `onAuthLost()` → `handleAuthExpired()`로 넘긴다. 버그 답변 저장이 401이면 입력을 그대로 두고 안내한다.
+    작성 중인 답변이 있으면 목록 새로고침·다른 리포트 선택·필터 변경 전에 확인하고, 탭을 다시 열어도 다시 그리지 않는다.
 - **마이그레이션**: `refresh_tokens.replaced_by UUID` 컬럼 필요. `scripts/migrate-refresh-rotation.js`로 추가(멱등). **반드시 코드 배포 전에 실행** — 없으면 claim/grace 쿼리가 실패해 갱신 전체가 막힌다.
 
 ```javascript
