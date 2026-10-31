@@ -6,6 +6,12 @@
  * P1-14: 새 대기 요청을 만들었을 때만 admin 알림(`password_reset_request`)을 INSERT하고
  * Pusher `private-notifications-admin`으로 `new-notification`을 보낸다(이동 경로 /app/admin?tab=users).
  * 알림 실패는 무시한다 — 요청 자체는 성공. 응답은 계정 존재·중복 여부와 무관하게 항상 같다(열거 방지).
+ *
+ * D-6: 응답 시간도 계정 존재 여부와 무관하게 맞춘다. 있는 계정은 INSERT·감사 로그·알림·Pusher까지 기다리고
+ * 없는 계정은 SELECT 1건으로 끝나 시간 차로 존재가 드러났다. 모든 200 응답을 요청 시작부터
+ * 최소 MIN_RESPONSE_MS가 지난 뒤 보낸다(응답 전에 await하는 지연 — Vercel 서버리스는 응답 후 남은
+ * Promise가 끊길 수 있으므로 알림을 응답 뒤로 미루는 fire-and-forget은 쓰지 않는다).
+ * 처리 시간이 이 값을 넘는 드문 경우(Pusher 지연 등)에는 차이가 남는다 — signup 409가 이미 존재를 알려 주므로 수용.
  */
 
 const { getDb } = require('./_shared/db');
@@ -54,17 +60,27 @@ async function notifyAdmins(sql, requestId, username) {
   }
 }
 
-module.exports = async function handler(req, res) {
+const OK_BODY = { ok: true, message: '관리자에게 요청이 전달되었습니다.' };
+
+/** 요청 시작 후 최소 시간을 채운 뒤 같은 200 응답을 보낸다 (D-6) */
+async function respondOk(res, startedAt) {
+  const wait = handler.MIN_RESPONSE_MS - (Date.now() - startedAt);
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+  return res.status(200).json(OK_BODY);
+}
+
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return methodNotAllowed(req, res, ['POST']);
   }
+  const startedAt = Date.now();
 
   const body = req.body || {};
   const username = (typeof body.username === 'string' ? body.username : '').trim();
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress;
 
   if (!username) {
-    return res.status(200).json({ ok: true, message: '관리자에게 요청이 전달되었습니다.' });
+    return respondOk(res, startedAt);
   }
 
   // 길이 한도 (P0b-04) — 아이디 길이만 보므로 계정 존재 여부는 드러나지 않는다
@@ -90,7 +106,7 @@ module.exports = async function handler(req, res) {
         RETURNING id
       `;
       if (!inserted || inserted.length === 0) {
-        return res.status(200).json({ ok: true, message: '관리자에게 요청이 전달되었습니다.' });
+        return respondOk(res, startedAt);
       }
       await insertAuditLog({
         userId: user.id,
@@ -106,5 +122,10 @@ module.exports = async function handler(req, res) {
     console.error('비밀번호 재설정 요청 오류:', err);
   }
 
-  return res.status(200).json({ ok: true, message: '관리자에게 요청이 전달되었습니다.' });
-};
+  return respondOk(res, startedAt);
+}
+
+// 모든 200 응답의 최소 소요 시간(ms). 테스트에서 줄일 수 있도록 함수 속성으로 둔다
+handler.MIN_RESPONSE_MS = 500;
+
+module.exports = handler;

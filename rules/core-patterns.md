@@ -166,6 +166,12 @@ const DOMAINS = {
 - IP 단위 제한은 코드가 아니라 **Vercel WAF rate limit** 규칙으로 건다(대시보드 설정, 사용자 작업).
   권장: `POST /api/login` IP당 10회/60초 초과 시 429(또는 Deny 10분), `POST /api/signup`·`/api/password-reset-request`
   IP당 5회/10분. Firewall 규칙은 배포와 별개라 코드 머지만으로는 적용되지 않는다.
+- **비밀번호 재설정 요청 응답 시간 맞춤 (D-6)**: `controllers/password-reset-request.js`는 모든 200 응답을 요청 시작부터
+  최소 `MIN_RESPONSE_MS`(500ms)가 지난 뒤 보낸다. 있는 계정은 INSERT·감사 로그·알림 INSERT·Pusher를 기다리고 없는 계정은
+  SELECT 1건이라, 그대로면 응답 시간으로 계정 존재가 드러난다. 알림을 응답 뒤로 미루는(fire-and-forget) 방식은
+  Vercel 서버리스가 응답 후 남은 Promise를 끊을 수 있어 쓰지 않고, "없는 계정도 같은 쿼리 실행"은 Pusher 왕복까지 흉내 낼 수 없어
+  고정 하한(await 지연)을 택했다. 처리가 500ms를 넘는 드문 경우(Pusher 지연)에는 차이가 남는데, `POST /api/signup` 409가
+  이미 아이디 존재를 알려 주므로 수용한다. 테스트: `test/password-reset-timing.test.js`.
 
 ### 비밀번호 변경 (`controllers/change-password.js`, P0b-02)
 
