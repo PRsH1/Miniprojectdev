@@ -71,8 +71,14 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 - **실행 중 잠금** `setRunLock(true)`: 실행 버튼·전체 선택/해제, 헤더 환경 select·Custom URL, 입력값 설정 버튼(모달), 프로필 select를
   비활성화하고 열린 설정 모달을 닫는다. `baseUrl()`은 요청마다 다시 읽으므로 잠그지 않으면 실행 도중 다른 서버로 요청이 간다.
   실행 중 과거 이력 열기도 막는다. 실행 중 탭 닫기·새로고침은 `beforeunload` 경고.
-- **[중지]** `#stopRunBtn` → `requestStop()`: `state.stopRequested = true` + 진행 중 요청의 `AbortController`를 모두 취소한다.
-  - 취소된 step은 `SKIP("사용자 중지 — 진행 중이던 요청을 취소했습니다…")` (서버에서 이미 처리됐을 수 있음).
+- **[중지]** `#stopRunBtn` → `requestStop()`: `state.stopRequested = true` + 진행 중인 **조회** 요청의 `AbortController`를 취소한다.
+  - 취소된 조회 step은 `SKIP("사용자 중지 — 진행 중이던 조회 요청을 취소했습니다.")`, `try*` 반복 도중 멈춰 다음 시도를 보내지 않은
+    step은 `SKIP("사용자 중지 — 남은 요청을 보내지 않았습니다.")`(`stopError(aborted)`의 `aborted`로 구분).
+  - **쓰기 요청(`WRITE_STEP_KINDS`에 있는 step)은 취소하지 않는다**(D-1). `request()`가 쓰기 요청의 컨트롤러를
+    `state.activeControllers`에 넣지 않으므로 완료를 기다리고, 성공하면 `after`(`rememberDoc`·`createdGroupId`·`companyStampId` 등)와
+    `memberCreated`가 그대로 기록되어 뒤의 정리 step이 지운다. 결과 행 이름에 "· 중지 전 시작된 요청 완료"가 붙는다.
+    중지 전에 abort하면 서버는 이미 만들었는데 정리 대상에 등록되지 않아 자원이 남던 문제 때문이다. 60초 타임아웃은 쓰기 요청에도 그대로 적용된다.
+    `try*` 반복 시도는 진행 중이던 시도만 끝까지 기다리고 다음 후보는 보내지 않는다(`request()` 시작 시 중지 확인).
   - 이후 step은 `SKIP("사용자 중지")`. **단, 정리 step은 정리할 자원이 있으면 실행**한다(`STOP_CLEANUP_TARGETS`:
     `cancelDocs`/`deleteDocs`=`createdIdList`, `deleteGroup`=`createdGroupId`, `deleteMember`=`memberCreated`,
     `cleanupBulk1/2`=`bulkMemberIds`, `deleteStamp`=`companyStampId`). 결과 행 이름에 "· 중지 후 정리"가 붙고,

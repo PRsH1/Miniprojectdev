@@ -702,11 +702,14 @@
         if (body !== undefined && body !== null) options.body = JSON.stringify(body);
 
         const url = `${baseUrl()}${path}`;
-        // 요청마다 AbortController — [중지] 시 즉시 취소, 60초 넘으면 타임아웃 (P1-11)
+        // 요청마다 AbortController — 60초 넘으면 타임아웃 (P1-11).
+        // [중지] 시에는 조회 요청만 즉시 취소한다. 쓰기(WRITE_STEP_KINDS) 요청은 서버가 이미 처리했을 수 있으므로
+        // 취소하지 않고 완료를 기다려 결과(문서·멤버·그룹·도장 ID)를 정리 대상에 등록한다 (D-1).
         const controller = new AbortController();
         let timedOut = false;
         const timer = setTimeout(() => { timedOut = true; controller.abort(); }, REQUEST_TIMEOUT_MS);
-        state.activeControllers.add(controller);
+        const abortOnStop = !WRITE_STEP_KINDS[id];
+        if (abortOnStop) state.activeControllers.add(controller);
         options.signal = controller.signal;
 
         const start = performance.now();
@@ -729,7 +732,7 @@
             if (timedOut) {
                 return { statusType: "FAIL", responseStatus: "TIMEOUT", method, label: stepMeta(id).label, url, duration: `${Math.round(performance.now() - start)}ms`, requestBody: body, responseText: `요청이 ${REQUEST_TIMEOUT_MS / 1000}초 안에 끝나지 않아 취소했습니다. 네트워크 상태나 대상 서버를 확인해 주세요.` };
             }
-            if (controller.signal.aborted) throw stopError();
+            if (controller.signal.aborted) throw stopError(true);
             throw error;
         } finally {
             clearTimeout(timer);
@@ -1371,9 +1374,10 @@
     }
 
     // ── 중지 (P1-11) ─────────────────────────────────────────────────────
-    function stopError() {
+    function stopError(aborted) {
         const error = new Error(STOP_REASON);
         error.isStop = true;
+        error.aborted = aborted === true; // true: 진행 중이던 조회 요청을 취소함, false: 요청을 보내기 전에 멈춤
         return error;
     }
 
@@ -1384,9 +1388,9 @@
             els.stopRunBtn.disabled = true;
             els.stopRunBtn.textContent = "중지 중…";
         }
-        // 정리 step 요청은 취소하지 않는다 (cleanupPhase 중에는 중지 버튼이 이미 비활성)
+        // 진행 중인 조회 요청만 취소한다. 쓰기 요청은 activeControllers에 넣지 않으므로 완료를 기다린다 (D-1)
         state.activeControllers.forEach((controller) => controller.abort());
-        progress(parseInt(els.progressBar.style.width, 10) || 0, "중지 요청됨 — 남은 step은 건너뛰고 정리 step만 실행합니다");
+        progress(parseInt(els.progressBar.style.width, 10) || 0, "중지 요청됨 — 진행 중인 생성 요청은 완료를 기다린 뒤, 남은 step은 건너뛰고 정리 step만 실행합니다");
     }
 
     function stopCleanupEligible(stepId) {
@@ -1512,7 +1516,9 @@
                             result = await runStep(stepId);
                         } catch (error) {
                             if (error && error.isStop) {
-                                result = skipResult(stepId, `${STOP_REASON} — 진행 중이던 요청을 취소했습니다. 서버에서 이미 처리되었을 수 있으니 필요하면 eformsign에서 확인하세요.`);
+                                result = skipResult(stepId, error.aborted
+                                    ? `${STOP_REASON} — 진행 중이던 조회 요청을 취소했습니다.`
+                                    : `${STOP_REASON} — 남은 요청을 보내지 않았습니다.`);
                             } else {
                                 result = { statusType: "FAIL", responseStatus: "ERROR", method: stepMeta(stepId).method, label: stepMeta(stepId).label, url: "", duration: "-", requestBody: null, responseText: error.message || String(error) };
                             }
@@ -1520,6 +1526,8 @@
                             state.cleanupPhase = false;
                         }
                         if (cleanupAfterStop) result = { ...result, label: `${result.label} · 중지 후 정리` };
+                        // 실행 중 [중지]됐지만 쓰기 요청이라 끝까지 기다린 step — 만든 자원은 아래 정리 step이 지운다 (D-1)
+                        else if (state.stopRequested && result.statusType !== "SKIP") result = { ...result, label: `${result.label} · 중지 전 시작된 요청 완료` };
                         if (SEED_STEPS.has(stepId) && result.statusType === "PASS") seedCache[stepId] = extractSeedData(stepId);
                         if (stepId === "createMember" && (result.statusType === "PASS" || result.statusType === "CHECK")) state.shared.memberCreated = true;
                         if (result.statusType === "FAIL") opaFailed = true;
