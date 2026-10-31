@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>eformsign 템플릿 관리 임베딩 (통합 환경)</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js"></script>
@@ -100,6 +101,15 @@
             .container { flex-direction: column; width: 98%; }
             #templateForm { flex: none; min-width: unset; max-height: none; }
             .iframe-panel { min-height: 600px; }
+        }
+
+        /* 좁은 화면(휴대폰) — 가로 스크롤 방지 (P1-19) */
+        @media (max-width: 480px) {
+            .container { width: 100%; margin-top: 10px; gap: 12px; padding: 0 8px; }
+            #templateForm { padding: 14px; min-width: 0; }
+            .form-group-horizontal { flex-wrap: wrap; }
+            .iframe-panel { min-height: 480px; }
+            .modal-content { width: 100%; height: 100%; border-radius: 0; }
         }
     </style>
 </head>

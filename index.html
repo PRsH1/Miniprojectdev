@@ -100,6 +100,29 @@
             color: #555;
         }
 
+        /* type="search" 기본 지우기 버튼 숨김 (자체 .search-clear 사용) */
+        .search-bar input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+
+        /* '/' 단축키 안내 — 검색어가 있거나 포커스 중이면 숨김 */
+        .search-kbd {
+            flex-shrink: 0;
+            margin-left: 8px;
+            padding: 1px 7px;
+            border: 1px solid #d0d4da;
+            border-bottom-width: 2px;
+            border-radius: 5px;
+            background: #f7f8fa;
+            color: #888;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.8em;
+            line-height: 1.4;
+        }
+        .search-bar input:focus ~ .search-kbd,
+        .search-bar input:not(:placeholder-shown) ~ .search-kbd { display: none; }
+
+        /* 이동 경로가 없는 카드(href 없음) */
+        .card[aria-disabled="true"] { cursor: not-allowed; opacity: 0.6; }
+
         /* 컨테이너 */
         .container {
             max-width: 960px;
@@ -367,6 +390,20 @@
             .search-wrapper {
                 padding: 0 16px;
             }
+
+            /* 좁은 화면: 헤더 사용자 버튼이 넘치지 않게 줄바꿈 (P1-19) */
+            .header-top {
+                justify-content: center;
+            }
+
+            .header-user {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .search-kbd {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -386,7 +423,8 @@
     <div class="search-wrapper">
         <div class="search-bar">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="searchInput" placeholder="도구 검색..." autocomplete="off">
+            <input type="search" id="searchInput" placeholder="도구 검색 (이름·설명·키워드)" aria-label="도구 검색" aria-keyshortcuts="/" autocomplete="off">
+            <kbd class="search-kbd" title="/ 키를 누르면 검색창으로 이동합니다">/</kbd>
             <button class="search-clear" id="searchClear" title="검색 초기화"><i class="fa-solid fa-xmark"></i></button>
         </div>
     </div>
@@ -400,7 +438,8 @@
                 <h2>API <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/API(JS,HTML)/OpenAPITesterProd.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/OpenAPITesterProd.html">
+                <a href="/API(JS,HTML)/OpenAPITesterProd.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/OpenAPITesterProd.html"
+                   data-keywords="OPA2 Postman API 호출 요청 토큰 token">
                     <div class="card-icon"><i class="fa-solid fa-flask"></i></div>
                     <div class="card-content">
                         <div class="card-title">Open API Tester<span class="badge badge-new">New</span></div>
@@ -408,8 +447,9 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card
-                   data-protected-path="/app/OpenAPITesterFull">
+                <a href="/app/OpenAPITesterFull" class="card" data-card
+                   data-protected-path="/app/OpenAPITesterFull"
+                   data-keywords="OPA2 Postman API 호출 요청 토큰 token 멤버 그룹 member group">
                     <div class="card-icon"><i class="fa-solid fa-flask-vial"></i></div>
                     <div class="card-content">
                         <div class="card-title">Open API Tester <span class="badge">Full</span></div>
@@ -417,7 +457,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/error-codes.html" class="card" data-card data-min-role="public" data-original-url="/utils/error-codes.html">
+                <a href="/utils/error-codes.html" class="card" data-card data-min-role="public" data-original-url="/utils/error-codes.html"
+                   data-keywords="OPA2 에러 오류 error code 응답">
                     <div class="card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
                     <div class="card-content">
                         <div class="card-title">에러 코드 모음</div>
@@ -425,7 +466,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/DocumentSendImprove.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/DocumentSendImprove.html">
+                <a href="/API(JS,HTML)/DocumentSendImprove.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/DocumentSendImprove.html"
+                   data-keywords="문서 발송 작성 send document template 템플릿">
                     <div class="card-icon"><i class="fa-solid fa-file-signature"></i></div>
                     <div class="card-content">
                         <div class="card-title">새 문서 작성</div>
@@ -433,7 +475,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/DocumentInfo.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/DocumentInfo.html">
+                <a href="/API(JS,HTML)/DocumentInfo.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/DocumentInfo.html"
+                   data-keywords="document info 문서 상태 이력">
                     <div class="card-icon"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 정보 조회</div>
@@ -441,7 +484,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/listdocuments.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/listdocuments.html">
+                <a href="/API(JS,HTML)/listdocuments.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/listdocuments.html"
+                   data-keywords="document list 문서 목록 검색 CSV">
                     <div class="card-icon"><i class="fa-solid fa-list-ul"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 목록 조회</div>
@@ -449,7 +493,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/API(JS,HTML)/DocumentDownload.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/DocumentDownload.html">
+                <a href="/API(JS,HTML)/DocumentDownload.html" class="card" data-card data-min-role="public" data-original-url="/API(JS,HTML)/DocumentDownload.html"
+                   data-keywords="document download PDF 첨부 파일">
                     <div class="card-icon"><i class="fa-solid fa-file-arrow-down"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 다운로드</div>
@@ -457,7 +502,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card data-protected-path="/app/memberV2">
+                <a href="/app/memberV2" class="card" data-card data-protected-path="/app/memberV2"
+                   data-keywords="member group 멤버 그룹 구성원 엑셀 excel">
                     <div class="card-icon"><i class="fa-solid fa-users-gear"></i></div>
                     <div class="card-content">
                         <div class="card-title">멤버/그룹 관리 API</div>
@@ -475,7 +521,8 @@
                 <h2>Embedding <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/Embedding/embedding_doc_Integration.html" class="card" data-card data-min-role="public" data-original-url="/Embedding/embedding_doc_Integration.html">
+                <a href="/Embedding/embedding_doc_Integration.html" class="card" data-card data-min-role="public" data-original-url="/Embedding/embedding_doc_Integration.html"
+                   data-keywords="embedding iframe 임베딩 문서 efs eformsign.js">
                     <div class="card-icon"><i class="fa-solid fa-puzzle-piece"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 임베딩 <span class="badge badge-new">New</span></div>
@@ -483,7 +530,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/Embedding/embedding_template_intergration.html" class="card" data-card data-min-role="public" data-original-url="/Embedding/embedding_template_intergration.html">
+                <a href="/Embedding/embedding_template_intergration.html" class="card" data-card data-min-role="public" data-original-url="/Embedding/embedding_template_intergration.html"
+                   data-keywords="embedding iframe 임베딩 템플릿 template 생성 수정 복제">
                     <div class="card-icon"><i class="fa-solid fa-file-invoice"></i></div>
                     <div class="card-content">
                         <div class="card-title">템플릿 임베딩 <span class="badge badge-new">New</span></div>
@@ -501,7 +549,8 @@
                 <h2>Webhook <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/utils/webhook.html" class="card" data-card data-min-role="public" data-original-url="/utils/webhook.html">
+                <a href="/utils/webhook.html" class="card" data-card data-min-role="public" data-original-url="/utils/webhook.html"
+                   data-keywords="webhook 웹훅 이벤트 수신 pusher">
                     <div class="card-icon"><i class="fa-solid fa-satellite-dish"></i></div>
                     <div class="card-content">
                         <div class="card-title">Webhook 수신 모니터링</div>
@@ -519,11 +568,21 @@
                 <h2>SAML SSO <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card data-protected-path="/app/idptestauth">
+                <a href="/app/idptestauth" class="card" data-card data-protected-path="/app/idptestauth"
+                   data-keywords="SAML SSO IdP SP 로그인 okta azure 싱글사인온">
                     <div class="card-icon"><i class="fa-solid fa-shield"></i></div>
                     <div class="card-content">
                         <div class="card-title">SAML SSO 연동 테스트 <span class="badge badge-new">New</span></div>
                         <div class="card-desc">IdP/SP SAML 인증 테스트</div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right card-arrow"></i>
+                </a>
+                <a href="/utils/saml-guide.html" class="card" data-card data-min-role="public" data-original-url="/utils/saml-guide.html"
+                   data-keywords="SAML SSO IdP SP 메타데이터 metadata 가이드 연동 URL 인증서">
+                    <div class="card-icon"><i class="fa-solid fa-book-open"></i></div>
+                    <div class="card-content">
+                        <div class="card-title">SAML 연동 가이드</div>
+                        <div class="card-desc">테스트 IdP 연동 URL·메타데이터 안내</div>
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
@@ -537,7 +596,8 @@
                 <h2>유틸리티 <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/utils/smtp.html" class="card" data-card data-min-role="public" data-original-url="/utils/smtp.html">
+                <a href="/utils/smtp.html" class="card" data-card data-min-role="public" data-original-url="/utils/smtp.html"
+                   data-keywords="SMTP email 메일 이메일 발송 로그">
                     <div class="card-icon"><i class="fa-solid fa-paper-plane"></i></div>
                     <div class="card-content">
                         <div class="card-title">SMTP 발송 테스트</div>
@@ -545,7 +605,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/CorsTest.html" class="card" data-card data-min-role="public" data-original-url="/utils/CorsTest.html">
+                <a href="/utils/CorsTest.html" class="card" data-card data-min-role="public" data-original-url="/utils/CorsTest.html"
+                   data-keywords="CORS origin 교차 출처 네트워크">
                     <div class="card-icon"><i class="fa-solid fa-shield-halved"></i></div>
                     <div class="card-content">
                         <div class="card-title">CORS 차단 테스트</div>
@@ -553,7 +614,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/RsaTestSample.html" class="card" data-card data-min-role="public" data-original-url="/utils/RsaTestSample.html">
+                <a href="/utils/RsaTestSample.html" class="card" data-card data-min-role="public" data-original-url="/utils/RsaTestSample.html"
+                   data-keywords="RSA ECDSA 서명 signature 비밀키 key 토큰">
                     <div class="card-icon"><i class="fa-solid fa-key"></i></div>
                     <div class="card-content">
                         <div class="card-title">RSA 로그인 테스트</div>
@@ -561,7 +623,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/timestamp.html" class="card" data-card data-min-role="public" data-original-url="/utils/timestamp.html">
+                <a href="/utils/timestamp.html" class="card" data-card data-min-role="public" data-original-url="/utils/timestamp.html"
+                   data-keywords="unix timestamp epoch 시간 날짜 execution_time">
                     <div class="card-icon"><i class="fa-solid fa-clock"></i></div>
                     <div class="card-content">
                         <div class="card-title">Unix 시간 변환</div>
@@ -569,7 +632,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/base64.html" class="card" data-card data-min-role="public" data-original-url="/utils/base64.html">
+                <a href="/utils/base64.html" class="card" data-card data-min-role="public" data-original-url="/utils/base64.html"
+                   data-keywords="base64 encode decode 인코딩 디코딩">
                     <div class="card-icon"><i class="fa-solid fa-right-left"></i></div>
                     <div class="card-content">
                         <div class="card-title">Base64 인코딩/디코딩</div>
@@ -577,7 +641,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card data-protected-path="/app/OpenAPIAutoTest">
+                <a href="/app/OpenAPIAutoTest" class="card" data-card data-protected-path="/app/OpenAPIAutoTest"
+                   data-keywords="OPA 자동 회귀 테스트 regression autotest 토큰">
                     <div class="card-icon"><i class="fa-solid fa-flask-vial"></i></div>
                     <div class="card-content">
                         <div class="card-title">Open API 자동 테스트 <span class="badge badge-new">New</span></div>
@@ -585,7 +650,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card data-protected-path="/app/templatecopy">
+                <a href="/app/templatecopy" class="card" data-card data-protected-path="/app/templatecopy"
+                   data-keywords="template clone 템플릿 교차 복제 북마클릿 bookmarklet">
                     <div class="card-icon"><i class="fa-solid fa-clone"></i></div>
                     <div class="card-content">
                         <div class="card-title">템플릿 복제</div>
@@ -593,7 +659,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/DocumentDelete.html" class="card" data-card data-min-role="public" data-original-url="/utils/DocumentDelete.html">
+                <a href="/utils/DocumentDelete.html" class="card" data-card data-min-role="public" data-original-url="/utils/DocumentDelete.html"
+                   data-keywords="document delete 문서 삭제 일괄 bulk">
                     <div class="card-icon"><i class="fa-solid fa-trash"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 일괄 삭제</div>
@@ -601,8 +668,9 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="javascript:void(0)" onclick="navigateCard(this)" class="card" data-card
-                   data-protected-path="/app/MassDocumentDowmload">
+                <a href="/app/MassDocumentDowmload" class="card" data-card
+                   data-protected-path="/app/MassDocumentDowmload"
+                   data-keywords="document download bulk 문서 일괄 다운로드">
                     <div class="card-icon"><i class="fa-solid fa-download"></i></div>
                     <div class="card-content">
                         <div class="card-title">문서 일괄 다운로드</div>
@@ -610,7 +678,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/templateDeletetool.html" class="card" data-card data-min-role="public" data-original-url="/utils/templateDeletetool.html">
+                <a href="/utils/templateDeletetool.html" class="card" data-card data-min-role="public" data-original-url="/utils/templateDeletetool.html"
+                   data-keywords="template delete 템플릿 삭제 일괄 bulk">
                     <div class="card-icon"><i class="fa-solid fa-folder-minus"></i></div>
                     <div class="card-content">
                         <div class="card-title">템플릿 삭제</div>
@@ -618,7 +687,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/utils/JsonToPretty.html" class="card" data-card data-min-role="public" data-original-url="/utils/JsonToPretty.html">
+                <a href="/utils/JsonToPretty.html" class="card" data-card data-min-role="public" data-original-url="/utils/JsonToPretty.html"
+                   data-keywords="JSON XML pretty format 정렬 포맷 beautify">
                     <div class="card-icon"><i class="fa-solid fa-code"></i></div>
                     <div class="card-content">
                         <div class="card-title">JSON/XML 포맷 정리 <span class="badge badge-new">New</span></div>
@@ -635,7 +705,8 @@
                 <h2>커뮤니티 <span class="section-count"></span></h2>
             </div>
             <div class="card-grid">
-                <a href="/community/developer-notes.html" class="card" data-card data-min-role="public" data-original-url="/community/developer-notes.html">
+                <a href="/community/developer-notes.html" class="card" data-card data-min-role="public" data-original-url="/community/developer-notes.html"
+                   data-keywords="release note 노트 업데이트 변경 이력 changelog">
                     <div class="card-icon"><i class="fa-solid fa-note-sticky"></i></div>
                     <div class="card-content">
                         <div class="card-title">개발자 노트</div>
@@ -643,7 +714,8 @@
                     </div>
                     <i class="fa-solid fa-chevron-right card-arrow"></i>
                 </a>
-                <a href="/community/bug-report.html" class="card" data-card data-min-role="public" data-original-url="/community/bug-report.html">
+                <a href="/community/bug-report.html" class="card" data-card data-min-role="public" data-original-url="/community/bug-report.html"
+                   data-keywords="bug 버그 제보 문의 이슈 issue">
                     <div class="card-icon"><i class="fa-solid fa-bug"></i></div>
                     <div class="card-content">
                         <div class="card-title">버그 리포트</div>
@@ -664,24 +736,19 @@
     <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
     <script src="/assets/js/notification-bell.js"></script>
     <script>
-        // protected_pages 배열 (스크립트 스코프 — navigateCard에서도 접근)
+        // protected_pages 배열 (스크립트 스코프)
         var protectedPages = [];
 
-        // data-protected-path 카드 클릭 시 URL 동적 결정
-        function navigateCard(card) {
-            var protectedPath = card.dataset.protectedPath;
-            if (!protectedPath) return;
-            var page = null;
-            for (var i = 0; i < protectedPages.length; i++) {
-                if (protectedPages[i].path === protectedPath) { page = protectedPages[i]; break; }
-            }
-            if (page) {
-                window.open(card.dataset.protectedPath);
-            } else if (card.dataset.originalUrl) {
-                // DB에서 삭제된 페이지 → 원래 공개 URL로 이동
-                window.open(card.dataset.originalUrl);
-            }
-            // data-original-url 없음 → 공개 복원 경로 없는 보호 페이지 → 이동하지 않음
+        // data-protected-path 카드의 이동 경로 결정 (P1-19)
+        // - DB에 있는 보호 페이지 → /app/{path}
+        // - DB에 없고 data-original-url 있음 → 원래 공개 URL
+        // - 둘 다 없음 → null (이동하지 않음)
+        // 결과를 카드의 실제 href로 넣어 공개 카드와 똑같이 같은 탭에서 열린다.
+        // Ctrl/가운데 클릭은 브라우저 기본 동작으로 새 탭에서 열린다.
+        function resolveCardHref(card, pageInfo) {
+            if (pageInfo) return pageInfo.path;
+            if (card.dataset.originalUrl) return '/' + normalizeFilePath(card.dataset.originalUrl);
+            return null;
         }
 
         // role 접근 허용 여부
@@ -725,12 +792,8 @@
                 var hash = await sha256Hex(originalUrl);
                 var matched = hashMap[hash] || null;
                 if (matched) {
-                    // data-protected-path 동적 주입 → 이후 처리는 data-protected-path 블록에서 통합
+                    // data-protected-path 동적 주입 → href 결정·가시성은 아래 2번 블록에서 통합 처리
                     card.dataset.protectedPath = matched.path;
-                    // 기존 인라인 onclick 제거 후 navigateCard로 위임
-                    card.removeAttribute('onclick');
-                    card.href = 'javascript:void(0)';
-                    card.onclick = function(e) { e.preventDefault(); navigateCard(this); };
                 }
             }
 
@@ -750,8 +813,18 @@
                     : (card.hasAttribute('data-original-url') ? 'public' : 'admin');
                 var visible = canSeeRole(userRole, requiredRole);
                 card.dataset.roleVisible = visible ? '1' : '0';
-                if (!visible) card.remove(); // DOM에서 완전 제거
-                else card.style.display = 'flex';
+                if (!visible) { card.remove(); return; } // DOM에서 완전 제거
+
+                var href = resolveCardHref(card, pageInfo);
+                if (href) {
+                    card.setAttribute('href', href);
+                    card.removeAttribute('aria-disabled');
+                } else {
+                    // 공개 복원 경로 없는 보호 페이지 → 이동하지 않음
+                    card.removeAttribute('href');
+                    card.setAttribute('aria-disabled', 'true');
+                }
+                card.style.display = 'flex';
             });
 
             // ── 3. data-min-role 카드: data-protected-path가 주입된 카드는 제외 ──
@@ -831,8 +904,21 @@
         var noResults = document.getElementById('noResults');
         var roleFilterApplied = false; // applyRoleFilter 완료 여부
 
+        // 카드 검색 대상 문자열: 제목 + 설명 + data-keywords (P1-19)
+        function cardSearchText(card) {
+            var titleEl = card.querySelector('.card-title');
+            var descEl = card.querySelector('.card-desc');
+            return [
+                titleEl ? titleEl.textContent : '',
+                descEl ? descEl.textContent : '',
+                card.getAttribute('data-keywords') || ''
+            ].join(' ').toLowerCase();
+        }
+
         function runSearch() {
             var query = searchInput.value.toLowerCase().trim();
+            // 공백으로 나눈 검색어가 모두 포함된 카드만 표시 (예: "문서 삭제")
+            var terms = query ? query.split(/\s+/) : [];
             searchClear.style.display = query ? 'block' : 'none';
             var sections = document.querySelectorAll('[data-section]');
             var totalVisible = 0;
@@ -846,11 +932,8 @@
                 cards.forEach(function(card) {
                     // role 필터 통과 카드만 대상 — 미판정(로딩 중) 카드는 FOUC CSS로 숨겨진 상태 유지
                     if (card.dataset.roleVisible !== '1') return;
-                    var titleEl = card.querySelector('.card-title');
-                    var descEl = card.querySelector('.card-desc');
-                    var title = titleEl ? titleEl.textContent.toLowerCase() : '';
-                    var desc = descEl ? descEl.textContent.toLowerCase() : '';
-                    var match = !query || title.indexOf(query) !== -1 || desc.indexOf(query) !== -1;
+                    var text = cardSearchText(card);
+                    var match = terms.every(function(t) { return text.indexOf(t) !== -1; });
                     // '' 로 되돌리면 FOUC 규칙(.card[data-min-role]{display:none})이 다시 적용되므로 'flex' 명시
                     card.style.display = match ? 'flex' : 'none';
                     if (match) visibleInSection++;
@@ -868,6 +951,22 @@
             searchInput.value = '';
             runSearch();
             searchInput.focus();
+        });
+
+        // '/' 키로 검색창 포커스, 검색창에서 Esc로 검색어 지우기 (P1-19)
+        document.addEventListener('keydown', function(e) {
+            if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || e.isComposing) return;
+            var el = document.activeElement;
+            var tag = el && el.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+        });
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key !== 'Escape' || !searchInput.value) return;
+            searchInput.value = '';
+            runSearch();
         });
 
         // ─── 초기화: /api/me → 헤더 렌더링 + 카드 필터링 ─────────
