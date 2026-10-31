@@ -117,10 +117,23 @@ $(document).ready(function() {
     // 모바일 사이드바 백드롭 클릭 시 닫기
     $('#sidebarBackdrop').on('click', closeMobileSidebar);
 
+    // 단축키 (P1-10): Ctrl/Cmd+Enter = Send, Esc = 열린 모달 닫기, Ctrl+Shift+F = Body JSON 정렬
     $(document).on('keydown', function(e) {
-        if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'f') {
+        const key = String(e.key || '');
+        if (e.ctrlKey && e.shiftKey && key.toLowerCase() === 'f') {
             e.preventDefault();
             if ($('#tab-body').hasClass('active')) formatBody();
+            return;
+        }
+        if ((e.ctrlKey || e.metaKey) && key === 'Enter') {
+            if (isAnyModalOpen() || !state.currentEndpoint || !$('#requestArea').is(':visible')) return;
+            e.preventDefault();            // Body 편집 중 줄바꿈이 들어가지 않게
+            if (state.inFlight) return;    // 진행 중 요청의 취소는 [취소] 버튼으로만
+            sendRequest();
+            return;
+        }
+        if (key === 'Escape' && closeTopModal()) {
+            e.preventDefault();
         }
     });
 
@@ -212,6 +225,32 @@ $(document).ready(function() {
         document.addEventListener('mouseup', onMouseUp);
     });
 })();
+
+// ── 모달 (Esc 닫기 · Ctrl+Enter 차단 판정) ──────────────────────────────────
+// 위에 뜨는 순서대로. open: 열림 여부, close: 닫기
+const MODAL_CLOSERS = [
+    { open: () => $('#choiceModal').hasClass('open'),       close: () => resolveChoiceModal('cancel') },
+    { open: () => $('#authRequiredModal').css('display') === 'flex',   close: () => closeAuthRequiredModal() },
+    { open: () => $('#credentialSaveModal').css('display') === 'flex', close: () => closeCredentialSaveModal() },
+    { open: () => $('#credentialLoadModal').css('display') === 'flex', close: () => closeCredentialLoadModal() },
+    { open: () => $('#saveModal').hasClass('open'),         close: () => closeSaveModal() },
+    { open: () => $('#codeModal').hasClass('open'),         close: () => closeCodeModal() },
+    { open: () => $('#specModal').hasClass('open'),         close: () => closeSpecModal() },
+    { open: () => $('#guideModal').hasClass('open'),        close: () => closeGuide() },
+];
+
+function isAnyModalOpen() {
+    return MODAL_CLOSERS.some(m => m.open());
+}
+
+// 가장 위의 모달 하나를 닫는다. 모달이 없으면 Send 드롭다운·모바일 사이드바를 닫는다
+function closeTopModal() {
+    const top = MODAL_CLOSERS.find(m => m.open());
+    if (top) { top.close(); return true; }
+    if ($('#sendDropdownMenu').hasClass('open')) { $('#sendDropdownMenu').removeClass('open'); return true; }
+    if ($('#sidebar').hasClass('mobile-open')) { closeMobileSidebar(); return true; }
+    return false;
+}
 
 // 새로고침 전에 보던 API와 편집 내용을 복원한다 (인증 헤더 값은 저장하지 않았으므로 현재 토큰 사용)
 function restoreDraftSession(saved) {

@@ -994,8 +994,34 @@ function validateRequestBeforeSend() {
     return false;
 }
 
+// ── 요청 취소·타임아웃 (P1-10) ─────────────────────────────────────────────
+const REQUEST_TIMEOUT_MS = 60 * 1000;
+
+// reason: 'user'(취소 버튼) | 'switch'(다른 API 선택) — 타임아웃은 sendRequest 내부 타이머가 처리
+function cancelInFlightRequest(reason = 'user') {
+    const inflight = state.inFlight;
+    if (!inflight) return;
+    inflight.reason = reason;
+    inflight.controller.abort();
+}
+
+function setSendButtonBusy(busy) {
+    const $btn = $('#btnSend');
+    if (busy) {
+        $btn.addClass('is-cancel').attr('title', '요청 취소')
+            .html('<i class="fa-solid fa-spinner fa-spin fa-sm"></i> 취소');
+    } else {
+        $btn.removeClass('is-cancel').attr('title', 'Send (Ctrl+Enter)')
+            .html('<i class="fa-solid fa-paper-plane fa-sm"></i> Send');
+    }
+    $btn.prop('disabled', false);
+    $('#btnSendArrow').prop('disabled', !!busy);
+}
+
 async function sendRequest(forceDownload = false) {
     $('#sendDropdownMenu').removeClass('open');
+    // 진행 중이면 Send 버튼은 [취소]로 동작한다
+    if (state.inFlight) { cancelInFlightRequest('user'); return; }
     if (!state.currentEndpoint) { showToast('API를 먼저 선택해주세요'); return; }
     if (!validateRequestBeforeSend()) return;
 
@@ -1047,13 +1073,21 @@ async function sendRequest(forceDownload = false) {
         }
     }
 
-    $('#btnSend').prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin fa-sm"></i>');
     clearResponse();
-    $('#responsePlaceholder').show().find('p').text('요청 전송 중...');
+    $('#responsePlaceholder').show().find('p').text('요청 전송 중... (중단하려면 [취소])');
+
+    // AbortController + 60초 타임아웃. 응답 본문을 읽는 동안에도 취소할 수 있다
+    const inflight = { controller: new AbortController(), reason: null };
+    state.inFlight = inflight;
+    const timer = setTimeout(() => {
+        inflight.reason = 'timeout';
+        inflight.controller.abort();
+    }, REQUEST_TIMEOUT_MS);
+    setSendButtonBusy(true);
 
     const startTime = Date.now();
     try {
-        const opts = { method, headers };
+        const opts = { method, headers, signal: inflight.controller.signal };
         if (body !== undefined) opts.body = body;
 
         const res = await fetch(url, opts);
@@ -1139,13 +1173,29 @@ async function sendRequest(forceDownload = false) {
         }
 
     } catch (e) {
-        $('#responsePlaceholder').show().find('p').text('요청 실패: ' + e.message);
-        // Failed to fetch → CORS·도메인 오타·네트워크 안내 + CorsTest 링크
-        showResponseNotice({ error: e, url });
-        showToast('요청 실패: ' + e.message, 3000);
+        if (e && e.name === 'AbortError') {
+            // 사용자 취소·타임아웃 — CORS 안내를 띄우지 않는다
+            if (inflight.reason === 'switch') {
+                showToast('API를 바꿔 진행 중이던 요청을 취소했습니다', 2500);
+            } else {
+                const msg = inflight.reason === 'timeout'
+                    ? `응답이 ${REQUEST_TIMEOUT_MS / 1000}초 안에 오지 않아 요청을 취소했습니다`
+                    : '요청이 취소되었습니다';
+                clearResponse();
+                $('#responsePlaceholder').show().find('p').text(msg);
+                showToast(msg, 3000);
+            }
+        } else {
+            $('#responsePlaceholder').show().find('p').text('요청 실패: ' + e.message);
+            // Failed to fetch → CORS·도메인 오타·네트워크 안내 + CorsTest 링크
+            showResponseNotice({ error: e, url });
+            showToast('요청 실패: ' + e.message, 3000);
+        }
+    } finally {
+        clearTimeout(timer);
+        if (state.inFlight === inflight) state.inFlight = null;
+        setSendButtonBusy(false);
     }
-
-    $('#btnSend').prop('disabled', false).html('<i class="fa-solid fa-paper-plane fa-sm"></i> Send');
 }
 
 function formatBytes(bytes) {
@@ -1351,24 +1401,40 @@ function renderSnippet() {
     $('#codeSnippetPre').text(snippet);
 }
 
+// ── 스니펫 문자열 이스케이프 (P1-10) ─────────────────────────────────────
+// bash 작은따옴표: ' → '\''
+function shellQuote(v) {
+    return "'" + String(v).replace(/'/g, "'\\''") + "'";
+}
+
+// JS 템플릿 리터럴 본문: \ ` ${ 이스케이프
+function jsTemplateEscape(v) {
+    return String(v).replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+}
+
+// Java 문자열(큰따옴표)
+function javaQuote(v) {
+    return '"' + String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\r/g, '\\r').replace(/\n/g, '\\n') + '"';
+}
+
 function snippetCurl(url, method, headers, body) {
-    const lines = [`curl --location --request ${method} '${url}'`];
+    const lines = [`curl --location --request ${method} ${shellQuote(url)}`];
     Object.entries(headers).forEach(([k, v]) => {
-        lines.push(`  --header '${k}: ${v}'`);
+        lines.push(`  --header ${shellQuote(`${k}: ${v}`)}`);
     });
     if (body) {
-        lines.push(`  --data-raw '${body}'`);
+        lines.push(`  --data-raw ${shellQuote(body)}`);
     }
     return lines.join(' \\\n');
 }
 
 function snippetFetch(url, method, headers, body) {
-    const headersJson = JSON.stringify(headers, null, 2).replace(/^/gm, '  ');
-    let code = `const response = await fetch('${url}', {\n`;
+    const headersJson = JSON.stringify(headers, null, 2).replace(/^/gm, '  ').trimStart();
+    let code = `const response = await fetch(${JSON.stringify(url)}, {\n`;
     code += `  method: '${method}',\n`;
     code += `  headers: ${headersJson}`;
     if (body) {
-        code += `,\n  body: \`${body}\``;
+        code += `,\n  body: \`${jsTemplateEscape(body)}\``;
     }
     code += `\n});\n\n`;
     code += `const data = await response.json();\nconsole.log(data);`;
@@ -1381,17 +1447,18 @@ function snippetJQuery(url, method, headers, body) {
     const otherHeaders = Object.fromEntries(
         Object.entries(headers).filter(([k]) => k !== 'Content-Type')
     );
-    const headersJson = JSON.stringify(otherHeaders, null, 4).replace(/^/gm, '    ');
+    const headersJson = JSON.stringify(otherHeaders, null, 4).replace(/^/gm, '    ').trimStart();
 
     let code = `$.ajax({\n`;
-    code += `    url: '${url}',\n`;
+    code += `    url: ${JSON.stringify(url)},\n`;
     code += `    method: '${method}',\n`;
-    code += `    contentType: '${ct}',\n`;
+    code += `    contentType: ${JSON.stringify(ct)},\n`;
     if (Object.keys(otherHeaders).length) {
         code += `    headers: ${headersJson},\n`;
     }
     if (body) {
-        code += `    data: JSON.stringify(${body}),\n`;
+        // Body 원문을 문자열 그대로 보낸다 (따옴표·백틱이 있어도 스니펫이 깨지지 않게)
+        code += `    data: \`${jsTemplateEscape(body)}\`,\n`;
     }
     code += `    success: function(data) {\n        console.log(data);\n    },\n`;
     code += `    error: function(err) {\n        console.error(err);\n    }\n`;
@@ -1399,18 +1466,23 @@ function snippetJQuery(url, method, headers, body) {
     return code;
 }
 
+// Python: JSON을 파이썬 리터럴로 내보내면 true/null에서 NameError → json.loads로 파싱해 json=로 보낸다
 function snippetPython(url, method, headers, body) {
-    const headersRepr = JSON.stringify(headers, null, 4).replace(/^/gm, '    ').trimStart();
-    let code = `import requests\n\n`;
-    code += `url = "${url}"\n\n`;
+    // JSON 문자열 이스케이프(\" \\ \n \uXXXX)는 파이썬 문자열 리터럴과 호환된다 (헤더 값은 문자열뿐)
+    const headersRepr = JSON.stringify(headers, null, 4);
+    let code = body ? `import json\nimport requests\n\n` : `import requests\n\n`;
+    code += `url = ${JSON.stringify(url)}\n\n`;
     code += `headers = ${headersRepr}\n\n`;
     if (body) {
-        code += `payload = ${body}\n\n`;
-        code += `response = requests.${method.toLowerCase()}(url, headers=headers, data=payload)\n`;
+        // r'''…''' 원문 그대로. ''' 가 들어 있거나 ' 또는 \ 로 끝나면 한 줄 문자열 리터럴로 대체
+        const rawSafe = !body.includes("'''") && !/['\\]$/.test(body);
+        const literal = rawSafe ? `r'''${body}'''` : JSON.stringify(body);
+        code += `payload = json.loads(${literal})\n\n`;
+        code += `response = requests.${method.toLowerCase()}(url, headers=headers, json=payload)\n`;
     } else {
         code += `response = requests.${method.toLowerCase()}(url, headers=headers)\n`;
     }
-    code += `print(response.json())`;
+    code += `print(response.status_code)\nprint(response.text)`;
     return code;
 }
 
@@ -1423,15 +1495,17 @@ function snippetJava(url, method, headers, body) {
 
     // 헤더 빌더 체인
     const headerLines = Object.entries(headers)
-        .map(([k, v]) => `        .header("${k}", "${v}")`).join('\n');
+        .map(([k, v]) => `        .header(${javaQuote(k)}, ${javaQuote(v)})`).join('\n');
 
     code += `HttpRequest request = HttpRequest.newBuilder()\n`;
-    code += `        .uri(URI.create("${url}"))\n`;
+    code += `        .uri(URI.create(${javaQuote(url)}))\n`;
     if (headerLines) code += `${headerLines}\n`;
 
     if (body) {
+        // 텍스트 블록: \ 와 """ 만 이스케이프
+        const block = body.replace(/\\/g, '\\\\').replace(/"""/g, '\\"""');
         code += `        .method("${method}", HttpRequest.BodyPublishers.ofString("""\n`;
-        code += `                ${body.replace(/\n/g, '\n                ')}\n`;
+        code += `                ${block.replace(/\n/g, '\n                ')}\n`;
         code += `                """))\n`;
     } else {
         code += `        .method("${method}", HttpRequest.BodyPublishers.noBody())\n`;

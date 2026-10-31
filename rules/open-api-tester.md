@@ -258,6 +258,20 @@ const API_SPECS = {
   - Body JSON 형식 오류
 - **인증 패널 기본 펼침**: 토큰이 없으면 펼친 상태로 시작한다(`setAuthPanelOpen()`, HTML도 `open` 클래스로 시작).
 
+### 요청 취소 · 단축키 · 코드 스니펫 (P1-10)
+
+- **취소·타임아웃**: `sendRequest()`는 `AbortController`를 `state.inFlight`에 두고 **60초**(`REQUEST_TIMEOUT_MS`) 타이머를 건다.
+  진행 중에는 Send 버튼이 회색 **[취소]**(`.btn-send.is-cancel`, `setSendButtonBusy()`)로 바뀌고 드롭다운 화살표는 비활성.
+  [취소] → "요청이 취소되었습니다", 타임아웃 → "응답이 60초 안에 오지 않아 요청을 취소했습니다"를 응답 영역에 표시한다(CORS 안내는 띄우지 않음).
+  진행 중에 다른 API를 고르면 `cancelInFlightRequest('switch')`로 취소하고 토스트만 띄운다.
+- **단축키**(`init.js` keydown): **Ctrl/Cmd+Enter** = Send(모달이 열려 있거나 요청 진행 중이면 무시, Body 편집 중에도 줄바꿈 대신 전송),
+  **Esc** = 가장 위 모달 하나 닫기(`MODAL_CLOSERS` 순서: 확인창 → 로그인 필요 → 인증 저장 → 인증 불러오기 → 요청 저장 → Code → API 명세 → 가이드),
+  모달이 없으면 Send 드롭다운·모바일 사이드바를 닫는다. **Ctrl+Shift+F** = Body JSON 정렬(기존). 새 모달을 추가하면 `MODAL_CLOSERS`에도 넣는다.
+- **코드 스니펫 이스케이프**: cURL은 URL·헤더·Body를 `shellQuote()`(`'` → `'\''`)로 감싼다. Python은
+  `payload = json.loads(r'''…''')` + `requests.<m>(url, headers=headers, json=payload)`(Body에 `'''`가 있거나 `'`·`\`로 끝나면
+  한 줄 JSON 문자열 리터럴로 대체), `print(response.status_code)` / `print(response.text)`. fetch·jQuery는 Body를 템플릿 리터럴
+  (`jsTemplateEscape()` — `\` `` ` `` `${`)로, URL은 `JSON.stringify`로 넣는다. Java는 헤더·URL을 `javaQuote()`, Body 텍스트 블록은 `\`·`"""`만 이스케이프.
+
 ### 비(非)자명한 동작 — 수정 시 주의
 
 - **사이드바 정렬 모드**: `ui.js`의 `currentViewMode` 변수로 관리 (`'group'` | `'code'` | `'method'`)
