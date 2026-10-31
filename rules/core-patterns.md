@@ -159,6 +159,8 @@ const DOMAINS = {
   실행하고(쿼리 순서 동일), 더미 해시 대신 신청 해시로 scrypt를 1회 돌린다(비용 동일). 그 아이디의 최근 30분 `login_failed`
   감사 로그(`pending_approval` 제외)가 5건 이상이면 정답이어도 `invalid`(잠금과 같은 D-1 원칙 — 무제한 추측 오라클 방지).
   화면은 "가입 승인 대기 중" 문구와, 이 브라우저에서 가입했다면(`localStorage['eform-signup-request-id']`) 상태 확인 링크를 보여 준다.
+  **pending 시도 제한은 비원자적이다(D-5)** — audit_logs 건수를 읽고 판단하므로 동시 요청은 모두 같은 건수를 보고 통과한다(검증 시 동시 10건 모두 통과).
+  계정 잠금처럼 단일 UPDATE 카운터가 없어서이며, 동시 대량 추측은 아래 IP 단위 WAF 제한으로 막는다(**WAF는 아직 미적용** — 사용자 작업).
 - 로그인 실패 후 아이디 유지: `auth/login.html`이 제출 시 아이디를 **sessionStorage**(`eform-login-username`)에만 두고
   `?error=`로 돌아오면 채운다(URL·서버 로그에 아이디를 싣지 않음, 비밀번호는 저장하지 않음). 로그인 화면에 회원가입 링크가 있다.
 - IP 단위 제한은 코드가 아니라 **Vercel WAF rate limit** 규칙으로 건다(대시보드 설정, 사용자 작업).
