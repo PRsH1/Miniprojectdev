@@ -32,6 +32,9 @@ Node.js 기반의 서버리스 애플리케이션으로 Vercel에 배포되어 �
 | 인증 | JWT 하이브리드 세션, SAML 2.0 (`samlify`), ECDSA (`jsrsasign`) |
 | 실시간 통신 | Pusher (웹훅 브로드캐스트 + 알림 실시간 푸시) |
 | 이메일 | Nodemailer |
+| 테스트 | `node --test` 단위 테스트 16개 파일 (`npm test`, DB 없이 목으로 실행) |
+| CI | GitHub Actions — push·PR마다 `npm test` → `npm run security:secrets` + gitleaks 전체 히스토리 스캔 |
+| 보안 헤더 | `vercel.json`에서 전 경로 `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` |
 
 ---
 
@@ -48,19 +51,22 @@ ProjectImprove/
 │   │   ├── session.js                 # resolveUser(세션 해석·리프레시) + requireRole(DB role 기반 API 인가)
 │   │   ├── roles.js                   # 역할 계층 비교 + users 현재 상태 조회
 │   │   ├── validate.js                # 입력 사전 검증 (UUID/INTEGER id, page, 날짜)
+│   │   ├── input-limits.js            # 입력 길이·건수 한도(INPUT_LIMITS) — 초과 시 400
+│   │   ├── password.js                # scrypt 해시/검증 + 로그인 실패 카운터(원자적) + 계정 열거 완화용 더미 해시
+│   │   ├── credential-crypto.js       # 크리덴셜 비밀 키 AES-256-GCM (v1 형식 + AAD=user_id, 기존 형식 읽기 호환)
 │   │   ├── page-file.js               # 보호 페이지 file_path 검증 (private/·utils/ .html만)
 │   │   ├── auth-middleware.js         # JWT 검증 + 리프레시(원자적 로테이션) + role 체크 통합
 │   │   ├── audit.js                   # audit_logs INSERT 헬퍼
 │   │   ├── respond-error.js           # HTML/JSON 에러 응답 표준화
 │   │   ├── pusher.js                  # Pusher 인스턴스 공통 모듈 (알림 + Webhook 공용)
 │   │   └── ip-whitelist.js            # IP 화이트리스트 체크 공통 모듈 (CIDR 매칭, 60초 캐시)
-│   ├── login.js                  # DB 기반 로그인 (JWT 발급)
+│   ├── login.js                  # DB 기반 로그인 (JWT 발급, 5회 실패 30분 잠금)
 │   ├── logout.js                 # 리프레시 토큰 revoke + 쿠키 만료
 │   ├── refresh.js                # 리프레시 토큰 → 새 JWT 발급 (공유 tryRefreshToken 위임)
 │   ├── me.js                     # 현재 로그인 사용자 정보 반환
 │   ├── signup.js                 # 회원가입 요청 생성
 │   ├── signupStatus.js           # 회원가입 요청 상태 조회
-│   ├── change-password.js        # 강제 비밀번호 변경 처리
+│   ├── change-password.js        # 비밀번호 변경 (일반 변경은 현재 비밀번호 확인, 임시 비밀번호는 생략)
 │   ├── password-reset-request.js # 비밀번호 재설정 요청 (관리자 알림)
 │   ├── adminPage.js              # /app/admin 참조용 래퍼 (라우터 미등록 — 실제 서빙은 auth-middleware)
 │   ├── adminUsers.js             # 사용자 CRUD + 잠금해제 + 비밀번호 초기화
@@ -70,7 +76,7 @@ ProjectImprove/
 │   ├── credentials.js            # ★ eformsign 인증 정보 CRUD (사용자별 크리덴셜)
 │   ├── notifications.js          # ★ 알림 CRUD API (역할별 분기 — admin: target_role, 일반: target_user_id)
 │   ├── pusher-auth.js            # Pusher private 채널 인증 (JWT 검증 + 채널 소유권 확인)
-│   ├── requestHistory.js         # ★ OpenAPITester 요청 히스토리 CRUD (로그인 사용자 DB 저장)
+│   ├── requestHistory.js         # ★ OpenAPITester 요청 히스토리 CRUD (로그인 사용자 DB 저장, 저장 id는 서버 생성)
 │   ├── cron/
 │   │   └── cleanup-audit.js      # 7일 초과 감사 로그 자동 삭제 (Vercel Cron)
 │   ├── auth.js                   # SAML 응답 생성
@@ -83,15 +89,22 @@ ProjectImprove/
 │   ├── metadata.js               # SAML 메타데이터 엔드포인트
 │   └── send.js                   # SMTP 이메일 테스트
 ├── lib/
-│   └── saml.js                   # SAML IDP/SP 설정
+│   ├── saml.js                   # SAML IDP/SP 설정 (+ AuthnRequest 파싱)
+│   ├── saml-input.js             # SAMLRequest·RelayState 형식 검증
+│   ├── ip-match.js               # IP 화이트리스트 공용 파서 (IPv4/IPv6·CIDR, 경로 정규화) — middleware·서버 공유
+│   ├── html-escape.js            # 서버 HTML 조립용 이스케이프
+│   └── safe-next.js              # 로그인 후 이동 경로(next) open redirect 차단
+├── middleware.js                 # Edge Middleware — /private/* 직접 접근 404 + IP 화이트리스트 global 스코프
+├── test/                         # node:test 단위 테스트 (npm test)
+├── .github/workflows/ci.yml      # CI (테스트 + 시크릿 점검 + gitleaks)
 ├── auth/
 │   ├── login.html                # 로그인 UI (username + password)
 │   ├── signup.html               # 회원가입 요청 폼
 │   ├── signup-status.html        # 회원가입 요청 상태 조회
-│   ├── change-password.html      # 강제 비밀번호 변경 폼
+│   ├── change-password.html      # 비밀번호 변경 폼 (일반 변경 시 현재 비밀번호 입력란 표시)
 │   └── 403.html                  # 권한 없음 페이지
 ├── API(JS,HTML)/                 # eformsign API 연동 프론트엔드 도구
-│   └── OpenAPITester.html        # ★ Postman 스타일 Open API 테스터 (Beta) — HTML/CSS만 포함
+│   └── OpenAPITesterProd.html    # ★ Postman 스타일 Open API 테스터 (Beta, 공개판 — 멤버 API 제외)
 ├── errors/                       # 공통 HTML 에러 페이지
 │   ├── 403.html
 │   ├── 404.html
@@ -108,10 +121,16 @@ ProjectImprove/
 │   ├── OpenAPIAutoTest.html      # OPA 자동 테스트 UI (뼈대만, 내용은 JS에서 주입)
 │   ├── idp-test.html             # IdP 테스트 UI
 │   ├── templatecopy.html         # 템플릿 복제 UI
+│   ├── OpenAPITesterFull.html    # Open API 테스터 전체판 (멤버 API 포함)
+│   └── MassDocumentDowmload.html # 문서 일괄 다운로드
 ├── assets/js/
 │   ├── auth-status.js            # ★ 전 페이지 공통 로그인 상태 상단 바 (IIFE, 알림 벨 내장 — Pusher 실시간 푸시)
 │   ├── notification-bell.js      # ★ 알림 벨 독립 모듈 (IIFE → window.NotifBell, index.html 전용)
 │   ├── credential-panel.js       # ★ eformsign 인증 저장/불러오기 공유 모듈 (IIFE, window.CREDENTIAL_CONFIG 필요)
+│   ├── token-issuer.js           # ★ Access Token 발급 공유 모듈 (direct → CORS 실패 시 서버 프록시)
+│   ├── token-badge.js            # ★ 토큰 상태 배지 (남은 시간 · via proxy · 만료 시 재발급)
+│   ├── api-error.js              # ★ API 에러 표시 (요약 · 에러 코드 링크 · 원본 응답 토글 · CORS 안내)
+│   ├── result-panel.js           # ★ 결과 패널 (복사 · JSON 다운로드 · 접기, 버튼 로딩, 문서 ID 링크)
 │   ├── OpenAPIAutoTest.js        # ★ OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── member/                   # ★ 멤버/그룹 관리 V2 분할 모듈 (로드 순서 중요)
 │   │   ├── api.js                #   API 호출, 엑셀 처리 (전역 함수)
@@ -142,8 +161,9 @@ ProjectImprove/
 | `GET /api/me` | GET | 현재 로그인 사용자 정보 조회 |
 | `POST /api/signup` | POST | 회원가입 요청 생성 |
 | `GET /api/signup-status` | GET | 회원가입 요청 상태 조회 (UUID 기반) |
-| `POST /api/change-password` | POST | 비밀번호 강제 변경 |
-| `POST /api/password-reset-request` | POST | 비밀번호 재설정 요청 (관리자 알림) |
+| `GET /api/change-password` | GET | 현재 비밀번호 입력 필요 여부 (`{ requiresCurrentPassword }`) |
+| `POST /api/change-password` | POST | 비밀번호 변경 (일반 변경은 `currentPassword` 필수, 성공 시 다른 기기 세션 폐기) |
+| `POST /api/password-reset-request` | POST | 비밀번호 재설정 요청 (관리자 알림, 같은 계정의 대기 요청이 있으면 새로 만들지 않음) |
 | `GET /api/sso-login` | GET | SAML SSO 로그인 폼 |
 | `POST /api/auth` | POST | SAML 응답 생성 |
 | `POST /api/idp-initiated-login` | POST | IDP 시작 SAML 플로우 |
@@ -167,9 +187,10 @@ ProjectImprove/
 |-----------|--------|------|
 | `GET /api/admin/users` | GET | 사용자 목록 조회 |
 | `POST /api/admin/users` | POST | 사용자 생성 |
-| `PATCH /api/admin/users/:id` | PATCH | 사용자 수정 (역할/활성화) |
+| `PUT·PATCH /api/admin/users/:id` | PUT·PATCH | 사용자 수정 (역할/활성화 — 변경 시 대상 세션 폐기) |
+| `DELETE /api/admin/users/:id` | DELETE | 사용자 삭제 |
 | `POST /api/admin/users/:id/reset-password` | POST | 비밀번호 초기화 (임시 비밀번호 발급) |
-| `PATCH /api/admin/users/:id/unlock` | PATCH | 계정 잠금 해제 |
+| `POST /api/admin/users/:id/unlock` | POST | 계정 잠금 해제 |
 | `GET /api/admin/pages` | GET | 보호 페이지 목록 조회 |
 | `POST /api/admin/pages` | POST | 보호 페이지 등록 |
 | `PATCH /api/admin/pages/:id` | PATCH | 보호 페이지 설정 변경 |
@@ -193,7 +214,7 @@ ProjectImprove/
 | 엔드포인트 | 메서드 | 설명 |
 |-----------|--------|------|
 | `GET /api/request-history` | GET | 내 요청 히스토리 목록 (최신순 100건) |
-| `POST /api/request-history` | POST | 요청 히스토리 저장 (100건 초과 시 오래된 항목 자동 삭제) |
+| `POST /api/request-history` | POST | 요청 히스토리 저장 (id는 서버 생성·응답 `{ success, id }`, 100건 초과 시 오래된 항목 자동 삭제, 크기 한도 초과 400) |
 | `DELETE /api/request-history/:id` | DELETE | 요청 히스토리 단건 삭제 |
 | `DELETE /api/request-history` | DELETE | 요청 히스토리 전체 삭제 |
 
@@ -201,7 +222,7 @@ ProjectImprove/
 
 | 엔드포인트 | 메서드 | 설명 |
 |-----------|--------|------|
-| `GET /api/cron/cleanup-audit` | GET | 7일 초과 감사 로그 자동 삭제 (매일 UTC 00:00 실행) |
+| `GET /api/cron/cleanup-audit` | GET | 7일 초과 감사 로그 자동 삭제 (매일 UTC 00:00 실행, `CRON_SECRET` 고정 시간 비교, 응답 `deleted`는 실제 삭제 건수) |
 
 ### 보호 페이지 (/app/*)
 
@@ -283,7 +304,11 @@ ProjectImprove/
 | 리프레시 토큰 | 7일, SHA-256 해시 후 DB 저장, `refresh_token` httpOnly 쿠키, 사용 시마다 로테이션 |
 | 세션 유지 | 액세스 토큰 만료 시 리프레시 토큰으로 자동 갱신 → 활성 사용자는 최대 7일 슬라이딩 세션 |
 | 비밀번호 해싱 | Node.js 내장 `crypto.scrypt` |
-| 계정 잠금 | 로그인 5회 실패 → 30분 잠금 (관리자 수동 해제 가능) |
+| 계정 잠금 | 로그인 5회 연속 실패 → 30분 잠금 (관리자 수동 해제 가능). 실패 카운터는 단일 UPDATE로 원자적으로 증가 |
+| 계정 열거 완화 | 없는 아이디·틀린 비밀번호·잠긴 계정 모두 같은 `error=invalid` 응답 (잠금 중에는 올바른 비밀번호도 거부). 로그인 화면은 공통 문구로 잠금 정책만 안내 |
+| 비밀번호 변경 | 일반 변경은 현재 비밀번호 확인(틀리면 로그인과 같은 실패 카운터), 성공 시 현재 세션을 뺀 다른 refresh 토큰 폐기 |
+| 계정 복구 | `node scripts/create-admin.js` — 같은 아이디가 있으면 비밀번호 교체 + 잠금 해제 + 세션 폐기 (운영 DB에 바로 반영) |
+| IP 단위 제한 | 코드가 아니라 Vercel WAF rate limit으로 건다 (대시보드 설정, 현재 미적용) |
 
 **리프레시 토큰 로테이션 (경합 안전)**
 
@@ -340,7 +365,7 @@ SAML_PUBLIC_CERT=        # base64 인코딩된 공개 인증서
 SAML_DEBUG=              # '1'일 때 요청 debug=1과 함께 SAML 진단 로깅 활성화. 평상시 미설정
 
 # ─── 크리덴셜 암호화 ─────────────────────────────────────
-CREDENTIAL_ENCRYPTION_KEY=  # eformsign 비밀 키 AES-256-GCM 암호화 키 (openssl rand -hex 32 로 생성)
+CREDENTIAL_ENCRYPTION_KEY=  # eformsign 비밀 키 AES-256-GCM 암호화 키 — hex 64자 (openssl rand -hex 32 로 생성, 앞뒤 공백·개행은 무시). 바꾸면 기존 암호문 복호화 불가
 
 # ─── IP 화이트리스트 ──────────────────────────────────────
 IP_WHITELIST_ENABLED=    # '1' 또는 'true'일 때만 IP 화이트리스트 적용. 미설정/그 외 값은 OFF(즉시 허용, DB 미조회)
@@ -591,7 +616,64 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `DocumentDelete.html` | 문서 일괄 삭제 |
 | `templateDeletetool.html` | 템플릿 일괄 삭제 |
 | `saml-guide.html` | SAML 연동 가이드 |
-| `error-codes.html` | OPA2 에러 코드 모음 (OPA2 엔드포인트별 에러 코드·Enum·메시지 검색) |
+| `error-codes.html` | OPA2 에러 코드 모음 (OPA2 엔드포인트별 에러 코드·Enum·메시지 검색, `?q=` 검색·`#code-<코드>` 딥링크) |
+
+---
+
+## 2026-10-29 Update
+
+### 보안 후속 조치 (Phase 0b) + 도구 공통 UX (Phase 1 C1)
+
+Phase 0 이후 남은 서버 보안 과제와, 도구 페이지마다 제각각이던 토큰·에러·결과 표시를 공유 모듈로 통일했다.
+DB 마이그레이션은 없다(기존 컬럼만 사용). 세부 규칙은 `rules/` 문서가 정본이다.
+
+#### 서버 보안 (Phase 0b)
+
+| 항목 | 변경 |
+|---|---|
+| 로그인 잠금 (P0b-01) | 실패 카운터를 단일 UPDATE로 원자적 증가(동시 요청 우회 차단). 없는 아이디도 더미 해시로 같은 시간 소요. 잠긴 계정은 비밀번호가 맞아도 `error=invalid` — 응답으로 계정 존재·정답 여부를 알 수 없음 |
+| 비밀번호 변경 (P0b-02) | 일반 변경은 현재 비밀번호 필수(`GET /api/change-password`로 입력란 표시 여부 확인), 임시 비밀번호 강제 변경은 생략. 성공 시 다른 기기 refresh 토큰 폐기 |
+| IP 화이트리스트 (P0b-03) | `lib/ip-match.js` 공용 파서로 middleware·서버·Admin API 통일, IPv6 지원. 경로를 정규화(디코딩·대소문자·중복 슬래시)해 `/API/login`·`/api/login/` 우회 차단. 정확 패턴은 하위 경로 포함, 단 `/`는 루트만(전체는 `/*`). IP 헤더 없는 요청은 로컬호스트 예외 제외 |
+| 입력 한도 (P0b-04) | 가입(IP당 1시간 5건·대기 200건), 비밀번호 재설정(계정당 대기 1건), 버그 제보(24시간 20건), 요청 기록 크기 — 초과 시 400. 화면 입력란 `maxlength` 동일 적용 |
+| 크리덴셜 암호화 (P0b-05) | `v1:` 형식 + 태그 16바이트 고정 + AAD=user_id. 기존 형식 읽기 호환, 키 앞뒤 공백 무시 |
+| 요청 기록 저장 (P0b-06) | 저장 id를 서버가 생성(20자 난수)해 PK 충돌로 저장이 조용히 사라지던 문제 해결 |
+| Cron (P0b-09) | `CRON_SECRET` 고정 시간 비교, 실제 삭제 건수 반환 |
+| CI (P0b-10) | GitHub Actions — 단위 테스트 + 시크릿 점검 + gitleaks 전체 히스토리 |
+| SAML (P0b-11) | SP 개시 응답의 `InResponseTo`에 실제 AuthnRequest ID 사용 |
+| 운영 스크립트 (P0b-12) | `create-admin.js`가 기존 계정 복구(잠금 해제·세션 폐기, `--must-change`). `seed-developer-notes.js`는 노트가 있으면 `--force` 없이 중단 |
+
+#### 도구 공통 UX (Phase 1 C1)
+
+- **토큰 상태 배지** (`token-badge.js`): "토큰 유효 · 47분 남음 · via proxy" / "곧 만료" / "만료됨 · [토큰 재발급]". 토큰 발급은 모든 도구가 `token-issuer.js` 공유 모듈 사용. OpenAPITester는 401 응답 시 재발급 배너
+- **API 에러 표시** (`api-error.js`): raw JSON 대신 `HTTP 400 · [코드] 메시지` 요약 + [에러 코드 찾아보기 →] + 원본 응답 토글, CORS·네트워크 실패 안내
+- **결과 패널** (`result-panel.js`): [복사]·[JSON 다운로드]·[접기], 실행 중 버튼 "처리 중…"(중복 요청 방지), 발송 후 생성된 문서 ID에서 문서 정보 조회·다운로드로 바로 이동(`?document_id=` 프리필)
+- **크리덴셜 저장/불러오기 정상화** (P1-01): 직접 입력 URL 저장·복원(10개 페이지), Kogas 고정 URL, Basic 인증 저장 차단 안내, 삭제 실패 처리, AutoTest 모달 밝은 테마
+
+#### 운영 메모
+
+- IP 단위 rate limit은 Vercel WAF로 걸 예정이며 아직 적용하지 않았다(`rules/core-patterns.md` 권장값).
+- 비밀번호 변경 후 다른 기기의 액세스 토큰은 최대 1시간 남는다(후속 P1-13).
+
+---
+
+## 2026-10-28 Update
+
+### 보안·안정화 개선 (Phase 0)
+
+전수 점검에서 나온 보안·안정성 문제를 일괄 수정했다(개발 2026-10-24, 검증 2026-10-26, 배포 2026-10-28).
+
+| 영역 | 변경 |
+|---|---|
+| XSS | SAML 폼 반사형 XSS(P0-02), 웹훅 모니터(P0-03), API 응답·사용자 콘텐츠 렌더링(P0-04) — 외부 문자열은 `textContent`로만 렌더링 |
+| 웹훅 | 전달 헤더 허용 목록(`content-type`·`user-agent`·`eformsign*`), 본문 검증 400, 9KB 초과 시 요약본 전송, 문서 정보 조회 토큰은 쿼리 대신 `Authorization` 헤더 (P0-03) |
+| 로그인 | `next` 파라미터 open redirect 차단(P0-06, `lib/safe-next.js`) |
+| 비밀값 | AutoTest 프로필·OpenAPITester 요청 기록에 비밀키·토큰을 저장하지 않음(P0-08) |
+| 보호 페이지 | `file_path`는 `private/`·`utils/`의 `.html`만, 경로 탈출 차단. `/private/*` 직접 접근 항상 404(P0-09) |
+| 배포 설정 | 보안 헤더 3종 추가, 런타임 의존성 7개로 정리 + `npm audit` 0건(samlify 2.15, nodemailer 10) (P0-10) |
+| 권한 | 모든 인증 API가 DB의 현재 role로 판단(`requireRole`) — 강등·비활성화 즉시 반영(P0-11) |
+| 에러 응답 | 라우터 단일 try/catch로 비JSON 500 제거, 잘못된 id·page는 400(P0-12) |
+| 버그 | 홈 검색 시 카드 전체가 사라짐(P0-07), DocumentDelete 401 무한 반복(P0-13), AutoTest 저장 프로필이 로드 시 무시됨 |
+| 정리 | 레거시 비밀번호 보호 컨트롤러 4종 제거(`/api/memberV2Page` 등 → 404), 미사용 Java 웹훅 샘플 제거, 구버전 요청 기록에 남은 인증 값 운영 DB 정리(6건) |
 
 ---
 
@@ -1065,6 +1147,7 @@ DB에 plaintext로 저장되던 `secret_key`(EC 개인키)를 AES-256-GCM으로 
 
 - **암호화 키**: `CREDENTIAL_ENCRYPTION_KEY` 환경변수 (32바이트 hex, `openssl rand -hex 32`)
 - **저장 형식**: `{iv_hex}:{authTag_hex}:{ciphertext_hex}` — DB에는 암호문만 저장
+  (2026-10-29부터 새로 저장하는 값은 `v1:{iv}:{tag}:{ct}` 형식 + AAD=user_id. 기존 형식도 그대로 읽는다 — `rules/credentials.md`)
 - **복호화 시점**: 단건 조회(`GET /api/credentials/:id`) 시 서버에서 복호화 후 반환 — 클라이언트(`credential-panel.js`) 변경 없음
 - **null 처리**: 비밀 키를 저장하지 않은 크리덴셜은 암호화/복호화 대상에서 제외, 기존 동작 유지
 - **기존 데이터 마이그레이션**: `scripts/migrate-credentials-encrypt.js` one-time 스크립트로 기존 plaintext 데이터 일괄 재암호화 가능
@@ -1178,6 +1261,7 @@ POSTGRES_URL="..." node scripts/migrate-ip-whitelist.js
 - **캐시 60초**: Admin write 시 즉시 무효화, 다른 warm instance는 최대 60초 후 반영
 - **스코프 활성 + 규칙 없음 = 전체 차단**: Admin UI에서 규칙 추가 후 스코프 활성화 유도
 - **로컬호스트 자동 허용**: `127.0.0.1`, `::1` 은 global scope 활성화와 무관하게 항상 허용
+  (2026-10-29부터 IP 헤더가 없는 요청은 더 이상 로컬호스트로 간주하지 않는다 — `rules/ip-whitelist.md`)
 
 ---
 

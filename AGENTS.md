@@ -39,6 +39,15 @@ Vercel 서버리스 환경에서 동작하며, 브라우저 기반 HTML 도구�
 - 규칙 문서의 경로, 명령, 구현 설명이 현재 코드와 다르면 추측하지 말고 실제 코드를 확인한다.
   작업 결과와 함께 발견한 불일치를 보고하고, 요청 범위에 포함될 때만 규칙 문서를 갱신한다.
 
+## Operational Safety
+
+- Production·Preview·Development와 로컬 `.env.local`은 모두 같은 Neon DB를 쓴다. `scripts/*.js` 실행이나 Preview에서의
+  저장·설정 변경은 운영 데이터 변경이다. 쓰기 스크립트는 dry-run을 먼저 보고, `--apply`·`--force`·마이그레이션은 사용자 승인 후 실행한다.
+- DB 저장 형식을 바꾸면 Preview 확인 ~ 머지 사이에는 현재 Production 코드가 새 형식을 읽지 못한다. 하위 호환 읽기를 넣는다.
+- `main` push는 Production 배포, 그 외 브랜치 push는 Preview 배포다. 둘 다 사용자 확인 후 진행하며 main은 `origin`·`dev`에 함께 push한다.
+- push 시 GitHub Actions CI가 `npm test` → `npm run security:secrets` → gitleaks 전체 히스토리를 실행한다. 테스트용 가짜 시크릿은 `DUMMY-` 접두어를 쓴다.
+- Vercel 대시보드 작업(환경변수 삭제, WAF/Firewall 규칙)은 사용자가 하거나 명시적으로 승인한 경우에만 한다.
+
 ## Implementation Expectations
 
 - 기존 구조, 라우팅 방식, 공용 헬퍼와 코딩 컨벤션을 우선 재사용한다.
