@@ -11,10 +11,11 @@ ProjectImprove/
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙 (+ 확인된 과거 커밋·DUMMY 값 allowlist)
 ├── .github/workflows/ci.yml    # CI: push·PR마다 npm ci → npm test → security:secrets + gitleaks 전체 히스토리
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 16개 (ip-whitelist, refresh-rotation, router-errors,
+├── test/                       # node:test 단위 테스트 21개 (ip-whitelist, refresh-rotation, router-errors,
 │                               #   require-role, page-file, saml-response, saml-xss, safe-next,
 │                               #   webhook-receiver, admin-scripts, change-password, credential-crypto,
-│                               #   cron-cleanup, input-limits, login-lockout, request-history)
+│                               #   cron-cleanup, input-limits, login-lockout, request-history,
+│                               #   account-flow, password-reset-notify, bug-report-privacy, send-smtp, csv-export)
 │                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/

@@ -5,11 +5,12 @@
   — `controllers/` 44개 = 라우트 컨트롤러 29 + `_shared/` 공용 모듈 14 + `cron/` 1
   (레거시 비밀번호 보호 컨트롤러 4종 + `protectedPage.js`·`protected-pages-config.js` 제거,
   `roles`·`validate`·`page-file`·`input-limits`·`password`·`credential-crypto` 추가)
-- **테스트:** `node --test` (`npm test` = `node --test test/*.test.js`) — 서버 단위 테스트 16개 파일
+- **테스트:** `node --test` (`npm test` = `node --test test/*.test.js`) — 단위 테스트 21개 파일
   (`ip-whitelist`, `refresh-rotation`, `router-errors`, `require-role`, `page-file`,
   `saml-response`, `saml-xss`, `safe-next`, `webhook-receiver`, `admin-scripts`, `change-password`,
-  `credential-crypto`, `cron-cleanup`, `input-limits`, `login-lockout`, `request-history`).
-  컨트롤러 테스트는 `test/helpers/http-mocks.js`로 req/res와 `getDb()`를 목으로 바꿔 DB 없이 실행한다. 프론트엔드 테스트는 없음
+  `credential-crypto`, `cron-cleanup`, `input-limits`, `login-lockout`, `request-history`,
+  `account-flow`, `password-reset-notify`, `bug-report-privacy`, `send-smtp`, `csv-export`).
+  컨트롤러 테스트는 `test/helpers/http-mocks.js`로 req/res와 `getDb()`를 목으로 바꿔 DB 없이 실행한다. 프론트엔드 테스트는 `csv-export`(순수 함수)뿐이고 화면 동작은 gstack 브라우저로 확인한다
 - **CI:** GitHub Actions `.github/workflows/ci.yml` (P0b-10) — push·PR마다 Node 24.x로 `npm ci` → `npm test` →
   `npm run security:secrets`, 별도 job에서 gitleaks 8.21.2(릴리스 체크섬 검증)로 **전체 git 히스토리**를 `.gitleaks.toml` 기준 스캔.
   과거에 확인·조치된 항목(교체된 SAML 키 커밋 등)과 `DUMMY-` 테스트 값은 `.gitleaks.toml` `[allowlist]`에 근거 주석과 함께 둔다.
