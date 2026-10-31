@@ -72,7 +72,7 @@ ProjectImprove/
 │   │   # ── SAML ────────────────────────────────────────────
 │   ├── auth.js                 # SAML 응답 생성 (SP개시: 요청 ACS/target으로 test·test2·testjp·dev·prod 대상 라우팅, AuthnRequest의 실제 ID를 InResponseTo로 사용(없으면 생략), createTemplateCallback로 email/name 속성 채움, SAML_DEBUG 게이트 로깅)
 │   ├── sso-login.js            # SAML SSO 로그인 폼 (target 쿼리로 대상 서버 강제 가능 — test·test2·testjp·dev·prod, debug=1 게이트 플래그 폼 전달)
-│   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우 (폼 target으로 test·dev 선택, createTemplateCallback + SAML_DEBUG 게이트 로깅)
+│   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우 (폼 target으로 test·dev 선택, createTemplateCallback + SAML_DEBUG 게이트 로깅, 이메일·이름 누락 시 400 HTML 안내 + /app/idptestauth 돌아가기)
 │   ├── metadata.js             # SAML 메타데이터 엔드포인트
 │   │
 │   │   # ── Admin API (/api/admin/*) ─────────────────────────

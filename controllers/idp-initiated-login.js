@@ -2,11 +2,50 @@ const { idp, resolveTarget, createTemplateCallback, debugDeliver } = require('..
 const { escapeHtml } = require('../lib/html-escape');
 const { respondError } = require('./_shared/respond-error');
 
-module.exports = async (req, res) => {
-  const { email, name, target } = req.body;
+// 필수 입력 누락 안내 페이지 (F-1). 폼이 새 탭으로 제출되므로 평문 대신 돌아갈 링크가 있는 HTML을 준다.
+// SAML 정책(0절)대로 인증은 요구하지 않는다. 보간하는 값은 모두 escapeHtml을 거친다.
+const IDP_TEST_PAGE = '/app/idptestauth';
 
-  if (!email || !name) {
-    return res.status(400).send("이메일과 이름이 필요합니다.");
+function sendMissingFieldsPage(res, missing) {
+  const message = `${missing.join('과 ')}이 필요합니다.`;
+  res.status(400);
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  return res.send(`<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>입력값 확인 — IdP 테스트</title>
+  <style>
+    body { margin: 0; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Malgun Gothic', sans-serif; background: #f5f7fb; color: #1f2937; }
+    .box { max-width: 480px; margin: 12vh auto 0; padding: 28px 24px; background: #fff; border: 1px solid #e5e7eb; border-left: 4px solid #d97706; border-radius: 10px; }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    p { margin: 0 0 20px; line-height: 1.6; color: #4b5563; }
+    a { display: inline-block; padding: 10px 18px; border-radius: 8px; background: #1a73e8; color: #fff; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main class="box" role="alert">
+    <h1>${escapeHtml(message)}</h1>
+    <p>IdP 개시 로그인 테스트에는 이메일과 이름이 모두 필요합니다. 테스트 페이지로 돌아가 입력한 뒤 다시 시도하세요.</p>
+    <a href="${escapeHtml(IDP_TEST_PAGE)}">돌아가기</a>
+  </main>
+</body>
+</html>`);
+}
+
+function isBlank(value) {
+  return value === undefined || value === null || String(value).trim() === '';
+}
+
+module.exports = async (req, res) => {
+  const { email, name, target } = req.body || {};
+
+  const missing = [];
+  if (isBlank(email)) missing.push('이메일');
+  if (isBlank(name)) missing.push('이름');
+  if (missing.length) {
+    return sendMissingFieldsPage(res, missing);
   }
 
   const user = {
