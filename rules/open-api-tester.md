@@ -152,7 +152,7 @@ const API_SPECS = {
 | 함수 | 역할 |
 |---|---|
 | `openSaveModal()` / `closeSaveModal()` | Save 모달 열기/닫기 |
-| `openSaveModal()` / `confirmSave(mode)` | **async** — 불러온 항목이 있으면 기본 버튼이 [덮어쓰기], `confirmSave('new')`는 [새로 저장]. 실패 시 모달 유지 → 해당 엔드포인트 자동 펼침 → `buildSidebar()` 재호출. 저장 후 `state.currentHistoryId`를 방금 저장한 항목으로 바꾼다 |
+| `confirmSave(mode)` | **async** — 불러온 항목이 있으면 기본 버튼이 [덮어쓰기], `confirmSave('new')`는 [새로 저장]. 실패 시 모달 유지 → 해당 엔드포인트 자동 펼침 → `buildSidebar()` 재호출. 저장 후 `state.currentHistoryId`를 방금 저장한 항목으로 바꾼다 |
 | `buildHistoryPanel()` | 저장됨 탭 flat 목록 렌더링 |
 | `loadHistoryEntry(entry)` | 저장 항목 불러오기: 환경이 다르면 바꾸고 토스트(`환경 변경: A → B`) → `selectEndpoint(id, { skipDraft: true })` → `applyRequestSnapshot(entry)` (지연 없음) |
 | `applyRequestSnapshot(snap)` | path·query·헤더를 **key로** 맞춰 복원, 정의에 없는 query·헤더는 사용자 추가 행으로 복원. requiresAuth API의 Authorization과 값이 빈 인증 헤더는 현재 값 유지 |
