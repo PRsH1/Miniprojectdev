@@ -458,6 +458,11 @@
 
                         } catch(error) {
                             if (error.response && error.response.status === 401) {
+                                // 갱신은 1회만 — 갱신한 토큰으로도 401이면 중단한다.
+                                // (예전엔 내부 재시도 2회가 끝나도 바깥 while(!isEnd)가 같은 skip을 다시 돌아 무한 반복했다)
+                                if (retryCount >= 1) {
+                                    throw new Error("토큰을 갱신해도 인증 실패(HTTP 401)가 계속되어 조회를 중단합니다. API Key·권한을 확인하세요.");
+                                }
                                 log(`조회 중 토큰 만료. 갱신 시도...`, 'warning');
                                 TokenBadge.markExpired('#tokenBadge');
                                 const newToken = await getAccessToken(true);
