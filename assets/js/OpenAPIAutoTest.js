@@ -776,7 +776,8 @@
         const statusClass = status === "PASS" ? "status-pass" : status === "CHECK" ? "status-check" : ["SKIP", "CACHE"].includes(status) ? "status-skip" : "status-fail";
         const row = { ...result, stepId: result.stepId || stepId || "" };
         resultRows.set(rowId, row);
-        const canCurl = /^https?:\/\//i.test(row.url || "");
+        const curlBlocked = curlDisabledReason(row);
+        const canCurl = !curlBlocked;
         els.resultTableBody.insertAdjacentHTML("beforeend", `
             <tr class="result-row" data-status="${esc(status)}" data-group="${resultGroupIndex}" data-row="${rowId}">
                 <td>${index}</td>
@@ -790,7 +791,7 @@
                 <div class="log-actions">
                     <button class="log-btn" type="button" data-copy="request" data-row="${rowId}">요청 복사</button>
                     <button class="log-btn" type="button" data-copy="response" data-row="${rowId}">응답 복사</button>
-                    <button class="log-btn" type="button" data-copy="curl" data-row="${rowId}"${canCurl ? "" : " disabled title=\"요청 URL이 없는 step입니다\""}>cURL로 복사</button>
+                    <button class="log-btn" type="button" data-copy="curl" data-row="${rowId}"${canCurl ? "" : ` disabled title="${esc(curlBlocked)}"`}>cURL로 복사</button>
                 </div>
                 <h3>Request Body</h3><pre>${esc(requestBodyText(result.requestBody, true) || "(Empty)")}</pre>
                 <h3 style="margin-top:12px;">Response</h3><pre>${esc(result.responseText || "(Empty)")}</pre>
@@ -873,6 +874,18 @@
     // (OpenAPITester 스니펫 생성기는 C3 소유라 재사용하지 않고 여기서 독립 구현)
     function shellQuote(value) {
         return `'${String(value).replace(/'/g, "'\\''")}'`;
+    }
+
+    // cURL을 만들 수 없는 행이면 그 이유(버튼 title)를, 만들 수 있으면 ""를 반환한다 (D-12·D-13)
+    const TRUNCATED_BODY_RE = /\n…\(총 \d+자 중 일부 생략\)$/;
+    function curlDisabledReason(row) {
+        if (!/^https?:\/\//i.test(row.url || "")) return "요청 URL이 없는 step입니다";
+        if (row.method === "AUTH" || row.stepId === "auth") return "API 요청이 아닌 사전 준비(토큰 발급) 단계입니다";
+        if (row.responseStatus === "ALL_FAIL") return "여러 후보를 시도한 요약 행입니다 — 시도별 결과는 [결과 보기]를 확인하세요";
+        if (row.requestBodyTruncated || (typeof row.requestBody === "string" && TRUNCATED_BODY_RE.test(row.requestBody))) {
+            return "이력에 저장된 요청 본문이 잘려 있어 cURL을 만들 수 없습니다";
+        }
+        return "";
     }
 
     function buildCurl(row) {
@@ -1001,6 +1014,7 @@
             url: detail.url,
             duration: detail.duration,
             requestBody: detail.requestBody,
+            requestBodyTruncated: detail.requestBodyTruncated === true,
             responseText: detail.responseBody,
             stepId: detail.stepId
         };
@@ -2372,7 +2386,10 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
             if (typeof detail.responseBody === "string") detail.responseBody = truncateBody(detail.responseBody);
             if (detail.requestBody) {
                 const serialized = JSON.stringify(detail.requestBody);
-                if (serialized.length > 16384) detail.requestBody = truncateBody(serialized);
+                if (serialized.length > 16384) {
+                    detail.requestBody = truncateBody(serialized);
+                    detail.requestBodyTruncated = true; // 복원 행의 cURL 비활성 (D-13)
+                }
             }
         };
         (snap.stepDetails || []).forEach(truncDetail);

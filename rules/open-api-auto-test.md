@@ -209,7 +209,9 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
   `appendRow(index, result, stepId)` — 세 번째 인자로 stepId를 넘긴다(이력 복원은 `stepDetailToRow()`가 `stepId`를 포함).
 - step 상세(결과 보기) 안: **[요청 복사]**(`METHOD URL` + 본문), **[응답 복사]**, **[cURL로 복사]**. cURL의 인증 헤더는 항상 플레이스홀더
   `Authorization: Bearer <ACCESS_TOKEN>`(OPA 007 `createExternalDoc`은 `<BASE64_COMPANY_API_KEY>`) — 실제 토큰·키는 넣지 않는다. 셸 인용은 작은따옴표(`'''` 이스케이프).
-  URL이 없는 step(SKIP·사전 준비 실패)은 cURL 버튼 비활성. OpenAPITester 스니펫 생성기(`openapi/ui.js`)는 재사용하지 않고 독립 구현(`buildCurl()`).
+  `curlDisabledReason(row)`가 이유를 돌려주면 cURL 버튼을 비활성하고 이유를 title로 보인다: URL 없는 step(SKIP), 사전 준비(`AUTH`) 실패 행,
+  `try*` 후보 전부 실패 요약 행(`ALL_FAIL` — D-12), 이력 복원 행 중 요청 본문이 16384자를 넘어 잘린 행(`requestBodyTruncated` 또는
+  "…(총 N자 중 일부 생략)" 꼬리 — D-13, 잘린 본문으로 만든 cURL은 실행해도 다른 요청이 된다). OpenAPITester 스니펫 생성기(`openapi/ui.js`)는 재사용하지 않고 독립 구현(`buildCurl()`).
 - **[실패 OPA만 재실행]**: `state.lastReportData.opaSummary`에서 결과가 `FAIL`인 OPA만(CHECK·사전 준비 제외) 선택 상태로 바꾸고 실행 확인 모달을 연다(`selectAndRequestRun()`).
   과거 이력을 열었을 때도 그 이력 기준으로 표시된다.
 
