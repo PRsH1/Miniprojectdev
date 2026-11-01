@@ -343,9 +343,21 @@
 
         // P0b-08: 콘솔 로그에 토큰·서명·키 값을 남기지 않는다 (access_token·refresh_token·signature·api_key·secret·password 키는 '***')
         function redactForLog(obj) {
-          return JSON.stringify(obj, function (k, v) {
-            return (k && /token|signature|secret|api_?key|password|private/i.test(k) && v !== null && v !== undefined && v !== '') ? '***' : v;
-          }, 4);
+          // 순환 참조가 있어도 예외로 콜백을 멈추지 않고, Error는 {} 대신 name·message를 남긴다 (D-24)
+          try {
+            var seen = typeof WeakSet === 'function' ? new WeakSet() : null;
+            return JSON.stringify(obj, function (k, v) {
+              if (k && /token|signature|secret|api_?key|password|private/i.test(k) && v !== null && v !== undefined && v !== '') return '***';
+              if (v instanceof Error) return { name: v.name, message: v.message };
+              if (v && typeof v === 'object' && seen) {
+                if (seen.has(v)) return '[Circular]';
+                seen.add(v);
+              }
+              return v;
+            }, 4);
+          } catch (e) {
+            return '[로그 직렬화 실패: ' + (e && e.message) + ']';
+          }
         }
         function createTemplate(){
             // 필수 값 체크
