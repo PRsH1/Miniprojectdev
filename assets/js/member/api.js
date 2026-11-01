@@ -934,10 +934,11 @@ const BULK_JOBS = {
     entries: () => validDeleteRows,
     labelOf: e => String(e.row['id'] || e.row['account_id'] || ''),
     prepare: targets => {
-      // 일괄 삭제는 건수를 보여 주고 확인을 받는다 (P1-15) — 취소하면 요청 0건
-      if (!confirm(`멤버 ${targets.length}명을 삭제합니다.\n삭제 시 이메일이 발송될 수 있으며 되돌릴 수 없습니다. 계속하시겠습니까?`)) return null;
+      // 토큰·URL 확인을 먼저 — 확인 창을 누른 뒤에야 "토큰 없음"을 알리지 않게 (D-21)
       const ctx = bulkBaseContext(getMemberBaseUrl);
       if (!ctx) return null;
+      // 일괄 삭제는 건수를 보여 주고 확인을 받는다 (P1-15) — 취소하면 요청 0건
+      if (!confirm(`멤버 ${targets.length}명을 삭제합니다.\n삭제 시 이메일이 발송될 수 있으며 되돌릴 수 없습니다. 계속하시겠습니까?`)) return null;
       ctx.mailOff = $('input[name="mailOptionDeleteExcel"]:checked').val() === 'false';
       return ctx;
     },
@@ -975,9 +976,11 @@ const BULK_JOBS = {
     entries: () => validGroupDeleteRows,
     labelOf: e => e.ids.join(','),
     prepare: targets => {
+      const ctx = bulkBaseContext(getGroupBaseUrl); // 토큰 확인 먼저 (D-21)
+      if (!ctx) return null;
       const idCount = targets.reduce((n, e) => n + e.ids.length, 0);
       if (!confirm(`그룹 ${idCount}개(엑셀 ${targets.length}행)를 삭제합니다.\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?`)) return null;
-      return bulkBaseContext(getGroupBaseUrl);
+      return ctx;
     },
     request: (e, ctx) => ({ url: ctx.baseUrl, init: jsonInit('DELETE', ctx.token, { group_ids: e.ids }) }),
   },
