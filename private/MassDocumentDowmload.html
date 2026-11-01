@@ -737,6 +737,7 @@
 
                         } catch(error) {
                             let errMsg = error.message;
+                            let refreshFailedHere = false;
 
                             if (error.response && error.response.status === 401 && retryCount < 1) {
                                 log(`다운로드 중 토큰 만료. 갱신 시도...`, 'warning');
@@ -748,17 +749,19 @@
                                     continue;
                                 }
                                 tokenFailed = true;
+                                refreshFailedHere = true;
                                 errMsg = '토큰 갱신 실패 (HTTP 401)';
                             }
 
-                            if (error.response && error.response.data instanceof Blob) {
+                            // 토큰 갱신 실패 사유는 서버 메시지로 덮지 않는다 — 결과 CSV에 원인이 남아야 한다 (D-19)
+                            if (!refreshFailedHere && error.response && error.response.data instanceof Blob) {
                                 try {
                                     const txt = await error.response.data.text();
                                     const json = JSON.parse(txt);
                                     errMsg = json.ErrorMessage || json.message || txt;
                                 } catch (e) {}
                             }
-                            if (error.response && error.response.status) errMsg = `HTTP ${error.response.status} · ${errMsg}`;
+                            if (!refreshFailedHere && error.response && error.response.status) errMsg = `HTTP ${error.response.status} · ${errMsg}`;
 
                             log(`다운로드 실패 (${chunkIds.length}건): ${errMsg}`, 'error');
                             chunkIds.forEach(id => docResults.set(id, { status: 'fail', message: errMsg }));
