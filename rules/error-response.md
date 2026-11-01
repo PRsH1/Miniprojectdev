@@ -35,7 +35,7 @@
 
 | 엔드포인트 | 추가 필드 | 내용 |
 |---|---|---|
-| `POST /api/send` (SMTP 테스트, P1-22) | 최상위 `logs` (문자열 배열) | SMTP 대화 로그. 성공(200)·실패(400/502) 모두 포함. 비밀번호 원문·base64·URL 인코딩과 `AUTH PLAIN/XOAUTH2` 페이로드는 `/* secret */`로 가리고, `[REQUEST]` 줄에는 비밀번호 입력 여부만 남긴다. 최대 300줄·줄당 2,000자. `error.reason`은 nodemailer 에러 코드(`EDNS`·`ECONNECTION`·`ETIMEDOUT`·`EAUTH` 등)별 한글 사유. 성공 응답의 `message`는 평문(HTML 아님) |
+| `POST /api/send` (SMTP 테스트, P1-22) | 최상위 `logs` (문자열 배열) | SMTP 대화 로그. 성공(200)·실패(400/502) 모두 포함. 비밀번호 원문·base64·URL 인코딩과 `AUTH PLAIN/XOAUTH2` 페이로드는 `/* secret */`로 가리고(3자 이하 형태는 부분 문자열 치환을 하지 않음 — 짧은 비밀번호가 로그 전체를 망가뜨리던 D-8), `[REQUEST]` 줄에는 비밀번호 입력 여부만 남긴다. 최대 300줄·줄당 2,000자. `error.reason`은 nodemailer 에러 코드(`EDNS`·`ECONNECTION`·`ETIMEDOUT`·`EAUTH` 등)별 한글 사유. 성공 응답의 `message`는 평문(HTML 아님) |
 
 화면은 `error.message`·`reason`·`action`과 `logs`를 textContent로만 출력한다(`utils/smtp.html`). `send.js`는 접근 제한(로그인·포트 제한)을 두지 않는다(Q4).
 

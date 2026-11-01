@@ -156,3 +156,18 @@ test('로그 줄 수 상한', silenceConsole(async () => {
   assert.match(res.body.logs[res.body.logs.length - 1], /생략/);
   assert.match(res.body.error.reason, /시간이 초과/);
 }));
+
+test('짧은 비밀번호(1~3자)도 로그 전체를 망가뜨리지 않는다 (D-8)', silenceConsole(async () => {
+  const SHORT = 'e';
+  const SHORT_B64 = Buffer.from(SHORT, 'utf-8').toString('base64'); // ZQ==
+  behavior = async (opts) => {
+    opts.logger.info('Connection established to smtp.example.invalid');
+    opts.logger.debug(`C: ${SHORT_B64}`);
+    throw nmError('EAUTH', 'Invalid login: 535 Authentication failed');
+  };
+  const res = await run(formBody({ pass: SHORT }));
+  assert.equal(res.statusCode, 502);
+  const logs = res.body.logs.join('\n');
+  assert.match(logs, /Connection established to smtp\.example\.invalid/, '일반 로그 문장이 그대로 남아야 함');
+  assert.ok(!logs.includes(SHORT_B64), '짧은 비밀번호의 base64는 가린다');
+}));

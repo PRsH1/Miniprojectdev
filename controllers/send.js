@@ -5,6 +5,8 @@ const { methodNotAllowed, buildJsonPayload } = require('./_shared/respond-error'
 // SMTP 대화 로그 한도 — 응답 크기 보호 (P1-22)
 const MAX_LOG_LINES = 300;
 const MAX_LOG_LINE_LENGTH = 2000;
+// 이 길이보다 짧은 비밀번호 형태는 부분 문자열 치환을 하지 않는다 (D-8)
+const MIN_MASK_LENGTH = 4;
 
 // 서버리스 함수 시간 안에 실패 로그를 돌려주기 위한 타임아웃(ms).
 // nodemailer 기본값(연결 2분)은 함수 제한 시간보다 길어 실패 시 로그가 사라진다.
@@ -54,8 +56,11 @@ function createMasker(secrets) {
             Buffer.from(secret, 'utf-8').toString('base64'),
             encodeURIComponent(secret),
         ]);
+        // 3자 이하 형태는 가리지 않는다 (D-8) — 'e' 같은 짧은 비밀번호를 부분 문자열로 치환하면 로그 전체가
+        // 망가지고, 치환 위치가 오히려 비밀번호를 드러낸다. base64 형태는 항상 4자 이상이라 그대로 가린다.
+        // nodemailer는 비밀번호 원문을 로그에 쓰지 않고 AUTH 페이로드는 위 정규식이 따로 가린다.
         for (const v of variants) {
-            if (v && v.length >= 1) patterns.push(new RegExp(escapeRegExp(v), 'g'));
+            if (v && v.length >= MIN_MASK_LENGTH) patterns.push(new RegExp(escapeRegExp(v), 'g'));
         }
     }
     // 긴 패턴부터 치환해야 부분 문자열이 먼저 지워져 긴 형태가 남는 일이 없다
