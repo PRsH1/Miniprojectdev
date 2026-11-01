@@ -2,7 +2,8 @@ const { idp, resolveTarget, createTemplateCallback, debugDeliver } = require('..
 const { escapeHtml } = require('../lib/html-escape');
 const { respondError } = require('./_shared/respond-error');
 
-// 필수 입력 누락 안내 페이지 (F-1). 폼이 새 탭으로 제출되므로 평문 대신 돌아갈 링크가 있는 HTML을 준다.
+// 필수 입력 누락 안내 페이지 (F-1). 폼이 새 탭으로 제출되므로 평문 대신 "이 탭 닫고 돌아가기" 버튼이 있는 HTML을 준다
+// (D-22 — 예전 [돌아가기] 링크는 새 탭에 테스트 페이지를 하나 더 열었다).
 // SAML 정책(0절)대로 인증은 요구하지 않는다. 보간하는 값은 모두 escapeHtml을 거친다.
 const IDP_TEST_PAGE = '/app/idptestauth';
 
@@ -21,14 +22,18 @@ function sendMissingFieldsPage(res, missing) {
     .box { max-width: 480px; margin: 12vh auto 0; padding: 28px 24px; background: #fff; border: 1px solid #e5e7eb; border-left: 4px solid #d97706; border-radius: 10px; }
     h1 { margin: 0 0 8px; font-size: 20px; }
     p { margin: 0 0 20px; line-height: 1.6; color: #4b5563; }
-    a { display: inline-block; padding: 10px 18px; border-radius: 8px; background: #1a73e8; color: #fff; text-decoration: none; font-weight: 600; }
+    button { padding: 10px 18px; border: 0; border-radius: 8px; background: #1a73e8; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .sub { margin: 14px 0 0; font-size: 13px; color: #6b7280; }
+    .sub a { color: #1a73e8; }
   </style>
 </head>
 <body>
   <main class="box" role="alert">
     <h1>${escapeHtml(message)}</h1>
-    <p>IdP 개시 로그인 테스트에는 이메일과 이름이 모두 필요합니다. 테스트 페이지로 돌아가 입력한 뒤 다시 시도하세요.</p>
-    <a href="${escapeHtml(IDP_TEST_PAGE)}">돌아가기</a>
+    <p>IdP 개시 로그인 테스트에는 이메일과 이름이 모두 필요합니다. 이 탭을 닫고 원래 테스트 페이지에서 입력한 뒤 다시 시도하세요.</p>
+    <button type="button" id="closeTabBtn" onclick="if (history.length &gt; 1) { history.back(); } else { window.close(); } document.getElementById('closeHint').hidden = false;">이 탭 닫고 돌아가기</button>
+    <p class="sub" id="closeHint" hidden>탭이 닫히지 않으면 브라우저에서 이 탭을 직접 닫아 주세요.</p>
+    <p class="sub">원래 탭을 닫았다면 <a href="${escapeHtml(IDP_TEST_PAGE)}">테스트 페이지 새로 열기</a></p>
   </main>
 </body>
 </html>`);

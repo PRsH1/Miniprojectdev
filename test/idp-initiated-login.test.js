@@ -42,7 +42,10 @@ function assertGuidePage(res, heading) {
   assert.match(res.headers['content-type'], /^text\/html/);
   assert.match(res.body, /^<!DOCTYPE html>/);
   assert.ok(res.body.includes(`<h1>${heading}</h1>`), res.body);
-  assert.ok(res.body.includes('<a href="/app/idptestauth">돌아가기</a>'));
+  // D-22: 폼이 새 탭으로 제출되므로 주 버튼은 테스트 페이지를 하나 더 여는 링크가 아니라 이 탭을 닫는 버튼이다
+  assert.ok(res.body.includes('id="closeTabBtn"'), '탭 닫기 버튼');
+  assert.ok(!res.body.includes('<a href="/app/idptestauth">돌아가기</a>'), '예전 돌아가기 링크(새 탭에 테스트 페이지를 하나 더 엶) 없음');
+  assert.ok(res.body.includes('href="/app/idptestauth"'), '탭이 닫히지 않을 때를 위한 보조 링크');
 }
 
 test('이메일 누락 → "이메일이 필요합니다." 안내 페이지', async () => {
