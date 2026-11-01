@@ -2546,6 +2546,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         writeStoredConfig(finalConfig);
         replaceConfig(finalConfig);
         setCurrentProfileName(profileName);
+        saveSelection();  // 새 이름으로 저장해도 지금 OPA 선택을 그 프로필에 기억한다 (D-14)
         populateProfileSelect();
         populateSettingsFormFromConfig();
         updateEditorFromConfig();

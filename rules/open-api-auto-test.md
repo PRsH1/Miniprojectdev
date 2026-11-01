@@ -61,6 +61,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 
 - **처음 방문 시 선택 없음**: 기본으로 아무 OPA도 선택하지 않는다. 마지막 선택은 프로필별로 localStorage
   `open-api-auto-test-selection-v1`(`{ 프로필명: [code…] }`)에 기억하고, 프로필 전환(`loadProfile`) 시 해당 프로필 선택을 복원한다.
+  새 이름으로 프로필을 저장(`saveCurrentProfile`)하면 지금 선택도 그 프로필 이름으로 기록한다(D-14 — 예전엔 빠져서 다시 열면 선택이 비었다).
   기본 환경(SaaS 운영)은 그대로다(Q12).
 - **선택 없이 실행** → `alert` 대신 요약 패널의 인라인 안내(`#runNotice`, `showRunNotice()`/`hideRunNotice()`).
 - **실행 전 확인 모달** `#runConfirmModal`: [현재 OPA만 실행]·[선택한 OPA 실행]·재실행 버튼 모두 `requestRun(codes)` → `confirmRun()`
