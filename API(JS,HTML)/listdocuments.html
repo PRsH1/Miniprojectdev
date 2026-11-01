@@ -647,6 +647,9 @@
             CsvExport.download(`listdocuments_skip${lastPage.skip}`, CSV_HEADERS, lastPage.docs.map(docRow));
         }
 
+        // 요청 순번 — [조회]와 페이지 이동이 겹치면 마지막 요청의 응답만 화면에 반영한다 (D-18)
+        let listRequestSeq = 0;
+
         function listDocuments() {
             // withLoading이 요청 완료까지 버튼을 잠그도록 Promise를 반환한다
             const token = $('#accessToken').val().trim();
@@ -672,6 +675,8 @@
             };
             url += '?' + Object.entries(qs).map(([k, v]) => `${k}=${v}`).join('&');
 
+            const seq = ++listRequestSeq;
+            const isStale = () => seq !== listRequestSeq;
             ResultPanel.renderStatus('#result', '조회 중...', [`Request URL: ${url}`, `skip ${skip} · limit ${limit}`]);
 
             // API 명세상 limit·skip은 숫자 문자열로 보낸다
@@ -703,6 +708,7 @@
             })
             .then(async res => {
                 const text = await res.text().catch(() => '');
+                if (isStale()) return; // 더 나중에 보낸 요청이 있다 — 이 응답은 버린다
                 if (!res.ok) {
                     $('#listView').hide();
                     renderApiError('#result', { status: res.status, bodyText: text, url, title: '조회 실패 (Fail)' });
@@ -742,6 +748,7 @@
                 setView(currentView);
             })
             .catch(err => {
+                if (isStale()) return;
                 // CORS·도메인 오타·네트워크 실패
                 $('#listView').hide();
                 renderApiError('#result', { error: err, url, title: '조회 실패 (Fail)' });
