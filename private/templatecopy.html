@@ -227,8 +227,10 @@
         document.querySelector('#' + id).value = v;
       }
       // 실제로 불러온 값이 있을 때만 완료 토스트 (P1-20)
+      // host는 [저장] 때 항상 기록되므로 "키가 있음"이 아니라 기본 호스트와 다른 값일 때만 불러온 값으로 본다 (D-20)
+      const storedHost = localStorage.getItem(stateKeys.host);
       const loadedAny = Object.keys(stateKeys).some((id) => id !== 'host' && document.querySelector('#' + id).value)
-        || localStorage.getItem(stateKeys.host) !== null;
+        || (!!storedHost && storedHost !== 'kr-service.eformsign.com');
       if (loadedAny) toast('불러오기 완료');
       else if (!silent) toast('저장된 값이 없습니다');
       clearFieldErrors();
