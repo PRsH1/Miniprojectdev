@@ -32,7 +32,7 @@ Node.js 기반의 서버리스 애플리케이션으로 Vercel에 배포되어 �
 | 인증 | JWT 하이브리드 세션, SAML 2.0 (`samlify`), ECDSA (`jsrsasign`) |
 | 실시간 통신 | Pusher (웹훅 브로드캐스트 + 알림 실시간 푸시) |
 | 이메일 | Nodemailer |
-| 테스트 | `node --test` 단위 테스트 22개 파일 (`npm test`, DB 없이 목으로 실행) |
+| 테스트 | `node --test` 단위 테스트 23개 파일 (`npm test`, DB 없이 목으로 실행) |
 | CI | GitHub Actions — push·PR마다 `npm test` → `npm run security:secrets` + gitleaks 전체 히스토리 스캔 |
 | 보안 헤더 | `vercel.json`에서 전 경로 `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` |
 
