@@ -475,9 +475,46 @@
 
     // 새 탭에서 다시 로그인해 세션이 돌아온 경우 — 배너를 닫고 사용자 영역·알림을 다시 붙인다
     function handleAuthRestored(user) {
+        // 만료 전과 다른 계정으로 다시 로그인했으면 바로 이어 붙이지 않고 확인을 받는다 (D-7)
+        // — 이 탭의 입력은 이전 계정으로 작업하던 것이라, 그대로 저장하면 다른 계정에 저장된다
+        var prev = authStatusCurrentUser && authStatusCurrentUser.username;
+        if (prev && user && user.username && user.username !== prev) {
+            showAccountChangedNotice(prev, user);
+            return;
+        }
         authExpiredHandled = false;
         hideSessionExpiredBanner();
         render(user);
+    }
+
+    function showAccountChangedNotice(prevName, user) {
+        var banner = document.getElementById(EXPIRED_BANNER_ID);
+        if (!banner) { showSessionExpiredBanner(); banner = document.getElementById(EXPIRED_BANNER_ID); }
+        if (!banner) return;
+        var text = banner.querySelector('span');
+        if (text) {
+            text.textContent = '';
+            var strong = document.createElement('strong');
+            strong.textContent = '다른 계정으로 로그인되었습니다. ';
+            text.appendChild(strong);
+            text.appendChild(document.createTextNode(
+                '이 탭은 ' + prevName + ' 계정으로 작업하던 화면입니다. 지금 로그인한 계정은 ' + user.username +
+                '입니다. 계속하면 이후 저장은 ' + user.username + ' 계정으로 처리됩니다.'));
+        }
+        var oldCont = document.getElementById('asbAccountContinueBtn');
+        if (oldCont) oldCont.remove(); // 탭 복귀마다 최신 계정으로 다시 만든다
+        var cont = document.createElement('button');
+        cont.type = 'button';
+        cont.id = 'asbAccountContinueBtn';
+        cont.textContent = user.username + ' 계정으로 계속';
+        cont.style.cssText = 'width:auto;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;background:#fff;color:#78350f;border:1px solid #f59e0b';
+        cont.addEventListener('click', function () {
+            authExpiredHandled = false;
+            hideSessionExpiredBanner();
+            render(user);
+        });
+        var reloadBtn = document.getElementById('asbExpiredReloadBtn');
+        banner.insertBefore(cont, reloadBtn || null);
     }
 
     window.handleAuthExpired = handleAuthExpired;

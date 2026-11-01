@@ -118,6 +118,8 @@ const DOMAINS = {
     자동 새로고침하지 않고 상단 고정 배너 "세션이 만료되었습니다 … [새 탭에서 로그인] [새로고침]"(`#asbSessionExpiredBanner`)을 띄운다.
     [새 탭에서 로그인]은 `/auth/login.html?next=/auth/login-complete.html`을 새 탭으로 연다(완료 페이지: "이 탭을 닫고 돌아가세요").
     원래 탭으로 돌아오면 `focus`/`visibilitychange` 재확인이 `authenticated:true`를 보고 배너를 닫고 사용자 영역·알림을 다시 붙인다(쿠키 공유 → 그대로 저장 가능).
+    단, **만료 전과 다른 아이디로 로그인했으면**(`authStatusCurrentUser.username` 비교) 배너를 닫지 않고 "다른 계정으로 로그인되었습니다 —
+    이 탭은 A 계정으로 작업하던 화면… 계속하면 B 계정으로 저장" 문구와 [B 계정으로 계속]을 보여 준다(D-7). 누르기 전에는 사용자 영역을 바꾸지 않는다.
     [새로고침]은 미저장 입력이 있으면 한 번 더 확인한다. 훅이 없거나 `false`·미정의면 기존처럼 안내 토스트 후 1.2초 뒤 `location.reload()`.
     훅이 예외를 던지면 입력 보호를 위해 "미저장 있음"으로 본다. 등록 페이지: `private/Admin.html`(버그 답변 패널이 렌더링 때 값과 다름 · 열린 모달에 입력값),
     `community/developer-notes.html`(편집기 변경), `community/bug-report.html`(제출 전 제보 글), `private/MemberV2.html`(C6 담당).
