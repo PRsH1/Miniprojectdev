@@ -43,7 +43,7 @@ API 도구의 결과 영역은 `<pre>`를 직접 만들지 말고 `window.Result
 표 데이터를 CSV로 내려받을 때는 직접 문자열을 조립하지 말고 `window.CsvExport`를 쓴다(IIFE, 의존성 없음).
 
 - `CsvExport.download(prefix, headers, rows)` → `<prefix>_<YYYYMMDD_HHmmss>.csv`. **UTF-8 BOM**을 붙여 Excel에서 한글이 깨지지 않고, 줄 구분은 CRLF.
-- 모든 값을 큰따옴표로 감싸고(내부 `"`는 `""`), `=`·`+`·`-`·`@`·탭·CR로 시작하는 값 앞에 `'`를 붙여 **CSV 수식 주입**을 막는다(문서 제목·템플릿 이름은 외부 데이터).
+- 모든 값을 큰따옴표로 감싸고(내부 `"`는 `""`), `=`·`+`·`-`·`@`·탭·CR로 시작하는 값 앞에 `'`를 붙여 **CSV 수식 주입**을 막는다(문서 제목·템플릿 이름은 외부 데이터). 단 빈 값 자리표시자 `-` 한 글자는 그대로 둔다(D-16).
 - `CsvExport.build(headers, rows)`(BOM 없는 문자열), `CsvExport.formatDate(epochMs)` → `YYYY-MM-DD HH:mm:ss`(로컬, 잘못된 값은 `''`).
 - 적용: `API(JS,HTML)/listdocuments.html`(현재 페이지 5열), `utils/DocumentDelete.html`·`utils/templateDeletetool.html`(대상 CSV·결과 CSV). 테스트: `test/csv-export.test.js`.
 

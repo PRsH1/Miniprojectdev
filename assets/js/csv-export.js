@@ -33,7 +33,8 @@
 
     function cell(value) {
         var text = value === undefined || value === null ? '' : String(value);
-        if (FORMULA_PREFIX.test(text)) text = "'" + text;
+        // "-" 한 글자는 빈 값 자리표시자 — 수식이 될 수 없으므로 그대로 둔다 (D-16)
+        if (text !== '-' && FORMULA_PREFIX.test(text)) text = "'" + text;
         return '"' + text.replace(/"/g, '""') + '"';
     }
 

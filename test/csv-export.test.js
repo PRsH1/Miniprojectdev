@@ -24,6 +24,11 @@ test('build: 수식으로 해석될 수 있는 값 앞에 작은따옴표를 붙
   assert.equal(text, `"'=SUM(A1)","'+1","'-2","'@cmd","'\tx","정상"\r\n`);
 });
 
+test('build: 빈 값 자리표시자 "-" 하나는 그대로 둔다 (D-16)', () => {
+  const csv = loadCsvExport();
+  assert.equal(csv.build(null, [['-', '--', '-1+1']]), `"-","'--","'-1+1"\r\n`);
+});
+
 test('build: null·undefined는 빈 칸, 숫자는 문자열로', () => {
   const csv = loadCsvExport();
   assert.equal(csv.build(['a', 'b', 'c'], [[null, undefined, 3]]), '"a","b","c"\r\n"","","3"\r\n');
