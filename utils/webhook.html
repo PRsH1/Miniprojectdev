@@ -288,12 +288,12 @@
 
     // ── 토스트 ─────────────────────────────────────────────────
     let toastTimer = null;
-    function showToast(message) {
+    function showToast(message, duration) {
         const el = document.getElementById('whToast');
         el.textContent = String(message);
         el.classList.add('show');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+        toastTimer = setTimeout(() => el.classList.remove('show'), duration || 2200);
     }
 
     // 클립보드 복사 — Clipboard API 실패 시 textarea fallback
@@ -504,13 +504,18 @@
                 let filled = '';
                 if (companyId) {
                     const id = String(companyId);
-                    $('#pusherCompanyId').val(id);
-                    storageSet(COMPANY_KEY, id);
-                    filled = ' Company ID를 자동으로 채웠습니다.';
-                    // 아직 다른 채널에 연결하지 않았다면 바로 연결
-                    if (!channel || currentCompanyId !== id) connectCompany(id);
+                    if (!channel) {
+                        // 아직 어떤 채널에도 연결하지 않았다면 채우고 바로 연결
+                        $('#pusherCompanyId').val(id);
+                        storageSet(COMPANY_KEY, id);
+                        filled = ' Company ID를 자동으로 채웠습니다.';
+                        connectCompany(id);
+                    } else if (currentCompanyId !== id) {
+                        // 다른 회사 채널을 보고 있으면 자동으로 바꾸지 않는다 (D-15) — 보던 이벤트가 사라지지 않게
+                        filled = ` 발급한 토큰의 Company ID(${id})가 지금 보고 있는 채널(${currentCompanyId})과 다릅니다. 바꾸려면 Company ID를 입력하고 [연결]을 누르세요.`;
+                    }
                 }
-                showToast('Access Token이 발급되었습니다' + (result.via === 'proxy' ? ' (via proxy)' : '') + '.' + filled);
+                showToast('Access Token이 발급되었습니다' + (result.via === 'proxy' ? ' (via proxy)' : '') + '.' + filled, filled ? 6000 : 2200);
             } catch (error) {
                 renderPre($('#tokenResult'), '에러: ' + toJsonText(error), { error: true });
             }

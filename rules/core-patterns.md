@@ -329,7 +329,8 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 - **모니터 렌더링**: `utils/webhook.html`은 표 셀·토큰 결과·문서 정보 결과를 모두 `.text()`/`textContent`로만 렌더링한다(`createRow`, `renderPre`).
 - **문서 정보 조회 토큰 전달**: `/api/getDocumentInfo`에는 `Authorization: Bearer <token>` 헤더로 보낸다. 서버는 헤더를 우선 읽고, 쿼리 `token=`은 하위 호환으로만 허용하며 폐기 예정 경고 로그를 남긴다.
 - **모니터 로컬 이력 (P1-07)**: 채널은 공개 `company-{company_id}` 그대로(Q3 기본안). 수신 이벤트 원본(`{headers, body, receivedAt, truncated?}`)을 localStorage `webhook-monitor-history-v1:<company_id>`에 **회사별 최신순 최대 200건** 보관하고, 다시 그릴 때도 같은 `addLogEntry`(textContent)로 렌더링한다.
-  마지막 Company ID는 `webhook-monitor-company-id`에 기억해 다음 방문 시 이력 복원 + 채널 재연결. 토큰 발급 성공 시 응답 `api_key.company.company_id`로 자동 채운다.
+  마지막 Company ID는 `webhook-monitor-company-id`에 기억해 다음 방문 시 이력 복원 + 채널 재연결. 토큰 발급 성공 시 응답 `api_key.company.company_id`로 자동 채운다 —
+  단 **아직 채널에 연결하지 않았을 때만** 채우고 연결한다. 이미 다른 회사 채널을 보고 있으면 바꾸지 않고 토스트로 차이만 알린다(D-15).
   모든 저장소 접근은 try/catch — 차단되면 화면에만 표시하고 안내 문구를 바꾸며, 용량 초과면 오래된 것부터 줄여 재시도한다. 서버 저장은 P2-05.
 - **모니터 기타**: 수신 URL [복사]·"eformsign 설정 방법" 안내, 새 이벤트가 와도 상태 필터 유지(숨겨지면 토스트), 제목 없는 PDF는 `<document_id>.pdf`로 다운로드.
   `/api/downloadDocument`의 `Content-Disposition: filename*="UTF-8''…"`(따옴표 포함)를 그대로 파싱한다.
