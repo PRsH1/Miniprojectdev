@@ -3,7 +3,7 @@
 Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 
 **파일:**
-- `API(JS,HTML)/OpenAPITesterProd.html` — 공개 배포판 UI (멤버·그룹 API 비공개 — Q5, 명세 데이터는 공개 번들에 남아 있음)
+- `API(JS,HTML)/OpenAPITesterProd.html` — 공개 배포판 UI (멤버·그룹 API와 `fullOnly` API 비공개 — Q5, 명세 데이터는 공개 번들에 남아 있음)
 - `private/OpenAPITesterFull.html` — 전체판 UI (`/app/OpenAPITesterFull`, manager 이상)
 - `assets/js/openapi/api-list.js` — API_LIST 데이터
 - `assets/js/openapi/api-specs.js` — API_SPECS 데이터
@@ -15,8 +15,8 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 > 전역 변수로 공유되므로 `<script>` 태그 순서를 변경하면 안 됨.
 
 > **Prod와 Full은 거의 동일한 복제본이다.** 두 HTML의 실질적 차이는 Prod에만 있는
-> 인라인 스크립트 한 블록(`api-list.js` 로드 직후, `API_LIST`에서 `group === '멤버'`·`'그룹'` 항목을
-> `splice`로 제거)뿐이다. `diff private/OpenAPITesterFull.html "API(JS,HTML)/OpenAPITesterProd.html"`의 결과가 이 블록뿐이어야 한다. **UI를 수정할 때는 반드시 두 파일 모두 고쳐야 한다** — 한쪽만
+> 인라인 스크립트 한 블록(`api-list.js` 로드 직후, `API_LIST`에서 `group === '멤버'`·`'그룹'` 항목과
+> `fullOnly: true` 항목을 `splice`로 제거)뿐이다. `diff private/OpenAPITesterFull.html "API(JS,HTML)/OpenAPITesterProd.html"`의 결과가 이 블록뿐이어야 한다. **UI를 수정할 때는 반드시 두 파일 모두 고쳐야 한다** — 한쪽만
 > 고치면 조용히 갈라진다. JS 모듈은 공유하므로 로직 수정은 한 번으로 충분하다.
 
 ### 파일 역할 및 편집 가이드
@@ -36,7 +36,9 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
     id: 'unique_id',
     group: '그룹명',
     groupIcon: 'fa-아이콘명',
-    opaCode: 'OPA2_XXX',        // null이면 배지 없음
+    opaCode: 'OPA2_XXX',        // 대고객 번호. null이면 배지 없음 (Full 전용 신규 API). 기존 값은 절대 바꾸지 않는다
+    sourceApiId: 'OPA2_0xx',    // 선택 — SaaS 소스 내부 번호(ApiIdConf, 참고용). opaCode가 없는 항목에만 쓴다
+    fullOnly: true,             // 선택 — 대고객 공개 검토 전. Full에만 보이고 Prod는 화면에서 제거, 사이드바에 회색 "검토" 라벨
     name: 'API 이름',
     method: 'GET|POST|PUT|PATCH|DELETE',
     saasBaseUrl: 'https://...',  // 선택적. op_saas 환경에서만 이 도메인 사용
@@ -51,19 +53,49 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
         success: { ... },        // 값 대신 "string"/"number"/"boolean" 타입 표현
         successEmpty: { ... },   // 선택적 — 조회 결과 없는 성공 응답
         errors: [
-            { title: '한글 설명 (코드)', body: { code, ErrorMessage } }
+            { title: '한글 설명 (코드)', body: { code, ErrorMessage }, status: 400 }
             // title 형식: '유효하지 않은 서명 (4030004)' — 항상 한글로 작성
-            // 소스 기준: utils/error-codes.html (OPA2 에러 코드 레퍼런스 — OPA2_021·061 카드는 아직 없음)
+            // status(선택): HTTP 상태. 예시 패널 제목 끝에 "· HTTP 500"으로 표시된다 (아래 "HTTP 상태" 참고)
+            // 소스 기준: SaaS 소스 EformsignExceptionType + 던지는 위치. utils/error-codes.html은 고객 공개 페이지라
+            //            소스와 다른 곳이 있다(OPA2_030=SSO 카드, OPA2_041 경로 form_image 등) — 그 페이지를 근거로 삼지 말 것
         ]
     }
 }
 ```
 
-**API_LIST 배치 규칙**: 신규 API는 OPA2 번호 오름차순 위치에 삽입. 편집 파일: `assets/js/openapi/api-list.js`
+**API_LIST 배치 규칙**: 신규 API는 OPA2 번호 오름차순 위치에 삽입. 대고객 번호가 없는 Full 전용 API는
+파일 끝 "Full 전용" 구역에 두며, 그룹 보기에서는 각 그룹 끝에 붙는다. 편집 파일: `assets/js/openapi/api-list.js`
+
+### 대고객 OPA 번호 ≠ 소스 내부 번호 (2026-11 소스 대조)
+
+- 허브의 `opaCode`는 **대고객 안내용 번호**이고, SaaS 소스 `ApiIdConf.java`의 내부 번호와 일부 다르다. **기존 `opaCode`는 바꾸지 않는다.**
+  소스와 맞출 때는 번호가 아니라 **HTTP 메서드 + 경로**로 대응시킨다.
+- 번호가 다른 항목(허브 → 소스): `OPA2_008` POST `/list_document` → 소스 `OPA2_008_1`(소스 `OPA2_008`은 GET `/documents` + Body),
+  `OPA2_021` POST `/forms/mass_multi_documents` → `OPA2_023`, `OPA2_030` POST `/list_members` → `OPA2_036`(소스 `OPA2_030`은 SSO 구성원 조회 — 추가 금지).
+  나머지 등록 항목은 번호·경로가 같다.
+- 근거 자료: `docs/reference/eformsign-saas-source-survey.md` 3.2절(엔드포인트 전체 표 — 로컬 문서, `docs/`는 .gitignore로 커밋되지 않음). 소스: `OpenAPIV2Controller.java`, `ApiIdConf.java`.
+
+### Full 전용 신규 API 추가 절차
+
+1. 소스(`OpenAPIV2Controller.java`)에서 메서드·경로·쿼리·Body 파싱·응답·던지는 예외를 확인한다. 특정 고객 전용·내부 운영용·파트너(국가 키·IAM 키) 전용·
+   SSO 구성원·multipart·GET+Body 엔드포인트는 넣지 않는다.
+2. `api-list.js` "Full 전용" 구역에 `opaCode: null`, `sourceApiId`, `fullOnly: true`로 추가한다.
+3. 명세는 `API_SPECS[<API id>]` 키로 넣는다 — 조회는 `getApiSpec(ep)` = `API_SPECS[ep.opaCode] || API_SPECS[ep.id]`(`state.js`).
+4. Prod HTML은 고치지 않아도 된다(숨김 블록이 `fullOnly`를 제거). 공개하기로 하면 대고객 번호를 정해 `opaCode`를 넣고 `fullOnly`·`sourceApiId`를 지운 뒤,
+   명세 키를 `opaCode`로 옮긴다.
+5. **한계**: Prod는 화면에서만 숨긴다 — `api-list.js`·`api-specs.js`가 공개 번들이라 데이터는 누구나 내려받을 수 있다(Q5와 같은 수준).
+
+### HTTP 상태 (`status`)
+
+소스에서 HTTP 상태는 에러 코드가 아니라 **예외 클래스**가 정한다: `EformsignBadRequestException` 400, `EformsignTokenException` 401,
+`EformsignForbiddenException` 403, `EformsignCheckException` **500**(입력 오류에도 쓰임), `EformsignProcessingException` 202.
+같은 코드가 위치에 따라 다른 상태로 나가므로 `status`는 확인된 것만 넣는다 — 소스 전체에서 한 클래스로만 던지는 code+message이거나,
+공통 인증·회사·역할 검사(토큰 4010001=401, API Key 4000003=400, 비활성 키 4030001=403, 삭제·정지 회사 4000076·4030052=403,
+역할 4030009·4000097=403)이거나, 그 API의 던지는 위치를 확인한 경우. `errors`와 `errorCodes`의 `status`도 같아야 한다.
 
 ### API 명세 데이터 구조 (`API_SPECS`)
 
-`assets/js/openapi/api-specs.js`에 위치. opaCode를 키로 하는 객체.
+`assets/js/openapi/api-specs.js`에 위치. opaCode를 키로 하는 객체(opaCode가 없는 Full 전용 API는 API `id`를 키로 쓴다 — `getApiSpec(ep)`).
 
 ```javascript
 const API_SPECS = {
@@ -83,14 +115,15 @@ const API_SPECS = {
             { key, type, description, note }
         ],
         errorCodes: [
-            { code, message, description }
+            { code, message, description, status }   // status(선택)가 하나라도 있으면 명세 모달에 HTTP 열 표시
         ],
     },
 };
 ```
 
 - **정합성 원칙**: `API_SPECS`의 queryParams/requestBody/responseFields는 `API_LIST`의 실제 데이터와 일치해야 함. 신규 명세 추가 시 반드시 `api-list.js` 실제 구조를 기준으로 작성
-- **errorCodes 정합성**: `API_SPECS`의 `errorCodes`는 `API_LIST`의 `exampleResponse.errors`와 동기화 상태여야 함. 에러 추가/수정 시 두 파일 모두 수정할 것 (소스 레퍼런스: `utils/error-codes.html`)
+- **errorCodes 정합성**: `API_SPECS`의 `errorCodes`는 `API_LIST`의 `exampleResponse.errors`와 동기화 상태여야 함(code·message·status). 에러 추가/수정 시 두 파일 모두 수정할 것 (소스 레퍼런스: SaaS 소스 `EformsignExceptionType.java`)
+- **최상위 에러가 아닌 것**: 일괄 처리 API의 문서별 실패(OPA2_009 `fail_result`, OPA2_040 `{document_id: 메시지}`, OPA2_030 `success:false`)는 HTTP 200 본문으로 오므로 `errors` 예시에 넣지 않고 응답 필드 설명에 적는다
 - `note` 필드가 하나라도 있으면 해당 테이블에 비고 컬럼 자동 표시
 
 ### 특수 인증 처리 API
