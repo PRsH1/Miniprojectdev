@@ -60,14 +60,19 @@ function splitList(v) {
   return hasValue(v) ? String(v).split(',').map(s => s.trim()).filter(s => s) : [];
 }
 
-// 그룹 수정 PATCH 본문 — 입력한 필드만 담는다. clearMembers면 members: [] (의도적으로 비우기)
+// 그룹 수정 본문 — eformsign 그룹 수정(OPA2_019)은 전체 덮어쓰기다(SaaS 소스 확인, 2026-11-03).
+//   name·description 키가 없으면 400, members가 없으면 빈 배열로 처리되어 기존 멤버가 전원 제거된다.
+// 그래서 name·description·members를 항상 담고, 빠진 값이 있으면 error를 돌려준다.
+// 멤버를 비우려면 clearMembers(“멤버 비우기”)를 명시해야 한다.
 function buildGroupPatch({ name, description, members, clearMembers }) {
-  const group = {};
-  if (hasValue(name)) group.name = String(name).trim();
-  if (hasValue(description)) group.description = String(description).trim();
-  if (clearMembers) group.members = [];
-  else if (hasValue(members)) group.members = splitList(members);
-  return group;
+  if (!hasValue(name) || !hasValue(description)) {
+    return { error: '그룹 이름과 설명은 필수입니다(eformsign 그룹 수정은 전체 덮어쓰기).' };
+  }
+  const memberList = clearMembers ? [] : splitList(members);
+  if (!clearMembers && !memberList.length) {
+    return { error: '멤버 칸이 비어 있으면 그룹의 기존 멤버가 모두 빠집니다. 남길 멤버를 모두 입력하거나 "멤버 비우기"를 선택하세요.' };
+  }
+  return { group: { name: String(name).trim(), description: String(description).trim(), members: memberList } };
 }
 
 // ─── 엑셀 파일 읽기 (P1-15) ──────────────────────────────
@@ -340,10 +345,14 @@ function updateMember(button) {
 
   let account = { id: memberId };
   const name = $('#updateName').val().trim(); if (name) account.name = name;
-  // enabled는 "변경 안 함"(빈 값)이 기본 — 사용자가 true/false를 고른 경우에만 보낸다 (P1-15)
-  // 항상 보내면 비활성 멤버의 이름만 바꿔도 다시 활성화된다
+  // eformsign 멤버 수정(OPA2_012)은 전체 덮어쓰기다(SaaS 소스 확인, 2026-11-03).
+  // enabled를 빼면 false로 처리되어 멤버가 비활성화되므로, 활성 상태는 반드시 직접 고르게 한다.
   const enabledSel = $('#updateEnabled').val();
-  if (enabledSel === 'true' || enabledSel === 'false') account.enabled = (enabledSel === 'true');
+  if (enabledSel !== 'true' && enabledSel !== 'false') {
+    hideLoading(button);
+    return alert('활성 상태(account.enabled)를 선택해주세요.\n이 값을 보내지 않으면 eformsign이 멤버를 비활성화합니다.');
+  }
+  account.enabled = (enabledSel === 'true');
   const num = $('#updateContactNumber').val().trim();
   const tel = $('#updateContactTel').val().trim();
   if (num || tel) {
@@ -355,6 +364,16 @@ function updateMember(button) {
   const pos = $('#updatePosition').val().trim(); if (pos) account.position = pos;
   const roles = $('#updateRole').val().trim();
   if (roles) account.role = roles.split(',').map(r => r.trim()).filter(r => r);
+
+  // 비워 둔 항목은 eformsign에서 지워진다 — 무엇이 지워지는지 알리고 확인받는다
+  const cleared = [];
+  if (!dept) cleared.push('부서(빈 값으로 저장)');
+  if (!pos) cleared.push('직책(빈 값으로 저장)');
+  if (!roles) cleared.push('권한(회사·템플릿 관리자 권한 해제)');
+  if (cleared.length && !confirm('eformsign 멤버 수정은 전체 덮어쓰기입니다.\n다음 항목이 비어 있어 기존 값이 지워집니다:\n- ' + cleared.join('\n- ') + '\n\n계속하시겠습니까?')) {
+    hideLoading(button);
+    return;
+  }
 
   const baseUrl = getMemberBaseUrl();
   if (!baseUrl.startsWith('http')) { hideLoading(button); return alert('사용자 지정 Base URL을 입력하세요.'); }
@@ -531,19 +550,20 @@ function updateGroup(button) {
   if (!groupId) { hideLoading(button); return alert('수정할 그룹 ID를 입력해주세요.'); }
   const url = `${baseUrl}/${encodeURIComponent(groupId)}`;
 
-  // 빈 필드는 보내지 않는다 — PATCH에 빈 이름·설명·멤버를 보내면 그룹이 비워질 수 있다 (P1-15)
+  // 그룹 수정은 전체 덮어쓰기 — 이름·설명·멤버를 항상 보낸다(buildGroupPatch 주석 참고)
   // 멤버를 의도적으로 비우려면 "멤버 비우기" 체크박스를 쓴다
-  const group = buildGroupPatch({
+  const patch = buildGroupPatch({
     name: $('#updGroupName').val(),
     description: $('#updGroupDescription').val(),
     members: $('#updGroupMembers').val(),
     clearMembers: $('#updGroupClearMembers').is(':checked'),
   });
-  if (!Object.keys(group).length) {
+  if (patch.error) {
     hideLoading(button);
-    return alert('수정할 항목(이름·설명·멤버)을 하나 이상 입력하거나 "멤버 비우기"를 선택해주세요.');
+    return alert(patch.error);
   }
-  if (group.members && !group.members.length &&
+  const group = patch.group;
+  if (!group.members.length &&
       !confirm('그룹의 멤버를 모두 비웁니다. 계속하시겠습니까?')) {
     hideLoading(button);
     return;
@@ -742,17 +762,19 @@ function validateExcelFileForUpdate(button) {
       validUpdateRows = []; invalidUpdateRows = [];
       rows.forEach((row, i) => {
         const hasField = MEMBER_UPDATE_FIELDS.some(k => hasValue(row[k]));
-        if (hasValue(row['id']) && hasField) validUpdateRows.push({ rowNumber: i + 2, row });
+        // 멤버 수정은 전체 덮어쓰기 — enabled가 비면 eformsign이 비활성화하므로 필수(SaaS 소스 확인, 2026-11-03)
+        if (hasValue(row['id']) && hasField && hasValue(row['enabled'])) validUpdateRows.push({ rowNumber: i + 2, row });
         else invalidUpdateRows.push({ rowNumber: i + 2 });
       });
       let s = `검증 완료 수정\n총:${rows.length} 유효:${validUpdateRows.length} 오류:${invalidUpdateRows.length}\n`;
-      if (invalidUpdateRows.length) s += '오류 행 번호(id 또는 수정 항목 누락):\n' + invalidUpdateRows.map(x => `행 ${x.rowNumber}`).join('\n');
+      if (invalidUpdateRows.length) s += '오류 행 번호(id 또는 enabled 누락 — enabled가 비면 eformsign이 멤버를 비활성화합니다):\n' + invalidUpdateRows.map(x => `행 ${x.rowNumber}`).join('\n');
       return { summary: s, validCount: validUpdateRows.length };
     },
   });
 }
 
-// 엑셀 멤버 수정 본문 — 값이 있는 열만 보낸다. enabled는 셀에 값이 있을 때만(FALSE 포함)
+// 엑셀 멤버 수정 본문 — 값이 있는 열만 보낸다. enabled는 검증 단계에서 필수(빈 행은 오류 행).
+// 비운 department·position은 빈 값, 비운 role은 관리자 권한 해제로 저장된다(eformsign 전체 덮어쓰기).
 function buildMemberUpdateAccount(row) {
   const updateObj = { id: String(row['id']).trim() };
   if (hasValue(row['name'])) updateObj.name = String(row['name']).trim();
@@ -813,15 +835,16 @@ function validateExcelGroupUpdateFile(button) {
     validate: rows => {
       validGroupUpdateRows = []; invalidGroupUpdateRows = [];
       rows.forEach((r, i) => {
-        const group = buildGroupPatch({ name: r.name, description: r.description, members: r.members });
-        if (hasValue(r.group_id) && Object.keys(group).length) {
-          validGroupUpdateRows.push({ rowNumber: i + 2, row: r, groupId: String(r.group_id).trim(), group });
+        // 엑셀은 "멤버 비우기"가 없으므로 name·description·members가 모두 있어야 유효(전체 덮어쓰기)
+        const patch = buildGroupPatch({ name: r.name, description: r.description, members: r.members });
+        if (hasValue(r.group_id) && !patch.error) {
+          validGroupUpdateRows.push({ rowNumber: i + 2, row: r, groupId: String(r.group_id).trim(), group: patch.group });
         } else {
           invalidGroupUpdateRows.push(i + 2);
         }
       });
       let msg = `검증 완료\n총:${rows.length} 유효:${validGroupUpdateRows.length} 오류:${invalidGroupUpdateRows.length}`;
-      if (invalidGroupUpdateRows.length) msg += `\n오류행(group_id 또는 수정 항목 누락):${invalidGroupUpdateRows.join(',')}`;
+      if (invalidGroupUpdateRows.length) msg += `\n오류행(group_id·name·description·members 중 누락 — 그룹 수정은 전체 덮어쓰기라 모두 필요):${invalidGroupUpdateRows.join(',')}`;
       return { summary: msg, validCount: validGroupUpdateRows.length };
     },
   });
