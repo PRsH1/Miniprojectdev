@@ -112,7 +112,7 @@ ProjectImprove/
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구 (HTML)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
-│   └── error-codes.html        # OPA2 에러 코드 모음 (검색 + ?q= / #code-<코드> 딥링크 — OPA2_021·OPA2_061 카드는 아직 없음)
+│   └── error-codes.html        # OPA2 에러 코드 모음 (검색 + ?q= / #code-<코드> 딥링크 — OPA2_021·OPA2_061 카드는 아직 없음, SSO 구성원 조회(customsso_members) 카드는 비공개 API라 2026-11-04 제거)
 │
 ├── design-preview-member.html  # MemberV2 디자인 시스템 확인용 (프로덕션 미사용)
 ├── img/                        # 정적 이미지 (sso_flow.png 등)
