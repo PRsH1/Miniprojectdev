@@ -1842,7 +1842,7 @@ const API_SPECS = {
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가', status: 403 },
             { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
             { code: '4030009', message: 'You do not have access.', description: '대표 관리자·회사 관리자가 아님', status: 403 },
-            { code: '4000097', message: 'No such member exists.', description: '토큰의 멤버를 찾을 수 없음', status: 403 }
+            { code: '4000097', message: 'No such member exists.', description: '토큰의 멤버가 회사에 없거나 비활성·삭제됨', status: 403 }
         ],
     },
 
@@ -2034,7 +2034,7 @@ const API_SPECS = {
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가', status: 403 },
             { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
             { code: '4030009', message: 'You do not have access.', description: '대표 관리자·회사 관리자가 아님', status: 403 },
-            { code: '4000097', message: 'No such member exists.', description: '토큰의 멤버를 찾을 수 없음', status: 403 },
+            { code: '4000097', message: 'No such member exists.', description: '토큰의 멤버가 회사에 없거나 비활성·삭제됨', status: 403 },
             { code: '4000001', message: 'Invalid input JSON format.', description: 'managers가 비었거나 type·id 오류', status: 500 },
             { code: '4000011', message: 'The group does not exist.', description: '존재하지 않는 그룹', status: 400 }
         ],
@@ -2078,7 +2078,7 @@ const API_SPECS = {
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가', status: 403 },
             { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
             { code: '4030009', message: 'You do not have access.', description: '대표 관리자·회사 관리자가 아님', status: 403 },
-            { code: '4000097', message: 'No such member exists.', description: '토큰의 멤버를 찾을 수 없음', status: 403 },
+            { code: '4000097', message: 'No such member exists.', description: '토큰의 멤버가 회사에 없거나 비활성·삭제됨', status: 403 },
             { code: '4000001', message: 'Invalid input JSON format.', description: 'managers가 비었거나 type·id 오류', status: 500 },
             { code: '4000011', message: 'The group does not exist.', description: '존재하지 않는 그룹', status: 400 }
         ],
@@ -2139,7 +2139,7 @@ const API_SPECS = {
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가', status: 403 },
             { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
             { code: '4030009', message: 'You do not have access.', description: '대표 관리자·회사 관리자가 아님', status: 403 },
-            { code: '4000097', message: 'No such member exists.', description: '토큰의 멤버를 찾을 수 없음', status: 403 },
+            { code: '4000097', message: 'No such member exists.', description: '토큰의 멤버가 회사에 없거나 비활성·삭제됨', status: 403 },
             { code: '4000070', message: 'Invalid input JSON format.', description: '필수 키 누락·값 형식 오류(document_roles null, creator_type·form_type 등)', status: 500 },
             { code: '4000197', message: 'The document manager settings information does not exist.', description: '문서 관리자 설정 정보 없음', status: 500 }
         ],

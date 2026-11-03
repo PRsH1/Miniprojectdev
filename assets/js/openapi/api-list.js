@@ -5258,7 +5258,7 @@ const API_LIST = [
                     body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403
                 },
                 {
-                    title: "토큰의 멤버를 찾을 수 없음 (4000097)",
+                    title: "토큰의 멤버가 회사에 없거나 비활성·삭제됨 (4000097)",
                     body: {"code":"4000097","ErrorMessage":"No such member exists."}, status: 403
                 }
             ]
@@ -5364,7 +5364,7 @@ const API_LIST = [
                     body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403
                 },
                 {
-                    title: "토큰의 멤버를 찾을 수 없음 (4000097)",
+                    title: "토큰의 멤버가 회사에 없거나 비활성·삭제됨 (4000097)",
                     body: {"code":"4000097","ErrorMessage":"No such member exists."}, status: 403
                 },
                 {
@@ -5478,7 +5478,7 @@ const API_LIST = [
                     body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403
                 },
                 {
-                    title: "토큰의 멤버를 찾을 수 없음 (4000097)",
+                    title: "토큰의 멤버가 회사에 없거나 비활성·삭제됨 (4000097)",
                     body: {"code":"4000097","ErrorMessage":"No such member exists."}, status: 403
                 },
                 {
@@ -5606,7 +5606,7 @@ const API_LIST = [
                     body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403
                 },
                 {
-                    title: "토큰의 멤버를 찾을 수 없음 (4000097)",
+                    title: "토큰의 멤버가 회사에 없거나 비활성·삭제됨 (4000097)",
                     body: {"code":"4000097","ErrorMessage":"No such member exists."}, status: 403
                 },
                 {
