@@ -6040,7 +6040,7 @@ const API_LIST = [
         name: '여러 문서 재요청',
         method: 'POST',
         path: '/v2.0/api/documents/multi_request_again',
-        description: '여러 문서에 수신자 재요청을 한 번에 보냅니다. 문서마다 OPA2_014(수신자 문서 재요청)와 같은 처리를 하며, next_steps를 생략하면 직전 수신자 정보를 그대로 씁니다. 문서별 실패는 HTTP 200의 fail_result로 돌아옵니다. 실제로 알림이 발송됩니다. (선택 키 notification은 소스상 문서 ID 전달 버그가 있어 기본 Body에서 뺐습니다)',
+        description: '여러 문서에 수신자 재요청을 한 번에 보냅니다. 문서마다 OPA2_014(수신자 문서 재요청)와 같은 처리를 하며, next_steps를 생략하면 직전 수신자 정보를 그대로 씁니다. 문서별 실패는 API Key·멤버 역할 오류(4000003·4030001·4030034·4030009)까지 포함해 HTTP 200의 fail_result로 돌아옵니다. 실제로 알림이 발송됩니다. 주의: 소스상 외부 수신자의 use_mail·use_sms 검사가 꺼져 있어, 둘 다 지정하지 않으면 외부자에게 알림 없이 성공할 수 있습니다. (선택 키 notification은 소스상 문서 ID 전달 버그가 있어 기본 Body에서 뺐습니다)',
         requiresAuth: true,
         pathParams: [],
         queryParams: [],
@@ -6113,11 +6113,12 @@ const API_LIST = [
             },
             errors: [
                 { title: '요청 JSON 처리 실패 (4000001)', body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}, status: 400 },
-                { title: '유효하지 않은 API Key (4000003)', body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}, status: 400 },
-                { title: '비활성화된 API Key (4030001)', body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403 },
-                { title: 'Open API 사용 권한 없음 (4030034)', body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403 },
-                { title: '접근 권한 없음 (멤버 역할 부족) (4030009)', body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '토큰에서 API Key 정보를 읽을 수 없음 (4000003)', body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}, status: 400 },
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '삭제된 회사 (4000076)', body: { "code": "4000076", "ErrorMessage": "The company has already been deleted." }, status: 403 },
+                { title: '이용 정지된 회사 (4030052)', body: { "code": "4030052", "ErrorMessage": "The company has been suspended." }, status: 403 },
+                { title: '개인 플랜은 Open API 미지원 (4030025)', body: { "code": "4030025", "ErrorMessage": "It is not available in the personal plan." }, status: 403 },
+                { title: '연체로 인해 Open API 사용 불가 (4030026)', body: { "code": "4030026", "ErrorMessage": "Cannot be used due to overdue charges." }, status: 403 }
             ]
         }
     },
