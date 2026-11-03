@@ -2437,7 +2437,7 @@ const API_SPECS = {
             { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서', status: 400 },
             { code: '4000006', message: 'The document has been deleted.', description: '삭제된 문서', status: 400 },
             { code: '4000243', message: 'This document is not completed.', description: '완료되지 않은 문서', status: 400 },
-            { code: '5000001', message: 'Internal server error.', description: '문서 파일 정보 없음', status: 400 },
+            { code: '5000001', message: 'Internal server error. (The file does not exist.)', description: '문서 파일 정보 없음', status: 400 },
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
         ],
     },

@@ -6132,7 +6132,7 @@ const API_LIST = [
         name: '완료 문서 PDF 생성 여부 확인',
         method: 'GET',
         path: '/v2.0/api/documents/{document_id}/check_complete_pdf_generated',
-        description: '완료 문서의 문서 PDF·감사추적 PDF가 생성되었는지 확인합니다. 완료되지 않은 문서는 4000243입니다.',
+        description: '완료 문서의 문서 PDF·감사추적 PDF가 생성되었는지 확인합니다. 완료되지 않은 문서는 4000243입니다. 소스상 토큰 서명만 확인하고 만료·회사 상태·API Key·멤버 권한은 검사하지 않습니다.',
         requiresAuth: true,
         pathParams: [
             { key: 'document_id', description: '확인할 문서 ID', required: true, default: '' }
@@ -6153,7 +6153,7 @@ const API_LIST = [
                 { title: '존재하지 않는 문서 (4000004)', body: {"code":"4000004","ErrorMessage":"The document does not exist."}, status: 400 },
                 { title: '삭제된 문서 (4000006)', body: {"code":"4000006","ErrorMessage":"The document has been deleted."}, status: 400 },
                 { title: '완료되지 않은 문서 (4000243)', body: {"code":"4000243","ErrorMessage":"This document is not completed."}, status: 400 },
-                { title: '문서 파일 정보 없음 (5000001)', body: {"code":"5000001","ErrorMessage":"Internal server error."}, status: 400 },
+                { title: '문서 파일 정보 없음 (5000001)', body: {"code":"5000001","ErrorMessage":"Internal server error. (The file does not exist.)"}, status: 400 },
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
             ]
         }
