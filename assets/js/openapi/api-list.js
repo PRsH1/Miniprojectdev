@@ -92,7 +92,7 @@ const API_LIST = [
                 },
                 {
                     title: "서명 유효 시간 만료 (4000002)",
-                    body: {"code":"4000002","ErrorMessage":"The validation time has expired."}
+                    body: {"code":"4000002","ErrorMessage":"The validation time has expired.","execution_time":"number"}
                 },
                 {
                     title: "유효하지 않거나 만료된 토큰 (4010001)",
@@ -125,10 +125,6 @@ const API_LIST = [
                 {
                     title: "잘못된 JSON 형식 (4000070)",
                     body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
-                },
-                {
-                    title: "유효하지 않은 Refresh Token (4010002)",
-                    body: {"code":"4010002","ErrorMessage":"The refresh_token is invalid."}
                 }
             ]
         }
@@ -160,7 +156,7 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: "Refresh Token 필수 (4000001)",
+                    title: "refresh_token 값이 비어 있음 (파라미터 자체가 없으면 HTTP 400 code \"400\") (4000001)",
                     body: {"code":"4000001","ErrorMessage":"Refresh token required."}
                 },
                 {
@@ -267,12 +263,14 @@ const API_LIST = [
                 "document_name": "string",
                 "creator": {
                     "recipient_type": "string",
-                    "id": "string"
+                    "id": "string",
+                    "name": "string"
                 },
                 "created_date": "number",
                 "last_editor": {
                     "recipient_type": "string",
-                    "id": "string"
+                    "id": "string",
+                    "name": "string"
                 },
                 "updated_date": "number",
                 "current_status": {
@@ -283,13 +281,15 @@ const API_LIST = [
                     "step_index": "string",
                     "step_name": "string",
                     "step_recipients": [
-                        { "recipient_type": "string", "email": "string" }
+                        { "recipient_type": "string", "id": "string", "name": "string" }
                     ],
                     "step_group": "number",
                     "expired_date": "number",
                     "_expired": "boolean"
                 },
-                "fields": [],
+                "fields": [
+                    { "id": "string", "value": "string", "type": "string" }
+                ],
                 "next_status": [
                     {
                         "step_type": "string",
@@ -305,21 +305,34 @@ const API_LIST = [
                         "step_type": "string",
                         "step_name": "string",
                         "action_type": "string",
-                        "executor": { "id": "string" },
+                        "executor": { "id": "string", "name": "string" },
                         "executed_date": "number",
                         "step_group": "number"
                     }
                 ],
-                "histories": [],
+                "histories": [
+                    {
+                        "step_type": "string",
+                        "step_name": "string",
+                        "action_type": "string",
+                        "executor": { "recipient_type": "string", "id": "string", "name": "string" },
+                        "executed_date": "number",
+                        "comment": "string"
+                    }
+                ],
                 "recipients": [
                     {
                         "name": "string",
                         "id": "string",
+                        "sms": { "country_code": "string", "phone_number": "string" },
                         "token_id": "string",
+                        "complete_token_id": "string",
                         "sms_template_index": "number"
                     }
                 ],
-                "detail_template_info": []
+                "detail_template_info": [
+                    { "key": "string", "value": "string" }
+                ]
             },
             errors: [
                 {
@@ -409,6 +422,10 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "include_fields 사용 시 템플릿 없음 (4000046)",
+                    body: {"code":"4000046","ErrorMessage":"There is no template."}, status: 400
                 }
             ]
         }
@@ -427,7 +444,8 @@ const API_LIST = [
             { key: 'document_id', description: '다운로드할 문서 ID', required: true, default: '' }
         ],
         queryParams: [
-            { key: 'file_type', description: '파일 유형 (document,audit_trail)', required: false, default: 'document,audit_trail' },
+            { key: 'file_type', description: '파일 유형 (필수): document / audit_trail / document,audit_trail', required: true, default: 'document,audit_trail' },
+            { key: 'file_name', description: '다운로드 파일 이름 (확장자 자동 부착)', required: false, default: '' },
         ],
         defaultBody: null,
         exampleResponse: {
@@ -450,11 +468,11 @@ const API_LIST = [
                 },
                 {
                     title: "PDF 아직 생성 중 — 잠시 후 재시도 (2020001)",
-                    body: {"code":"2020001","ErrorMessage":"The PDF is being generated. Please again try later."}
+                    body: {"code":"2020001","ErrorMessage":"The PDF is being generated. Please again try later."}, status: 400
                 },
                 {
                     title: "감사 PDF 미생성 — 문서 미완료 (2020001)",
-                    body: {"code":"2020001","ErrorMessage":"The audit trail will be generated when the document is completed."}
+                    body: {"code":"2020001","ErrorMessage":"The audit trail will be generated when the document is completed."}, status: 400
                 },
                 {
                     title: "국가 정보 조회 실패 (4000038)",
@@ -544,6 +562,7 @@ const API_LIST = [
         pathParams: [],
         queryParams: [
             { key: 'template_id', description: '사용할 템플릿 ID', required: true, default: '' },
+            { key: 'template_version', description: '템플릿 버전 (비우면 배포 버전)', required: false, default: '' },
         ],
         defaultBody: {
             document: {
@@ -686,11 +705,11 @@ const API_LIST = [
                 },
                 {
                     title: "파일 IO 오류 (5000038)",
-                    body: {"code":"5000038","ErrorMessage":"File IO error."}
+                    body: {"code":"5000038","ErrorMessage":"File IO error."}, status: 500
                 },
                 {
                     title: "문서 생성 실패 (5000004)",
-                    body: {"code":"5000004","ErrorMessage":"Failed to create the document."}
+                    body: {"code":"5000004","ErrorMessage":"Failed to create the document."}, status: 500
                 },
                 {
                     title: "선불 문서 소진 (4000201)",
@@ -759,6 +778,10 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "우편번호 필드 형식 오류 (4000338)",
+                    body: {"code":"4000338","ErrorMessage":"Invalid zip code format."}, status: 400
                 }
             ]
         }
@@ -776,7 +799,10 @@ const API_LIST = [
         pathParams: [
             { key: 'document_id', description: '첨부파일을 포함한 문서 ID', required: true, default: '' }
         ],
-        queryParams: [],
+        queryParams: [
+            { key: 'doc_without_attachments', description: 'true면 첨부를 뺀 문서 PDF(<제목>_not_attached.pdf)도 ZIP에 포함 (기본 false)', required: false, default: '' },
+            { key: 'ozsign_to_png', description: 'true면 .ozsign 서명 파일을 PNG로 변환 (기본 false)', required: false, default: '' },
+        ],
         defaultBody: null,
         exampleResponse: {
             errors: [
@@ -793,8 +819,8 @@ const API_LIST = [
                     body: {"code":"4000046","ErrorMessage":"There is no template."}
                 },
                 {
-                    title: "다운로드 리소스 없음 (4000065)",
-                    body: {"code":"4000065","ErrorMessage":"Failed to get the resource."}
+                    title: "첨부 파일 없음 (doc_without_attachments=false일 때) (4000065)",
+                    body: {"code":"4000065","ErrorMessage":"Failed to get the resource."}, status: 403
                 },
                 {
                     title: "내부 서버 오류 (5000001)",
@@ -894,19 +920,11 @@ const API_LIST = [
                         }
                     }
                 ],
-                notification: [
-                    {
-                        email: "",
-                        sms: { country_code: "", phone_number: "" },
-                        name: "",
-                        auth: {
-                            valid: { day: null, hour: null },
-                            password: "",
-                            password_hint: "",
-                            mobile_verification: null
-                        }
-                    }
-                ],
+                send_external_pdf: {
+                    email: "",
+                    sms: { country_code: "", phone_number: "" },
+                    auth: { password: "", password_hint: "" }
+                },
                 comment: ""
             }
         },
@@ -977,6 +995,30 @@ const API_LIST = [
                 {
                     title: "잘못된 이메일 형식 (4000137)",
                     body: {"code":"4000137","ErrorMessage":"This is an invalid email format."}
+                },
+                {
+                    title: "외부자 작성이 허용되지 않은 템플릿 (4000044)",
+                    body: {"code":"4000044","ErrorMessage":"You have no permission to access the form."}, status: 400
+                },
+                {
+                    title: "외부 수신자의 use_mail·use_sms가 모두 false (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Either one of the Email or SMS options must be selected."}, status: 400
+                },
+                {
+                    title: "유효하지 않은 API Key (Authorization 형식 오류 포함) (4000003)",
+                    body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}, status: 400
+                },
+                {
+                    title: "API Key Base64 디코딩 실패 (URL-safe Base64로 디코딩) (4030039)",
+                    body: {"code":"4030039","ErrorMessage":"The apiKey encoded has an error."}, status: 400
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403
                 }
             ]
         }
@@ -998,7 +1040,6 @@ const API_LIST = [
             { key: 'include_previous_status', description: '이전 단계 정보 포함', required: false, default: '' },
             { key: 'include_next_status', description: '다음 단계 정보 포함', required: false, default: '' },
             { key: 'include_external_token', description: '사용자 Token 포함', required: false, default: '' },
-            { key: 'include_detail_template_info', description: '상세 템플릿 정보 포함', required: false, default: '' },
         ],
         defaultBody: {
             type: '',
@@ -1121,15 +1162,15 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: "유효하지 않은 문서함 유형 (5000089)",
-                    body: {"code":"5000089","ErrorMessage":"Invalid document inbox type."}
+                    title: "type 누락 또는 01~04가 아님 (5000089)",
+                    body: {"code":"5000089","ErrorMessage":"Invalid document inbox type."}, status: 400
                 },
                 {
-                    title: "잘못된 JSON 형식 (4000070)",
-                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                    title: "날짜·template_ids·creator_infos 형식 오류 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 500
                 },
                 {
-                    title: "접근 권한이 없음 (4030009)",
+                    title: "type 04(문서 관리)를 관리자·문서 관리자가 아닌 멤버가 요청 (4030009)",
                     body: {"code":"4030009","ErrorMessage":"You do not have access."}
                 },
                 {
@@ -1225,26 +1266,20 @@ const API_LIST = [
         queryParams: [
             { key: 'is_permanent', description: '즉시 완전 삭제 여부 (default: false)', required: false, default: '' }
         ],
-        defaultBody: { document_ids: [""] },
+        defaultBody: { document_ids: [""], comment: "" },
         exampleResponse: {
             success: {
                 "result": {
                     "success_result": ["string"],
-                    "fail_result": []
+                    "fail_result": [
+                        { "document_id": "string", "code": "string", "message": "string" }
+                    ]
                 },
                 "code": "-1",
                 "message": "Completed.",
                 "status": "200"
             },
             errors: [
-                {
-                    title: "존재하지 않는 문서 (4000004)",
-                    body: {"code":"4000004","ErrorMessage":"The document does not exist."}
-                },
-                {
-                    title: "템플릿 삭제 권한 없음 (4000164)",
-                    body: {"code":"4000164","ErrorMessage":"You have no permission to delete the document."}
-                },
                 {
                     title: "유효하지 않은 API Key (4000003)",
                     body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}
@@ -1320,6 +1355,18 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "document_ids 키 누락 (사유 필수 설정이면 comment 누락 포함) (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 400
+                },
+                {
+                    title: "삭제 사유 필수 — 10자 이상 (4000326)",
+                    body: {"code":"4000326","ErrorMessage":"Document delete reason is required. Please enter a delete reason of at least 10 characters."}, status: 400
+                },
+                {
+                    title: "삭제 사유 255자 초과 (4000327)",
+                    body: {"code":"4000327","ErrorMessage":"The length of the delete reason is too long. The maximum length is 255 characters."}, status: 400
                 }
             ]
         }
