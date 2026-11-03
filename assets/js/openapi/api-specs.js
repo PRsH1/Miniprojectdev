@@ -758,7 +758,7 @@ const API_SPECS = {
             { key: 'recipients[].token_id', type: 'string', description: '수신자 토큰 ID' },
             { key: 'recipients[].step_seq', type: 'string', description: '워크플로우 단계 순번' },
             { key: 'recipients[].sms', type: 'object', description: '수신자 SMS {country_code, phone_number} (있을 때만)' },
-            { key: 'recipients[].sms_template_index', type: 'number', description: 'SMS 템플릿 인덱스' },
+            { key: 'recipients[].sms_template_index', type: 'number', description: 'SMS 템플릿 인덱스', note: '재요청 응답에서는 서버가 값을 넣지 않아 항상 0' },
         ],
         errorCodes: [
             { code: '4000001', message: 'Invalid input JSON format.', description: '잘못된 JSON 형식' },
