@@ -281,7 +281,7 @@ const API_LIST = [
                     "step_index": "string",
                     "step_name": "string",
                     "step_recipients": [
-                        { "recipient_type": "string", "id": "string", "name": "string" }
+                        { "recipient_type": "string", "id": "string", "name": "string", "email": "string", "sms": "string" }
                     ],
                     "step_group": "number",
                     "expired_date": "number",
@@ -1084,11 +1084,7 @@ const API_LIST = [
                             "step_index": "string",
                             "step_name": "string",
                             "step_recipients": [
-                                {
-                                    "recipient_type": "string",
-                                    "name": "string",
-                                    "email": "string"
-                                }
+                                { "recipient_type": "string", "id": "string", "name": "string", "email": "string", "sms": "string" }
                             ],
                             "step_group": "number",
                             "expired_date": "number",
