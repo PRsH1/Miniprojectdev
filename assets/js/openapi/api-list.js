@@ -4651,36 +4651,32 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: "잘못된 JSON 형식 (4000070)",
-                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                    title: "company_stamp·name·description·stamp·stamp.path 키 누락 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 500
                 },
                 {
-                    title: "필수 입력값 누락 (4000001)",
-                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                    title: "stamp.path가 data URI(;base64,)가 아니거나 이름이 공백뿐 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}, status: 500
                 },
                 {
                     title: "존재하지 않는 회사 (4000005)",
                     body: {"code":"4000005","ErrorMessage":"Invalid company."}
                 },
                 {
-                    title: "잘못된 JSON 형식 (4000001)",
-                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}
+                    title: "category 255자 초과 또는 auth_details 값 128자 초과 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}, status: 500
                 },
                 {
                     title: "이미 존재하는 회사 도장 이름 (4000174)",
-                    body: {"code":"4000174","ErrorMessage":"This name has already been used for another stamp."}
+                    body: {"code":"4000174","ErrorMessage":"This name has already been used for another stamp."}, status: 400
                 },
                 {
                     title: "회사 도장 최대 업로드 크기 초과 (4130002)",
-                    body: {"code":"4130002","ErrorMessage":"The file has exceeded the maximum size."}
+                    body: {"code":"4130002","ErrorMessage":"The file has exceeded the maximum size."}, status: 500
                 },
                 {
                     title: "유효하지 않은 회사 도장 이미지 (4000231)",
                     body: {"code":"4000231","ErrorMessage":"Invalid company stamp image data."}
-                },
-                {
-                    title: "도장 데이터 생성 실패 (4000229)",
-                    body: {"code":"4000229","ErrorMessage":"Failed to create online data in the stamp."}
                 },
                 {
                     title: "유효하지 않은 API Key (4000003)",
@@ -4765,7 +4761,7 @@ const API_LIST = [
         name: '회사 도장 수정',
         method: 'PATCH',
         path: '/v2.0/api/company_stamp/{stamp_id}',
-        description: '회사 도장 정보를 수정합니다.',
+        description: '회사 도장 정보를 수정합니다. PATCH지만 전체 교체입니다 — name·description·stamp.path 키가 필요하고(path가 ""면 기존 이미지 유지), auth를 빼면 전체 멤버 허용으로, description·category를 빼면 빈 값으로 바뀝니다.',
         requiresAuth: true,
         pathParams: [
             { key: 'stamp_id', description: '수정할 도장 ID', required: true, default: '' }
@@ -4794,16 +4790,16 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: "잘못된 JSON 형식 (4000070)",
-                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                    title: "company_stamp·name·description·stamp·stamp.path 키 누락 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 500
                 },
                 {
-                    title: "필수 입력값 누락 (4000001)",
-                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}
+                    title: "stamp.path가 data URI(;base64,)가 아니거나 이름이 공백뿐 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Required input value not found."}, status: 500
                 },
                 {
                     title: "존재하지 않는 회사 도장 (4000175)",
-                    body: {"code":"4000175","ErrorMessage":"No stamp found."}
+                    body: {"code":"4000175","ErrorMessage":"No stamp found."}, status: 400
                 },
                 {
                     title: "존재하지 않는 회사 (4000005)",
@@ -4811,23 +4807,19 @@ const API_LIST = [
                 },
                 {
                     title: "잘못된 JSON 형식 (4000001)",
-                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}, status: 500
                 },
                 {
                     title: "이미 존재하는 회사 도장 이름 (4000174)",
-                    body: {"code":"4000174","ErrorMessage":"This name has already been used for another stamp."}
+                    body: {"code":"4000174","ErrorMessage":"This name has already been used for another stamp."}, status: 400
                 },
                 {
                     title: "회사 도장 최대 업로드 크기 초과 (4130002)",
-                    body: {"code":"4130002","ErrorMessage":"The file has exceeded the maximum size."}
+                    body: {"code":"4130002","ErrorMessage":"The file has exceeded the maximum size."}, status: 500
                 },
                 {
                     title: "유효하지 않은 회사 도장 이미지 (4000231)",
                     body: {"code":"4000231","ErrorMessage":"Invalid company stamp image data."}
-                },
-                {
-                    title: "도장 데이터 생성 실패 (4000229)",
-                    body: {"code":"4000229","ErrorMessage":"Failed to create online data in the stamp."}
                 },
                 {
                     title: "유효하지 않은 API Key (4000003)",
@@ -5057,12 +5049,12 @@ const API_LIST = [
                     body: {"code":"4000005","ErrorMessage":"Invalid company."}
                 },
                 {
-                    title: "접근 불가 도메인 (URL 문서 작성 미설정) (4000115)",
-                    body: {"code":"4000115","ErrorMessage":"This domain cannot be accessed."}
+                    title: "term이 monthly·yearly가 아님 (4000115)",
+                    body: {"code":"4000115","ErrorMessage":"This domain cannot be accessed."}, status: 400
                 },
                 {
                     title: "잘못된 날짜 형식 (4000013)",
-                    body: {"code":"4000013","ErrorMessage":"The date format is invalid."}
+                    body: {"code":"4000013","ErrorMessage":"The date format is invalid."}, status: 400
                 },
                 {
                     title: "유효하지 않은 API Key (4000003)",
@@ -5136,8 +5128,8 @@ const API_LIST = [
         pathParams: [],
         queryParams: [],
         defaultBody: {
-            skip: '',
-            limit: '',
+            skip: null,
+            limit: null,
             search_keyword: ''
         },
         exampleResponse: {
@@ -5150,6 +5142,7 @@ const API_LIST = [
                             "manager_id": "string",
                             "manager_account_id": "string",
                             "manager_name": "string",
+                            "withdrawal": "boolean",
                             "document_roles": [
                                 {
                                     "deletable": "boolean",
@@ -5259,6 +5252,14 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "대표 관리자·회사 관리자가 아님 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403
+                },
+                {
+                    title: "토큰의 멤버를 찾을 수 없음 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}, status: 403
                 }
             ]
         }
@@ -5277,7 +5278,7 @@ const API_LIST = [
         queryParams: [],
         defaultBody: {
             managers: [
-                { type: '', id: '' }
+                { type: '', id: '', account_id: '' }
             ]
         },
         exampleResponse: {
@@ -5357,6 +5358,22 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "대표 관리자·회사 관리자가 아님 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403
+                },
+                {
+                    title: "토큰의 멤버를 찾을 수 없음 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}, status: 403
+                },
+                {
+                    title: "managers가 비었거나 type·id 오류 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}, status: 500
+                },
+                {
+                    title: "존재하지 않는 그룹 (4000011)",
+                    body: {"code":"4000011","ErrorMessage":"The group does not exist."}, status: 400
                 }
             ]
         }
@@ -5375,7 +5392,7 @@ const API_LIST = [
         queryParams: [],
         defaultBody: {
             managers: [
-                { type: '', id: '' }
+                { type: '', id: '', account_id: '' }
             ]
         },
         exampleResponse: {
@@ -5455,6 +5472,22 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "대표 관리자·회사 관리자가 아님 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403
+                },
+                {
+                    title: "토큰의 멤버를 찾을 수 없음 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}, status: 403
+                },
+                {
+                    title: "managers가 비었거나 type·id 오류 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}, status: 500
+                },
+                {
+                    title: "존재하지 않는 그룹 (4000011)",
+                    body: {"code":"4000011","ErrorMessage":"The group does not exist."}, status: 400
                 }
             ]
         }
@@ -5563,6 +5596,22 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "대표 관리자·회사 관리자가 아님 (4030009)",
+                    body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403
+                },
+                {
+                    title: "토큰의 멤버를 찾을 수 없음 (4000097)",
+                    body: {"code":"4000097","ErrorMessage":"No such member exists."}, status: 403
+                },
+                {
+                    title: "필수 키 누락·값 형식 오류(document_roles null, creator_type·form_type 등) (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 500
+                },
+                {
+                    title: "문서 관리자 설정 정보 없음 (4000197)",
+                    body: {"code":"4000197","ErrorMessage":"The document manager settings information does not exist."}, status: 500
                 }
             ]
         }
