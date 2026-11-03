@@ -67,7 +67,11 @@
     const PROFILE_STORAGE_KEY = "open-api-auto-test-profiles-v1";
     const ACTIVE_PROFILE_KEY = "open-api-auto-test-active-profile-v1";
     const HISTORY_STORAGE_KEY = "open-api-auto-test-history-v1";
+    // 프로필별 마지막 OPA 선택 (P1-11). 처음 방문하면 아무 것도 선택하지 않는다.
+    const SELECTION_STORAGE_KEY = "open-api-auto-test-selection-v1";
     const DEFAULT_PROFILE_NAME = "Default";
+    // step 요청 하나의 최대 대기 시간 (P1-11). 넘으면 요청을 취소하고 FAIL(TIMEOUT)로 기록한다.
+    const REQUEST_TIMEOUT_MS = 60 * 1000;
     const storedConfig = readStoredConfig();
     // 구버전 저장본에 남은 비밀키·토큰이 메모리 config로 올라오지 않도록 제거한다 (P0-08).
     // init()의 migrateStoredSecrets()보다 먼저 실행되므로 여기서도 걸러야 한다.
@@ -83,7 +87,12 @@
         authMethod: "signature",
         viewMode: "group",
         lastReportData: null,
-        selectedHistoryId: null
+        selectedHistoryId: null,
+        stopRequested: false,       // [중지] 클릭 후 true — 다음 step부터 SKIP("사용자 중지")
+        cleanupPhase: false,        // 중지 후 정리 step 실행 중이면 true — 이때는 request()가 막지 않는다
+        activeControllers: new Set(), // 진행 중 요청의 AbortController (중지 시 취소)
+        resultFilter: "all",        // 결과 표 필터: all | FAIL | CHECK | SKIP (P1-12)
+        expandedAll: false          // [모두 펼치기] 상태 (P1-12)
     };
     const els = {};
     const DUMMY_PDF_BASE64 = "JVBERi0xLjEKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAyMDAgMjAwXSA+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDQgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjE5OQolJUVPRg==";
@@ -127,6 +136,50 @@
     // 404는 포함하지 않음 — 정리 step에서 404는 실제 오류이므로 FAIL로 떨어진다.
     const CHECK_STATUS_CODES = [400, 401, 402, 403];
 
+    // 실행 확인 모달(P1-11)에 표시할 "계정에 변경을 남기는" step 분류.
+    // 키에 없는 step은 조회 전용으로 본다.
+    const WRITE_STEP_KINDS = {
+        tryCreateAuto: "문서 작성",
+        createDocWithAttach: "문서 작성",
+        createExternalDoc: "외부 문서 작성",
+        seedInternalDoc: "문서 작성",
+        tryMassCreateAuto: "문서 일괄 작성",
+        tryMassCreateMultiAuto: "문서 일괄 작성",
+        massCreateDocs: "문서 일괄 작성",
+        massCreateMultiDocs: "문서 일괄 작성",
+        rerequestDoc: "수신자 재요청 발송",
+        trySendPdfAuto: "완료 문서 PDF 발송",
+        sendPdf: "완료 문서 PDF 발송",
+        tryRefreshCompleteTokenAuto: "완료 토큰 기한 연장",
+        refreshCompleteToken: "완료 토큰 기한 연장",
+        cancelDocs: "문서 취소",
+        deleteDocs: "문서 삭제",
+        createMember: "멤버 추가",
+        bulkCreateMembers: "멤버 일괄 추가",
+        updateMember: "멤버 수정",
+        deleteMember: "멤버 삭제",
+        cleanupBulk1: "멤버 삭제",
+        cleanupBulk2: "멤버 삭제",
+        createGroup: "그룹 추가",
+        updateGroup: "그룹 수정",
+        deleteGroup: "그룹 삭제",
+        createStamp: "도장 생성",
+        deleteStamp: "도장 삭제"
+    };
+
+    // [중지] 후에도 실행하는 정리 step과, 정리할 자원이 실제로 있는지 판정하는 함수 (P1-11).
+    // 선행 step FAIL 시의 동작(정리 step도 SKIP)은 바꾸지 않는다 — 기획서 0절 P0-13 제외 결정.
+    const STOP_CLEANUP_TARGETS = {
+        cancelDocs: () => state.shared.createdIdList.length > 0,
+        deleteDocs: () => state.shared.createdIdList.length > 0,
+        deleteGroup: () => has(state.shared.createdGroupId),
+        deleteMember: () => state.shared.memberCreated === true,
+        cleanupBulk1: () => has(state.shared.bulkMemberIds[0]),
+        cleanupBulk2: () => has(state.shared.bulkMemberIds[1]),
+        deleteStamp: () => has(state.shared.companyStampId)
+    };
+    const STOP_REASON = "사용자 중지";
+
     const scenarios = [
         { code: "OPA 003", group: "문서", method: "GET", name: "문서 정보 조회", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 기본/상세 조회를 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "docInfoBasic", "docInfoDetail", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 004", group: "문서", method: "GET", name: "문서 파일 다운로드", desc: "완료(status_type=003) 문서 목록을 조회하여 최대 5개의 문서 ID를 자동 수집한 뒤 순차적으로 다운로드를 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listCompletedDocsForDownload", "tryDownloadDocAuto"], keys: ["auth.mode"] },
@@ -151,7 +204,7 @@
         { code: "OPA 028", group: "회사 도장", method: "DELETE", name: "회사 도장 삭제", desc: "임의 생성한 도장 이미지로 회사 도장을 추가한 뒤 삭제 API를 검증합니다. 별도 입력값이 필요 없습니다.", steps: ["createStamp", "deleteStamp"], keys: ["auth.mode"] },
         { code: "OPA 029", group: "회사 도장", method: "GET", name: "회사 도장 목록 조회", desc: "회사 도장 목록 조회를 검증합니다.", steps: ["listStamps"], keys: ["auth.mode"] },
         { code: "OPA 030", group: "멤버", method: "POST", name: "멤버 일괄 추가", desc: "일괄 멤버 추가와 정리를 검증합니다.", steps: ["bulkCreateMembers", "cleanupBulk1", "cleanupBulk2"], keys: ["auth.mode", "data.memberId"] },
-        { code: "OPA 037", group: "문서", method: "POST", name: "일괄 완료 문서 PDF 전송", desc: "완료 문서 최대 5개를 수집한 뒤 2개 조합으로 PDF 전송을 시도하고, 하나라도 성공하면 통과합니다. company_id는 토큰 발급 정보에서 자동으로 채워집니다.", steps: ["listDocsBasic", "trySendPdfAuto"], keys: ["auth.mode", "data.pdfTargetEmail"] },
+        { code: "OPA 037", group: "문서", method: "POST", name: "일괄 완료 문서 PDF 전송", desc: "완료 문서 최대 5개를 수집한 뒤 2개 조합으로 PDF 전송을 시도하고, 하나라도 성공하면 통과합니다. company_id는 토큰 발급 정보에서 자동으로 채워집니다.", steps: ["listDocsBasic", "trySendPdfAuto"], keys: ["auth.mode", "data.pdfTargetEmail|data.pdfTargetPhone"] },
         { code: "OPA 040", group: "문서", method: "POST", name: "문서 파일 일괄 다운로드", desc: "완료 문서 최대 5개를 수집한 뒤 2개 조합으로 일괄 다운로드를 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listDocsBasic", "tryDownloadMultiAuto"], keys: ["auth.mode"] },
         { code: "OPA 042", group: "문서", method: "POST", name: "문서 취소", desc: "작성 가능한 템플릿 목록에서 자동 추출한 ID로 문서를 생성한 뒤 취소 API를 검증합니다.", steps: ["listFormsForSeed", "tryCreateAuto", "cancelDocs", "deleteDocs"], keys: ["auth.mode"] },
         { code: "OPA 045", group: "문서", method: "POST", name: "완료 토큰 기한 연장", desc: "완료 문서 최대 5개를 수집한 뒤 순차적으로 기한 연장을 시도하고, 하나라도 성공하면 통과합니다.", steps: ["listDocsBasic", "tryRefreshCompleteTokenAuto"], keys: ["auth.mode"] }
@@ -166,13 +219,12 @@
             "activeScenarioTitle", "activeScenarioDescription", "activeScenarioMissing", "missingSectionWrap", "pipelineList", "configStatusList", "progressText", "progressBar", "resultTableBody",
             "settingsEditor", "saveSettingsBtn", "reloadSettingsBtn", "resetSettingsBtn", "settingsStatusText",
             "openSettingsModalBtn", "openSettingsModalBtnInline", "closeSettingsModalBtn", "settingsModalCard", "settingsModalOverlay", "settingsSummaryText",
-            "authPanelToggle", "authPanelBody", "authChevron", "authStatusBadge",
-            "authApiKey", "authMemberId", "authSecretKey", "authSecretLabel",
-            "authTabSignature", "authTabBearer",
-            "btnIssueToken", "btnClearToken", "authTokenDisplay", "authCompanyIdDisplay", "authCompanyIdValue",
-            "modalIssueTokenBtn", "modalClearTokenBtn", "modalTokenDisplay", "modalCompanyIdDisplay", "modalCompanyIdValue",
+            "authPanelToggle", "authStatusBadge", "authCompanyIdDisplay", "authCompanyIdValue",
+            "modalIssueTokenBtn", "modalClearTokenBtn", "modalTokenDisplay", "modalCompanyIdDisplay", "modalCompanyIdValue", "modalAuthMessage",
             "sortGroupBtn", "sortOpaBtn",
-            "reportModal", "reportModalBody", "downloadReportMarkdownBtn", "downloadReportHtmlBtn", "closeReportBtn"
+            "reportModal", "reportModalBody", "downloadReportMarkdownBtn", "downloadReportHtmlBtn", "closeReportBtn",
+            "stopRunBtn", "runNotice", "runConfirmModal", "runConfirmBody", "runConfirmOkBtn", "runConfirmCancelBtn",
+            "resultFilterBar", "expandAllBtn", "rerunFailedBtn"
         ].forEach((id) => { els[id] = document.getElementById(id); });
 
         // 이전 버전이 저장한 비밀키·토큰 제거 (1회 마이그레이션, 이후에는 저장 경로에서 항상 제외됨)
@@ -185,7 +237,8 @@
         });
         els.envSelect.value = config.defaultEnvironment in config.environments ? config.defaultEnvironment : Object.keys(config.environments)[0];
 
-        scenarios.forEach((scenario) => state.selectedCodes.add(scenario.code));
+        // 처음 방문하면 선택 없음. 이전에 고른 OPA는 프로필별로 기억해 복원한다 (P1-11, Q12)
+        restoreSelection();
         state.activeCode = scenarios[0] ? scenarios[0].code : null;
 
         initAuthPanel();
@@ -193,12 +246,27 @@
         els.envSelect.addEventListener("change", handleHeaderEnvironmentChange);
         els.customUrlInput.addEventListener("input", handleHeaderCustomUrlInput);
         els.scenarioSearch.addEventListener("input", refreshAll);
-        els.selectAllBtn.addEventListener("click", () => { scenarios.forEach((s) => state.selectedCodes.add(s.code)); refreshAll(); });
-        els.clearAllBtn.addEventListener("click", () => { state.selectedCodes.clear(); refreshAll(); });
+        els.selectAllBtn.addEventListener("click", () => { scenarios.forEach((s) => state.selectedCodes.add(s.code)); saveSelection(); hideRunNotice(); refreshAll(); });
+        els.clearAllBtn.addEventListener("click", () => { state.selectedCodes.clear(); saveSelection(); refreshAll(); });
         els.sortGroupBtn.addEventListener("click", () => { state.viewMode = "group"; els.sortGroupBtn.classList.add("active"); els.sortOpaBtn.classList.remove("active"); renderList(); });
         els.sortOpaBtn.addEventListener("click", () => { state.viewMode = "opa"; els.sortOpaBtn.classList.add("active"); els.sortGroupBtn.classList.remove("active"); renderList(); });
-        els.runSelectedBtn.addEventListener("click", () => runSet([...state.selectedCodes]));
-        els.runActiveBtn.addEventListener("click", () => state.activeCode && runSet([state.activeCode]));
+        els.runSelectedBtn.addEventListener("click", () => requestRun([...state.selectedCodes]));
+        els.runActiveBtn.addEventListener("click", () => requestRun(state.activeCode ? [state.activeCode] : []));
+        if (els.stopRunBtn) els.stopRunBtn.addEventListener("click", requestStop);
+        if (els.runConfirmModal) {
+            els.runConfirmModal.addEventListener("click", (event) => { if (event.target === els.runConfirmModal) closeRunConfirm(false); });
+            els.runConfirmCancelBtn.addEventListener("click", () => closeRunConfirm(false));
+            els.runConfirmOkBtn.addEventListener("click", () => closeRunConfirm(true));
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape" && els.runConfirmModal.classList.contains("open")) closeRunConfirm(false);
+            });
+        }
+        // 실행 중 탭 닫기·새로고침 경고 (진행 중 요청이 끊기면 정리 step이 실행되지 않는다)
+        window.addEventListener("beforeunload", (event) => {
+            if (!state.running) return;
+            event.preventDefault();
+            event.returnValue = "";
+        });
         els.openReportBtn.addEventListener("click", openReportModal);
         els.downloadReportMarkdownBtn.addEventListener("click", () => downloadReport("md"));
         els.downloadReportHtmlBtn.addEventListener("click", () => downloadReport("html"));
@@ -208,6 +276,7 @@
         els.reloadSettingsBtn.addEventListener("click", loadSettingsIntoEditor);
         els.resetSettingsBtn.addEventListener("click", resetStoredSettings);
 
+        bindResultTable();
         hydrateGuideContent();
         loadSettingsIntoEditor();
         refreshAll();
@@ -280,6 +349,8 @@
                 event.stopPropagation();
                 if (checkbox.checked) state.selectedCodes.add(code);
                 else state.selectedCodes.delete(code);
+                saveSelection();
+                if (state.selectedCodes.size) hideRunNotice();
                 renderList();
                 renderDetail();
                 refreshStatus();
@@ -543,10 +614,8 @@
     async function token() {
         if (state.token) return state.token;
 
-        // 인증 패널 우선 사용
-        const panelApiKey = els.authApiKey ? els.authApiKey.value.trim() : "";
-        const panelMemberId = els.authMemberId ? els.authMemberId.value.trim() : "";
-        const panelSecretKey = els.authSecretKey ? els.authSecretKey.value.trim() : "";
+        // 설정 모달 인증 입력값 우선 사용
+        const { apiKey: panelApiKey, memberId: panelMemberId, secretKey: panelSecretKey } = authInputs();
 
         if (state.authMethod === "bearer" && panelSecretKey) {
             state.token = panelSecretKey;
@@ -600,8 +669,14 @@
 
     function attachTokenBadges(result) {
         if (!window.TokenBadge) return;
-        const onReissue = () => { if (els.btnIssueToken) els.btnIssueToken.click(); };
+        // [토큰 재발급] → 설정 모달을 열고 모달의 토큰 발급을 실행 (실행 중에는 막는다)
+        const onReissue = () => {
+            if (state.running) { showRunNotice("실행 중에는 토큰을 재발급할 수 없습니다. 실행이 끝난 뒤 다시 시도해 주세요."); return; }
+            openSettingsModal();
+            if (els.modalIssueTokenBtn) els.modalIssueTokenBtn.click();
+        };
         TOKEN_BADGE_IDS.forEach((sel) => window.TokenBadge.attach(sel, result, { onReissue }));
+        updateAuthPanelUI();
     }
 
     function markTokenBadgesExpired() {
@@ -620,25 +695,50 @@
             ...(useToken ? { Authorization: `Bearer ${await token()}` } : {}),
             ...(headers || {})
         };
+        // [중지] 후에는 정리 step 외의 요청을 보내지 않는다 (try* 반복 시도 중간에도 멈춤)
+        if (state.stopRequested && !state.cleanupPhase) throw stopError();
+
         const options = { method, headers: requestHeaders };
         if (body !== undefined && body !== null) options.body = JSON.stringify(body);
 
         const url = `${baseUrl()}${path}`;
+        // 요청마다 AbortController — 60초 넘으면 타임아웃 (P1-11).
+        // [중지] 시에는 조회 요청만 즉시 취소한다. 쓰기(WRITE_STEP_KINDS) 요청은 서버가 이미 처리했을 수 있으므로
+        // 취소하지 않고 완료를 기다려 결과(문서·멤버·그룹·도장 ID)를 정리 대상에 등록한다 (D-1).
+        const controller = new AbortController();
+        let timedOut = false;
+        const timer = setTimeout(() => { timedOut = true; controller.abort(); }, REQUEST_TIMEOUT_MS);
+        const abortOnStop = !WRITE_STEP_KINDS[id];
+        if (abortOnStop) state.activeControllers.add(controller);
+        options.signal = controller.signal;
+
         const start = performance.now();
-        const response = await fetch(url, options);
-        const duration = `${Math.round(performance.now() - start)}ms`;
-        // 토큰을 실어 보낸 요청이 401이면 배지를 "만료됨 · [토큰 재발급]"으로 바꾼다
-        if (useToken && response.status === 401) markTokenBadgesExpired();
-        const type = response.headers.get("content-type") || "";
+        let response;
         let text = "";
         let json = null;
-        if (["pdf", "zip", "octet-stream", "image"].some((keyword) => type.includes(keyword))) {
-            const blob = await response.blob();
-            text = `[Binary File] ${type} (${blob.size} bytes)`;
-        } else {
-            text = await response.text();
-            try { json = JSON.parse(text); text = JSON.stringify(json, null, 2); } catch (error) {}
+        try {
+            response = await fetch(url, options);
+            // 토큰을 실어 보낸 요청이 401이면 배지를 "만료됨 · [토큰 재발급]"으로 바꾼다
+            if (useToken && response.status === 401) markTokenBadgesExpired();
+            const type = response.headers.get("content-type") || "";
+            if (["pdf", "zip", "octet-stream", "image"].some((keyword) => type.includes(keyword))) {
+                const blob = await response.blob();
+                text = `[Binary File] ${type} (${blob.size} bytes)`;
+            } else {
+                text = await response.text();
+                try { json = JSON.parse(text); text = JSON.stringify(json, null, 2); } catch (error) {}
+            }
+        } catch (error) {
+            if (timedOut) {
+                return { statusType: "FAIL", responseStatus: "TIMEOUT", method, label: stepMeta(id).label, url, duration: `${Math.round(performance.now() - start)}ms`, requestBody: body, responseText: `요청이 ${REQUEST_TIMEOUT_MS / 1000}초 안에 끝나지 않아 취소했습니다. 네트워크 상태나 대상 서버를 확인해 주세요.` };
+            }
+            if (controller.signal.aborted) throw stopError(true);
+            throw error;
+        } finally {
+            clearTimeout(timer);
+            state.activeControllers.delete(controller);
         }
+        const duration = `${Math.round(performance.now() - start)}ms`;
         let statusType;
         if (ok.includes(response.status)) statusType = "PASS";
         else if (Array.isArray(check) && check.includes(response.status)) statusType = "CHECK";
@@ -656,37 +756,244 @@
         return { statusType, responseStatus: response.status, method, label: stepMeta(id).label, url, duration, requestBody: body, responseText };
     }
 
-    function appendRow(index, result) {
+    // ── 결과 표 (P1-12: 필터·모두 펼치기·요청/응답/cURL 복사) ─────────────────
+    // 행 데이터는 rowId → result 맵에 보관하고, 버튼 클릭은 tbody 하나의 위임 리스너로 처리한다.
+    const resultRows = new Map();
+    let resultGroupIndex = 0;
+
+    function resetResultTable() {
+        resultRows.clear();
+        resultGroupIndex = 0;
+        if (els.resultTableBody) els.resultTableBody.innerHTML = "";
+        state.resultFilter = "all";
+        state.expandedAll = false;
+        updateResultToolbar();
+    }
+
+    function appendRow(index, result, stepId) {
         const rowId = `result-log-${index}`;
-        const statusClass = result.statusType === "PASS" ? "status-pass" : result.statusType === "CHECK" ? "status-check" : ["SKIP", "CACHE"].includes(result.statusType) ? "status-skip" : "status-fail";
+        const status = result.statusType || "FAIL";
+        const statusClass = status === "PASS" ? "status-pass" : status === "CHECK" ? "status-check" : ["SKIP", "CACHE"].includes(status) ? "status-skip" : "status-fail";
+        const row = { ...result, stepId: result.stepId || stepId || "" };
+        resultRows.set(rowId, row);
+        const curlBlocked = curlDisabledReason(row);
+        const canCurl = !curlBlocked;
         els.resultTableBody.insertAdjacentHTML("beforeend", `
-            <tr>
+            <tr class="result-row" data-status="${esc(status)}" data-group="${resultGroupIndex}" data-row="${rowId}">
                 <td>${index}</td>
                 <td><div class="step-name">${esc(result.label)}</div><div class="step-url">${esc(result.url || "(URL 없음)")}</div></td>
                 <td>${esc(result.method)}</td>
-                <td><span class="status-pill ${statusClass}">${esc(result.statusType)} ${esc(String(result.responseStatus || ""))}</span></td>
+                <td><span class="status-pill ${statusClass}">${esc(status)} ${esc(String(result.responseStatus || ""))}</span></td>
                 <td>${esc(result.duration)}</td>
-                <td><button class="log-btn" data-log-target="${rowId}">결과 보기</button></td>
+                <td><button class="log-btn" type="button" data-log-target="${rowId}" aria-expanded="false">결과 보기</button></td>
             </tr>
-            <tr class="log-row"><td colspan="6"><div class="log-box" id="${rowId}">
-                <h3>Request Body</h3><pre>${esc(result.requestBody ? JSON.stringify(result.requestBody, null, 2) : "(Empty)")}</pre>
+            <tr class="log-row" data-for="${rowId}"><td colspan="6"><div class="log-box" id="${rowId}"${state.expandedAll ? ' style="display:block"' : ""}>
+                <div class="log-actions">
+                    <button class="log-btn" type="button" data-copy="request" data-row="${rowId}">요청 복사</button>
+                    <button class="log-btn" type="button" data-copy="response" data-row="${rowId}">응답 복사</button>
+                    <button class="log-btn" type="button" data-copy="curl" data-row="${rowId}"${canCurl ? "" : ` disabled title="${esc(curlBlocked)}"`}>cURL로 복사</button>
+                </div>
+                <h3>Request Body</h3><pre>${esc(requestBodyText(result.requestBody, true) || "(Empty)")}</pre>
                 <h3 style="margin-top:12px;">Response</h3><pre>${esc(result.responseText || "(Empty)")}</pre>
             </div></td></tr>
         `);
-        const button = els.resultTableBody.querySelector(`[data-log-target="${rowId}"]`);
-        const box = document.getElementById(rowId);
-        button.addEventListener("click", () => { box.style.display = box.style.display === "block" ? "none" : "block"; });
+        if (state.expandedAll) {
+            const btn = els.resultTableBody.querySelector(`[data-log-target="${rowId}"]`);
+            if (btn) btn.setAttribute("aria-expanded", "true");
+        }
+        applyResultFilter();
     }
 
     function appendOpaDivider(scenario) {
         if (!els.resultTableBody || !scenario) return;
+        resultGroupIndex += 1;
         els.resultTableBody.insertAdjacentHTML("beforeend", `
-            <tr>
+            <tr class="opa-divider-row" data-group="${resultGroupIndex}">
                 <td colspan="6" style="background:#f1f5f9;color:#0f172a;font-weight:700;padding:8px 14px;border-bottom:1px solid #e2e8f0;">
                     ${esc(scenario.code)} — ${esc(scenario.name)}
                 </td>
             </tr>
         `);
+        applyResultFilter();
+    }
+
+    // requestBody는 객체이거나, 이력 스냅샷에서 절단된 문자열일 수 있다
+    function requestBodyText(body, pretty) {
+        if (body === undefined || body === null || body === "") return "";
+        if (typeof body === "string") return body;
+        return pretty ? JSON.stringify(body, null, 2) : JSON.stringify(body);
+    }
+
+    // [전체|FAIL|CHECK|SKIP] 필터. OPA 구분 행은 그 OPA에 보이는 행이 있을 때만 표시한다.
+    function applyResultFilter() {
+        if (!els.resultTableBody) return;
+        const filter = state.resultFilter || "all";
+        const visibleGroups = new Set();
+        els.resultTableBody.querySelectorAll("tr.result-row").forEach((tr) => {
+            const show = filter === "all" || tr.getAttribute("data-status") === filter;
+            tr.hidden = !show;
+            const logRow = els.resultTableBody.querySelector(`tr.log-row[data-for="${tr.getAttribute("data-row")}"]`);
+            if (logRow) logRow.hidden = !show;
+            if (show) visibleGroups.add(tr.getAttribute("data-group"));
+        });
+        els.resultTableBody.querySelectorAll("tr.opa-divider-row").forEach((tr) => {
+            tr.hidden = filter !== "all" && !visibleGroups.has(tr.getAttribute("data-group"));
+        });
+        updateResultToolbar();
+    }
+
+    function updateResultToolbar() {
+        if (!els.resultFilterBar) return;
+        const counts = { all: 0, FAIL: 0, CHECK: 0, SKIP: 0 };
+        resultRows.forEach((row) => {
+            counts.all += 1;
+            if (counts[row.statusType] !== undefined) counts[row.statusType] += 1;
+        });
+        els.resultFilterBar.querySelectorAll("[data-filter]").forEach((btn) => {
+            const key = btn.getAttribute("data-filter");
+            const active = (state.resultFilter || "all") === key;
+            btn.classList.toggle("active", active);
+            btn.setAttribute("aria-pressed", active ? "true" : "false");
+            const count = btn.querySelector(".filter-count");
+            if (count) count.textContent = String(counts[key] || 0);
+        });
+        if (els.expandAllBtn) {
+            els.expandAllBtn.textContent = state.expandedAll ? "모두 접기" : "모두 펼치기";
+            els.expandAllBtn.disabled = resultRows.size === 0;
+        }
+    }
+
+    function toggleExpandAll() {
+        state.expandedAll = !state.expandedAll;
+        els.resultTableBody.querySelectorAll(".log-box").forEach((box) => { box.style.display = state.expandedAll ? "block" : "none"; });
+        els.resultTableBody.querySelectorAll("[data-log-target]").forEach((btn) => btn.setAttribute("aria-expanded", state.expandedAll ? "true" : "false"));
+        updateResultToolbar();
+    }
+
+    // cURL 명령 — 인증 헤더는 항상 플레이스홀더. 실제 토큰·API Key는 넣지 않는다.
+    // (OpenAPITester 스니펫 생성기는 C3 소유라 재사용하지 않고 여기서 독립 구현)
+    function shellQuote(value) {
+        return `'${String(value).replace(/'/g, "'\\''")}'`;
+    }
+
+    // cURL을 만들 수 없는 행이면 그 이유(버튼 title)를, 만들 수 있으면 ""를 반환한다 (D-12·D-13)
+    const TRUNCATED_BODY_RE = /\n…\(총 \d+자 중 일부 생략\)$/;
+    function curlDisabledReason(row) {
+        if (!/^https?:\/\//i.test(row.url || "")) return "요청 URL이 없는 step입니다";
+        if (row.method === "AUTH" || row.stepId === "auth") return "API 요청이 아닌 사전 준비(토큰 발급) 단계입니다";
+        if (row.responseStatus === "ALL_FAIL") return "여러 후보를 시도한 요약 행입니다 — 시도별 결과는 [결과 보기]를 확인하세요";
+        if (row.requestBodyTruncated || (typeof row.requestBody === "string" && TRUNCATED_BODY_RE.test(row.requestBody))) {
+            return "이력에 저장된 요청 본문이 잘려 있어 cURL을 만들 수 없습니다";
+        }
+        return "";
+    }
+
+    function buildCurl(row) {
+        const authPlaceholder = row.stepId === "createExternalDoc" ? "<BASE64_COMPANY_API_KEY>" : "<ACCESS_TOKEN>";
+        const lines = [
+            `curl -X ${String(row.method || "GET").toUpperCase()} ${shellQuote(row.url)}`,
+            `  -H ${shellQuote("Content-Type: application/json")}`,
+            `  -H ${shellQuote(`Authorization: Bearer ${authPlaceholder}`)}`
+        ];
+        const body = requestBodyText(row.requestBody, false);
+        if (body) lines.push(`  --data-raw ${shellQuote(body)}`);
+        return lines.join(" \\\n");
+    }
+
+    function copyPayload(row, kind) {
+        if (kind === "curl") return buildCurl(row);
+        if (kind === "response") return row.responseText || "";
+        const body = requestBodyText(row.requestBody, true);
+        return `${row.method || ""} ${row.url || "(URL 없음)"}\n\n${body || "(본문 없음)"}`;
+    }
+
+    async function copyText(text) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
+        } catch (error) {
+            // 아래 대체 경로로 진행
+        }
+        try {
+            const ta = document.createElement("textarea");
+            ta.value = text;
+            ta.setAttribute("readonly", "");
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand("copy");
+            ta.remove();
+            return ok;
+        } catch (error) {
+            return false;
+        }
+    }
+
+    function bindResultTable() {
+        if (!els.resultTableBody) return;
+        els.resultTableBody.addEventListener("click", async (event) => {
+            const toggle = event.target.closest("[data-log-target]");
+            if (toggle) {
+                const box = document.getElementById(toggle.getAttribute("data-log-target"));
+                if (!box) return;
+                const open = box.style.display !== "block";
+                box.style.display = open ? "block" : "none";
+                toggle.setAttribute("aria-expanded", open ? "true" : "false");
+                return;
+            }
+            const copyBtn = event.target.closest("[data-copy]");
+            if (!copyBtn || copyBtn.disabled) return;
+            const row = resultRows.get(copyBtn.getAttribute("data-row"));
+            if (!row) return;
+            const original = copyBtn.textContent;
+            const ok = await copyText(copyPayload(row, copyBtn.getAttribute("data-copy")));
+            copyBtn.textContent = ok ? "복사됨" : "복사 실패";
+            setTimeout(() => { copyBtn.textContent = original; }, 1200);
+        });
+        if (els.resultFilterBar) {
+            els.resultFilterBar.addEventListener("click", (event) => {
+                const btn = event.target.closest("[data-filter]");
+                if (!btn) return;
+                state.resultFilter = btn.getAttribute("data-filter");
+                applyResultFilter();
+            });
+        }
+        if (els.expandAllBtn) els.expandAllBtn.addEventListener("click", toggleExpandAll);
+        if (els.rerunFailedBtn) els.rerunFailedBtn.addEventListener("click", rerunFailedOpas);
+        updateResultToolbar();
+    }
+
+    // ── 재실행 (P1-12) ───────────────────────────────────────────────────
+    function failedOpaCodes(report) {
+        if (!report || !Array.isArray(report.opaSummary)) return [];
+        const known = new Set(scenarios.map((s) => s.code));
+        return report.opaSummary.filter((opa) => opa.result === "FAIL" && known.has(opa.code)).map((opa) => opa.code);
+    }
+
+    function updateRerunFailedButton() {
+        if (!els.rerunFailedBtn) return;
+        const codes = failedOpaCodes(state.lastReportData);
+        els.rerunFailedBtn.style.display = codes.length ? "" : "none";
+        els.rerunFailedBtn.textContent = `실패 OPA만 재실행 (${codes.length})`;
+    }
+
+    // 지정한 OPA 집합을 선택 상태로 바꾸고 실행 확인 모달을 연다
+    function selectAndRequestRun(codes) {
+        if (state.running) { showRunNotice("이미 실행 중입니다. 실행이 끝난 뒤 다시 시도해 주세요."); return; }
+        const known = new Set(scenarios.map((s) => s.code));
+        const runCodes = (codes || []).filter((code) => known.has(code));
+        if (!runCodes.length) { showRunNotice("다시 실행할 OPA가 없습니다.", "info"); return; }
+        state.selectedCodes = new Set(runCodes);
+        saveSelection();
+        refreshAll();
+        requestRun(runCodes);
+    }
+
+    function rerunFailedOpas() {
+        selectAndRequestRun(failedOpaCodes(state.lastReportData));
     }
 
     // 본문이 limit를 초과하면 자르고 생략 안내를 덧붙인다. 본문이 없으면 빈 문자열 반환.
@@ -707,7 +1014,9 @@
             url: detail.url,
             duration: detail.duration,
             requestBody: detail.requestBody,
-            responseText: detail.responseBody
+            requestBodyTruncated: detail.requestBodyTruncated === true,
+            responseText: detail.responseBody,
+            stepId: detail.stepId
         };
     }
 
@@ -722,13 +1031,17 @@
         ];
     }
 
+    // keys 항목 하나가 채워졌는지. "a|b" 형태는 둘 중 하나만 채워져도 된다 (예: OPA 037 email 또는 phone — D-2)
+    function keyFilled(key) {
+        if (key.includes("|")) return key.split("|").some((alt) => keyFilled(alt));
+        if (key.startsWith("data.")) return has(getByPath(data(), key.slice(5)));
+        return has(getByPath(config, key));
+    }
+
     function readiness(scenario) {
-        const missing = (scenario.keys || []).filter((key) => {
-            if (key === "auth.mode") return false;
-            if (key.startsWith("data.")) return !has(getByPath(data(), key.slice(5)));
-            if (key === "data.companyId") return !has(data().companyId);
-            return !has(getByPath(config, key));
-        });
+        const missing = (scenario.keys || [])
+            .filter((key) => key !== "auth.mode" && !keyFilled(key))
+            .map((key) => key.split("|").join(" 또는 "));
         if (scenario.keys.includes("auth.mode")) {
             if (!authSnapshot().ready && !missing.includes("auth.panel")) missing.push("auth.panel");
         }
@@ -831,7 +1144,7 @@
             targetTemplateId: raw.targetTemplateId || raw.internalTemplateId || "",
             companyId: state.companyId || raw.companyId || raw.externalCompanyId || "",
             extTemplateId: raw.extTemplateId || raw.externalTemplateId || "",
-            companyApiKey: raw.companyApiKey || raw.externalCompanyApiKey || (els.authApiKey && els.authApiKey.value.trim()) || config.auth.apiKey || "",
+            companyApiKey: raw.companyApiKey || raw.externalCompanyApiKey || authInputs().apiKey || config.auth.apiKey || "",
             targetTemplateId2: raw.targetTemplateId2 || raw.secondaryTemplateId || "",
 
             targetEmail: raw.targetEmail || (raw.targetRecipient && raw.targetRecipient.email) || "",
@@ -901,7 +1214,8 @@
         const env = config.environments[selectedEnv];
         return env ? normalizeBaseUrl(env.baseUrl) : "";
     }
-    function freshShared() { return { lastCreatedId: null, createdIdList: [], createdGroupId: null, companyStampId: null, bulkMemberIds: [], completedDocIds: [], candidateTemplateIds: [], candidateDocIds: [] }; }
+    // memberCreated: 이 OPA에서 createMember가 PASS/CHECK로 끝났는지 — [중지] 후 deleteMember 정리 여부 판정용 (P1-11)
+    function freshShared() { return { lastCreatedId: null, createdIdList: [], createdGroupId: null, companyStampId: null, bulkMemberIds: [], memberCreated: false, completedDocIds: [], candidateTemplateIds: [], candidateDocIds: [] }; }
     function restoreSeedCache(seedCache) { Object.values(seedCache).forEach((cached) => Object.assign(state.shared, clone(cached))); }
     function extractSeedData(stepId) {
         if (stepId === "listFormsForSeed") return { candidateTemplateIds: [...(state.shared.candidateTemplateIds || [])] };
@@ -910,6 +1224,202 @@
         return {};
     }
     function toggleButtons(disabled) { els.runActiveBtn.disabled = disabled; els.runSelectedBtn.disabled = disabled; els.selectAllBtn.disabled = disabled; els.clearAllBtn.disabled = disabled; }
+
+    // 실행 중 잠금 (P1-11): 환경·Custom URL·설정 모달·프로필 전환을 막고 [중지]를 보인다.
+    // baseUrl()은 요청마다 다시 읽으므로 실행 도중 환경이 바뀌면 다른 서버로 요청이 가게 된다.
+    function setRunLock(locked) {
+        ensureProfileElements();
+        toggleButtons(locked);
+        [els.envSelect, els.customUrlInput, els.openSettingsModalBtn, els.openSettingsModalBtnInline, els.profileSelect].forEach((el) => { if (el) el.disabled = locked; });
+        if (els.authPanelToggle) {
+            els.authPanelToggle.setAttribute("aria-disabled", locked ? "true" : "false");
+            els.authPanelToggle.classList.toggle("locked", locked);
+        }
+        if (els.stopRunBtn) {
+            els.stopRunBtn.style.display = locked ? "" : "none";
+            els.stopRunBtn.disabled = false;
+            els.stopRunBtn.innerHTML = '<i class="fa-solid fa-stop fa-sm"></i> 중지';
+        }
+        if (locked) closeSettingsModal();
+    }
+
+    // ── 실행 안내 메시지 (alert 대체, P1-11/P1-12) ─────────────────────────
+    function showRunNotice(message, tone = "warn") {
+        if (!els.runNotice) return;
+        els.runNotice.textContent = message;
+        els.runNotice.className = `run-notice ${tone}`;
+        els.runNotice.hidden = false;
+    }
+
+    function hideRunNotice() {
+        if (els.runNotice) els.runNotice.hidden = true;
+    }
+
+    // ── 프로필별 OPA 선택 기억 (P1-11) ─────────────────────────────────────
+    function readSelectionMap() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(SELECTION_STORAGE_KEY) || "{}");
+            return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+        } catch (error) {
+            return {};
+        }
+    }
+
+    function saveSelection() {
+        try {
+            const map = readSelectionMap();
+            map[currentProfileName()] = [...state.selectedCodes];
+            localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(map));
+        } catch (error) {
+            // 저장 실패(사생활 보호 모드 등)는 무시 — 선택은 현재 탭에서만 유지된다
+        }
+    }
+
+    function restoreSelection() {
+        const saved = readSelectionMap()[currentProfileName()];
+        const known = new Set(scenarios.map((s) => s.code));
+        state.selectedCodes = new Set(Array.isArray(saved) ? saved.filter((code) => known.has(code)) : []);
+    }
+
+    // ── 실행 요청 → 확인 모달 → runSet (P1-11) ──────────────────────────────
+    async function requestRun(codes) {
+        if (state.running) return;
+        const known = new Set(scenarios.map((s) => s.code));
+        const runCodes = (codes || []).filter((code) => known.has(code));
+        if (!runCodes.length) {
+            showRunNotice("실행할 OPA를 1개 이상 선택해 주세요. 왼쪽 목록의 체크박스로 고를 수 있습니다.");
+            return;
+        }
+        hideRunNotice();
+        const confirmed = await confirmRun(runCodes);
+        if (confirmed) await runSet(runCodes);
+    }
+
+    // 데이터 설정 누락만 본다 — 인증은 실행 첫 단계(토큰 준비)에서 따로 검사한다
+    function missingDataKeys(scenario) {
+        return readiness(scenario).missing.filter((key) => key !== "auth.panel");
+    }
+
+    function writeKindsOf(scenario) {
+        const kinds = [];
+        scenario.steps.forEach((stepId) => {
+            const kind = WRITE_STEP_KINDS[stepId];
+            if (kind && !kinds.includes(kind)) kinds.push(kind);
+        });
+        return kinds;
+    }
+
+    let runConfirmResolver = null;
+
+    function confirmRun(codes) {
+        if (!els.runConfirmModal) return Promise.resolve(true);
+        const runScenarios = codes.map((code) => scenarios.find((s) => s.code === code)).filter(Boolean);
+        const envKey = els.envSelect ? els.envSelect.value : config.defaultEnvironment;
+        const env = (config.environments && config.environments[envKey]) || {};
+        const url = baseUrl();
+        const auth = authSnapshot();
+        const body = els.runConfirmBody;
+        body.textContent = "";
+
+        const addRow = (label, value, tone) => {
+            const row = document.createElement("div");
+            row.className = "confirm-row";
+            const key = document.createElement("span");
+            key.className = "confirm-key";
+            key.textContent = label;
+            const val = document.createElement("span");
+            val.className = `confirm-value${tone ? ` ${tone}` : ""}`;
+            val.textContent = value;
+            row.append(key, val);
+            body.appendChild(row);
+        };
+        const addList = (title, items, tone) => {
+            const wrap = document.createElement("div");
+            wrap.className = `confirm-list${tone ? ` ${tone}` : ""}`;
+            const head = document.createElement("div");
+            head.className = "confirm-list-title";
+            head.textContent = title;
+            const ul = document.createElement("ul");
+            items.forEach((text) => {
+                const li = document.createElement("li");
+                li.textContent = text;
+                ul.appendChild(li);
+            });
+            wrap.append(head, ul);
+            body.appendChild(wrap);
+        };
+
+        if (envKey === "saas") {
+            const warn = document.createElement("p");
+            warn.className = "confirm-warn";
+            warn.textContent = "운영(SaaS) 환경입니다. 아래 쓰기 작업은 실제 회사 계정에 문서·멤버·그룹·도장을 만들거나 지웁니다. 지정된 테스트 회사의 인증 정보인지 확인하세요.";
+            body.appendChild(warn);
+        }
+        addRow("대상 환경", `${env.label || envKey} — ${url || "(Base URL 없음)"}`, url ? "" : "danger");
+        addRow("회사 (company_id)", state.companyId || "아직 토큰을 발급하지 않았습니다 — 실행 첫 단계에서 확인됩니다");
+        addRow("프로필 / 인증", `${currentProfileName()} / ${auth.mode === "bearer" ? "Bearer" : "Signature"}${auth.ready ? "" : " (인증 정보 입력 필요)"}`, auth.ready ? "" : "danger");
+        addRow("실행 OPA", `${runScenarios.length}개 (step ${totalScenarioSteps(codes)}개)`);
+
+        const skipped = runScenarios.filter((s) => missingDataKeys(s).length);
+        const runnable = runScenarios.filter((s) => !missingDataKeys(s).length);
+        const writes = runnable.filter((s) => writeKindsOf(s).length);
+        if (writes.length) {
+            addList(`쓰기 작업이 있는 OPA (${writes.length}개)`, writes.map((s) => `${s.code} ${s.name} — ${writeKindsOf(s).join(", ")}`), "write");
+        } else {
+            addList("쓰기 작업", ["없음 — 조회만 실행합니다."]);
+        }
+        if (skipped.length) {
+            addList(`설정 필요로 건너뛸 OPA (${skipped.length}개)`, skipped.map((s) => `${s.code} ${s.name} — 설정 필요: ${missingDataKeys(s).join(", ")}`), "skip");
+        }
+        addRow("중지", "실행 중 [중지]를 누르면 다음 step부터 건너뛰고, 이미 만든 문서·멤버·그룹·도장의 정리 step은 실행합니다.");
+
+        els.runConfirmOkBtn.disabled = !url;
+        els.runConfirmOkBtn.textContent = runnable.length ? `${runScenarios.length}개 OPA 실행` : "실행 (모두 건너뜀)";
+        els.runConfirmModal.classList.add("open");
+        document.body.style.overflow = "hidden";
+        // 실수로 Enter를 눌러 실행되지 않도록 [취소]에 포커스
+        setTimeout(() => els.runConfirmCancelBtn.focus(), 0);
+        return new Promise((resolve) => { runConfirmResolver = resolve; });
+    }
+
+    function closeRunConfirm(confirmed) {
+        if (!els.runConfirmModal || !els.runConfirmModal.classList.contains("open")) return;
+        els.runConfirmModal.classList.remove("open");
+        document.body.style.overflow = "";
+        const resolve = runConfirmResolver;
+        runConfirmResolver = null;
+        if (resolve) resolve(!!confirmed);
+    }
+
+    // ── 중지 (P1-11) ─────────────────────────────────────────────────────
+    function stopError(aborted) {
+        const error = new Error(STOP_REASON);
+        error.isStop = true;
+        error.aborted = aborted === true; // true: 진행 중이던 조회 요청을 취소함, false: 요청을 보내기 전에 멈춤
+        return error;
+    }
+
+    function requestStop() {
+        if (!state.running || state.stopRequested) return;
+        state.stopRequested = true;
+        if (els.stopRunBtn) {
+            els.stopRunBtn.disabled = true;
+            els.stopRunBtn.textContent = "중지 중…";
+        }
+        // 진행 중인 조회 요청만 취소한다. 쓰기 요청은 activeControllers에 넣지 않으므로 완료를 기다린다 (D-1)
+        state.activeControllers.forEach((controller) => controller.abort());
+        progress(parseInt(els.progressBar.style.width, 10) || 0, "중지 요청됨 — 진행 중인 생성 요청은 완료를 기다린 뒤, 남은 step은 건너뛰고 정리 step만 실행합니다");
+    }
+
+    function stopCleanupEligible(stepId) {
+        const check = STOP_CLEANUP_TARGETS[stepId];
+        return typeof check === "function" && check();
+    }
+
+    function skipResult(stepId, reason) {
+        const meta = stepMeta(stepId);
+        return { statusType: "SKIP", responseStatus: "-", method: meta.method, label: meta.label, url: "", duration: "-", requestBody: null, responseText: reason };
+    }
     function progress(width, text) { els.progressBar.style.width = `${width}%`; els.progressText.textContent = text; }
     function renderDetail() {
         const scenario = scenarios.find((item) => item.code === state.activeCode);
@@ -939,18 +1449,22 @@
     }
     async function runSet(codes) {
         if (state.running) return;
-        if (!codes.length) return alert("실행할 OPA를 하나 이상 선택해 주세요.");
+        if (!codes.length) { showRunNotice("실행할 OPA를 1개 이상 선택해 주세요."); return; }
 
         state.running = true;
+        state.stopRequested = false;
+        state.cleanupPhase = false;
         state.shared = freshShared();
         state.token = "";
         state.companyId = state.companyId || "";  // 인증 패널에서 발급된 companyId는 유지
         state.lastReportData = null;
         closeReportModal();
         hideHistoryBanner();  // 새 실행은 라이브 결과이므로 과거-이력 배너/선택 해제
+        hideRunNotice();
         if (els.openReportBtn) els.openReportBtn.style.display = "none";
-        els.resultTableBody.innerHTML = "";
-        toggleButtons(true);
+        if (els.rerunFailedBtn) els.rerunFailedBtn.style.display = "none";
+        resetResultTable();
+        setRunLock(true);
         progress(0, "토큰과 실행 계획 준비 중");
 
         const totalSteps = totalScenarioSteps(codes);
@@ -978,7 +1492,7 @@
                     responseText: error.message || String(error)
                 };
                 fail += 1;
-                appendRow(1, authResult);
+                appendRow(1, authResult, "auth");
                 addReportStep(reportData, "auth", 1, authResult, "사전 준비");
                 return;
             }
@@ -993,24 +1507,47 @@
 
                 const opaStepResults = [];
                 let opaFailed = false;
+                // readiness 미충족 OPA는 실행하지 않고 SKIP("설정 필요: <누락 키>")으로 기록한다 (P1-11)
+                const missing = missingDataKeys(scenario);
+                const notReadyReason = missing.length ? `설정 필요: ${missing.join(", ")}` : "";
 
                 for (const stepId of scenario.steps) {
                     globalStepIndex += 1;
-                    progress(Math.round((globalStepIndex / Math.max(totalSteps, 1)) * 100), `실행 중: ${code} — ${stepMeta(stepId).label}`);
+                    const progressLabel = state.stopRequested ? "중지 처리 중" : "실행 중";
+                    progress(Math.round((globalStepIndex / Math.max(totalSteps, 1)) * 100), `${progressLabel}: ${code} — ${stepMeta(stepId).label}`);
 
                     let result;
-                    if (opaFailed) {
+                    if (notReadyReason) {
+                        result = skipResult(stepId, notReadyReason);
+                    } else if (opaFailed) {
+                        // 선행 FAIL 시 정리 step까지 SKIP하는 기존 동작은 유지 (기획서 0절: P0-13 제외)
                         result = skippedAfterFailureResult(stepId);
+                    } else if (state.stopRequested && !stopCleanupEligible(stepId)) {
+                        result = skipResult(stepId, STOP_CLEANUP_TARGETS[stepId] ? `${STOP_REASON} (정리 대상 없음)` : STOP_REASON);
                     } else if (SEED_STEPS.has(stepId) && seedCache[stepId]) {
                         Object.assign(state.shared, clone(seedCache[stepId]));
                         result = cachedSeedResult(stepId);
                     } else {
+                        const cleanupAfterStop = state.stopRequested;
+                        state.cleanupPhase = cleanupAfterStop;
                         try {
                             result = await runStep(stepId);
                         } catch (error) {
-                            result = { statusType: "FAIL", responseStatus: "ERROR", method: stepMeta(stepId).method, label: stepMeta(stepId).label, url: "", duration: "-", requestBody: null, responseText: error.message || String(error) };
+                            if (error && error.isStop) {
+                                result = skipResult(stepId, error.aborted
+                                    ? `${STOP_REASON} — 진행 중이던 조회 요청을 취소했습니다.`
+                                    : `${STOP_REASON} — 남은 요청을 보내지 않았습니다.`);
+                            } else {
+                                result = { statusType: "FAIL", responseStatus: "ERROR", method: stepMeta(stepId).method, label: stepMeta(stepId).label, url: "", duration: "-", requestBody: null, responseText: error.message || String(error) };
+                            }
+                        } finally {
+                            state.cleanupPhase = false;
                         }
+                        if (cleanupAfterStop) result = { ...result, label: `${result.label} · 중지 후 정리` };
+                        // 실행 중 [중지]됐지만 쓰기 요청이라 끝까지 기다린 step — 만든 자원은 아래 정리 step이 지운다 (D-1)
+                        else if (state.stopRequested && result.statusType !== "SKIP") result = { ...result, label: `${result.label} · 중지 전 시작된 요청 완료` };
                         if (SEED_STEPS.has(stepId) && result.statusType === "PASS") seedCache[stepId] = extractSeedData(stepId);
+                        if (stepId === "createMember" && (result.statusType === "PASS" || result.statusType === "CHECK")) state.shared.memberCreated = true;
                         if (result.statusType === "FAIL") opaFailed = true;
                     }
 
@@ -1019,7 +1556,7 @@
                     else if (result.statusType === "SKIP") skip += 1;
                     else fail += 1;
 
-                    appendRow(globalStepIndex, result);
+                    appendRow(globalStepIndex, result, stepId);
                     opaStepResults.push(addReportStep(reportData, stepId, globalStepIndex, result, code));
                 }
 
@@ -1032,15 +1569,21 @@
             fail = reportData.totalSummary.failedSteps;
             check = reportData.totalSummary.checkSteps;
             skip = reportData.totalSummary.skippedSteps;
+            const stopped = state.stopRequested;
+            reportData.meta.stopped = stopped;
             state.running = false;
-            toggleButtons(false);
+            state.stopRequested = false;
+            state.cleanupPhase = false;
+            setRunLock(false);
             els.lastRunSummary.textContent = `PASS ${pass} / FAIL ${fail} / CHECK ${check} / SKIP ${skip}`;
-            progress(100, `완료: PASS ${pass}, FAIL ${fail}, CHECK ${check}, SKIP ${skip}`);
+            progress(100, `${stopped ? "중지됨" : "완료"}: PASS ${pass}, FAIL ${fail}, CHECK ${check}, SKIP ${skip}`);
             if (els.openReportBtn) els.openReportBtn.style.display = "";
+            updateRerunFailedButton();
             saveRunHistory({
                 id: String(Date.now()),
                 when: new Date().toLocaleString("ko-KR", { hour12: false }),
                 codes: codes.slice(),
+                stopped,
                 pass,
                 fail,
                 check,
@@ -1290,7 +1833,7 @@
     }
 
     function openReportModal() {
-        if (!state.lastReportData) return alert("표시할 리포트가 없습니다. 테스트 실행 후 다시 시도해 주세요.");
+        if (!state.lastReportData) { showRunNotice("표시할 리포트가 없습니다. 테스트 실행 후 다시 시도해 주세요.", "info"); return; }
         els.reportModalBody.innerHTML = generateReportHtml(state.lastReportData);
         els.reportModal.classList.add("open");
         document.body.style.overflow = "hidden";
@@ -1303,7 +1846,7 @@
     }
 
     function downloadReport(format) {
-        if (!state.lastReportData) return alert("다운로드할 리포트가 없습니다.");
+        if (!state.lastReportData) { showRunNotice("다운로드할 리포트가 없습니다. 테스트 실행 후 다시 시도해 주세요.", "info"); return; }
         const report = state.lastReportData;
         const isHtml = format === "html";
         const content = isHtml ? generateReportHtmlFile(report) : generateReportMarkdown(report);
@@ -1723,12 +2266,18 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         return value === "bearer" ? "bearer" : "signature";
     }
 
+    // 인증 입력값은 설정 모달 필드(formApiKey/formAuthMemberId/formSecretKey)가 유일한 원본이다.
+    // (예전에는 항상 숨겨진 인라인 인증 패널에 값을 복사해 두고 읽었다 — P1-12에서 패널 삭제)
+    function authInputs() {
+        ensureProfileElements();
+        const read = (id) => (els[id] ? String(els[id].value || "").trim() : "");
+        return { apiKey: read("formApiKey"), memberId: read("formAuthMemberId"), secretKey: read("formSecretKey") };
+    }
+
     function authSnapshot() {
         const auth = config.auth || {};
         const mode = normalizedAuthMode(state.authMethod || auth.mode);
-        const panelApiKey = els.authApiKey ? els.authApiKey.value.trim() : "";
-        const panelMemberId = els.authMemberId ? els.authMemberId.value.trim() : "";
-        const panelSecretKey = els.authSecretKey ? els.authSecretKey.value.trim() : "";
+        const { apiKey: panelApiKey, memberId: panelMemberId, secretKey: panelSecretKey } = authInputs();
         const bearerToken = mode === "bearer" ? (state.token || panelSecretKey || auth.accessToken || "") : (state.token || auth.accessToken || "");
         const apiKey = panelApiKey || auth.apiKey || "";
         const memberId = panelMemberId || auth.memberId || "";
@@ -1750,28 +2299,15 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
     }
 
     function applyAuthModeUi(mode) {
+        ensureProfileElements();
         state.authMethod = normalizedAuthMode(mode);
-        if (els.authTabSignature) els.authTabSignature.classList.toggle("active", state.authMethod === "signature");
-        if (els.authTabBearer) els.authTabBearer.classList.toggle("active", state.authMethod === "bearer");
-        if (els.authSecretLabel) {
-            els.authSecretLabel.textContent = state.authMethod === "bearer" ? "Access Token (Bearer)" : "비밀 키 (Secret Key, Hex)";
-        }
-        if (els.authSecretKey) {
-            els.authSecretKey.placeholder = state.authMethod === "bearer" ? "발급된 Access Token 직접 입력" : "비밀 키 입력 (Hex 형식)";
-            els.authSecretKey.type = "password";
-        }
-        [els.authApiKey, els.authMemberId].forEach((el) => {
-            if (el && el.closest(".auth-field")) el.closest(".auth-field").style.display = state.authMethod === "bearer" ? "none" : "";
-        });
+        if (els.formSecretKey) els.formSecretKey.placeholder = state.authMethod === "bearer" ? "발급된 Access Token 직접 입력" : "비밀 키 입력 (Hex 형식)";
         if (els.formAuthMode) els.formAuthMode.value = state.authMethod;
     }
 
     function populateAuthPanelFromConfig() {
         const auth = config.auth || {};
         applyAuthModeUi(auth.mode || "signature");
-        if (els.authApiKey) els.authApiKey.value = auth.apiKey || "";
-        if (els.authMemberId) els.authMemberId.value = auth.memberId || "";
-        if (els.authSecretKey) els.authSecretKey.value = state.authMethod === "bearer" ? (auth.accessToken || "") : (auth.secretKey || "");
         state.token = state.authMethod === "bearer" ? (auth.accessToken || "") : "";
         state.companyId = (config.data && config.data.externalCompanyId) || state.companyId || "";
         updateAuthPanelUI();
@@ -1823,14 +2359,22 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 const noteHint = hasReport ? "" : `<br><span class="history-no-detail">상세 데이터 없음</span>`;
                 return `
                 <div class="${rowClass}"${idAttr}>
-                    <span class="config-key">${esc(item.when)}<br>${esc(item.codes.join(", "))}${noteHint}</span>
-                    <span class="config-value ${item.fail > 0 ? "missing" : "ready"}">PASS ${esc(String(item.pass))} / FAIL ${esc(String(item.fail))} / CHECK ${esc(String(item.check || 0))} / SKIP ${esc(String(item.skip))}<br>${esc(item.environment)} / ${esc(item.authMode)}</span>
+                    <span class="config-key">${esc(item.when)}${item.stopped ? " (중지됨)" : ""}<br>${esc(item.codes.join(", "))}${noteHint}</span>
+                    <span class="config-value ${item.fail > 0 ? "missing" : "ready"}">PASS ${esc(String(item.pass))} / FAIL ${esc(String(item.fail))} / CHECK ${esc(String(item.check || 0))} / SKIP ${esc(String(item.skip))}<br>${esc(item.environment)} / ${esc(item.authMode)}${item.id ? `<br><button class="history-rerun-btn" type="button" data-rerun-id="${esc(String(item.id))}">같은 OPA 다시 실행</button>` : ""}</span>
                 </div>`;
             }).join("")
             : `<div class="config-row"><span class="config-key">최근 실행 이력이 없습니다.</span><span class="config-value">-</span></div>`;
         // report를 가진 행은 클릭 시 우측 결과 패널에 과거 결과를 복원
         els.historyList.querySelectorAll(".config-row.clickable").forEach((row) => {
             row.addEventListener("click", () => loadHistoryRun(row.getAttribute("data-history-id")));
+        });
+        // [같은 OPA 다시 실행] → 그 이력의 OPA 집합을 선택하고 실행 확인 모달을 연다 (P1-12)
+        els.historyList.querySelectorAll(".history-rerun-btn").forEach((button) => {
+            button.addEventListener("click", (event) => {
+                event.stopPropagation();
+                const entry = history.find((item) => String(item.id) === button.getAttribute("data-rerun-id"));
+                if (entry) selectAndRequestRun(entry.codes);
+            });
         });
     }
 
@@ -1842,7 +2386,10 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
             if (typeof detail.responseBody === "string") detail.responseBody = truncateBody(detail.responseBody);
             if (detail.requestBody) {
                 const serialized = JSON.stringify(detail.requestBody);
-                if (serialized.length > 16384) detail.requestBody = truncateBody(serialized);
+                if (serialized.length > 16384) {
+                    detail.requestBody = truncateBody(serialized);
+                    detail.requestBodyTruncated = true; // 복원 행의 cURL 비활성 (D-13)
+                }
             }
         };
         (snap.stepDetails || []).forEach(truncDetail);
@@ -1887,15 +2434,20 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
     }
 
     function loadHistoryRun(id) {
+        if (state.running) {
+            showRunNotice("실행 중에는 과거 이력을 열 수 없습니다. 실행이 끝난 뒤 다시 시도해 주세요.");
+            return;
+        }
         const historyMap = readHistoryMap();
         const list = historyMap[currentProfileName()] || [];
         const entry = list.find((item) => String(item.id) === String(id));
         if (!entry || !entry.report) {
-            alert("이 이력은 상세 데이터가 없습니다.");
+            showRunNotice("이 이력은 상세 데이터가 없습니다. [다시 실행]으로 같은 OPA를 다시 돌릴 수는 있습니다.", "info");
             return;
         }
         const report = entry.report;
-        if (els.resultTableBody) els.resultTableBody.innerHTML = "";
+        hideRunNotice();
+        resetResultTable();
         let lastOpaCode = null;
         (report.stepDetails || []).forEach((detail, index) => {
             if (detail.opaCode && detail.opaCode !== lastOpaCode) {
@@ -1907,6 +2459,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         });
         state.lastReportData = report;
         if (els.openReportBtn) els.openReportBtn.style.display = "";
+        updateRerunFailedButton();
         showHistoryBanner(entry.when);
         state.selectedHistoryId = String(id);
         renderHistory();
@@ -1954,9 +2507,6 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
 
     function syncConfigFromForm() {
         if (els.formAuthMode) applyAuthModeUi(els.formAuthMode.value);
-        if (els.authApiKey && els.formApiKey) els.authApiKey.value = els.formApiKey.value;
-        if (els.authMemberId && els.formAuthMemberId) els.authMemberId.value = els.formAuthMemberId.value;
-        if (els.authSecretKey && els.formSecretKey) els.authSecretKey.value = els.formSecretKey.value;
         const next = applyFormValues(config);
         replaceConfig(next);
         syncEnvironmentControls("form");
@@ -1971,6 +2521,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         const nextConfig = profiles[nextName] ? merge(clone(baseDefaultConfig()), profiles[nextName]) : baseDefaultConfig();
         replaceConfig(nextConfig);
         setCurrentProfileName(nextName);
+        restoreSelection();  // 프로필마다 마지막 OPA 선택을 따로 기억한다 (P1-11)
         populateProfileSelect();
         populateSettingsFormFromConfig();
         updateEditorFromConfig();
@@ -1995,6 +2546,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         writeStoredConfig(finalConfig);
         replaceConfig(finalConfig);
         setCurrentProfileName(profileName);
+        saveSelection();  // 새 이름으로 저장해도 지금 OPA 선택을 그 프로필에 기억한다 (D-14)
         populateProfileSelect();
         populateSettingsFormFromConfig();
         updateEditorFromConfig();
@@ -2025,7 +2577,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
 
     function toggleSensitiveFields() {
         ensureProfileElements();
-        const fields = ["formApiKey", "formSecretKey", "authSecretKey"];
+        const fields = ["formApiKey", "formSecretKey"];
         const show = fields.some((id) => els[id] && els[id].type === "password");
         fields.forEach((id) => {
             if (els[id]) els[id].type = show ? "text" : "password";
@@ -2046,6 +2598,11 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
 
     function openSettingsModal() {
         ensureProfileElements();
+        // 실행 중에는 설정을 바꿀 수 없다 (P1-11) — 바뀐 값이 진행 중인 요청에 섞이는 것을 막는다
+        if (state.running) {
+            showRunNotice("테스트 실행 중에는 입력값 설정을 열 수 없습니다. 실행이 끝나거나 [중지]한 뒤 다시 시도해 주세요.");
+            return;
+        }
         if (els.settingsModalOverlay) els.settingsModalOverlay.classList.add("open");
         if (els.settingsModalCard) els.settingsModalCard.classList.add("modal-open");
         document.body.style.overflow = "hidden";
@@ -2227,6 +2784,8 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         localStorage.removeItem(PROFILE_STORAGE_KEY);
         localStorage.removeItem(ACTIVE_PROFILE_KEY);
         localStorage.removeItem(HISTORY_STORAGE_KEY);
+        localStorage.removeItem(SELECTION_STORAGE_KEY);
+        state.selectedCodes.clear();
         replaceConfig(baseDefaultConfig());
         bootstrapSettingsUi();
         refreshAll();
@@ -2252,55 +2811,56 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
         }
     }
 
-    // ── AUTH PANEL ──────────────────────────────────────────────────────────
+    // ── AUTH (헤더 런처 + 설정 모달) ─────────────────────────────────────────
+    // 인증 입력·토큰 발급은 설정 모달에서만 한다. 헤더 "사용자 설정" 줄은 모달을 여는 런처이며
+    // 토큰 상태 배지(token-badge.js)와 Company ID를 보여 준다 (P1-12 — 숨겨진 인라인 패널 삭제).
+    function showModalAuthMessage(message, tone = "error") {
+        ensureProfileElements();
+        if (!els.modalAuthMessage) return;
+        els.modalAuthMessage.textContent = message;
+        els.modalAuthMessage.className = `run-notice ${tone}`;
+        els.modalAuthMessage.hidden = false;
+    }
+
+    function hideModalAuthMessage() {
+        if (els.modalAuthMessage) els.modalAuthMessage.hidden = true;
+    }
+
+    function clearIssuedToken() {
+        state.token = "";
+        state.companyId = "";
+        syncConfigFromAuthPanel();
+        updateEditorFromConfig();
+        updateAuthPanelUI();
+        refreshAll();
+    }
+
     function initAuthPanel() {
         if (!els.authPanelToggle) return;
 
-        // 패널 토글
-        els.authPanelToggle.addEventListener("click", () => openSettingsModal());
+        // 런처 → 설정 모달 (실행 중에는 openSettingsModal()이 막는다)
+        els.authPanelToggle.addEventListener("click", (event) => {
+            // 배지의 [토큰 재발급] 버튼은 token-badge가 처리한다
+            if (event.target.closest && event.target.closest(".tb-reissue")) return;
+            openSettingsModal();
+        });
         els.authPanelToggle.addEventListener("keydown", (event) => {
+            if (event.target !== els.authPanelToggle) return;  // 안쪽 [토큰 재발급] 버튼의 키 입력은 그대로 둔다
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
                 openSettingsModal();
             }
         });
 
-        // 인증 방식 탭
-        [els.authTabSignature, els.authTabBearer].forEach((tab) => {
-            if (!tab) return;
-            tab.addEventListener("click", () => {
-                applyAuthModeUi(tab.getAttribute("data-method"));
-                syncConfigFromAuthPanel();
-                updateEditorFromConfig();
-                refreshAll();
-            });
-        });
-
-        [els.authApiKey, els.authMemberId, els.authSecretKey].forEach((input) => {
-            if (!input) return;
-            input.addEventListener("input", () => {
-                if (els.formApiKey) els.formApiKey.value = els.authApiKey ? els.authApiKey.value : "";
-                if (els.formAuthMemberId) els.formAuthMemberId.value = els.authMemberId ? els.authMemberId.value : "";
-                if (els.formSecretKey) els.formSecretKey.value = els.authSecretKey ? els.authSecretKey.value : "";
-                syncConfigFromAuthPanel();
-                updateEditorFromConfig();
-                refreshAll();
-            });
-        });
-
         const handleIssueTokenFromModal = async (button) => {
             const authMode = normalizedAuthMode(els.formAuthMode ? els.formAuthMode.value : state.authMethod);
-            const apiKey = els.formApiKey ? els.formApiKey.value.trim() : "";
-            const memberId = els.formAuthMemberId ? els.formAuthMemberId.value.trim() : "";
-            const secretKey = els.formSecretKey ? els.formSecretKey.value.trim() : "";
+            const { apiKey, memberId, secretKey } = authInputs();
+            hideModalAuthMessage();
 
-            if (!secretKey) { alert("인증 값이 비어 있습니다."); return; }
+            if (!secretKey) { showModalAuthMessage(authMode === "bearer" ? "Access Token을 입력해 주세요." : "비밀 키(Secret Key)를 입력해 주세요."); return; }
+            if (authMode !== "bearer" && (!apiKey || !memberId)) { showModalAuthMessage("API Key와 Auth Member ID를 입력해 주세요."); return; }
 
-            if (els.authApiKey) els.authApiKey.value = apiKey;
-            if (els.authMemberId) els.authMemberId.value = memberId;
-            if (els.authSecretKey) els.authSecretKey.value = secretKey;
             applyAuthModeUi(authMode);
-
             state.token = "";
             state.companyId = "";
             button.disabled = true;
@@ -2311,14 +2871,15 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                     state.token = secretKey;
                     updateAuthPanelUI();
                 } else {
-                    if (!apiKey || !memberId) { alert("API Key와 User ID를 입력해 주세요."); return; }
                     await issueTokenFromPanel(apiKey, memberId, secretKey);
                 }
                 syncConfigFromAuthPanel();
                 updateEditorFromConfig();
                 refreshAll();
+                showModalAuthMessage(authMode === "bearer" ? "입력한 Access Token을 사용합니다." : "토큰을 발급했습니다.", "info");
             } catch (err) {
-                alert("토큰 발급 실패: " + (err.message || String(err)));
+                updateAuthPanelUI();
+                showModalAuthMessage(`토큰 발급 실패: ${err.message || String(err)}`);
             } finally {
                 button.disabled = false;
                 button.innerHTML = '<i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급';
@@ -2329,83 +2890,18 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
             els.modalIssueTokenBtn.addEventListener("click", () => handleIssueTokenFromModal(els.modalIssueTokenBtn));
         }
 
-        // 토큰 발급 버튼
-        if (els.btnIssueToken) {
-            els.btnIssueToken.addEventListener("click", async () => {
-                const apiKey = els.authApiKey ? els.authApiKey.value.trim() : "";
-                const memberId = els.authMemberId ? els.authMemberId.value.trim() : "";
-                const secretKey = els.authSecretKey ? els.authSecretKey.value.trim() : "";
-
-                if (!secretKey) { alert("인증 정보를 입력해 주세요."); return; }
-
-                state.token = "";
-                state.companyId = "";
-                els.btnIssueToken.disabled = true;
-                els.btnIssueToken.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-sm"></i> 발급 중...';
-
-                try {
-                    if (state.authMethod === "bearer") {
-                        state.token = secretKey;
-                        updateAuthPanelUI();
-                    } else {
-                        if (!apiKey || !memberId) { alert("API Key와 User ID를 입력해 주세요."); return; }
-                        await issueTokenFromPanel(apiKey, memberId, secretKey);
-                    }
-                        syncConfigFromAuthPanel();
-                    updateEditorFromConfig();
-                    refreshStatus();
-                } catch (err) {
-                    alert("토큰 발급 실패: " + (err.message || String(err)));
-                } finally {
-                    els.btnIssueToken.disabled = false;
-                    els.btnIssueToken.innerHTML = '<i class="fa-solid fa-rotate fa-sm"></i> 토큰 발급';
-                }
-            });
-        }
-
-        // 초기화 버튼
-        if (els.btnClearToken) {
-            els.btnClearToken.addEventListener("click", () => {
-                state.token = "";
-                state.companyId = "";
-                syncConfigFromAuthPanel();
-                updateEditorFromConfig();
-                updateAuthPanelUI();
-                refreshAll();
-            });
-        }
-
         if (els.modalClearTokenBtn) {
-            els.modalClearTokenBtn.addEventListener("click", () => {
-                state.token = "";
-                state.companyId = "";
-                syncConfigFromAuthPanel();
-                updateEditorFromConfig();
-                updateAuthPanelUI();
-                refreshAll();
-            });
-        }
-
-        // 토큰 표시 클릭 → 복사
-        if (els.authTokenDisplay) {
-            els.authTokenDisplay.addEventListener("click", () => {
-                if (!state.token) return;
-                navigator.clipboard.writeText(state.token).then(() => {
-                    const orig = els.authTokenDisplay.textContent;
-                    els.authTokenDisplay.textContent = "복사됨!";
-                    setTimeout(() => { els.authTokenDisplay.textContent = orig; }, 1200);
-                }).catch(() => {});
-            });
+            els.modalClearTokenBtn.addEventListener("click", () => { hideModalAuthMessage(); clearIssuedToken(); });
         }
 
         if (els.modalTokenDisplay) {
             els.modalTokenDisplay.addEventListener("click", () => {
                 if (!state.token) return;
-                navigator.clipboard.writeText(state.token).then(() => {
+                copyText(state.token).then((ok) => {
                     const orig = els.modalTokenDisplay.textContent;
-                    els.modalTokenDisplay.textContent = "복사됨";
+                    els.modalTokenDisplay.textContent = ok ? "복사됨" : "복사 실패";
                     setTimeout(() => { els.modalTokenDisplay.textContent = orig; }, 1200);
-                }).catch(() => {});
+                });
             });
         }
 
@@ -2414,21 +2910,18 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
 
     function updateAuthPanelUI() {
         if (!state.token) clearTokenBadges();
-        if (!els.authStatusBadge) return;
-        if (state.token) {
-            const short = state.token.length > 40 ? state.token.slice(0, 40) + "..." : state.token;
-            if (els.authTokenDisplay) {
-                els.authTokenDisplay.textContent = short;
-                els.authTokenDisplay.classList.add("has-token");
-            }
-        } else {
-            if (els.authTokenDisplay) {
-                els.authTokenDisplay.textContent = "토큰을 발급받아 주세요";
-                els.authTokenDisplay.classList.remove("has-token");
-            }
+        if (els.authStatusBadge) {
+            // 발급 결과가 있으면 token-badge가 남은 시간을 보여 준다. 그 외 상태만 텍스트로 표시한다.
+            const badgeShown = !!(state.token && document.querySelector("#authTokenBadge .tb-badge"));
+            let text = "";
+            let tone = "no-token";
+            if (!state.token) text = "토큰 없음 · 클릭해 입력값 설정에서 발급";
+            else if (state.authMethod === "bearer") { text = "Bearer 토큰 입력됨 (만료 시각 알 수 없음)"; tone = "has-token"; }
+            else if (!badgeShown) { text = "토큰 보유"; tone = "has-token"; }
+            els.authStatusBadge.textContent = text;
+            els.authStatusBadge.className = `auth-status ${tone}`;
+            els.authStatusBadge.hidden = !text;
         }
-        els.authStatusBadge.textContent = "사용자 설정";
-        els.authStatusBadge.className = "auth-status action";
 
         if (els.modalTokenDisplay) {
             if (state.token) {
@@ -2441,23 +2934,11 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
             }
         }
 
-        if (els.modalCompanyIdDisplay && els.modalCompanyIdValue) {
-            if (state.companyId) {
-                els.modalCompanyIdDisplay.style.display = "";
-                els.modalCompanyIdValue.textContent = state.companyId;
-            } else {
-                els.modalCompanyIdDisplay.style.display = "none";
-            }
-        }
-
-        if (els.authCompanyIdDisplay && els.authCompanyIdValue) {
-            if (state.companyId) {
-                els.authCompanyIdDisplay.style.display = "";
-                els.authCompanyIdValue.textContent = state.companyId;
-            } else {
-                els.authCompanyIdDisplay.style.display = "none";
-            }
-        }
+        [[els.modalCompanyIdDisplay, els.modalCompanyIdValue], [els.authCompanyIdDisplay, els.authCompanyIdValue]].forEach(([wrap, value]) => {
+            if (!wrap || !value) return;
+            wrap.style.display = state.companyId ? "" : "none";
+            value.textContent = state.companyId || "-";
+        });
     }
 
     // ── GUIDE ────────────────────────────────────────────────────────────────
@@ -2496,7 +2977,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 <ul>
                     <li><strong>Signature</strong> — API Key + Auth Member ID + Secret Key를 입력하고 "토큰 발급" 버튼을 클릭합니다. 발급 성공 시 Company ID가 자동으로 채워집니다.</li>
                     <li><strong>Bearer Token</strong> — 이미 보유한 Access Token을 Secret Key / Bearer Token 필드에 직접 붙여넣습니다. 토큰 발급 버튼 없이 바로 사용됩니다.</li>
-                    <li>발급된 토큰과 Company ID는 인증 섹션 하단에서 확인할 수 있으며, 클릭하면 클립보드에 복사됩니다.</li>
+                    <li>발급된 토큰과 Company ID는 인증 섹션 하단에서 확인할 수 있으며, 클릭하면 클립보드에 복사됩니다. 화면 위쪽 <strong>사용자 설정</strong> 줄에도 토큰 남은 시간과 Company ID가 표시됩니다.</li>
                     <li><strong>인증 저장</strong> 버튼으로 현재 인증 정보를 DB에 저장해두면, <strong>인증 불러오기</strong>로 다음 테스트 시 재입력 없이 바로 불러올 수 있습니다. (로그인 필요)</li>
                 </ul>
             </div>
@@ -2521,6 +3002,7 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 <h3>OPA 선택</h3>
                 <p>모달을 닫고 좌측 사이드바에서 실행할 OPA를 선택합니다. 각 항목의 상태 배지를 확인하세요.</p>
                 <ul>
+                    <li>처음 열면 아무 OPA도 선택되어 있지 않습니다. 마지막으로 고른 OPA는 프로필별로 기억됩니다.</li>
                     <li><strong class="guide-ready">준비됨</strong> — 현재 입력된 설정으로 바로 실행 가능합니다.</li>
                     <li><strong class="guide-warn">설정 필요</strong> — 누락된 값이 있습니다. 항목을 클릭하면 우측 상세 패널에서 어떤 설정이 부족한지 확인할 수 있습니다.</li>
                     <li>여러 OPA를 선택하면 OPA별로 독립 실행됩니다. 각 OPA의 문서 생명주기(생성 → 검증 → 정리)가 격리되어 서로 영향을 주지 않습니다.</li>
@@ -2535,6 +3017,10 @@ body{margin:0;background:#f8fafc;color:#0f172a;font-family:-apple-system,BlinkMa
                 <ul>
                     <li><strong>현재 OPA만 실행</strong> — 사이드바에서 선택(클릭)된 OPA 하나만 실행합니다.</li>
                     <li><strong>선택한 OPA 실행</strong> — 체크박스로 선택된 OPA 전체를 OPA 단위로 순차 실행합니다.</li>
+                    <li>실행 전 <strong>확인 창</strong>에서 대상 환경·회사·OPA 수, 문서·멤버를 만들거나 지우는 OPA, 설정이 빠져 건너뛸 OPA를 확인합니다. 설정이 빠진 OPA는 실패가 아니라 <strong>SKIP(설정 필요)</strong>으로 기록됩니다.</li>
+                    <li>실행 중에는 환경·입력값 설정·프로필을 바꿀 수 없습니다. <strong>중지</strong>를 누르면 남은 step은 건너뛰고, 이미 만든 문서·멤버·그룹·도장의 정리 step만 실행합니다. 요청 하나가 60초를 넘으면 FAIL(TIMEOUT)로 처리됩니다.</li>
+                    <li>결과 위쪽의 <strong>전체 / FAIL / CHECK / SKIP</strong> 필터와 <strong>모두 펼치기</strong>로 결과를 좁혀 볼 수 있고, 결과 보기 안에서 <strong>요청 복사 · 응답 복사 · cURL로 복사</strong>를 쓸 수 있습니다(cURL의 인증 헤더는 <code>&lt;ACCESS_TOKEN&gt;</code> 플레이스홀더).</li>
+                    <li><strong>실패 OPA만 재실행</strong>은 FAIL로 끝난 OPA만 다시 선택해 실행합니다. 실행 이력의 <strong>같은 OPA 다시 실행</strong>도 같은 확인 창을 거칩니다.</li>
                     <li><strong>PASS / CHECK / FAIL / SKIP</strong> — step 단위로 결과가 표시됩니다. <strong>CHECK(검토 필요)</strong>는 정리·삭제 단계 등에서 400~403 응답이 온 경우로, 의도된 동작인지 실제 오류인지 결과 보기로 직접 확인해야 합니다(404는 실제 오류로 보아 FAIL 처리). 200 OK여도 응답 body가 실패(예: 일괄 처리의 success:false)를 나타내면 사유와 함께 FAIL로 처리됩니다. 선행 step 실패 시 같은 OPA의 후속 step은 자동으로 SKIP됩니다. FAIL·CHECK 모두 결과 보기로 요청 바디와 응답 전문을 확인할 수 있습니다.</li>
                     <li>실행 완료 후 <strong>리포트 보기</strong> 버튼이 나타납니다. 리포트 모달에서 OPA별/Step별 결과 요약과 실패 상세를 확인할 수 있습니다.</li>
                     <li>리포트를 <strong>Markdown</strong> 또는 <strong>HTML</strong> 파일로 다운로드하여 공유할 수 있습니다.</li>

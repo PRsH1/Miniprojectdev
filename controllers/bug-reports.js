@@ -10,6 +10,9 @@
  * PATCH  /api/bug-reports/:id
  * POST   /api/bug-reports/:id/update
  * DELETE /api/bug-reports/:id
+ *
+ * admin_note 공개 범위 (P1-18, Q9 결정): **관리자 내부 전용**이다. 제보자에게 가는 응답
+ * (POST 접수 결과, GET /mine, GET /mine/:id)에는 admin_note를 넣지 않는다. 제보자에게 보이는 답변은 cause·action_taken뿐이다.
  */
 
 const { getDb } = require('./_shared/db');
@@ -32,6 +35,19 @@ function respondReportNotFound(req, res) {
 const ALLOWED_SEVERITY = ['low', 'normal', 'high', 'critical'];
 const ALLOWED_STATUS = ['open', 'in-progress', 'resolved', 'closed'];
 const STATUS_LABEL = { open: '접수됨', 'in-progress': '처리중', resolved: '해결됨', closed: '종료됨' };
+
+// 제보자에게 내려 보내는 필드 화이트리스트 — admin_note(내부 메모)는 SELECT에서도 빼고, 여기서 한 번 더 걸러 낸다
+const REPORTER_FIELDS = [
+  'id', 'title', 'description', 'severity', 'status', 'cause', 'action_taken',
+  'page_url', 'created_at', 'updated_at', 'reporter_name', 'reporter_email', 'reporter_user_id',
+];
+function toReporterView(row) {
+  const out = {};
+  REPORTER_FIELDS.forEach((key) => {
+    if (row && Object.prototype.hasOwnProperty.call(row, key)) out[key] = row[key];
+  });
+  return out;
+}
 
 async function triggerNewNotification(channel, notification, unreadCount) {
   try {
@@ -113,7 +129,7 @@ module.exports = async function handler(req, res) {
         ${reporter.id}, ${pageUrl}, ${severity}
       )
       RETURNING id, title, description, reporter_name, reporter_email, reporter_user_id,
-                page_url, severity, status, admin_note, created_at, updated_at
+                page_url, severity, status, created_at, updated_at
     `;
     const report = inserted[0];
 
@@ -149,7 +165,7 @@ module.exports = async function handler(req, res) {
       metadata: { severity, pageUrl },
     });
 
-    return res.status(201).json({ report });
+    return res.status(201).json({ report: toReporterView(report) });
   }
 
   if (req.method === 'GET' && rawPath === '/api/bug-reports') {
@@ -193,13 +209,13 @@ module.exports = async function handler(req, res) {
     if (!decoded) return;
 
     const reports = await sql`
-      SELECT id, title, description, severity, status, cause, action_taken, admin_note,
+      SELECT id, title, description, severity, status, cause, action_taken,
              page_url, created_at, updated_at
       FROM bug_reports
       WHERE reporter_user_id = ${decoded.sub}
       ORDER BY created_at DESC, id DESC
     `;
-    return res.status(200).json({ reports });
+    return res.status(200).json({ reports: reports.map(toReporterView) });
   }
 
   const myReportMatch = rawPath.match(/^\/api\/bug-reports\/mine\/(\d+)$/);
@@ -219,7 +235,7 @@ module.exports = async function handler(req, res) {
     const id = parseInt(myReportMatch[1], 10);
     const rows = await sql`
       SELECT id, title, description, severity, status, cause, action_taken,
-             admin_note, page_url, created_at, updated_at
+             page_url, created_at, updated_at
       FROM bug_reports
       WHERE id = ${id} AND reporter_user_id = ${decoded.sub}
       LIMIT 1
@@ -232,7 +248,7 @@ module.exports = async function handler(req, res) {
         action: '내 제보 목록을 새로고침한 뒤 다시 시도하세요.',
       });
     }
-    return res.status(200).json({ report: rows[0] });
+    return res.status(200).json({ report: toReporterView(rows[0]) });
   }
 
   if (req.method === 'GET' && reportMatch) {

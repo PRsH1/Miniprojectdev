@@ -32,7 +32,7 @@ Node.js 기반의 서버리스 애플리케이션으로 Vercel에 배포되어 �
 | 인증 | JWT 하이브리드 세션, SAML 2.0 (`samlify`), ECDSA (`jsrsasign`) |
 | 실시간 통신 | Pusher (웹훅 브로드캐스트 + 알림 실시간 푸시) |
 | 이메일 | Nodemailer |
-| 테스트 | `node --test` 단위 테스트 16개 파일 (`npm test`, DB 없이 목으로 실행) |
+| 테스트 | `node --test` 단위 테스트 23개 파일 (`npm test`, DB 없이 목으로 실행) |
 | CI | GitHub Actions — push·PR마다 `npm test` → `npm run security:secrets` + gitleaks 전체 히스토리 스캔 |
 | 보안 헤더 | `vercel.json`에서 전 경로 `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` |
 
@@ -617,6 +617,56 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `templateDeletetool.html` | 템플릿 일괄 삭제 |
 | `saml-guide.html` | SAML 연동 가이드 |
 | `error-codes.html` | OPA2 에러 코드 모음 (OPA2 엔드포인트별 에러 코드·Enum·메시지 검색, `?q=` 검색·`#code-<코드>` 딥링크) |
+
+---
+
+## 2026-11-03 Update
+
+### 도구 사용성 개선 (Phase 1 C2~C7) + 외부 스크립트 고정 (P0b-07·08)
+
+DB 마이그레이션은 없다(새 알림 타입 `password_reset_request`만 추가). 세부 규칙은 `rules/` 문서가 정본이다.
+
+#### 공개 API 도구 (C2)
+- **문서 목록 조회**: [표 | JSON] 탭, 50건씩 [이전]/[다음], 현재 페이지 CSV(Excel 한글 호환), 행별 [정보]/[다운로드] 링크. 상태 라벨 001 임시 저장·002 문서 생성·003 완료
+- **문서·템플릿 일괄 삭제**: 미리보기·대상 CSV → 삭제 건수를 직접 입력해야 실행 → [중지] → 결과 CSV(성공/실패/미실행·에러 코드). 기본 종료일 UTC 버그 수정
+- **웹훅 모니터**: 회사별 최근 200건 브라우저 보관, Company ID 기억·자동 채움, 수신 URL 복사, eformsign 설정 경로 안내(대표 관리자 → 커넥트 → Webhook 관리)
+- CSV 공유 모듈 `assets/js/csv-export.js`(BOM·수식 주입 방지)
+
+#### OpenAPITester (C3)
+- 토큰 발급 후 환경·API Key·Member ID가 바뀌면 "다른 설정으로 발급됨" + Send 확인창. 필수 path/query·토큰·플레이스홀더·Body JSON 오류는 전송 전 차단
+- API별 편집 내용 보존(새로고침 포함, 인증 값 제외), 저장 항목 [덮어쓰기]/[새로 저장], 요청 [취소]·60초 타임아웃, Ctrl+Enter 전송·Esc 닫기, Python·cURL 스니펫 이스케이프 수정
+- Prod 공개판은 멤버·그룹 API 숨김
+
+#### AutoTest (C4)
+- 처음 열면 선택 없음, 실행 전 확인 모달(환경·회사·쓰기 작업 목록·운영 경고), 실행 중 설정 잠금
+- [중지]: 남은 step은 건너뛰고 이미 만든 자원은 정리 step으로 삭제(진행 중인 생성 요청은 완료를 기다림). step 60초 타임아웃, 설정 누락 OPA는 SKIP
+- 결과 필터(FAIL/CHECK/SKIP)·요청/응답/cURL 복사(토큰은 자리표시자)·실패 OPA만 재실행·이력 재실행
+
+#### 계정·관리·알림 (C5)
+- 임시 비밀번호 변경 후 세션 재발급 → 원래 가려던 페이지로 바로 이동. 모든 페이지에 [비밀번호 변경]
+- 가입 승인 대기 중인 아이디가 신청 때 비밀번호로 로그인하면 "승인 대기" 안내(비밀번호를 모르면 구별 불가). 로그인 실패 후 아이디 유지, 회원가입 링크
+- 비밀번호 재설정 요청이 admin 알림으로 전달(응답 시간은 계정 존재와 무관하게 0.5초 이상). 임시 비밀번호 모달 제목·전달 문구 복사, 사용자 검색
+- 일반 사용자도 허브 알림 벨, 알림 클릭 시 해당 버그 리포트 상세로 이동. `admin_note`는 관리자 내부 전용
+- 세션 만료 시 입력 중인 내용이 있으면 새로고침 대신 배너 + [새 탭에서 로그인]
+
+#### MemberV2·일괄 다운로드 (C6)
+- 멤버 수정의 활성 상태 기본값 "변경 안 함"(비활성 멤버 재활성화 방지), 그룹 수정은 입력한 필드만, 엑셀 일괄 삭제 확인
+- 엑셀 일괄 처리 큐(동시 3건·진행률·중지·실패 재시도·결과 엑셀, 비밀번호 `***`)
+- 문서 일괄 다운로드 [중지]·결과 CSV·실패 재시도, 실패가 있으면 경고 표시. 401 무한 반복 수정
+
+#### 허브·기타 (C7, F-1~F-5)
+- 허브 카드는 같은 탭 이동(Ctrl/가운데 클릭은 새 탭), 키워드 검색·`/` 단축키, SAML 연동 가이드 카드
+- templatecopy 필수값 검증·북마클릿 비활성, idp-test 새 탭 제출·입력 누락 시 HTML 안내 페이지
+- SMTP 테스트 실패 시 한글 사유 + 마스킹된 SMTP 로그(`logs` 필드)
+- 휴대폰 화면: 허브·Admin(상단 가로 탭)·상단 바(아이콘)·OpenAPITester 헤더·MemberV2
+
+#### 외부 스크립트 (P0b-07·08)
+- 외부 `<script>`/`<link>`를 정확한 버전 + SRI로 고정(jQuery 3.7.1, Font Awesome 6.5.1, Pusher 8.0.2, axios 1.21.0 등 — `rules/tech-stack.md` 표). Tailwind Play CDN 제거
+- 임베딩 페이지 콘솔 로그의 토큰 값 가림, jsrsasign 10.5.25 통일
+
+#### 운영 메모
+- IP 단위 rate limit(WAF)은 계속 보류 — 승인 대기 로그인 시도 제한도 WAF로 보완할 대상
+- 남은 375px 넘침(DocumentDownload·DocumentInfo·AutoTest 헤더·레거시 임베딩)과 SheetJS 0.18.5 CVE는 후속
 
 ---
 

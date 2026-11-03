@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>eformsign 문서 전송 & Access Token 발급</title>
+  <title>KOGAS 문서 전송 & Access Token 발급</title>
   <style>
     /* 기본 레이아웃 */
     body { font-family: Arial, sans-serif; margin: 2rem; background: #f9f9f9; }
@@ -35,7 +35,7 @@
 </head>
 <body>
 
-  <h1>eformsign 문서 전송</h1>
+  <h1>eformsign 문서 전송 (KOGAS 전용 · eform.kogas.or.kr)</h1>
 
   <!-- Access Token 발급 섹션 -->
   <fieldset>
@@ -204,7 +204,7 @@
   </template>
 
   <!-- JS 라이브러리 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js" integrity="sha384-CYM1EjcB6PBH9xEVtC9Mbegj0ZIphHj14fUBspgRcPBqZeGsjqyu242Sh9P4BNPa" crossorigin="anonymous"></script>
   <script src="/assets/js/token-issuer.js"></script>
   <script>
     // 환경별 엔드포인트 맵
@@ -585,7 +585,7 @@ window.CREDENTIAL_CONFIG = {
 };
 </script>
 <script src="/assets/js/credential-panel.js"></script>
-<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+<script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

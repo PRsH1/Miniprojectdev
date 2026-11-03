@@ -37,6 +37,15 @@
       border:1px solid #1570ef; margin-top:16px;
     }
     .btn:hover{ filter:brightness(.95) }
+    .tools{ display:flex; gap:8px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+    .btn-tool{
+      padding:8px 14px; border-radius:10px; border:1px solid var(--border); background:#fff;
+      cursor:pointer; font-size:13px; color:var(--text);
+    }
+    .btn-tool:hover{ background:#f1f5f9; }
+    .btn-tool:disabled{ opacity:.6; cursor:default; }
+    .copy-msg{ font-size:12px; color:var(--success); min-height:1.2em; margin:8px 0 0; }
+    .hint{ font-size:12px; color:var(--muted); margin:6px 0 0; line-height:1.6; }
     .spinner{
       width:32px; height:32px; border:3px solid #e5e7eb; border-top-color:var(--brand);
       border-radius:50%; animation:spin .7s linear infinite; margin:0 auto 16px;
@@ -52,63 +61,122 @@
 
   <script>
     const id = new URLSearchParams(location.search).get('id');
+    const card = document.getElementById('statusCard');
+
+    // 서버·URL 값은 textContent로만 넣는다(XSS 방지)
+    function el(tag, attrs, text) {
+      const node = document.createElement(tag);
+      Object.entries(attrs || {}).forEach(([k, v]) => {
+        if (k === 'style') node.style.cssText = v; else node.setAttribute(k, v);
+      });
+      if (text != null) node.textContent = text;
+      return node;
+    }
+
+    function render(nodes) {
+      card.replaceChildren(...nodes);
+    }
 
     function renderError(msg) {
-      document.getElementById('statusCard').innerHTML = `
-        <div class="icon">❌</div>
-        <h1>오류</h1>
-        <p class="sub">${msg}</p>
-        <a href="/auth/login.html" class="btn">로그인 페이지로</a>
-      `;
+      render([
+        el('div', { class: 'icon' }, '❌'),
+        el('h1', null, '오류'),
+        el('p', { class: 'sub' }, msg),
+        el('a', { href: '/auth/login.html', class: 'btn' }, '로그인 페이지로'),
+      ]);
+    }
+
+    function lines(text) {
+      const p = el('p', { class: 'sub' });
+      text.split('\n').forEach((line, i) => {
+        if (i > 0) p.appendChild(document.createElement('br'));
+        p.appendChild(document.createTextNode(line));
+      });
+      return p;
+    }
+
+    // [상태 새로고침] · [URL 복사] — 자동 폴링은 하지 않는다(Neon idle suspend 유지, P1-14)
+    function toolbar(checkedAt) {
+      const wrap = el('div', { class: 'tools' });
+      const refresh = el('button', { type: 'button', class: 'btn-tool', id: 'btnRefresh' }, '↻ 상태 새로고침');
+      refresh.addEventListener('click', () => load(true));
+      const copy = el('button', { type: 'button', class: 'btn-tool', id: 'btnCopyUrl' }, '🔗 URL 복사');
+      const copyMsg = el('p', { class: 'copy-msg', id: 'copyMsg' }, '');
+      copy.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(location.href);
+          copyMsg.textContent = '복사했습니다. 북마크해 두면 언제든 다시 확인할 수 있습니다.';
+        } catch (e) {
+          copyMsg.textContent = '복사에 실패했습니다. 주소창의 URL을 직접 복사하세요.';
+        }
+      });
+      wrap.append(refresh, copy);
+      const frag = [wrap, copyMsg];
+      if (checkedAt) frag.push(el('p', { class: 'date' }, '마지막 확인: ' + checkedAt.toLocaleTimeString('ko-KR')));
+      return frag;
+    }
+
+    function renderStatus(data) {
+      const createdAt = data.created_at ? new Date(data.created_at).toLocaleString('ko-KR') : '';
+      const checkedAt = new Date();
+      if (data.status === 'pending') {
+        render([
+          el('div', { class: 'icon' }, '⏳'),
+          el('h1', null, '검토 중'),
+          lines('관리자 검토 중입니다.\n승인 후 로그인 가능합니다.'),
+          el('p', { class: 'date' }, '요청 일시: ' + createdAt),
+          ...toolbar(checkedAt),
+          el('p', { class: 'hint' }, '이 페이지를 북마크해 두고 나중에 [상태 새로고침]으로 확인하세요.'),
+        ]);
+      } else if (data.status === 'approved') {
+        render([
+          el('div', { class: 'icon' }, '✅'),
+          el('h1', null, '가입 승인됨'),
+          lines('가입이 승인되었습니다.\n아래 버튼을 눌러 로그인하세요.'),
+          el('a', { href: '/auth/login.html', class: 'btn' }, '로그인하기'),
+        ]);
+      } else if (data.status === 'rejected') {
+        const nodes = [
+          el('div', { class: 'icon' }, '🚫'),
+          el('h1', null, '가입 거절됨'),
+          el('p', { class: 'sub' }, '가입 요청이 거절되었습니다.'),
+        ];
+        if (data.reject_reason) nodes.push(el('div', { class: 'reason-box' }, '사유: ' + data.reject_reason));
+        nodes.push(el('a', {
+          href: '/auth/signup.html', class: 'btn',
+          style: 'background:linear-gradient(90deg,#64748b,#475569);border-color:#334155',
+        }, '다시 요청하기'));
+        render(nodes);
+      } else {
+        renderError('유효하지 않은 요청입니다.');
+      }
+    }
+
+    function load(isRefresh) {
+      const btn = document.getElementById('btnRefresh');
+      if (btn) { btn.disabled = true; btn.textContent = '확인 중...'; }
+      return fetch('/api/signup-status?id=' + encodeURIComponent(id))
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) { renderError('유효하지 않은 요청입니다.'); return; }
+          renderStatus(data);
+        })
+        .catch(() => {
+          if (isRefresh && btn) {
+            btn.disabled = false;
+            btn.textContent = '↻ 상태 새로고침';
+            const msg = document.getElementById('copyMsg');
+            if (msg) msg.textContent = '조회 중 오류가 발생했습니다. 잠시 후 다시 시도하세요.';
+            return;
+          }
+          renderError('조회 중 오류가 발생했습니다.');
+        });
     }
 
     if (!id) {
       renderError('유효하지 않은 접근입니다.');
     } else {
-      fetch('/api/signup-status?id=' + encodeURIComponent(id))
-        .then(r => r.json())
-        .then(data => {
-          if (data.error) { renderError('유효하지 않은 요청입니다.'); return; }
-
-          const createdAt = data.created_at
-            ? new Date(data.created_at).toLocaleString('ko-KR')
-            : '';
-
-          let html = '';
-          if (data.status === 'pending') {
-            html = `
-              <div class="icon">⏳</div>
-              <h1>검토 중</h1>
-              <p class="sub">관리자 검토 중입니다.<br>승인 후 로그인 가능합니다.</p>
-              <p class="date">요청 일시: ${createdAt}</p>
-            `;
-          } else if (data.status === 'approved') {
-            html = `
-              <div class="icon">✅</div>
-              <h1>가입 승인됨</h1>
-              <p class="sub">가입이 승인되었습니다.<br>아래 버튼을 눌러 로그인하세요.</p>
-              <a href="/auth/login.html" class="btn">로그인하기</a>
-            `;
-          } else if (data.status === 'rejected') {
-            html = `
-              <div class="icon">🚫</div>
-              <h1>가입 거절됨</h1>
-              <p class="sub">가입 요청이 거절되었습니다.</p>
-              ${data.reject_reason ? `<div class="reason-box">사유: ${escHtml(data.reject_reason)}</div>` : ''}
-              <a href="/auth/signup.html" class="btn" style="background:linear-gradient(90deg,#64748b,#475569);border-color:#334155">다시 요청하기</a>
-            `;
-          } else {
-            renderError('유효하지 않은 요청입니다.');
-            return;
-          }
-
-          document.getElementById('statusCard').innerHTML = html;
-        })
-        .catch(() => renderError('조회 중 오류가 발생했습니다.'));
-    }
-
-    function escHtml(str) {
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      load(false);
     }
   </script>
 </body>

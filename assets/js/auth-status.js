@@ -9,6 +9,12 @@
  *
  * 인라인 모드 (사용 안 함 — 이전 방식):
  *   <script>window.AUTH_STATUS_INLINE = true;</script>
+ *
+ * 세션 만료 시 입력 보존 (P1-21):
+ *   페이지가 window.AUTH_STATUS_HAS_UNSAVED = function () { return 미저장 입력 있음; } 를 등록하면
+ *   세션 만료 때 자동 새로고침 대신 상단 고정 배너([새 탭에서 로그인] [새로고침])를 띄운다.
+ *   새 탭에서 로그인하고 돌아오면(focus/visibilitychange 재확인) 배너가 사라지고 이어서 저장할 수 있다(쿠키 공유).
+ *   훅이 없거나 false면 기존처럼 안내 후 새로고침한다.
  */
 (function () {
     var CORNER = window.AUTH_STATUS_CORNER === true;
@@ -170,7 +176,39 @@
         '  background: none; border: none; cursor: pointer; padding: 0;',
         '}',
         '#asbNotifPanel .anp-del-all:hover { color: #ef4444; }',
+        /* 아이콘(좁은 화면 전용) — 기본은 숨기고 라벨을 보인다 */
+        '#authStatusBar .asb-ico { display: none; width: 15px; height: 15px; flex-shrink: 0; }',
     ].join('\n');
+
+    // 좁은 화면: 상단 바 높이 40px는 그대로 두고(MemberV2 --auth-bar-h 등 의존)
+    // 브랜드·버튼 라벨을 아이콘으로 줄이고 사용자명은 말줄임 → 375px에서 버튼이 잘리지 않는다 (F-3)
+    // 코너 모드(우측 하단 패널)도 같은 아이콘 축약을 쓴다 — 라벨 그대로면 375px에서 왼쪽이 화면 밖으로 나간다
+    var compactCss = [
+        '@media (max-width: 720px) {',
+        CORNER ? '  #authStatusBar { gap: 6px; max-width: calc(100vw - 32px); }' : '  #authStatusBar { padding: 0 10px; gap: 6px; }',
+        '  #authStatusBar .asb-lbl { display: none; }',
+        '  #authStatusBar .asb-ico { display: block; }',
+        '  #authStatusBar .asb-brand { display: inline-flex; align-items: center; margin-right: 0; padding: 4px; }',
+        '  #authStatusBar .asb-btn.asb-icon-btn { padding: 6px 8px; }',
+        '  #authStatusBar .asb-username { min-width: 0; max-width: 28vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }',
+        '  #authStatusBar .asb-role { flex-shrink: 0; }',
+        '  #asbNotifPanel { right: 8px; width: calc(100vw - 16px); max-width: 320px; }',
+        '}',
+    ].join('\n');
+
+    // 버튼 아이콘 (SVG — Font Awesome을 로드하지 않는 페이지에서도 동작, 장식용이라 aria-hidden)
+    function svgIcon(paths) {
+        return '<svg class="asb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+            'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + paths + '</svg>';
+    }
+    var ICON = {
+        home: svgIcon('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>'),
+        admin: svgIcon('<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'),
+        key: svgIcon('<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L21 2"/><path d="M16 7l3 3"/><path d="M18 5l2 2"/>'),
+        logout: svgIcon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>'),
+    };
+    var BRAND_HTML = '<a href="/" class="asb-brand" title="eformsign Tools Hub" aria-label="eformsign Tools Hub">' +
+        ICON.home + '<span class="asb-lbl">eformsign Tools Hub</span></a>';
 
     // 상단 바 모드에서만 body 여백 주입 (INLINE·CORNER는 기존 레이아웃 유지)
     var paddingCss = (!INLINE && !CORNER)
@@ -178,7 +216,7 @@
         : '';
 
     var styleEl = document.createElement('style');
-    styleEl.textContent = barCss + '\n' + commonCss + '\n' + paddingCss;
+    styleEl.textContent = barCss + '\n' + commonCss + '\n' + compactCss + '\n' + paddingCss;
     document.head.appendChild(styleEl);
 
     // ─── 바 DOM 삽입 ─────────────────────────────────────────
@@ -214,18 +252,26 @@
                     '<a href="/auth/signup.html" class="asb-btn">회원가입</a>';
                 return;
             }
-            // 기본 상단 바 모드 (기존 동작 유지)
+            // 기본 상단 바 모드 — 로그인 후 현재 페이지로 돌아오도록 next 전달(코너 모드와 동일)
+            var barNext = '?next=' + encodeURIComponent(window.location.pathname + window.location.search + window.location.hash);
             el.innerHTML =
-                '<a href="/" class="asb-brand">eformsign Tools Hub</a>' +
+                BRAND_HTML +
                 '<span class="asb-spacer"></span>' +
-                '<a href="/auth/login.html" class="asb-btn primary">로그인</a>' +
+                '<a href="/auth/login.html' + escHtml(barNext) + '" class="asb-btn primary">로그인</a>' +
                 '<a href="/auth/signup.html" class="asb-btn">회원가입</a>';
             return;
         }
 
         var adminBtn = user.role === 'admin'
-            ? '<a href="/app/admin" class="asb-btn">관리자 콘솔</a>'
+            ? '<a href="/app/admin" class="asb-btn asb-icon-btn" title="관리자 콘솔" aria-label="관리자 콘솔">' +
+              ICON.admin + '<span class="asb-lbl">관리자 콘솔</span></a>'
             : '';
+
+        // 자발적 비밀번호 변경 (P1-13) — 변경 후 지금 페이지로 돌아온다. 현재 비밀번호 확인은 변경 페이지가 요구한다
+        var pwHref = '/auth/change-password.html?next=' +
+            encodeURIComponent(window.location.pathname + window.location.search);
+        var pwBtn = '<a href="' + escHtml(pwHref) + '" class="asb-btn asb-icon-btn" id="asbBtnChangePw" title="비밀번호 변경" aria-label="비밀번호 변경">' +
+            ICON.key + '<span class="asb-lbl">' + (CORNER ? '비밀번호' : '비밀번호 변경') + '</span></a>';
 
         // 벨 아이콘 — 상단 바 모드 로그인 사용자 공통
         var bellHtml = '';
@@ -239,17 +285,19 @@
         }
 
         // 코너 모드: brand 없이 유저 정보만
-        var brandHtml = CORNER ? '' : '<a href="/" class="asb-brand">eformsign Tools Hub</a>';
+        var brandHtml = CORNER ? '' : BRAND_HTML;
         var spacerHtml = CORNER ? '' : '<span class="asb-spacer"></span>';
 
         el.innerHTML =
             brandHtml +
             spacerHtml +
-            '<span class="asb-username">' + escHtml(user.username) + '</span>' +
+            '<span class="asb-username" title="' + escHtml(user.username) + '">' + escHtml(user.username) + '</span>' +
             '<span class="asb-role ' + escHtml(user.role) + '">' + escHtml(user.role) + '</span>' +
             bellHtml +
             adminBtn +
-            '<button class="asb-btn danger" id="asbBtnLogout">로그아웃</button>';
+            pwBtn +
+            '<button class="asb-btn danger asb-icon-btn" id="asbBtnLogout" title="로그아웃" aria-label="로그아웃">' +
+            ICON.logout + '<span class="asb-lbl">로그아웃</span></button>';
 
         document.getElementById('asbBtnLogout').addEventListener('click', function () {
             fetch('/api/logout', { method: 'POST' })
@@ -292,12 +340,19 @@
         return (d.getMonth() + 1) + '월 ' + d.getDate() + '일';
     }
 
-    function getNotificationDest(type) {
+    // 알림 이동 경로 — notification-bell.js의 _notificationDest와 같은 규칙 (수정 시 함께 변경)
+    // 버그 리포트 알림은 reference_id(리포트 id)로 해당 상세를 바로 연다 (P1-18)
+    function getNotificationDest(n) {
+        var type = n && n.type;
+        var ref = n && n.reference_id != null ? String(n.reference_id) : '';
+        var reportId = /^[0-9]{1,10}$/.test(ref) ? ref : '';
         if (type === 'signup_request') return '/app/admin?tab=signup-requests';
-        if (type === 'bug_report') return '/app/admin?tab=bug-reports';
-        if (type === 'bug_report_status') return '/community/bug-report.html#my-reports';
-        if (type === 'bug_report_reply') return '/community/bug-report.html#my-reports';
-        return '/app/admin';
+        if (type === 'bug_report') return '/app/admin?tab=bug-reports' + (reportId ? '&report=' + reportId : '');
+        if (type === 'password_reset_request') return '/app/admin?tab=users';
+        if (type === 'bug_report_status' || type === 'bug_report_reply') {
+            return '/community/bug-report.html#my-reports' + (reportId ? '/' + reportId : '');
+        }
+        return authStatusCurrentUser && authStatusCurrentUser.role === 'admin' ? '/app/admin' : '/';
     }
 
     function updateNotifBadge(count) {
@@ -332,14 +387,134 @@
         toast.textContent = msg;
     }
 
+    // 페이지가 등록한 미저장 입력 훅 (P1-21 계약: 함수, 미저장 입력이 있으면 true)
+    function pageHasUnsaved() {
+        try {
+            return typeof window.AUTH_STATUS_HAS_UNSAVED === 'function' && window.AUTH_STATUS_HAS_UNSAVED() === true;
+        } catch (e) {
+            // 훅 오류로 입력을 잃지 않도록 "미저장 있음"으로 본다
+            return true;
+        }
+    }
+
+    var EXPIRED_BANNER_ID = 'asbSessionExpiredBanner';
+
+    function showSessionExpiredBanner() {
+        if (document.getElementById(EXPIRED_BANNER_ID)) return;
+        var banner = document.createElement('div');
+        banner.id = EXPIRED_BANNER_ID;
+        banner.setAttribute('role', 'alert');
+        banner.style.cssText = [
+            'position:fixed', 'left:0', 'right:0', 'top:' + ((!INLINE && !CORNER) ? '40px' : '0'),
+            'z-index:1000000', 'background:#fef3c7', 'color:#78350f', 'border-bottom:1px solid #f59e0b',
+            'box-shadow:0 4px 12px rgba(0,0,0,.12)', 'padding:10px 16px',
+            'display:flex', 'flex-wrap:wrap', 'align-items:center', 'gap:8px 12px',
+            'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif', 'font-size:13px',
+        ].join(';');
+
+        var text = document.createElement('span');
+        text.style.cssText = 'flex:1;min-width:220px;line-height:1.5';
+        var strong = document.createElement('strong');
+        strong.textContent = '세션이 만료되었습니다. ';
+        text.appendChild(strong);
+        text.appendChild(document.createTextNode(
+            '입력한 내용은 이 탭에 그대로 있습니다. 새 탭에서 다시 로그인한 뒤 이 탭으로 돌아오면 이어서 저장할 수 있습니다.'));
+
+        function makeBtn(label, primary) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = label;
+            b.style.cssText = [
+                'width:auto', 'padding:6px 14px', 'border-radius:8px', 'font-size:12px', 'font-weight:600',
+                'cursor:pointer', 'white-space:nowrap',
+                primary ? 'background:#b45309;color:#fff;border:1px solid #92400e'
+                        : 'background:#fff;color:#78350f;border:1px solid #f59e0b',
+            ].join(';');
+            return b;
+        }
+
+        var loginBtn = makeBtn('새 탭에서 로그인', true);
+        loginBtn.id = 'asbExpiredLoginBtn';
+        loginBtn.addEventListener('click', function () {
+            // 로그인을 마치면 "이 탭을 닫고 돌아가세요" 페이지로 이동한다(쿠키는 탭 간 공유)
+            window.open('/auth/login.html?next=' + encodeURIComponent('/auth/login-complete.html'), '_blank');
+        });
+
+        var reloadBtn = makeBtn('새로고침', false);
+        reloadBtn.id = 'asbExpiredReloadBtn';
+        reloadBtn.addEventListener('click', function () {
+            if (pageHasUnsaved() && !window.confirm('새로고침하면 입력한 내용이 사라집니다. 계속할까요?')) return;
+            window.location.reload();
+        });
+
+        banner.appendChild(text);
+        banner.appendChild(loginBtn);
+        banner.appendChild(reloadBtn);
+        document.body.appendChild(banner);
+    }
+
+    function hideSessionExpiredBanner() {
+        var banner = document.getElementById(EXPIRED_BANNER_ID);
+        if (banner) banner.remove();
+    }
+
     function handleAuthExpired() {
         if (authExpiredHandled) return;
         authExpiredHandled = true;
         stopNotificationFallbackPolling();
+        if (pageHasUnsaved()) {
+            // 입력 중인 내용이 있으면 새로고침하지 않고 배너로 안내 (P1-21)
+            showSessionExpiredBanner();
+            return;
+        }
         showAuthExpiredNotice();
         setTimeout(function () {
             window.location.reload();
         }, 1200);
+    }
+
+    // 새 탭에서 다시 로그인해 세션이 돌아온 경우 — 배너를 닫고 사용자 영역·알림을 다시 붙인다
+    function handleAuthRestored(user) {
+        // 만료 전과 다른 계정으로 다시 로그인했으면 바로 이어 붙이지 않고 확인을 받는다 (D-7)
+        // — 이 탭의 입력은 이전 계정으로 작업하던 것이라, 그대로 저장하면 다른 계정에 저장된다
+        var prev = authStatusCurrentUser && authStatusCurrentUser.username;
+        if (prev && user && user.username && user.username !== prev) {
+            showAccountChangedNotice(prev, user);
+            return;
+        }
+        authExpiredHandled = false;
+        hideSessionExpiredBanner();
+        render(user);
+    }
+
+    function showAccountChangedNotice(prevName, user) {
+        var banner = document.getElementById(EXPIRED_BANNER_ID);
+        if (!banner) { showSessionExpiredBanner(); banner = document.getElementById(EXPIRED_BANNER_ID); }
+        if (!banner) return;
+        var text = banner.querySelector('span');
+        if (text) {
+            text.textContent = '';
+            var strong = document.createElement('strong');
+            strong.textContent = '다른 계정으로 로그인되었습니다. ';
+            text.appendChild(strong);
+            text.appendChild(document.createTextNode(
+                '이 탭은 ' + prevName + ' 계정으로 작업하던 화면입니다. 지금 로그인한 계정은 ' + user.username +
+                '입니다. 계속하면 이후 저장은 ' + user.username + ' 계정으로 처리됩니다.'));
+        }
+        var oldCont = document.getElementById('asbAccountContinueBtn');
+        if (oldCont) oldCont.remove(); // 탭 복귀마다 최신 계정으로 다시 만든다
+        var cont = document.createElement('button');
+        cont.type = 'button';
+        cont.id = 'asbAccountContinueBtn';
+        cont.textContent = user.username + ' 계정으로 계속';
+        cont.style.cssText = 'width:auto;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;background:#fff;color:#78350f;border:1px solid #f59e0b';
+        cont.addEventListener('click', function () {
+            authExpiredHandled = false;
+            hideSessionExpiredBanner();
+            render(user);
+        });
+        var reloadBtn = document.getElementById('asbExpiredReloadBtn');
+        banner.insertBefore(cont, reloadBtn || null);
     }
 
     window.handleAuthExpired = handleAuthExpired;
@@ -398,6 +573,11 @@
                 } else {
                     fetchUnreadCount();
                 }
+                // 페이지가 목록을 직접 갱신할 수 있게 알린다 (예: Admin "새 항목 있음 · 새로고침" 배너, P1-18)
+                // detail에는 type·id·reference_id 등 서버 payload만 담는다 — 받는 쪽은 textContent로만 렌더링
+                try {
+                    document.dispatchEvent(new CustomEvent('auth-status:notification', { detail: data || {} }));
+                } catch (e) { /* CustomEvent 미지원 환경 무시 */ }
             });
             channel.bind('notification-read', function (data) {
                 updateNotifBadge(data && data.unread_count);
@@ -510,16 +690,16 @@
                 var isUnread = !n.is_read;
                 var itemClass = 'anp-item' + (isUnread ? ' unread' : '');
                 var dotClass = 'anp-dot' + (isUnread ? '' : ' read');
-                var dest = getNotificationDest(n.type);
+                var dest = getNotificationDest(n);
                 listHtml +=
-                    '<div class="' + itemClass + '" data-notif-id="' + n.id + '" data-dest="' + escHtml(dest) + '">' +
+                    '<div class="' + itemClass + '" data-notif-id="' + escHtml(n.id) + '" data-dest="' + escHtml(dest) + '">' +
                     '<div class="' + dotClass + '"></div>' +
                     '<div style="flex:1;min-width:0;">' +
                     '<div class="anp-title">' + escHtml(n.title) + '</div>' +
                     (n.body ? '<div class="anp-body">' + escHtml(n.body) + '</div>' : '') +
                     '<div class="anp-time">' + formatRelativeTime(n.created_at) + '</div>' +
                     '</div>' +
-                    '<button class="anp-del" data-del-id="' + n.id + '" title="알림 삭제">&#10005;</button>' +
+                    '<button class="anp-del" data-del-id="' + escHtml(n.id) + '" title="알림 삭제">&#10005;</button>' +
                     '</div>';
             }
             listHtml += '</div>';
@@ -561,6 +741,8 @@
         if (delAllBtnEl) {
             delAllBtnEl.addEventListener('click', function (e) {
                 e.stopPropagation();
+                // 되돌릴 수 없으므로 확인을 받는다 (P1-18)
+                if (!window.confirm('알림을 모두 삭제할까요? 삭제한 알림은 되돌릴 수 없습니다.')) return;
                 deleteNotifAll();
             });
         }
@@ -634,14 +816,35 @@
         return !!authStatusCurrentUser || !!document.getElementById('asbBtnLogout');
     }
 
+    // 탭 복귀 재확인 — visibilitychange와 focus가 연달아 와도 /api/me는 1번만 (P1-21)
+    // 진행 중인 요청은 같은 promise를 공유하고, 끝난 뒤 1초 안의 재요청은 건너뛴다
+    var recheckInFlight = null;
+    var recheckLastAt = 0;
+    var RECHECK_DEBOUNCE_MS = 1000;
+
     function recheckAuthOnReturn() {
-        if (authExpiredHandled || !authBarShowsLoggedIn()) return;
-        fetch('/api/me')
+        var waitingForRelogin = authExpiredHandled && !!document.getElementById(EXPIRED_BANNER_ID);
+        if (!waitingForRelogin && (authExpiredHandled || !authBarShowsLoggedIn())) return null;
+        if (recheckInFlight) return recheckInFlight;
+        if (Date.now() - recheckLastAt < RECHECK_DEBOUNCE_MS) return null;
+
+        recheckInFlight = fetch('/api/me')
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (data) {
-                if (data && data.authenticated === false && authBarShowsLoggedIn()) handleAuthExpired();
+                if (!data) return;
+                var isAuth = data.authenticated !== false && !!data.username;
+                if (waitingForRelogin) {
+                    if (isAuth) handleAuthRestored(data);
+                    return;
+                }
+                if (!isAuth && authBarShowsLoggedIn()) handleAuthExpired();
             })
-            .catch(function () {});
+            .catch(function () {})
+            .then(function () {
+                recheckLastAt = Date.now();
+                recheckInFlight = null;
+            });
+        return recheckInFlight;
     }
 
     // ─── /api/me 호출 ────────────────────────────────────────

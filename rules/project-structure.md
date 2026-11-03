@@ -11,10 +11,12 @@ ProjectImprove/
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙 (+ 확인된 과거 커밋·DUMMY 값 allowlist)
 ├── .github/workflows/ci.yml    # CI: push·PR마다 npm ci → npm test → security:secrets + gitleaks 전체 히스토리
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
-├── test/                       # node:test 단위 테스트 16개 (ip-whitelist, refresh-rotation, router-errors,
+├── test/                       # node:test 단위 테스트 23개 (ip-whitelist, refresh-rotation, router-errors,
 │                               #   require-role, page-file, saml-response, saml-xss, safe-next,
 │                               #   webhook-receiver, admin-scripts, change-password, credential-crypto,
-│                               #   cron-cleanup, input-limits, login-lockout, request-history)
+│                               #   cron-cleanup, input-limits, login-lockout, request-history,
+│                               #   account-flow, password-reset-notify, bug-report-privacy, send-smtp, csv-export,
+│                               #   idp-initiated-login, password-reset-timing)
 │                               #   + helpers/http-mocks.js (req/res/sql 목)
 │
 ├── api/
@@ -71,7 +73,7 @@ ProjectImprove/
 │   │   # ── SAML ────────────────────────────────────────────
 │   ├── auth.js                 # SAML 응답 생성 (SP개시: 요청 ACS/target으로 test·test2·testjp·dev·prod 대상 라우팅, AuthnRequest의 실제 ID를 InResponseTo로 사용(없으면 생략), createTemplateCallback로 email/name 속성 채움, SAML_DEBUG 게이트 로깅)
 │   ├── sso-login.js            # SAML SSO 로그인 폼 (target 쿼리로 대상 서버 강제 가능 — test·test2·testjp·dev·prod, debug=1 게이트 플래그 폼 전달)
-│   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우 (폼 target으로 test·dev 선택, createTemplateCallback + SAML_DEBUG 게이트 로깅)
+│   ├── idp-initiated-login.js  # IdP 개시 SAML 플로우 (폼 target으로 test·dev 선택, createTemplateCallback + SAML_DEBUG 게이트 로깅, 이메일·이름 누락 시 400 HTML 안내 + [이 탭 닫고 돌아가기]·보조 링크 /app/idptestauth)
 │   ├── metadata.js             # SAML 메타데이터 엔드포인트
 │   │
 │   │   # ── Admin API (/api/admin/*) ─────────────────────────
@@ -92,7 +94,8 @@ ProjectImprove/
 │   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/testjp/dev/prod 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, parseAuthnRequest(Redirect·POST 바인딩 SAMLRequest → ACS URL·요청 ID), loginResponseTemplate.context + createTemplateCallback로 AttributeStatement 생성, debugDeliver 진단 헬퍼)
 │
 ├── auth/
-│   └── login.html              # 인증 보호 페이지용 로그인 UI (+ signup/change-password/403 등)
+│   └── login.html              # 인증 보호 페이지용 로그인 UI (+ signup/signup-status/change-password/403,
+│                               #   login-complete = 세션 만료 배너의 '새 탭에서 로그인' 완료 안내)
 │
 ├── errors/                     # HTML 에러 페이지 (403/404/405/500)
 │
@@ -105,7 +108,7 @@ ProjectImprove/
 │   └── bug-report.html / developer-notes.html
 │
 ├── API(JS,HTML)/               # 개별 도구 HTML (문서 발송/조회/다운로드 등) + js/ css/
-│   └── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버 API 비공개, public)
+│   └── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버·그룹 API 비공개, public)
 │
 ├── Embedding/                  # 문서/템플릿 임베딩 도구 (HTML)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
@@ -123,6 +126,7 @@ ProjectImprove/
 │   ├── api-error.js            # API 에러 표시 공유 모듈 (IIFE → window.renderApiError·ApiError: 요약·에러 코드 링크·원본 토글·CORS 안내)
 │   ├── token-badge.js          # 토큰 상태 배지 공유 모듈 (IIFE → window.TokenBadge: 남은 시간·via proxy·만료됨+재발급, 1분 타이머)
 │   ├── result-panel.js         # 결과 패널 공유 모듈 (IIFE → window.ResultPanel·withLoading: JSON 표시·복사·다운로드·접기, 버튼 로딩, 문서 ID 링크)
+│   ├── csv-export.js           # CSV 내보내기 공유 모듈 (IIFE → window.CsvExport: UTF-8 BOM·수식 주입 방지·epoch→날짜 — listdocuments·일괄 삭제 2종)
 │   ├── OpenAPIAutoTest.js      # OPA 자동 테스트 전체 로직 (단일 파일)
 │   ├── member/                 # MemberV2 분할 모듈 (로드 순서 중요)
 │   │   ├── api.js              #   API 호출, 엑셀 처리 (전역 함수)

@@ -5,20 +5,45 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>eformsign 문서 일괄 다운로드 도구 (v2.7)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.21.0/dist/axios.min.js" integrity="sha384-p5EwRuz37ylAY9QrjGGIs9ngKVaIwppUFSourks9EIRp1CzoIDWoQkXrHxaAUhEB" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js" integrity="sha384-CYM1EjcB6PBH9xEVtC9Mbegj0ZIphHj14fUBspgRcPBqZeGsjqyu242Sh9P4BNPa" crossorigin="anonymous"></script>
     <script src="/assets/js/token-issuer.js"></script>
     <script src="/assets/js/token-badge.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" integrity="sha384-PlRSzpewlarQuj5alIadXwjNUX+2eNMKwr0f07ShWYLy8B6TjEbm7ZlcN/ScSbwy" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g" crossorigin="anonymous">
     
     <style>
         #logConsole::-webkit-scrollbar { width: 8px; }
         #logConsole::-webkit-scrollbar-track { background: #1f2937; }
         #logConsole::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+
+        /* ─── P1-17: 중지·결과·인라인 안내 (Tailwind 유틸리티에 의존하지 않는 자체 스타일) ─── */
+        [hidden] { display: none !important; }
+        .mdl-notice { margin: 0 0 24px; padding: 12px 16px; border-radius: 8px; border: 1px solid #bfdbfe; border-left-width: 4px; background: #eff6ff; color: #1e3a8a; font-size: 14px; line-height: 1.6; white-space: pre-line; }
+        .mdl-notice.is-error { border-color: #fecaca; border-left-color: #dc2626; background: #fef2f2; color: #7f1d1d; }
+        .mdl-notice.is-warn  { border-color: #fde68a; border-left-color: #d97706; background: #fffbeb; color: #78350f; }
+        .mdl-notice.is-ok    { border-color: #bbf7d0; border-left-color: #16a34a; background: #f0fdf4; color: #14532d; }
+        .mdl-progress-label { display: inline-flex; align-items: center; font-size: 14px; font-weight: 700; color: #1d4ed8; }
+        .mdl-progress-bar { height: 20px; border-radius: 9999px; background: linear-gradient(90deg, #3b82f6, #9333ea); transition: width .3s; }
+        .mdl-progress.is-warn  .mdl-progress-label { color: #b45309; }
+        .mdl-progress.is-warn  .mdl-progress-bar { background: #f59e0b; }
+        .mdl-progress.is-error .mdl-progress-label { color: #b91c1c; }
+        .mdl-progress.is-error .mdl-progress-bar { background: #ef4444; }
+        .mdl-progress.is-ok    .mdl-progress-label { color: #15803d; }
+        .mdl-progress.is-ok    .mdl-progress-bar { background: #22c55e; }
+        .mdl-summary { margin-top: 10px; padding: 10px 12px; border-radius: 6px; background: #f9fafb; border: 1px solid #e5e7eb; font-size: 13px; line-height: 1.6; color: #374151; white-space: pre-line; word-break: break-all; }
+        .mdl-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .mdl-actions:not(:has(button:not([hidden]))) { display: none; }
+        .mdl-btn { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #374151; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .mdl-btn:hover:not(:disabled) { background: #f3f4f6; }
+        .mdl-btn:disabled { opacity: .55; cursor: not-allowed; }
+        .mdl-btn-stop { border-color: #fca5a5; color: #b91c1c; }
+        .mdl-btn-stop:hover:not(:disabled) { background: #fef2f2; }
     </style>
+    <!-- P0b-07: Tailwind Play CDN(cdn.tailwindcss.com) 대체 — 이 페이지가 쓰는 유틸리티만 Tailwind v3.4.17로 미리 생성한 CSS(preflight 포함).
+         클래스를 새로 쓰면 아래 CSS에 그 규칙을 직접 추가해야 한다(런타임 생성 없음). -->
+    <style id="tw-static">*,:after,:before{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgba(59,130,246,.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/*! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com*/*,:after,:before{box-sizing:border-box;border:0 solid #e5e7eb}:after,:before{--tw-content:""}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;-o-tab-size:4;tab-size:4;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0}fieldset,legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::-moz-placeholder,textarea::-moz-placeholder{opacity:1;color:#9ca3af}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.visible{visibility:visible}.fixed{position:fixed}.absolute{position:absolute}.relative{position:relative}.left-0{left:0}.top-0{top:0}.col-span-2{grid-column:span 2/span 2}.mx-1{margin-left:.25rem;margin-right:.25rem}.mx-auto{margin-left:auto;margin-right:auto}.mb-1{margin-bottom:.25rem}.mb-2{margin-bottom:.5rem}.mb-3{margin-bottom:.75rem}.mb-4{margin-bottom:1rem}.mb-6{margin-bottom:1.5rem}.mb-8{margin-bottom:2rem}.ml-2{margin-left:.5rem}.ml-7{margin-left:1.75rem}.ml-auto{margin-left:auto}.mr-1{margin-right:.25rem}.mr-2{margin-right:.5rem}.mr-3{margin-right:.75rem}.mt-2{margin-top:.5rem}.mt-3{margin-top:.75rem}.block{display:block}.flex{display:flex}.inline-flex{display:inline-flex}.table{display:table}.grid{display:grid}.hidden{display:none}.h-5{height:1.25rem}.h-64{height:16rem}.h-8{height:2rem}.h-full{height:100%}.w-1{width:.25rem}.w-5{width:1.25rem}.w-8{width:2rem}.w-full{width:100%}.max-w-5xl{max-width:64rem}.flex-1{flex:1 1 0%}.flex-shrink{flex-shrink:1}.transform{transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.cursor-not-allowed{cursor:not-allowed}.cursor-pointer{cursor:pointer}.list-inside{list-style-position:inside}.list-disc{list-style-type:disc}.grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-center{align-items:center}.justify-end{justify-content:flex-end}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-3{gap:.75rem}.gap-6{gap:1.5rem}.gap-8{gap:2rem}.space-x-2>:not([hidden])~:not([hidden]){--tw-space-x-reverse:0;margin-right:calc(.5rem*var(--tw-space-x-reverse));margin-left:calc(.5rem*(1 - var(--tw-space-x-reverse)))}.space-x-3>:not([hidden])~:not([hidden]){--tw-space-x-reverse:0;margin-right:calc(.75rem*var(--tw-space-x-reverse));margin-left:calc(.75rem*(1 - var(--tw-space-x-reverse)))}.space-x-4>:not([hidden])~:not([hidden]){--tw-space-x-reverse:0;margin-right:calc(1rem*var(--tw-space-x-reverse));margin-left:calc(1rem*(1 - var(--tw-space-x-reverse)))}.space-x-6>:not([hidden])~:not([hidden]){--tw-space-x-reverse:0;margin-right:calc(1.5rem*var(--tw-space-x-reverse));margin-left:calc(1.5rem*(1 - var(--tw-space-x-reverse)))}.space-y-1>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.25rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.25rem*var(--tw-space-y-reverse))}.space-y-3>:not([hidden])~:not([hidden]){--tw-space-y-reverse:0;margin-top:calc(.75rem*(1 - var(--tw-space-y-reverse)));margin-bottom:calc(.75rem*var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.overflow-y-auto{overflow-y:auto}.rounded{border-radius:.25rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:.5rem}.border{border-width:1px}.border-b{border-bottom-width:1px}.border-l-4{border-left-width:4px}.border-t{border-top-width:1px}.border-blue-500{--tw-border-opacity:1;border-color:rgb(59 130 246/var(--tw-border-opacity,1))}.border-gray-200{--tw-border-opacity:1;border-color:rgb(229 231 235/var(--tw-border-opacity,1))}.border-gray-700{--tw-border-opacity:1;border-color:rgb(55 65 81/var(--tw-border-opacity,1))}.border-green-200{--tw-border-opacity:1;border-color:rgb(187 247 208/var(--tw-border-opacity,1))}.bg-blue-100{--tw-bg-opacity:1;background-color:rgb(219 234 254/var(--tw-bg-opacity,1))}.bg-blue-50{--tw-bg-opacity:1;background-color:rgb(239 246 255/var(--tw-bg-opacity,1))}.bg-blue-500{--tw-bg-opacity:1;background-color:rgb(59 130 246/var(--tw-bg-opacity,1))}.bg-blue-600{--tw-bg-opacity:1;background-color:rgb(37 99 235/var(--tw-bg-opacity,1))}.bg-gray-100{--tw-bg-opacity:1;background-color:rgb(243 244 246/var(--tw-bg-opacity,1))}.bg-gray-200{--tw-bg-opacity:1;background-color:rgb(229 231 235/var(--tw-bg-opacity,1))}.bg-gray-300{--tw-bg-opacity:1;background-color:rgb(209 213 219/var(--tw-bg-opacity,1))}.bg-gray-50{--tw-bg-opacity:1;background-color:rgb(249 250 251/var(--tw-bg-opacity,1))}.bg-gray-900{--tw-bg-opacity:1;background-color:rgb(17 24 39/var(--tw-bg-opacity,1))}.bg-green-100{--tw-bg-opacity:1;background-color:rgb(220 252 231/var(--tw-bg-opacity,1))}.bg-green-50{--tw-bg-opacity:1;background-color:rgb(240 253 244/var(--tw-bg-opacity,1))}.bg-green-500{--tw-bg-opacity:1;background-color:rgb(34 197 94/var(--tw-bg-opacity,1))}.bg-purple-100{--tw-bg-opacity:1;background-color:rgb(243 232 255/var(--tw-bg-opacity,1))}.bg-purple-500{--tw-bg-opacity:1;background-color:rgb(168 85 247/var(--tw-bg-opacity,1))}.bg-purple-600{--tw-bg-opacity:1;background-color:rgb(147 51 234/var(--tw-bg-opacity,1))}.bg-slate-700{--tw-bg-opacity:1;background-color:rgb(51 65 85/var(--tw-bg-opacity,1))}.bg-white{--tw-bg-opacity:1;background-color:rgb(255 255 255/var(--tw-bg-opacity,1))}.p-2{padding:.5rem}.p-3{padding:.75rem}.p-4{padding:1rem}.p-5{padding:1.25rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-3{padding-left:.75rem;padding-right:.75rem}.px-4{padding-left:1rem;padding-right:1rem}.px-6{padding-left:1.5rem;padding-right:1.5rem}.py-1{padding-top:.25rem;padding-bottom:.25rem}.py-3{padding-top:.75rem;padding-bottom:.75rem}.py-4{padding-top:1rem;padding-bottom:1rem}.pb-2{padding-bottom:.5rem}.pb-4{padding-bottom:1rem}.pt-4{padding-top:1rem}.font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace}.font-sans{font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji}.text-2xl{font-size:1.5rem;line-height:2rem}.text-3xl{font-size:1.875rem;line-height:2.25rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:.75rem;line-height:1rem}.font-bold{font-weight:700}.font-normal{font-weight:400}.font-semibold{font-weight:600}.leading-relaxed{line-height:1.625}.text-blue-300{--tw-text-opacity:1;color:rgb(147 197 253/var(--tw-text-opacity,1))}.text-blue-600{--tw-text-opacity:1;color:rgb(37 99 235/var(--tw-text-opacity,1))}.text-blue-700{--tw-text-opacity:1;color:rgb(29 78 216/var(--tw-text-opacity,1))}.text-blue-800{--tw-text-opacity:1;color:rgb(30 64 175/var(--tw-text-opacity,1))}.text-gray-300{--tw-text-opacity:1;color:rgb(209 213 219/var(--tw-text-opacity,1))}.text-gray-400{--tw-text-opacity:1;color:rgb(156 163 175/var(--tw-text-opacity,1))}.text-gray-500{--tw-text-opacity:1;color:rgb(107 114 128/var(--tw-text-opacity,1))}.text-gray-600{--tw-text-opacity:1;color:rgb(75 85 99/var(--tw-text-opacity,1))}.text-gray-700{--tw-text-opacity:1;color:rgb(55 65 81/var(--tw-text-opacity,1))}.text-gray-800{--tw-text-opacity:1;color:rgb(31 41 55/var(--tw-text-opacity,1))}.text-green-400{--tw-text-opacity:1;color:rgb(74 222 128/var(--tw-text-opacity,1))}.text-green-600{--tw-text-opacity:1;color:rgb(22 163 74/var(--tw-text-opacity,1))}.text-green-700{--tw-text-opacity:1;color:rgb(21 128 61/var(--tw-text-opacity,1))}.text-orange-400{--tw-text-opacity:1;color:rgb(251 146 60/var(--tw-text-opacity,1))}.text-orange-500{--tw-text-opacity:1;color:rgb(249 115 22/var(--tw-text-opacity,1))}.text-purple-600{--tw-text-opacity:1;color:rgb(147 51 234/var(--tw-text-opacity,1))}.text-purple-700{--tw-text-opacity:1;color:rgb(126 34 206/var(--tw-text-opacity,1))}.text-red-400{--tw-text-opacity:1;color:rgb(248 113 113/var(--tw-text-opacity,1))}.text-red-500{--tw-text-opacity:1;color:rgb(239 68 68/var(--tw-text-opacity,1))}.text-red-600{--tw-text-opacity:1;color:rgb(220 38 38/var(--tw-text-opacity,1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.opacity-60{opacity:.6}.shadow-inner{--tw-shadow:inset 0 2px 4px 0 rgba(0,0,0,.05);--tw-shadow-colored:inset 0 2px 4px 0 var(--tw-shadow-color)}.shadow-inner,.shadow-md{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-md{--tw-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);--tw-shadow-colored:0 4px 6px -1px var(--tw-shadow-color),0 2px 4px -2px var(--tw-shadow-color)}.shadow-sm{--tw-shadow:0 1px 2px 0 rgba(0,0,0,.05);--tw-shadow-colored:0 1px 2px 0 var(--tw-shadow-color)}.shadow-sm,.shadow-xl{box-shadow:var(--tw-ring-offset-shadow,0 0 #0000),var(--tw-ring-shadow,0 0 #0000),var(--tw-shadow)}.shadow-xl{--tw-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);--tw-shadow-colored:0 20px 25px -5px var(--tw-shadow-color),0 8px 10px -6px var(--tw-shadow-color)}.outline-none{outline:2px solid transparent;outline-offset:2px}.blur{--tw-blur:blur(8px);filter:var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow)}.backdrop-filter{-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,-webkit-backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter,-webkit-backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}.hover\:-translate-y-0\.5:hover{--tw-translate-y:-0.125rem;transform:translate(var(--tw-translate-x),var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))}.hover\:bg-blue-700:hover{--tw-bg-opacity:1;background-color:rgb(29 78 216/var(--tw-bg-opacity,1))}.hover\:bg-purple-50:hover{--tw-bg-opacity:1;background-color:rgb(250 245 255/var(--tw-bg-opacity,1))}.hover\:bg-purple-700:hover{--tw-bg-opacity:1;background-color:rgb(126 34 206/var(--tw-bg-opacity,1))}.hover\:bg-slate-800:hover{--tw-bg-opacity:1;background-color:rgb(30 41 59/var(--tw-bg-opacity,1))}.hover\:text-white:hover{--tw-text-opacity:1;color:rgb(255 255 255/var(--tw-text-opacity,1))}.focus\:ring-2:focus{--tw-ring-offset-shadow:var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);--tw-ring-shadow:var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);box-shadow:var(--tw-ring-offset-shadow),var(--tw-ring-shadow),var(--tw-shadow,0 0 #0000)}.focus\:ring-blue-500:focus{--tw-ring-opacity:1;--tw-ring-color:rgb(59 130 246/var(--tw-ring-opacity,1))}.disabled\:opacity-50:disabled{opacity:.5}@media (min-width:768px){.md\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}.md\:flex-row{flex-direction:row}}</style>
 </head>
 <body class="bg-gray-100 text-gray-800 font-sans p-6">
 
@@ -176,24 +201,45 @@
             </button>
         </div>
 
-        <div id="progressContainer" class="hidden mb-6 bg-white p-4 rounded-lg border shadow-sm">
+        <!-- 인라인 안내 (alert 대신) -->
+        <div id="inlineNotice" class="mdl-notice" role="status" aria-live="polite" hidden></div>
+
+        <div id="progressContainer" class="hidden mb-6 bg-white p-4 rounded-lg border shadow-sm mdl-progress">
             <div class="flex justify-between mb-2">
-                <span id="progressLabel" class="text-sm font-bold text-blue-700 flex items-center"><i class="fas fa-spinner fa-spin mr-2"></i>대기 중...</span>
-                <span id="progressText" class="text-sm font-bold text-blue-700">0%</span>
+                <span id="progressLabel" class="mdl-progress-label"><i class="fas fa-spinner fa-spin mr-2"></i><span id="progressLabelText">대기 중...</span></span>
+                <span id="progressText" class="mdl-progress-label">0%</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-5 overflow-hidden">
-                <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-600 h-5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                <div id="progressBar" class="mdl-progress-bar" style="width: 0%"></div>
             </div>
-            <div class="mt-2 text-xs font-bold flex justify-end space-x-3">
+            <div class="mt-2 text-xs font-bold flex justify-end space-x-3 flex-wrap">
                 <span class="text-green-600">성공: <span id="successCount">0</span></span>
                 <span class="text-red-600">실패: <span id="failCount">0</span></span>
+                <span class="text-gray-600">미실행: <span id="skippedCount">0</span></span>
                 <span class="text-gray-600">총: <span id="totalCount">0</span></span>
+            </div>
+            <div id="progressSummary" class="mdl-summary" hidden></div>
+            <div class="mdl-actions">
+                <button type="button" id="stopBtn" class="mdl-btn mdl-btn-stop" onclick="requestStop()" hidden>
+                    <i class="fas fa-stop mr-1"></i>중지 (진행 중 배치 후 멈춤)
+                </button>
+                <button type="button" id="retryFailedBtn" class="mdl-btn" onclick="retryFailed()" hidden>
+                    <i class="fas fa-redo mr-1"></i>실패 건만 재시도
+                </button>
+                <button type="button" id="resultCsvBtn" class="mdl-btn" onclick="downloadResultCsv()" hidden>
+                    <i class="fas fa-file-csv mr-1"></i>결과 CSV
+                </button>
             </div>
         </div>
 
-        <div id="statusArea" class="hidden mb-4 p-5 rounded bg-green-50 border border-green-200 flex justify-between items-center shadow-sm">
+        <div id="statusArea" class="hidden mb-4 p-5 rounded bg-green-50 border border-green-200 flex justify-between items-center shadow-sm flex-wrap gap-3">
             <div><span class="text-lg text-gray-700">조회된 문서: <span id="foundCount" class="font-bold text-green-700 text-2xl mx-1">0</span> 건</span></div>
-            <div id="appliedFilter" class="font-bold text-blue-600">-</div>
+            <div class="flex items-center gap-3">
+                <div id="appliedFilter" class="font-bold text-blue-600">-</div>
+                <button type="button" id="targetCsvBtn" class="mdl-btn" onclick="downloadTargetCsv()">
+                    <i class="fas fa-file-csv mr-1"></i>대상 ID CSV
+                </button>
+            </div>
         </div>
 
         <div class="bg-gray-900 rounded-lg p-4 shadow-inner">
@@ -319,7 +365,7 @@
             const baseUrl = document.getElementById('currentDomain').value;
 
             if (!apiKey || !memberId || !secretKeyInput || !baseUrl) {
-                alert("필수 정보를 모두 입력해주세요."); return null;
+                showNotice("인증 정보(환경·API Key·Member ID·비밀 키)를 모두 입력해주세요.", 'error'); return null;
             }
             if(isRefresh) log("토큰 갱신 시도...", "warning");
             else log("토큰 발급 중...", "system");
@@ -331,7 +377,7 @@
                     let keyObj = null;
                     try { keyObj = KEYUTIL.getKey(secretKeyInput); } catch(e){}
                     if(!keyObj) try { keyObj = KEYUTIL.getKeyFromPlainPrivatePKCS8Hex(secretKeyInput); } catch(e){}
-                    if(!keyObj) { alert("Secret Key 형식이 올바르지 않습니다."); return null; }
+                    if(!keyObj) { showNotice("Secret Key 형식이 올바르지 않습니다. Signature 방식은 개인키 Hex(PKCS#8)를 입력하세요.", 'error'); return null; }
                     const sig = new KJUR.crypto.Signature({ alg: 'SHA256withECDSA' });
                     sig.init(keyObj);
                     sig.updateString(execTime.toString());
@@ -344,6 +390,7 @@
                 const result = await window.issueAccessToken({ domain: baseUrl, apiKey, memberId, signature, execTime });
                 if (!result.ok) {
                     log(`토큰 발급 오류: ${result.message || '알 수 없는 오류'}`, 'error');
+                    showNotice(`토큰 발급 실패: ${result.message || '알 수 없는 오류'}`, 'error');
                     return null;
                 }
                 document.getElementById('currentAccessToken').value = result.token;
@@ -358,8 +405,11 @@
 
         // --- 2. 조회 (자동 갱신 추가됨) ---
         async function startProcess() {
+            if (downloadRunning) return;
+            hideNotice();
             setButtonState('loading');
             document.getElementById('progressContainer').classList.add('hidden');
+            docResults.clear();
             const token = await getAccessToken();
             if(!token) { setButtonState('reset'); return; }
             await fetchDocuments(token);
@@ -408,6 +458,11 @@
 
                         } catch(error) {
                             if (error.response && error.response.status === 401) {
+                                // 갱신은 1회만 — 갱신한 토큰으로도 401이면 중단한다.
+                                // (예전엔 내부 재시도 2회가 끝나도 바깥 while(!isEnd)가 같은 skip을 다시 돌아 무한 반복했다)
+                                if (retryCount >= 1) {
+                                    throw new Error("토큰을 갱신해도 인증 실패(HTTP 401)가 계속되어 조회를 중단합니다. API Key·권한을 확인하세요.");
+                                }
                                 log(`조회 중 토큰 만료. 갱신 시도...`, 'warning');
                                 TokenBadge.markExpired('#tokenBadge');
                                 const newToken = await getAccessToken(true);
@@ -444,11 +499,121 @@
 
             } catch(e) {
                 log(`조회 실패: ${e.message}`, 'error');
+                showNotice(`문서 조회 실패: ${e.message}`, 'error');
                 setButtonState('reset');
             }
         }
 
+        // --- 인라인 안내 (alert 대체, P1-17) ---
+        function showNotice(msg, type = 'info') {
+            const el = document.getElementById('inlineNotice');
+            el.textContent = msg;                       // 외부 문자열(에러 메시지)이 섞이므로 textContent
+            el.className = 'mdl-notice' + (type === 'error' ? ' is-error' : type === 'warn' ? ' is-warn' : type === 'ok' ? ' is-ok' : '');
+            el.hidden = false;
+        }
+        function hideNotice() {
+            const el = document.getElementById('inlineNotice');
+            el.hidden = true;
+            el.textContent = '';
+        }
+
+        // --- 다운로드 상태 (P1-17) ---
+        // docResults: 문서 ID → { status: 'success' | 'fail' | 'skipped', message }
+        const docResults = new Map();
+        let downloadRunning = false;
+        let stopRequested = false;
+        const RESULT_LABEL = { success: '성공', fail: '실패', skipped: '미실행' };
+
+        function setProgressLabel(text, icon) {
+            const label = document.getElementById('progressLabel');
+            label.firstElementChild.className = icon;
+            document.getElementById('progressLabelText').textContent = text;
+        }
+
+        function setProgressState(state) {
+            const pCont = document.getElementById('progressContainer');
+            pCont.classList.remove('is-warn', 'is-error', 'is-ok');
+            if (state) pCont.classList.add('is-' + state);
+        }
+
+        function updateResultButtons() {
+            const failIds = idsWithStatus('fail');
+            const hasResults = docResults.size > 0;
+            document.getElementById('stopBtn').hidden = !downloadRunning;
+            document.getElementById('stopBtn').disabled = stopRequested;
+            const retry = document.getElementById('retryFailedBtn');
+            retry.hidden = downloadRunning || failIds.length === 0;
+            retry.textContent = '';
+            retry.insertAdjacentHTML('afterbegin', '<i class="fas fa-redo mr-1"></i>');
+            retry.appendChild(document.createTextNode(`실패 건만 재시도 (${failIds.length})`));
+            document.getElementById('resultCsvBtn').hidden = downloadRunning || !hasResults;
+            document.getElementById('targetCsvBtn').disabled = targetDocumentIds.length === 0;
+        }
+
+        function idsWithStatus(status) {
+            const out = [];
+            docResults.forEach((v, id) => { if (v.status === status) out.push(id); });
+            return out;
+        }
+
+        // [중지] — 진행 중인 배치는 끝까지 받고, 다음 배치부터 멈춘다
+        function requestStop() {
+            if (!downloadRunning || stopRequested) return;
+            stopRequested = true;
+            log('중지 요청됨 — 진행 중인 배치가 끝나면 멈춥니다.', 'warning');
+            setProgressLabel('중지 요청됨 — 진행 중인 배치 처리 후 멈춥니다...', 'fas fa-hourglass-half mr-2');
+            updateResultButtons();
+        }
+
+        // 배치 사이 대기 — 중지 요청이 오면 바로 빠져나온다
+        async function waitBetweenBatches(ms) {
+            const until = Date.now() + ms;
+            while (Date.now() < until && !stopRequested) {
+                await new Promise(r => setTimeout(r, Math.min(200, until - Date.now())));
+            }
+        }
+
+        // 일괄 다운로드 중 페이지 이탈 경고
+        window.addEventListener('beforeunload', (e) => {
+            if (!downloadRunning) return;
+            e.preventDefault();
+            e.returnValue = '';
+        });
+
+        // --- CSV 내보내기 ---
+        function csvCell(v) {
+            const s = String(v === undefined || v === null ? '' : v);
+            return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }
+        function saveCsv(rows, filename) {
+            const text = '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');   // BOM: 엑셀 한글 깨짐 방지
+            saveAs(new Blob([text], { type: 'text/csv;charset=utf-8' }), filename);
+        }
+        function fileTimestamp() {
+            const d = new Date();
+            const p = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+        }
+
+        // [대상 ID CSV] — 조회된 문서 ID 목록
+        function downloadTargetCsv() {
+            if (!targetDocumentIds.length) { showNotice('내보낼 문서 ID가 없습니다. 먼저 조회하세요.', 'warn'); return; }
+            saveCsv([['document_id'], ...targetDocumentIds.map(id => [id])], `대상문서ID_${fileTimestamp()}.csv`);
+        }
+
+        // [결과 CSV] — 문서 ID별 결과(성공/실패/미실행)와 실패 사유
+        function downloadResultCsv() {
+            if (!docResults.size) { showNotice('아직 다운로드 결과가 없습니다.', 'warn'); return; }
+            const rows = [['document_id', '결과', '메시지']];
+            targetDocumentIds.forEach(id => {
+                const r = docResults.get(id);
+                if (r) rows.push([id, RESULT_LABEL[r.status] || r.status, r.message || '']);
+            });
+            saveCsv(rows, `다운로드결과_${fileTimestamp()}.csv`);
+        }
+
         function confirmDownload() {
+            if (downloadRunning) return;
             const count = targetDocumentIds.length;
             const isMerge = document.getElementById('mergeToOne').checked;
 
@@ -458,155 +623,214 @@
             }
 
             if (confirm(`총 ${count}건을 다운로드 하시겠습니까?\n(배치 크기: 20건)`)) {
-                executeBatchDownload();
+                docResults.clear();
+                executeBatchDownload(targetDocumentIds.slice());
             }
         }
 
-        // --- 3. 배치 다운로드 (자동 갱신 포함) ---
-        async function executeBatchDownload() {
+        // [실패 건만 재시도]
+        function retryFailed() {
+            if (downloadRunning) return;
+            const failIds = idsWithStatus('fail');
+            if (!failIds.length) return;
+            if (confirm(`실패한 ${failIds.length}건을 다시 다운로드하시겠습니까?`)) executeBatchDownload(failIds);
+        }
+
+        // --- 3. 배치 다운로드 (자동 갱신 · 중지 · 실패 ID 보관) ---
+        async function executeBatchDownload(ids) {
             let token = document.getElementById('currentAccessToken').value;
             const baseUrl = document.getElementById('currentDomain').value;
-            const totalDocs = targetDocumentIds.length;
-            
+            const totalDocs = ids.length;
+
             const isMerge = document.getElementById('mergeToOne').checked;
             const fileTypes = [];
             if(document.getElementById('ft_document').checked) fileTypes.push("document");
             if(document.getElementById('ft_audit').checked) fileTypes.push("audit_trail");
-            
+
             const useSimpleName = document.getElementById('useSimpleName').checked;
             const zipPassword = document.getElementById('usePassword').checked ? document.getElementById('zipPassword').value : null;
             const customZipName = document.getElementById('useZipName').checked ? document.getElementById('zipName').value : null;
 
-            if(fileTypes.length === 0) { alert("파일 타입을 선택하세요."); return; }
+            if(fileTypes.length === 0) { showNotice("포함할 파일(문서 PDF·감사추적증명서)을 하나 이상 선택하세요.", 'error'); return; }
+            if(!token) { showNotice("Access Token이 없습니다. 먼저 [1. 토큰 발급 및 조회]를 실행하세요.", 'error'); return; }
+
+            hideNotice();
+            downloadRunning = true;
+            stopRequested = false;
+            ids.forEach(id => docResults.set(id, { status: 'skipped', message: '' }));   // 시작 전에는 모두 미실행
 
             setButtonState('loading');
             const pCont = document.getElementById('progressContainer');
             pCont.classList.remove('hidden');
+            setProgressState(null);
+            document.getElementById('progressSummary').hidden = true;
             const pBar = document.getElementById('progressBar');
             const pText = document.getElementById('progressText');
-            const pLabel = document.getElementById('progressLabel');
-            
             const elSuccess = document.getElementById('successCount');
             const elFail = document.getElementById('failCount');
-            const elTotal = document.getElementById('totalCount');
-            elTotal.innerText = totalDocs;
-            
+            const elSkipped = document.getElementById('skippedCount');
+            document.getElementById('totalCount').innerText = totalDocs;
+
             let successCnt = 0;
             let failCnt = 0;
+            let tokenFailed = false;
             let masterZip = isMerge ? new JSZip() : null;
+            let mergedIds = [];
 
-            log(`다운로드 시작 (${isMerge ? '병합' : '분할'}, 20건씩)...`, "system");
-
-            for(let i=0; i<totalDocs; i+=BATCH_SIZE) {
-                const chunkIds = targetDocumentIds.slice(i, i+BATCH_SIZE);
-                let retryCount = 0;
-                let success = false;
-
-                // ★ 다운로드 401 재시도 루프
-                while(!success && retryCount < 2) {
-                    try {
-                        pLabel.innerHTML = `<i class="fas fa-sync fa-spin mr-2"></i>다운로드 중... (${i+1}~${Math.min(i+BATCH_SIZE, totalDocs)})`;
-                        
-                        const reqBody = { document_ids: chunkIds, file_type: fileTypes, use_simple_file_name: useSimpleName };
-                        if(!isMerge) {
-                            if(zipPassword) reqBody.zip_password = zipPassword;
-                            if(customZipName) reqBody.file_name = `${customZipName}_part_${(i/BATCH_SIZE)+1}`;
-                        }
-
-                        const res = await axios.post(`${baseUrl}/v2.0/api/documents/download_multi_files`, reqBody, {
-                            headers: { 'Authorization': `Bearer ${token}` },
-                            responseType: 'blob'
-                        });
-
-                        const blob = res.data;
-
-                        if (isMerge) {
-                            try {
-                                const tempZip = await JSZip.loadAsync(blob);
-                                tempZip.forEach((relPath, file) => masterZip.file(relPath, file.async('blob')));
-                            } catch (zipErr) {
-                                let errorContent = "ZIP 파일 손상";
-                                try {
-                                    errorContent = await blob.text();
-                                    const json = JSON.parse(errorContent);
-                                    if(json.ErrorMessage || json.message) errorContent = json.ErrorMessage || json.message;
-                                } catch (e) {}
-                                throw new Error(errorContent);
-                            }
-                        } else {
-                            const partName = customZipName ? `${customZipName}_${i+1}.zip` : `docs_${i+1}_${Math.min(i+BATCH_SIZE, totalDocs)}.zip`;
-                            saveAs(blob, partName);
-                        }
-
-                        successCnt += chunkIds.length;
-                        success = true;
-                        log(`-> 배치 성공 (${chunkIds.length}건)`, 'success');
-
-                    } catch(error) {
-                        let errMsg = error.message;
-
-                        if (error.response && error.response.status === 401) {
-                            log(`다운로드 중 토큰 만료. 갱신 시도...`, 'warning');
-                            TokenBadge.markExpired('#tokenBadge');
-                            const newToken = await getAccessToken(true);
-                            if (newToken) { 
-                                token = newToken; 
-                                retryCount++; 
-                                continue; 
-                            } else { 
-                                alert("토큰 갱신 실패"); 
-                                setButtonState('reset'); 
-                                return; 
-                            }
-                        }
-                        
-                        if (error.response && error.response.data instanceof Blob) {
-                            try {
-                                const txt = await error.response.data.text();
-                                const json = JSON.parse(txt);
-                                errMsg = json.ErrorMessage || json.message || txt;
-                            } catch (e) {}
-                        }
-
-                        log(`다운로드 실패: ${errMsg}`, 'error');
-                        failCnt += chunkIds.length;
-                        success = true; 
-                    }
-                }
-
+            const renderCounts = () => {
                 const processed = successCnt + failCnt;
-                const pct = Math.floor((processed / totalDocs) * 100);
+                const pct = totalDocs ? Math.floor((processed / totalDocs) * 100) : 0;
                 pBar.style.width = `${pct}%`;
                 pText.innerText = `${pct}%`;
                 elSuccess.innerText = successCnt;
                 elFail.innerText = failCnt;
+                elSkipped.innerText = totalDocs - processed;
+            };
+            renderCounts();
+            updateResultButtons();
 
-                if (i + BATCH_SIZE < totalDocs) await new Promise(r => setTimeout(r, DELAY_MS));
-            }
+            log(`다운로드 시작 (${isMerge ? '병합' : '분할'}, 20건씩, 대상 ${totalDocs}건)...`, "system");
 
-            if(isMerge && successCnt > 0) {
-                pLabel.innerHTML = `<i class="fas fa-file-export mr-2"></i>최종 파일 생성 중...`;
-                log("병합 파일 생성 중...", "system");
-                try {
-                    const content = await masterZip.generateAsync({type:"blob"});
-                    const finalName = customZipName ? `${customZipName}.zip` : `eformsign_merged.zip`;
-                    saveAs(content, finalName);
-                    log("최종 저장 완료.", "success");
-                } catch(e) {
-                    log(`병합 저장 실패: ${e.message}`, 'error');
-                    alert("메모리 부족으로 병합 저장에 실패했습니다.");
+            try {
+                for(let i=0; i<totalDocs; i+=BATCH_SIZE) {
+                    if (stopRequested) { log('중지됨 — 남은 배치는 실행하지 않습니다.', 'warning'); break; }
+                    const chunkIds = ids.slice(i, i+BATCH_SIZE);
+                    let retryCount = 0;
+                    let success = false;
+
+                    // ★ 다운로드 401 재시도 루프
+                    while(!success && retryCount < 2) {
+                        try {
+                            setProgressLabel(`다운로드 중... (${i+1}~${Math.min(i+BATCH_SIZE, totalDocs)} / ${totalDocs})`, 'fas fa-sync fa-spin mr-2');
+
+                            const reqBody = { document_ids: chunkIds, file_type: fileTypes, use_simple_file_name: useSimpleName };
+                            if(!isMerge) {
+                                if(zipPassword) reqBody.zip_password = zipPassword;
+                                if(customZipName) reqBody.file_name = `${customZipName}_part_${(i/BATCH_SIZE)+1}`;
+                            }
+
+                            const res = await axios.post(`${baseUrl}/v2.0/api/documents/download_multi_files`, reqBody, {
+                                headers: { 'Authorization': `Bearer ${token}` },
+                                responseType: 'blob'
+                            });
+
+                            const blob = res.data;
+
+                            if (isMerge) {
+                                try {
+                                    const tempZip = await JSZip.loadAsync(blob);
+                                    tempZip.forEach((relPath, file) => masterZip.file(relPath, file.async('blob')));
+                                } catch (zipErr) {
+                                    let errorContent = "ZIP 파일 손상";
+                                    try {
+                                        errorContent = await blob.text();
+                                        const json = JSON.parse(errorContent);
+                                        if(json.ErrorMessage || json.message) errorContent = json.ErrorMessage || json.message;
+                                    } catch (e) {}
+                                    throw new Error(errorContent);
+                                }
+                                mergedIds = mergedIds.concat(chunkIds);
+                            } else {
+                                const partName = customZipName ? `${customZipName}_${i+1}.zip` : `docs_${i+1}_${Math.min(i+BATCH_SIZE, totalDocs)}.zip`;
+                                saveAs(blob, partName);
+                            }
+
+                            chunkIds.forEach(id => docResults.set(id, { status: 'success', message: isMerge ? '병합 파일에 포함' : '' }));
+                            successCnt += chunkIds.length;
+                            success = true;
+                            log(`-> 배치 성공 (${chunkIds.length}건)`, 'success');
+
+                        } catch(error) {
+                            let errMsg = error.message;
+                            let refreshFailedHere = false;
+
+                            if (error.response && error.response.status === 401 && retryCount < 1) {
+                                log(`다운로드 중 토큰 만료. 갱신 시도...`, 'warning');
+                                TokenBadge.markExpired('#tokenBadge');
+                                const newToken = await getAccessToken(true);
+                                if (newToken) {
+                                    token = newToken;
+                                    retryCount++;
+                                    continue;
+                                }
+                                tokenFailed = true;
+                                refreshFailedHere = true;
+                                errMsg = '토큰 갱신 실패 (HTTP 401)';
+                            }
+
+                            // 토큰 갱신 실패 사유는 서버 메시지로 덮지 않는다 — 결과 CSV에 원인이 남아야 한다 (D-19)
+                            if (!refreshFailedHere && error.response && error.response.data instanceof Blob) {
+                                try {
+                                    const txt = await error.response.data.text();
+                                    const json = JSON.parse(txt);
+                                    errMsg = json.ErrorMessage || json.message || txt;
+                                } catch (e) {}
+                            }
+                            if (!refreshFailedHere && error.response && error.response.status) errMsg = `HTTP ${error.response.status} · ${errMsg}`;
+
+                            log(`다운로드 실패 (${chunkIds.length}건): ${errMsg}`, 'error');
+                            chunkIds.forEach(id => docResults.set(id, { status: 'fail', message: errMsg }));
+                            failCnt += chunkIds.length;
+                            success = true;
+                        }
+                    }
+
+                    renderCounts();
+                    if (tokenFailed) { log('토큰을 갱신하지 못해 남은 배치를 중단합니다.', 'error'); break; }
+                    if (i + BATCH_SIZE < totalDocs) await waitBetweenBatches(DELAY_MS);
                 }
+
+                let mergeFailed = false;
+                if(isMerge && mergedIds.length > 0) {
+                    setProgressLabel('최종 파일 생성 중...', 'fas fa-file-export mr-2');
+                    log("병합 파일 생성 중...", "system");
+                    try {
+                        const content = await masterZip.generateAsync({type:"blob"});
+                        const finalName = customZipName ? `${customZipName}.zip` : `eformsign_merged.zip`;
+                        saveAs(content, finalName);
+                        log("최종 저장 완료.", "success");
+                    } catch(e) {
+                        // 병합 파일을 못 만들면 받은 배치도 저장되지 않았으므로 실패로 기록한다
+                        mergeFailed = true;
+                        log(`병합 저장 실패: ${e.message}`, 'error');
+                        const msg = `병합 저장 실패: ${e.message}`;
+                        mergedIds.forEach(id => docResults.set(id, { status: 'fail', message: msg }));
+                        successCnt -= mergedIds.length;
+                        failCnt += mergedIds.length;
+                        renderCounts();
+                    }
+                }
+
+                // 완료 표시 — 실패·중지가 있으면 "다운로드 완료!"로 덮지 않는다
+                const skippedCnt = totalDocs - successCnt - failCnt;
+                const lines = [`성공 ${successCnt}건 · 실패 ${failCnt}건 · 미실행 ${skippedCnt}건 (대상 ${totalDocs}건)`];
+                if (stopRequested && skippedCnt > 0) {
+                    setProgressState('warn');
+                    setProgressLabel(`중지됨 (미실행 ${skippedCnt}건${failCnt ? `, 실패 ${failCnt}건` : ''})`, 'fas fa-pause-circle mr-2');
+                    lines.push('사용자가 중지했습니다. 미실행 문서는 결과 CSV에서 확인할 수 있습니다.');
+                } else if (tokenFailed) {
+                    setProgressState('error');
+                    setProgressLabel(`중단됨 — 토큰 갱신 실패 (실패 ${failCnt}건, 미실행 ${skippedCnt}건)`, 'fas fa-times-circle mr-2');
+                    lines.push('인증 정보를 확인한 뒤 다시 조회하거나 [실패 건만 재시도]를 누르세요.');
+                } else if (failCnt > 0) {
+                    setProgressState('warn');
+                    setProgressLabel(`완료 (실패 ${failCnt}건)`, 'fas fa-exclamation-triangle mr-2');
+                    if (mergeFailed) lines.push('병합 파일을 저장하지 못했습니다(메모리 부족 가능). 병합 옵션을 끄고 다시 시도하세요.');
+                    else if (successCnt === 0) lines.push('모든 배치가 실패했습니다. 로그와 결과 CSV에서 실패 사유를 확인하세요.');
+                    lines.push('실패한 문서 ID는 [결과 CSV]에서 확인하고 [실패 건만 재시도]로 다시 받을 수 있습니다.');
+                } else {
+                    setProgressState('ok');
+                    setProgressLabel('다운로드 완료', 'fas fa-check-circle mr-2');
+                }
+                const summary = document.getElementById('progressSummary');
+                summary.textContent = lines.join('\n');
+                summary.hidden = false;
+            } finally {
+                downloadRunning = false;
+                stopRequested = false;
+                updateResultButtons();
+                setButtonState('search_done');
             }
-
-            pBar.style.width = '100%';
-            pText.innerText = '100%';
-
-            pLabel.innerHTML = `<i class="fas fa-check-circle mr-2"></i>다운로드 완료!`;
-            
-            if(failCnt > 0) alert(`작업 완료 (실패 ${failCnt}건 포함)\n로그를 확인하세요.`);
-            else alert("모든 다운로드가 완료되었습니다.");
-            
-            setButtonState('search_done');
         }
     </script>
 <script>
@@ -624,7 +848,7 @@ window.CREDENTIAL_CONFIG = {
 };
 </script>
 <script src="/assets/js/credential-panel.js"></script>
-<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+<script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

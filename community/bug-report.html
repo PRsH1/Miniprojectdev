@@ -345,10 +345,8 @@
     </section>
   </main>
 
-  <script>
-    window.AUTH_STATUS_CORNER = true;
-  </script>
-  <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+  <!-- 기본(상단 바) 모드: 허브 링크(eformsign Tools Hub)와 알림 벨을 표시한다 (P1-18) -->
+  <script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
   <script src="/assets/js/auth-status.js"></script>
   <script>
     const loginGate = document.getElementById('loginGate');
@@ -370,7 +368,20 @@
 
     let currentUser = null;
     let myReports = [];
+    let myReportsLoaded = false;
     let activeTab = 'submit';
+
+    // 알림 딥링크 #my-reports/<id> → 해당 리포트 상세를 바로 연다 (P1-18)
+    function hashReportId() {
+      const m = /^#my-reports\/([0-9]{1,10})$/.exec(window.location.hash);
+      return m ? Number(m[1]) : null;
+    }
+    function isMyReportsHash() {
+      return window.location.hash === '#my-reports' || hashReportId() !== null;
+    }
+    function setHash(hash) {
+      if (window.location.hash !== hash) history.replaceState(null, '', window.location.pathname + window.location.search + hash);
+    }
 
     const STATUS_LABEL = { open: '접수됨', 'in-progress': '처리중', resolved: '해결됨', closed: '종료됨' };
     const SEVERITY_LABEL = { low: '낮음', normal: '보통', high: '높음', critical: '긴급' };
@@ -423,7 +434,7 @@
       document.getElementById('tabMyList').classList.toggle('active', tab === 'my');
 
       if (tab === 'my') {
-        if (window.location.hash !== '#my-reports') window.location.hash = 'my-reports';
+        if (!isMyReportsHash()) setHash('#my-reports');
         if (currentUser) loadMyReports();
       } else if (!options || !options.keepHash) {
         history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -440,14 +451,25 @@
       }, 1500);
     }
 
-    function renderMyReports() {
+    function renderMyReports(notice) {
+      if (hashReportId() !== null) setHash('#my-reports');
       myReportCount.textContent = myReports.length;
       myDetailView.classList.add('view-hidden');
       myListView.classList.remove('view-hidden');
       myReportsList.innerHTML = '';
 
+      if (notice) {
+        const box = document.createElement('div');
+        box.className = 'empty-state';
+        box.textContent = notice;
+        myReportsList.appendChild(box);
+      }
+
       if (!myReports.length) {
-        myReportsList.innerHTML = '<div class="empty-state">아직 제보한 버그가 없습니다.</div>';
+        const empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = '아직 제보한 버그가 없습니다.';
+        myReportsList.appendChild(empty);
         return;
       }
 
@@ -475,9 +497,7 @@
       if (report.action_taken) {
         blocks.push('<div class="content-block"><h3>조치 사항</h3><div class="content-box">' + esc(report.action_taken) + '</div></div>');
       }
-      if (report.admin_note) {
-        blocks.push('<div class="content-block"><h3>메모</h3><div class="content-box">' + esc(report.admin_note) + '</div></div>');
-      }
+      // admin_note(관리자 내부 메모)는 제보자에게 보여 주지 않는다 — 서버도 /mine 응답에서 제외 (Q9)
       if (!blocks.length) {
         return '<div class="answer-empty">관리자가 검토 중입니다.</div>';
       }
@@ -485,6 +505,7 @@
     }
 
     function renderMyDetail(report) {
+      setHash('#my-reports/' + report.id);
       myListView.classList.add('view-hidden');
       myDetailView.classList.remove('view-hidden');
       myDetailView.innerHTML =
@@ -500,7 +521,7 @@
         '<div class="content-block"><h3>내 제보 내용</h3><div class="content-box">' + esc(report.description || '') + '</div></div>' +
         '<div class="answer-section"><h3>관리자 답변</h3>' + renderAnswerBlock(report) + '</div>' +
         '</div>';
-      document.getElementById('backToMyListBtn').addEventListener('click', renderMyReports);
+      document.getElementById('backToMyListBtn').addEventListener('click', function () { renderMyReports(); });
     }
 
     async function loadMyReports() {
@@ -518,10 +539,20 @@
           return;
         }
         myReports = data.reports || [];
-        renderMyReports();
+        myReportsLoaded = true;
+        openFromHash();
       } catch (error) {
         myReportsList.innerHTML = '<div class="empty-state">목록을 불러오는 중 오류가 발생했습니다.</div>';
       }
+    }
+
+    // 해시에 리포트 id가 있으면 그 상세를, 없으면 목록을 보여 준다
+    function openFromHash() {
+      const id = hashReportId();
+      if (id === null) { renderMyReports(); return; }
+      const report = myReports.find(function (r) { return Number(r.id) === id; });
+      if (report) renderMyDetail(report);
+      else renderMyReports('리포트 #' + id + '을(를) 찾을 수 없습니다. 삭제되었거나 내가 제보한 리포트가 아닐 수 있습니다.');
     }
 
     async function loadMe() {
@@ -585,10 +616,16 @@
       }
     });
 
+    // 세션 만료 시 입력 보존 훅 (P1-21) — 제보 폼에 제출하지 않은 글이 있으면 true
+    window.AUTH_STATUS_HAS_UNSAVED = function () {
+      return !reportShell.classList.contains('hidden')
+        && (reportTitle.value.trim() !== '' || reportDescription.value.trim() !== '');
+    };
+
     document.getElementById('tabSubmitBtn').addEventListener('click', function () { switchTab('submit'); });
     document.getElementById('tabMyListBtn').addEventListener('click', function () { switchTab('my'); });
     document.getElementById('goMyReportsBtn').addEventListener('click', function () { switchTab('my'); });
-    document.getElementById('reloadMyReportsBtn').addEventListener('click', loadMyReports);
+    document.getElementById('reloadMyReportsBtn').addEventListener('click', function () { loadMyReports(); });
 
     if (document.referrer) {
       try {
@@ -599,9 +636,15 @@
       } catch (error) {}
     }
 
-    if (window.location.hash === '#my-reports') {
+    if (isMyReportsHash()) {
       switchTab('my', { keepHash: true });
     }
+    // 같은 페이지에서 알림을 눌러 해시만 바뀐 경우(#my-reports/12)에도 해당 상세로 이동
+    window.addEventListener('hashchange', function () {
+      if (!isMyReportsHash()) return;
+      if (activeTab !== 'my') { switchTab('my', { keepHash: true }); return; }
+      if (myReportsLoaded) openFromHash();
+    });
     loadMe();
   </script>
 </body>

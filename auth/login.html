@@ -58,6 +58,8 @@
     .foot{ margin-top:12px; color:var(--muted); font-size:12px; text-align:center; }
     .foot a{ color:var(--brand); text-decoration:none; cursor:pointer; }
     .foot a:hover{ text-decoration:underline; }
+    .foot .sep{ margin:0 6px; color:#d1d5db; }
+    .error a{ color:var(--brand); }
 
     /* 비밀번호 분실 모달 */
     .modal-overlay{
@@ -115,7 +117,9 @@
         <button type="submit">로그인</button>
       </div>
       <p class="foot">
-        <a id="forgotLink">비밀번호를 잊으셨나요?</a>
+        <a id="forgotLink" href="#" role="button">비밀번호를 잊으셨나요?</a>
+        <span class="sep" aria-hidden="true">·</span>
+        <a id="signupLink" href="/auth/signup.html">회원가입</a>
       </p>
     </form>
   </div>
@@ -159,15 +163,48 @@
     const next = safeNext(params.get('next'), '');
     document.getElementById('next').value = next;
 
+    // 로그인 실패 후 아이디 유지 — 아이디는 URL에 싣지 않고 이 탭의 sessionStorage에만 잠깐 둔다(비밀번호는 저장 안 함)
+    const USERNAME_KEY = 'eform-login-username';
+    const usernameInput = document.getElementById('username');
+    function storageGet(key, store) { try { return (store || sessionStorage).getItem(key); } catch (e) { return null; } }
+    function storageSet(key, value, store) { try { (store || sessionStorage).setItem(key, value); } catch (e) { /* 저장 불가 환경 무시 */ } }
+    function storageRemove(key, store) { try { (store || sessionStorage).removeItem(key); } catch (e) { /* 무시 */ } }
+
+    document.getElementById('loginForm').addEventListener('submit', () => {
+      storageSet(USERNAME_KEY, usernameInput.value.trim());
+    });
+
     // 에러 메시지 처리
     const errMsg = document.getElementById('errorMessage');
     const errCode = params.get('error');
+    if (errCode) {
+      const savedUsername = storageGet(USERNAME_KEY);
+      if (savedUsername && !usernameInput.value) {
+        usernameInput.value = savedUsername;
+        document.getElementById('password').focus();
+      }
+    } else {
+      storageRemove(USERNAME_KEY);
+    }
     // 서버는 잠긴 계정도 비밀번호 정오와 무관하게 'invalid'로 응답한다(D-1 — 정답 판별·계정 존재 노출 방지).
     // 그래서 잠금 가능성은 공통 실패 문구로만 안내한다. 'locked'는 예전 링크 호환용으로 같은 문구를 보여 준다.
     if (errCode === 'invalid' || errCode === 'locked') {
       errMsg.textContent = '아이디 또는 비밀번호가 올바르지 않습니다. 5회 연속 실패하면 30분 동안 로그인이 제한되며, 제한 중에는 올바른 비밀번호로도 로그인되지 않습니다.';
     } else if (errCode === 'inactive') {
       errMsg.textContent = '비활성화된 계정입니다. 관리자에게 문의하세요.';
+    } else if (errCode === 'pending') {
+      // 서버는 가입 신청 때 비밀번호와 일치할 때만 'pending'을 보낸다(P1-13 — 비밀번호 없이 신청 존재 여부가 드러나지 않음)
+      errMsg.textContent = '가입 승인 대기 중입니다. 관리자가 승인하면 로그인할 수 있습니다. ';
+      // 이 브라우저에서 가입을 요청했다면 상태 확인 페이지 링크를 보여 준다(auth/signup.html이 저장)
+      const requestId = storageGet('eform-signup-request-id', localStorage);
+      if (requestId && /^[0-9a-f-]{36}$/i.test(requestId)) {
+        const a = document.createElement('a');
+        a.href = '/auth/signup-status.html?id=' + encodeURIComponent(requestId);
+        a.textContent = '가입 상태 확인하기';
+        errMsg.appendChild(a);
+      } else {
+        errMsg.appendChild(document.createTextNode('가입 완료 화면에서 받은 상태 확인 URL로 진행 상황을 볼 수 있습니다.'));
+      }
     }
 
     // 비밀번호 보기 토글
@@ -183,9 +220,12 @@
 
     // 비밀번호 분실 모달
     const overlay = document.getElementById('forgotOverlay');
-    document.getElementById('forgotLink').addEventListener('click', () => {
+    document.getElementById('forgotLink').addEventListener('click', (e) => {
+      e.preventDefault();
       overlay.classList.add('open');
-      document.getElementById('forgotUsername').focus();
+      const forgotInput = document.getElementById('forgotUsername');
+      if (!forgotInput.value) forgotInput.value = usernameInput.value.trim();
+      forgotInput.focus();
     });
     document.getElementById('forgotCancel').addEventListener('click', () => {
       overlay.classList.remove('open');

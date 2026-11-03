@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=SUIT:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" integrity="sha384-t1nt8BQoYMLFN5p42tRAtuAAFQaCQODekUVeKKZrEnEyp4H2R0RHFz0KWpmj7i8g" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -33,8 +33,8 @@
     .sidebar {
       width: 220px; min-width: 220px; background: var(--sidebar-bg);
       border-right: 1px solid rgba(255,255,255,.06);
-      display: flex; flex-direction: column; position: sticky; top: 0;
-      height: 100vh; overflow-y: auto; flex-shrink: 0;
+      display: flex; flex-direction: column; position: sticky; top: 40px; /* auth-status.js 상단 바 아래 */
+      height: calc(100vh - 40px); overflow-y: auto; flex-shrink: 0;
     }
     .sidebar-logo { padding: 20px 18px 14px; border-bottom: 1px solid rgba(255,255,255,.06); }
     .sidebar-logo h1 { font-family: var(--font-heading); font-size: 15px; font-weight: 700; color: #fff; }
@@ -130,6 +130,8 @@
     .alert { border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; display: flex; align-items: center; gap: 10px; }
     .alert.warning { background: #fff7ed; border: 1px solid #fde68a; color: #92400e; }
     .alert.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+    .new-items-banner[hidden] { display: none; }
+    .new-items-banner .btn { margin-left: auto; }
     .alert-count { font-weight: 700; font-size: 20px; }
 
     /* ─── 모달 ──────────────────────────────────────────── */
@@ -170,6 +172,36 @@
     @media (max-width: 1040px) {
       .admin-split { grid-template-columns: 1fr; }
       .detail-card { position: static; top: auto; }
+    }
+
+    /* ─── 좁은 화면: 사이드바 → 상단 가로 탭 (F-2 / P1-19 일부) ───────────
+       auth-status.js 상단 바(40px, fixed) 바로 아래에 붙는다. 탭이 넘치면 탭 줄만 가로 스크롤. */
+    @media (max-width: 768px) {
+      body { display: block; }
+      .app-shell { flex-direction: column; min-width: 0; }
+      .sidebar {
+        width: 100%; min-width: 0; height: auto; top: 40px; z-index: 50;
+        flex-direction: row; align-items: stretch; overflow: visible;
+        border-right: 0; border-bottom: 1px solid rgba(255,255,255,.06);
+      }
+      .sidebar-logo, .nav-group-label { display: none; }
+      .sidebar-nav {
+        display: flex; flex: 1; min-width: 0; padding: 0;
+        overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+      }
+      .sidebar-nav::-webkit-scrollbar { display: none; }
+      .sidebar-menu-item {
+        flex-shrink: 0; white-space: nowrap; padding: 12px 14px;
+        border-left: 0; border-bottom: 3px solid transparent;
+      }
+      .sidebar-menu-item.active { border-bottom-color: var(--accent); }
+      .sidebar-footer {
+        display: flex; align-items: center; flex-shrink: 0; padding: 0 10px;
+        border-top: 0; border-left: 1px solid rgba(255,255,255,.08);
+      }
+      .btn-logout { width: auto; padding: 6px 10px; white-space: nowrap; }
+      .main-panel { width: 100%; min-width: 0; padding: 16px; }
+      .form-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -216,12 +248,18 @@
     <!-- ══════════ 회원가입 요청 탭 ══════════ -->
     <div class="tab-content active" id="tab-signup">
       <div class="section-title">회원가입 요청 관리</div>
+      <!-- 실시간 알림 수신 시 표시 — 자동 재조회 대신 사용자 클릭 1회 (P1-18) -->
+      <div class="alert info new-items-banner" id="newItemsBanner-signup" hidden>
+        <i class="fa fa-bell"></i> <span>새 항목이 있습니다.</span>
+        <button class="btn btn-primary" data-reload-tab="signup"><i class="fa fa-rotate"></i> 새로고침</button>
+      </div>
 
       <!-- 상태 필터 버튼 -->
       <div style="display:flex;gap:8px;margin-bottom:14px">
         <button class="btn btn-primary signup-filter-btn" data-status="pending">대기 중</button>
         <button class="btn btn-ghost signup-filter-btn" data-status="approved">승인됨</button>
         <button class="btn btn-ghost signup-filter-btn" data-status="rejected">거절됨</button>
+        <button class="btn btn-ghost" id="btnReloadSignup" style="margin-left:auto"><i class="fa fa-rotate"></i> 새로고침</button>
       </div>
 
       <div class="card">
@@ -246,6 +284,11 @@
     <!-- ══════════ 버그 리포트 탭 ══════════ -->
     <div class="tab-content" id="tab-bug-reports">
       <div class="section-title">버그 리포트 관리</div>
+      <!-- 실시간 알림 수신 시 표시 — 자동 재조회 대신 사용자 클릭 1회 (P1-18) -->
+      <div class="alert info new-items-banner" id="newItemsBanner-bug-reports" hidden>
+        <i class="fa fa-bell"></i> <span>새 항목이 있습니다.</span>
+        <button class="btn btn-primary" data-reload-tab="bug-reports"><i class="fa fa-rotate"></i> 새로고침</button>
+      </div>
 
       <div class="filter-row">
         <select class="form-input" id="bugStatusFilter" style="max-width:220px">
@@ -298,6 +341,11 @@
     <!-- ══════════ 사용자 탭 ══════════ -->
     <div class="tab-content" id="tab-users">
       <div class="section-title">사용자 관리</div>
+      <!-- 실시간 알림 수신 시 표시 — 자동 재조회 대신 사용자 클릭 1회 (P1-18) -->
+      <div class="alert info new-items-banner" id="newItemsBanner-users" hidden>
+        <i class="fa fa-bell"></i> <span>새 항목이 있습니다.</span>
+        <button class="btn btn-primary" data-reload-tab="users"><i class="fa fa-rotate"></i> 새로고침</button>
+      </div>
 
       <!-- 비밀번호 재설정 요청 -->
       <div id="resetRequestSection" style="display:none">
@@ -324,8 +372,12 @@
       <!-- 사용자 목록 -->
       <div class="card">
         <div class="card-header">
-          <span class="card-title">사용자 목록</span>
-          <button class="btn btn-primary" id="btnCreateUser"><i class="fa fa-plus"></i> 사용자 생성</button>
+          <span class="card-title">사용자 목록 <span id="userSearchCount" style="font-size:12px;font-weight:400;color:var(--text-muted)"></span></span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="search" class="form-input" id="userSearch" placeholder="아이디·이메일 검색" style="width:220px" aria-label="사용자 검색">
+            <button class="btn btn-ghost" id="btnReloadUsers" title="사용자 목록 새로고침"><i class="fa fa-rotate"></i></button>
+            <button class="btn btn-primary" id="btnCreateUser"><i class="fa fa-plus"></i> 사용자 생성</button>
+          </div>
         </div>
         <div class="card-body" style="padding:0">
           <div class="tbl-wrap">
@@ -511,11 +563,18 @@
 </div>
 
 <!-- 임시 비밀번호 표시 모달 -->
-<div class="modal-overlay" id="tempPwModal">
+<div class="modal-overlay" id="tempPwModal" data-keep-open="1">
   <div class="modal" style="text-align:center">
-    <h2>사용자 생성 완료</h2>
-    <p style="color:var(--text-sub);font-size:13px;margin-bottom:4px">임시 비밀번호 (최초 로그인 후 변경 필요)</p>
+    <h2 id="tempPwTitle">사용자 생성 완료</h2>
+    <p style="color:var(--text-sub);font-size:13px;margin-bottom:4px">
+      아이디 <strong id="tempPwUsername"></strong> · 임시 비밀번호 (최초 로그인 후 변경 필요)
+    </p>
     <div class="temp-pw-box" id="tempPwDisplay"></div>
+    <div class="modal-actions" style="justify-content:center;margin-top:0;flex-wrap:wrap">
+      <button class="btn btn-ghost" id="btnCopyTempPw"><i class="fa fa-copy"></i> 비밀번호 복사</button>
+      <button class="btn btn-ghost" id="btnCopyTempPwMsg"><i class="fa fa-paper-plane"></i> 사용자 전달용 문구 복사</button>
+    </div>
+    <p class="form-msg ok" id="tempPwCopyMsg" style="text-align:center"></p>
     <p style="color:var(--danger);font-size:12px;margin-bottom:16px">이 창을 닫으면 비밀번호를 다시 볼 수 없습니다.</p>
     <div class="modal-actions" style="justify-content:center">
       <button class="btn btn-primary" id="closeTempPw">확인</button>
@@ -812,6 +871,7 @@ $(function () {
   function updateTabQuery(tab) {
     const url = new URL(window.location.href);
     url.searchParams.set('tab', tabQueryValue(tab));
+    url.searchParams.delete('report'); // 알림 딥링크용 1회성 파라미터 — 탭을 옮기면 지운다
     history.replaceState(null, '', url.pathname + url.search);
   }
 
@@ -821,14 +881,19 @@ $(function () {
     _activeTab = normalizedTab;
 
     $('.sidebar-menu-item').removeClass('active');
-    $('.sidebar-menu-item[data-tab="' + normalizedTab + '"]').addClass('active');
+    const activeItem = $('.sidebar-menu-item[data-tab="' + normalizedTab + '"]').addClass('active')[0];
+    // 좁은 화면(상단 가로 탭)에서는 활성 탭이 가로 스크롤 밖에 있으면 보이게 옮긴다 (F-2)
+    if (activeItem && window.matchMedia('(max-width: 768px)').matches) {
+      activeItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
     $('.tab-content').removeClass('active');
     $('#tab-' + normalizedTab).addClass('active');
 
     if (!opts.skipUrlSync) updateTabQuery(normalizedTab);
 
     if (normalizedTab === 'signup') loadSignupRequests(_currentSignupStatus || 'pending');
-    if (normalizedTab === 'bug-reports') loadBugReports(true);
+    // 작성 중인 답변이 있으면 탭을 다시 열어도 목록·상세를 다시 그리지 않는다(입력 보존)
+    if (normalizedTab === 'bug-reports' && !bugDetailDirty()) loadBugReports(true);
     if (normalizedTab === 'users') loadUsers();
     if (normalizedTab === 'pages') loadPages();
     if (normalizedTab === 'audit') loadAuditLogs(1);
@@ -850,19 +915,44 @@ $(function () {
   // 사용자 관리
   // ═══════════════════════════════════════════════════════════
 
+  let _users = [];
+
+  // 아이디·이메일 부분 일치 (대소문자 무시) — 서버 호출 없이 이미 받은 목록에서 거른다
+  function filterUsers(users) {
+    const q = String($('#userSearch').val() || '').trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(function (u) {
+      return String(u.username || '').toLowerCase().includes(q)
+        || String(u.email || '').toLowerCase().includes(q);
+    });
+  }
+
+  function renderUserList() {
+    const shown = filterUsers(_users);
+    const q = String($('#userSearch').val() || '').trim();
+    $('#userSearchCount').text(q ? `(${shown.length} / ${_users.length})` : (_users.length ? `(${_users.length})` : ''));
+    renderUsers(shown, q);
+  }
+
+  $('#userSearch').on('input', renderUserList);
+  $('#btnReloadUsers').on('click', function () { loadUsers(); });
+
   function loadUsers() {
     $.getJSON('/api/admin/users', function (data) {
-      renderUsers(data.users || []);
+      hideNewItemsBanner('users');
+      _users = data.users || [];
+      renderUserList();
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
     });
     loadResetRequests();
   }
 
-  function renderUsers(users) {
+  function renderUsers(users, query) {
     const $tbody = $('#usersBody').empty();
     if (!users.length) {
-      $tbody.append('<tr class="empty-row"><td colspan="6">사용자 없음</td></tr>');
+      $tbody.append($('<tr class="empty-row">').append($('<td colspan="6">').text(
+        query ? `"${query}"와(과) 일치하는 사용자가 없습니다.` : '사용자 없음')));
       return;
     }
     users.forEach(function (u) {
@@ -908,7 +998,7 @@ $(function () {
       if (!confirm(`계정을 ${newActive ? '활성화' : '비활성화'} 하시겠습니까?`)) return;
       $.ajax({ url: `/api/admin/users/${id}`, method: 'PUT', contentType: 'application/json', data: JSON.stringify({ is_active: newActive }) })
         .done(function () { loadUsers(); })
-        .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+        .fail(function (xhr) { alert(errorMessage(xhr)); });
     });
 
     // 잠금 해제
@@ -916,7 +1006,7 @@ $(function () {
       const id = $(this).data('id');
       $.post(`/api/admin/users/${id}/unlock`)
         .done(function () { loadUsers(); })
-        .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+        .fail(function (xhr) { alert(errorMessage(xhr)); });
     });
 
     // 비밀번호 초기화
@@ -926,11 +1016,10 @@ $(function () {
       if (!confirm(`"${username}" 의 비밀번호를 초기화하시겠습니까?`)) return;
       $.post(`/api/admin/users/${id}/reset-password`)
         .done(function (data) {
-          $('#tempPwDisplay').text(data.temporaryPassword);
-          $('#tempPwModal').addClass('open');
+          showTempPassword({ title: '임시 비밀번호 발급', username, password: data.temporaryPassword });
           loadUsers();
         })
-        .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+        .fail(function (xhr) { alert(errorMessage(xhr)); });
     });
 
     // 사용자 삭제 → 확인 모달 오픈
@@ -982,11 +1071,10 @@ $(function () {
         if (!confirm(`"${username}" 의 비밀번호를 초기화하시겠습니까?`)) return;
         $.post(`/api/admin/users/${userId}/reset-password`)
           .done(function (data) {
-            $('#tempPwDisplay').text(data.temporaryPassword);
-            $('#tempPwModal').addClass('open');
+            showTempPassword({ title: '임시 비밀번호 발급', username, password: data.temporaryPassword });
             loadUsers();
           })
-          .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+          .fail(function (xhr) { alert(errorMessage(xhr)); });
       });
 
       $tbody.find('.btn-req-ignore').on('click', function () {
@@ -994,7 +1082,7 @@ $(function () {
         if (!confirm('요청을 무시(닫기) 하시겠습니까?')) return;
         $.post(`/api/admin/password-reset-requests/${reqId}/resolve`)
           .done(function () { loadUsers(); })
-          .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+          .fail(function (xhr) { alert(errorMessage(xhr)); });
       });
     });
   }
@@ -1019,14 +1107,70 @@ $(function () {
       data: JSON.stringify({ username, email, role }),
     }).done(function (data) {
       $('#createUserModal').removeClass('open');
-      $('#tempPwDisplay').text(data.temporaryPassword);
-      $('#tempPwModal').addClass('open');
+      showTempPassword({ title: '사용자 생성 완료', username, password: data.temporaryPassword });
       loadUsers();
     }).fail(function (xhr) {
-      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+      $msg.text(errorMessage(xhr)).addClass('err');
     });
   });
-  $('#closeTempPw').on('click', function () { $('#tempPwModal').removeClass('open'); });
+  $('#closeTempPw').on('click', function () {
+    $('#tempPwModal').removeClass('open');
+    $('#tempPwDisplay').text('');
+    _tempPw = null;
+  });
+
+  // ─── 임시 비밀번호 모달 (P1-14) ─────────────────────────────
+  // 생성/재설정 결과를 같은 모달로 보여 주되 제목을 나누고, 비밀번호와 "사용자 전달용 문구"를 복사할 수 있게 한다.
+  let _tempPw = null;
+  function showTempPassword({ title, username, password }) {
+    _tempPw = { username: String(username || ''), password: String(password || '') };
+    $('#tempPwTitle').text(title);
+    $('#tempPwUsername').text(_tempPw.username);
+    $('#tempPwDisplay').text(_tempPw.password);
+    $('#tempPwCopyMsg').text('');
+    $('#tempPwModal').addClass('open');
+  }
+
+  function tempPwHandoffText() {
+    return [
+      '[eformsign Tools Hub] 임시 비밀번호 안내',
+      `아이디: ${_tempPw.username}`,
+      `임시 비밀번호: ${_tempPw.password}`,
+      `로그인: ${window.location.origin}/auth/login.html`,
+      '첫 로그인 후 새 비밀번호로 변경해야 계속 이용할 수 있습니다.',
+    ].join('\n');
+  }
+
+  async function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    // clipboard API가 없는 환경 — 임시 textarea로 복사
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    if (!ok) throw new Error('copy failed');
+  }
+
+  $('#btnCopyTempPw').on('click', function () {
+    if (!_tempPw) return;
+    copyText(_tempPw.password)
+      .then(function () { $('#tempPwCopyMsg').removeClass('err').addClass('ok').text('비밀번호를 복사했습니다.'); })
+      .catch(function () { $('#tempPwCopyMsg').removeClass('ok').addClass('err').text('복사하지 못했습니다. 직접 선택해 복사하세요.'); });
+  });
+  $('#btnCopyTempPwMsg').on('click', function () {
+    if (!_tempPw) return;
+    copyText(tempPwHandoffText())
+      .then(function () { $('#tempPwCopyMsg').removeClass('err').addClass('ok').text('로그인 URL과 임시 비밀번호가 담긴 안내 문구를 복사했습니다.'); })
+      .catch(function () { $('#tempPwCopyMsg').removeClass('ok').addClass('err').text('복사하지 못했습니다. 직접 선택해 복사하세요.'); });
+  });
 
   // ═══════════════════════════════════════════════════════════
   // 보호 페이지 관리
@@ -1071,7 +1215,7 @@ $(function () {
         if (!confirm(`페이지를 ${newActive ? '활성화' : '비활성화'} 하시겠습니까?`)) return;
         $.ajax({ url: `/api/admin/pages/${id}`, method: 'PUT', contentType: 'application/json', data: JSON.stringify({ is_active: newActive }) })
           .done(function () { loadPages(); })
-          .fail(function (xhr) { alert(xhr.responseJSON?.error || '오류 발생'); });
+          .fail(function (xhr) { alert(errorMessage(xhr)); });
       });
 
       // 보호 페이지 삭제 → 확인 모달 오픈
@@ -1095,7 +1239,7 @@ $(function () {
         $('#deletePageModal').data('target-id', id).addClass('open');
       });
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
     });
   }
 
@@ -1145,12 +1289,7 @@ $(function () {
       loadPages();
     }).fail(function (xhr) {
       $('#confirmPageRegistrationModal').removeClass('open');
-      // 서버 에러는 { error: { message, reason } } 객체 — 객체를 그대로 넣으면 [object Object]로 보인다
-      const err = xhr.responseJSON && xhr.responseJSON.error;
-      const errText = err && typeof err === 'object'
-        ? [err.message, err.reason].filter(Boolean).join(' — ')
-        : (err || '오류 발생');
-      $msg.text(errText).addClass('err');
+      $msg.text(errorMessage(xhr)).addClass('err');
       $('#createPageModal').addClass('open');
     });
   }
@@ -1191,7 +1330,7 @@ $(function () {
         loadUsers();
       })
       .fail(function (xhr) {
-        $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+        $msg.text(errorMessage(xhr)).addClass('err');
       });
   });
 
@@ -1207,7 +1346,7 @@ $(function () {
         loadPages();
       })
       .fail(function (xhr) {
-        $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+        $msg.text(errorMessage(xhr)).addClass('err');
       });
   });
 
@@ -1233,7 +1372,7 @@ $(function () {
       renderAuditLogs(data.logs || []);
       renderPagination(data.page, data.totalPages, data.total);
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
     });
   }
 
@@ -1313,7 +1452,7 @@ $(function () {
       $('#changeRoleModal').removeClass('open');
       loadUsers();
     }).fail(function (xhr) {
-      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+      $msg.text(errorMessage(xhr)).addClass('err');
     });
   });
 
@@ -1357,7 +1496,7 @@ $(function () {
       $('#changePageRoleModal').removeClass('open');
       loadPages();
     }).fail(function (xhr) {
-      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+      $msg.text(errorMessage(xhr)).addClass('err');
     });
   });
 
@@ -1380,9 +1519,12 @@ $(function () {
     loadSignupRequests(status);
   });
 
+  $('#btnReloadSignup').on('click', function () { loadSignupRequests(_currentSignupStatus || 'pending'); });
+
   function loadSignupRequests(status) {
     status = status || _currentSignupStatus;
     $.getJSON('/api/admin/signup-requests?status=' + status, function (data) {
+      if (status === 'pending') hideNewItemsBanner('signup');
       const reqs = data.requests || [];
       // 사이드바 배지 갱신 (pending만)
       if (status === 'pending') {
@@ -1391,7 +1533,7 @@ $(function () {
       }
       renderSignupRequests(reqs, status);
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
     });
   }
 
@@ -1462,7 +1604,7 @@ $(function () {
       $('#approveModal').removeClass('open');
       loadSignupRequests('pending');
     }).fail(function (xhr) {
-      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+      $msg.text(errorMessage(xhr)).addClass('err');
     });
   });
 
@@ -1480,7 +1622,7 @@ $(function () {
       $('#rejectModal').removeClass('open');
       loadSignupRequests('pending');
     }).fail(function (xhr) {
-      $msg.text(xhr.responseJSON?.error || '오류 발생').addClass('err');
+      $msg.text(errorMessage(xhr)).addClass('err');
     });
   });
 
@@ -1500,10 +1642,6 @@ $(function () {
   function bugStatusBadge(status) {
     const labelMap = { open: 'open', 'in-progress': 'in-progress', resolved: 'resolved', closed: 'closed' };
     return `<span class="badge-report-status ${status}">${labelMap[status] || status || '-'}</span>`;
-  }
-
-  function bugReportErrorMessage(xhr) {
-    return xhr.responseJSON?.error?.message || '오류 발생';
   }
 
   function highlightBugReportRow() {
@@ -1533,13 +1671,34 @@ $(function () {
 
     $tbody.find('tr[data-id]').on('click', function () {
       const id = $(this).data('id');
+      if (String(id) === String(_selectedBugReportId)) return;
+      if (!confirmDiscardBugDraft()) return;
       selectBugReport(id);
     });
 
     highlightBugReportRow();
   }
 
+  // 상세 패널 입력값 — 렌더링 때 값과 비교해 미저장 답변을 판단한다 (P1-21)
+  let _bugDetailSnapshot = null;
+  function bugDetailValues() {
+    if (!$('#bugReportStatusSelect').length) return null;
+    return JSON.stringify([
+      $('#bugReportStatusSelect').val(), $('#bugReportAdminNote').val(),
+      $('#bugReportCause').val(), $('#bugReportActionTaken').val(),
+    ]);
+  }
+  function bugDetailDirty() {
+    const now = bugDetailValues();
+    return now !== null && _bugDetailSnapshot !== null && now !== _bugDetailSnapshot;
+  }
+  // 목록 새로고침·다른 리포트 선택은 상세 패널을 다시 그리므로 작성 중인 답변이 있으면 먼저 묻는다
+  function confirmDiscardBugDraft() {
+    return !bugDetailDirty() || confirm('저장하지 않은 답변이 있습니다. 버리고 계속할까요?');
+  }
+
   function renderBugReportDetail(report, message) {
+    _bugDetailSnapshot = null;
     const $detail = $('#bugReportDetail').empty();
     if (!report) {
       $detail.html('<div class="detail-empty">목록에서 리포트를 선택하면 상세 내용을 확인하고 상태나 메모를 관리할 수 있습니다.</div>');
@@ -1593,15 +1752,15 @@ $(function () {
           </div>
         </div>
         <div class="detail-block">
-          <div class="detail-label">관리자 메모</div>
-          <textarea class="form-input" id="bugReportAdminNote" rows="7" placeholder="내부 처리 메모를 남길 수 있습니다." style="resize:vertical">${esc(report.admin_note || '')}</textarea>
+          <div class="detail-label">내부 메모(제보자 비공개)</div>
+          <textarea class="form-input" id="bugReportAdminNote" rows="7" placeholder="관리자끼리만 보는 메모입니다. 제보자에게는 표시되지 않습니다." style="resize:vertical">${esc(report.admin_note || '')}</textarea>
         </div>
         <div class="detail-block">
-          <div class="detail-label">버그 원인</div>
+          <div class="detail-label">버그 원인 <span style="font-weight:400;color:var(--text-muted)">(제보자에게 공개)</span></div>
           <textarea class="form-input" id="bugReportCause" rows="5" placeholder="제보자에게 공유할 원인 분석 내용을 입력하세요." style="resize:vertical">${esc(report.cause || '')}</textarea>
         </div>
         <div class="detail-block">
-          <div class="detail-label">조치 사항</div>
+          <div class="detail-label">조치 사항 <span style="font-weight:400;color:var(--text-muted)">(제보자에게 공개)</span></div>
           <textarea class="form-input" id="bugReportActionTaken" rows="5" placeholder="수정 내용, 우회 방법, 배포 여부 등을 입력하세요." style="resize:vertical">${esc(report.action_taken || '')}</textarea>
           <div class="detail-actions">
             <button class="btn btn-primary" id="btnSaveBugReply">답변 저장</button>
@@ -1613,6 +1772,8 @@ $(function () {
     `);
 
     $('#bugReportStatusSelect').val(report.status);
+    // 저장하지 않은 답변 판단용 기준값 (P1-21)
+    _bugDetailSnapshot = bugDetailValues();
 
     $('#btnSaveBugReply').on('click', function () {
       const status = $('#bugReportStatusSelect').val();
@@ -1625,9 +1786,16 @@ $(function () {
         contentType: 'application/json',
         data: JSON.stringify({ status, admin_note, cause, action_taken }),
       }).done(function () {
+        _bugDetailSnapshot = bugDetailValues(); // 저장됨 — 새로고침 전까지도 미저장으로 보지 않는다
         loadBugReports(true, '답변을 저장했습니다.');
       }).fail(function (xhr) {
-        $('#bugReportDetailMsg').text(bugReportErrorMessage(xhr)).removeClass('ok').addClass('err');
+        if (xhr.status === 401) {
+          onAuthLost();
+          $('#bugReportDetailMsg').text('세션이 만료되어 저장하지 못했습니다. 입력한 내용은 그대로 있습니다. 다시 로그인한 뒤 [답변 저장]을 누르세요.')
+            .removeClass('ok').addClass('err');
+          return;
+        }
+        $('#bugReportDetailMsg').text(errorMessage(xhr)).removeClass('ok').addClass('err');
       });
     });
 
@@ -1640,7 +1808,7 @@ $(function () {
         _selectedBugReportId = null;
         loadBugReports(false);
       }).fail(function (xhr) {
-        $('#bugReportDetailMsg').text(bugReportErrorMessage(xhr)).removeClass('ok').addClass('err');
+        $('#bugReportDetailMsg').text(errorMessage(xhr)).removeClass('ok').addClass('err');
       });
     });
   }
@@ -1656,8 +1824,8 @@ $(function () {
       renderBugReportDetail(data.report, message);
     }).fail(function (xhr) {
       if (requestSeq !== _bugReportDetailRequestSeq) return;
-      if (xhr.status === 401) location.href = '/auth/login.html';
-      else $('#bugReportDetail').html(`<div class="detail-empty" style="color:var(--danger)">상세 조회 실패: ${esc(bugReportErrorMessage(xhr))}</div>`);
+      if (xhr.status === 401) onAuthLost();
+      else $('#bugReportDetail').html(`<div class="detail-empty" style="color:var(--danger)">상세 조회 실패: ${esc(errorMessage(xhr))}</div>`);
     });
   }
 
@@ -1669,6 +1837,7 @@ $(function () {
     if (severity) params.set('severity', severity);
 
     $.getJSON('/api/bug-reports' + (params.toString() ? `?${params.toString()}` : ''), function (data) {
+      hideNewItemsBanner('bug-reports');
       _bugReports = data.reports || [];
       renderBugReports(_bugReports);
       if (!_bugReports.length) {
@@ -1682,16 +1851,16 @@ $(function () {
       const nextId = shouldKeepSelection ? _selectedBugReportId : _bugReports[0].id;
       selectBugReport(nextId, message);
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
-      else $('#bugReportsBody').html(`<tr class="empty-row"><td colspan="5">로드 실패: ${esc(bugReportErrorMessage(xhr))}</td></tr>`);
+      if (xhr.status === 401) onAuthLost();
+      else $('#bugReportsBody').html(`<tr class="empty-row"><td colspan="5">로드 실패: ${esc(errorMessage(xhr))}</td></tr>`);
     });
   }
 
   $('#bugStatusFilter, #bugSeverityFilter').on('change', function () {
-    if (_activeTab === 'bug-reports') loadBugReports(false);
+    if (_activeTab === 'bug-reports' && confirmDiscardBugDraft()) loadBugReports(false);
   });
   $('#btnReloadBugReports').on('click', function () {
-    loadBugReports(true);
+    if (confirmDiscardBugDraft()) loadBugReports(true);
   });
 
   // ═══════════════════════════════════════════════════════════
@@ -1709,7 +1878,7 @@ $(function () {
       populateScopeFilter(data.scopes);
       populateRuleScopeSelect(data.scopes);
     }).fail(function (xhr) {
-      if (xhr.status === 401) location.href = '/auth/login.html';
+      if (xhr.status === 401) onAuthLost();
       else alert('IP 화이트리스트 로드 실패');
     });
   }
@@ -1760,7 +1929,7 @@ $(function () {
       const isEnabled = $(this).is(':checked');
       $.ajax({ url: `/api/admin/ip-whitelist/scopes/${id}`, method: 'PUT', contentType: 'application/json', data: JSON.stringify({ is_enabled: isEnabled }) })
         .done(function () { loadIpWhitelist(); })
-        .fail(function (xhr) { alert(xhr.responseJSON?.error?.message || '오류 발생'); loadIpWhitelist(); });
+        .fail(function (xhr) { alert(errorMessage(xhr)); loadIpWhitelist(); });
     });
 
     // path 스코프 삭제 이벤트
@@ -1770,7 +1939,7 @@ $(function () {
       if (!confirm(`"${path}" 스코프와 관련 규칙을 모두 삭제하시겠습니까?`)) return;
       $.ajax({ url: `/api/admin/ip-whitelist/scopes/${id}`, method: 'DELETE' })
         .done(function () { loadIpWhitelist(); })
-        .fail(function (xhr) { alert(xhr.responseJSON?.error?.message || '오류 발생'); });
+        .fail(function (xhr) { alert(errorMessage(xhr)); });
     });
 
     // path 스코프 추가 버튼
@@ -1863,7 +2032,7 @@ $(function () {
       const newActive = !$(this).data('active');
       $.ajax({ url: `/api/admin/ip-whitelist/rules/${id}`, method: 'PATCH', contentType: 'application/json', data: JSON.stringify({ is_active: newActive }) })
         .done(function () { loadIpWhitelist(); })
-        .fail(function (xhr) { alert(xhr.responseJSON?.error?.message || '오류 발생'); });
+        .fail(function (xhr) { alert(errorMessage(xhr)); });
     });
 
     $tbody.find('.btn-ipw-rule-delete').on('click', function () {
@@ -1871,7 +2040,7 @@ $(function () {
       if (!confirm('이 규칙을 삭제하시겠습니까?')) return;
       $.ajax({ url: `/api/admin/ip-whitelist/rules/${id}`, method: 'DELETE' })
         .done(function () { loadIpWhitelist(); })
-        .fail(function (xhr) { alert(xhr.responseJSON?.error?.message || '오류 발생'); });
+        .fail(function (xhr) { alert(errorMessage(xhr)); });
     });
   }
 
@@ -1932,7 +2101,7 @@ $(function () {
         loadIpWhitelist();
       })
       .fail(function (xhr) {
-        $msg.text(xhr.responseJSON?.error?.message || '오류 발생').addClass('err');
+        $msg.text(errorMessage(xhr)).addClass('err');
       });
   });
 
@@ -1950,7 +2119,7 @@ $(function () {
         loadIpWhitelist();
       })
       .fail(function (xhr) {
-        $msg.text(xhr.responseJSON?.error?.message || '오류 발생').addClass('err');
+        $msg.text(errorMessage(xhr)).addClass('err');
       });
   });
 
@@ -1989,14 +2158,80 @@ $(function () {
         `);
       })
       .fail(function (xhr) {
-        $('#ipwTestResult').show().html(`<div class="alert warning">테스트 오류: ${xhr.responseJSON?.error?.message || '알 수 없는 오류'}</div>`);
+        // 서버 문구는 textContent로만 넣는다(XSS 방지)
+        $('#ipwTestResult').show().empty()
+          .append($('<div class="alert warning">').text('테스트 오류: ' + errorMessage(xhr, '알 수 없는 오류')));
       });
   });
 
   // ─── 모달 배경 클릭 닫기 ─────────────────────────────────
+  // data-keep-open 모달(임시 비밀번호)은 배경 클릭으로 닫지 않는다 — 비밀번호를 다시 볼 수 없으므로 [확인]으로만 닫음
   $('.modal-overlay').on('click', function (e) {
-    if (e.target === this) $(this).removeClass('open');
+    if (e.target === this && !this.hasAttribute('data-keep-open')) $(this).removeClass('open');
   });
+
+  // ─── 세션 만료 시 입력 보존 (P1-21) ─────────────────────────
+  // auth-status.js 계약: window.AUTH_STATUS_HAS_UNSAVED()가 true면 자동 새로고침 대신 "세션 만료" 배너를 띄운다.
+  // 미저장 = 버그 답변 패널이 렌더링 때 값과 다름 / 열린 모달에 입력한 값이 있음
+  function openModalHasInput() {
+    let found = false;
+    $('.modal-overlay.open').find('input, textarea').each(function () {
+      const type = (this.getAttribute('type') || 'text').toLowerCase();
+      if (['radio', 'checkbox', 'hidden', 'button', 'submit'].includes(type)) return;
+      if (!this.readOnly && String(this.value || '').trim() !== '') found = true;
+    });
+    return found;
+  }
+  window.AUTH_STATUS_HAS_UNSAVED = function () {
+    return bugDetailDirty() || openModalHasInput();
+  };
+
+  // API가 401(리프레시까지 만료)일 때 — 로그인 페이지로 바로 보내지 않고 auth-status의 만료 처리에 맡긴다
+  function onAuthLost() {
+    if (typeof window.handleAuthExpired === 'function') window.handleAuthExpired();
+    else if (!window.AUTH_STATUS_HAS_UNSAVED()) location.href = '/auth/login.html?next=' + encodeURIComponent(location.pathname + location.search);
+  }
+
+  // ─── 실시간 새 항목 배너 (P1-18) ───────────────────────────
+  // auth-status.js가 Pusher new-notification을 받으면 'auth-status:notification' 이벤트를 보낸다.
+  // 목록을 자동으로 다시 불러오지 않고(작성 중인 답변 보호·Neon 호출 최소화) 해당 탭에 배너만 띄운다.
+  const NOTIF_TYPE_TAB = { signup_request: 'signup', bug_report: 'bug-reports', password_reset_request: 'users' };
+
+  function showNewItemsBanner(tab) { $('#newItemsBanner-' + tab).prop('hidden', false); }
+  function hideNewItemsBanner(tab) { $('#newItemsBanner-' + tab).prop('hidden', true); }
+
+  document.addEventListener('auth-status:notification', function (e) {
+    const tab = NOTIF_TYPE_TAB[e.detail && e.detail.type];
+    if (!tab) return;
+    showNewItemsBanner(tab);
+    // 재설정 요청은 사이드바 배지(첫 로드 때 조회)도 바로 맞춘다 — 목록 영역은 배너 클릭 때 갱신
+    if (tab === 'users' && _activeTab !== 'users') loadResetRequests();
+  });
+
+  $('[data-reload-tab]').on('click', function () {
+    const tab = $(this).data('reload-tab');
+    if (tab === 'signup') loadSignupRequests(_currentSignupStatus || 'pending');
+    if (tab === 'bug-reports' && confirmDiscardBugDraft()) loadBugReports(true);
+    if (tab === 'users') loadUsers();
+  });
+
+  // ─── 서버 에러 → 화면 문구 (P1-13) ────────────────────────
+  // 서버 에러는 { error: { status, code, message, reason, action } } 객체다(respond-error.js).
+  // 객체를 그대로 문자열로 쓰면 [object Object]가 되므로 message → reason → action 순으로 이어 붙인다.
+  // 반환값은 항상 문자열이며, 화면에는 .text()/alert()로만 넣는다.
+  function errorMessage(xhr, fallback) {
+    const body = xhr && xhr.responseJSON;
+    const err = body && body.error;
+    if (err && typeof err === 'object') {
+      const text = [err.message, err.reason, err.action].filter(Boolean).join(' ');
+      if (text) return text;
+    }
+    if (typeof err === 'string' && err) return err;
+    if (body && typeof body.message === 'string' && body.message) return body.message;
+    if (xhr && xhr.status === 0) return '서버에 연결하지 못했습니다. 네트워크 상태를 확인하세요.';
+    const base = fallback || '요청을 처리하지 못했습니다.';
+    return xhr && xhr.status ? `${base} (HTTP ${xhr.status})` : base;
+  }
 
   // ─── HTML 이스케이프 ──────────────────────────────────────
   function esc(str) {
@@ -2006,12 +2241,19 @@ $(function () {
   }
 
   // ─── 초기 로드 ────────────────────────────────────────────
+  // 사이드바 배지(가입 대기·비밀번호 재설정 대기)는 어느 탭으로 들어와도 첫 로드 때 채운다(P1-14)
   loadSignupRequests('pending');
-  const initialTab = TAB_ALIAS[new URLSearchParams(window.location.search).get('tab')] || 'signup';
+  loadResetRequests();
+  const initialParams = new URLSearchParams(window.location.search);
+  const initialTab = TAB_ALIAS[initialParams.get('tab')] || 'signup';
+  const initialReport = initialParams.get('report');
+  if (initialTab === 'bug-reports' && /^[0-9]{1,10}$/.test(initialReport || '')) {
+    _selectedBugReportId = Number(initialReport);
+  }
   activateTab(initialTab, { skipUrlSync: true });
 });
 </script>
-<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+<script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

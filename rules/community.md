@@ -71,6 +71,13 @@ const ALLOWED_STATUS   = ['open', 'in-progress', 'resolved', 'closed'];
 - `loadBugReports(preserveSelection, message)` — 상태/심각도 필터, 행 클릭 시 상세 패널
 - 상세 패널은 request sequence 기반 stale response 무시 로직 적용 (race condition 방지)
 - 답변 저장: `POST /api/bug-reports/:id/update { status, cause, action_taken, admin_note }` — 4개 필드 일괄 전송
+- 라벨: `admin_note` = "내부 메모(제보자 비공개)", 원인·조치 = "(제보자에게 공개)"
+- `?tab=bug-reports&report=<id>`로 열면 그 리포트를 선택한다(admin 알림 딥링크)
+- 다른 관리자가 처리 중 새 가입 요청·버그·재설정 요청이 들어오면 해당 탭에 "새 항목 있음 · 새로고침" 배너(`rules/notifications.md`)
+
+**`admin_note` 공개 범위 (Q9 결정, P1-18): 관리자 내부 전용.** 제보자에게 가는 응답(POST 접수 결과, `GET /mine`, `GET /mine/:id`)은
+SELECT에서 `admin_note`를 빼고 `toReporterView()` 화이트리스트로 한 번 더 거른다. 제보자에게 보이는 관리자 답변은 `cause`·`action_taken`뿐이다.
+회귀 테스트: `test/bug-report-privacy.test.js`
 
 ---
 
@@ -81,8 +88,12 @@ const ALLOWED_STATUS   = ['open', 'in-progress', 'resolved', 'closed'];
 - `#tabSubmit`: 기존 제보 폼 (loginGate + form-shell + success-box)
 - `#tabMyList`: 본인 제보 카드 목록 → 클릭 시 상세 뷰 전환 (← 목록으로 버튼)
 - 제보 성공 후 자동으로 "내 제보 목록" 탭 전환 + 목록 새로고침
-- `window.location.hash === '#my-reports'` 진입 시 목록 탭 자동 활성화 (알림 클릭 연동)
-- 관리자 답변(cause/action_taken/admin_note) 없으면 "관리자가 검토 중입니다." 안내
+- `#my-reports` 진입 시 목록 탭 자동 활성화, `#my-reports/<id>`면 그 리포트 상세를 바로 연다(알림 클릭 연동, `hashchange`도 처리).
+  상세를 열면 해시가 `#my-reports/<id>`, 목록으로 돌아가면 `#my-reports`로 바뀐다(`history.replaceState`)
+- 관리자 답변(cause/action_taken) 없으면 "관리자가 검토 중입니다." 안내 — `admin_note`는 표시하지 않는다
+
+**두 커뮤니티 페이지는 auth-status 기본(상단 바) 모드**다(P1-18 — 허브 링크·알림 벨 표시, 코너 모드 아님).
+`developer-notes.html` 편집기는 열 때 값과 달라진 내용이 있으면 [취소]·배경 클릭 시 확인창을 띄운다.
 
 **알림 연동 패턴 (bug-reports.js):**
 - 제보자 ≠ 처리자일 때만 알림 INSERT (셀프 알림 방지 — 단, 코드 명시는 후속 작업)

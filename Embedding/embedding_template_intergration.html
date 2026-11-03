@@ -4,9 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>eformsign 템플릿 관리 임베딩 (통합 환경)</title>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.20/jsrsasign-all-min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js" integrity="sha384-CYM1EjcB6PBH9xEVtC9Mbegj0ZIphHj14fUBspgRcPBqZeGsjqyu242Sh9P4BNPa" crossorigin="anonymous"></script>
     <script src="/assets/js/token-issuer.js"></script>
     <style>
         /* --- 기본 레이아웃 --- */
@@ -100,6 +101,15 @@
             .container { flex-direction: column; width: 98%; }
             #templateForm { flex: none; min-width: unset; max-height: none; }
             .iframe-panel { min-height: 600px; }
+        }
+
+        /* 좁은 화면(휴대폰) — 가로 스크롤 방지 (P1-19) */
+        @media (max-width: 480px) {
+            .container { width: 100%; margin-top: 10px; gap: 12px; padding: 0 8px; }
+            #templateForm { padding: 14px; min-width: 0; }
+            .form-group-horizontal { flex-wrap: wrap; }
+            .iframe-panel { min-height: 480px; }
+            .modal-content { width: 100%; height: 100%; border-radius: 0; }
         }
     </style>
 </head>
@@ -559,6 +569,24 @@
             }
         }
 
+        // P0b-08: 콘솔 로그에 토큰·서명·키 값을 남기지 않는다 (access_token·refresh_token·signature·api_key·secret·password 키는 '***')
+        function redactForLog(obj) {
+          // 순환 참조가 있어도 예외로 콜백을 멈추지 않고, Error는 {} 대신 name·message를 남긴다 (D-24)
+          try {
+            var seen = typeof WeakSet === 'function' ? new WeakSet() : null;
+            return JSON.stringify(obj, function (k, v) {
+              if (k && /token|signature|secret|api_?key|password|private/i.test(k) && v !== null && v !== undefined && v !== '') return '***';
+              if (v instanceof Error) return { name: v.name, message: v.message };
+              if (v && typeof v === 'object' && seen) {
+                if (seen.has(v)) return '[Circular]';
+                seen.add(v);
+              }
+              return v;
+            }, 4);
+          } catch (e) {
+            return '[로그 직렬화 실패: ' + (e && e.message) + ']';
+          }
+        }
         function createTemplate(){
             var at  = $('#access_token').val();
             var rt  = $('#refresh_token').val();
@@ -689,17 +717,17 @@
                 }
             };
 
-            console.log("🚀 [eformsign.template Request Options]", JSON.stringify(opts, null, 4));
+            console.log("🚀 [eformsign.template Request Options]", redactForLog(opts));
 
             eformsign.template(opts, targetIframeId,
                 res => {
-                    console.log("✅ Success Callback:", JSON.stringify(res, null, 4));
+                    console.log("✅ Success Callback:", redactForLog(res));
                     var id = res.template_id || res.document_id || '';
                     showMsg('createMsgBox', 'success', '성공' + (id ? ' (ID: ' + id + ')' : ''));
                 },
                 err => {
                     showMsg('createMsgBox', 'error', '오류: ' + err.message);
-                    console.log("❌ Error Callback:", JSON.stringify(err, null, 4));
+                    console.log("❌ Error Callback:", redactForLog(err));
                     if(displayMode === 'modal') closeModal();
                 },
                 actions => {
@@ -783,7 +811,7 @@ window.CREDENTIAL_CONFIG = {
 };
 </script>
 <script src="/assets/js/credential-panel.js"></script>
-<script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+<script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
 <script src="/assets/js/auth-status.js"></script>
 </body>
 </html>

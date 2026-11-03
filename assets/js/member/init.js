@@ -25,11 +25,13 @@ $(document).ready(function () {
 
   // secretKey 방식 토글
   $('input[name="secretKeyMethod"]').on('change', function () {
+    // 라벨 문구만 바꾸고 필수(*) 표시는 유지한다
+    const $star = $('<span class="required">*</span>');
     if (this.value === 'signature') {
-      $('#secretKeyLabel').text('비밀 키 (Secret key, Hex):');
+      $('#secretKeyLabel').empty().append(document.createTextNode('비밀 키 (Secret key, Hex) '), $star);
       $('#privateKeyHex').attr('placeholder', '예: 30... (Signature 방식)');
     } else {
-      $('#secretKeyLabel').text('비밀 토큰:');
+      $('#secretKeyLabel').empty().append(document.createTextNode('비밀 토큰 '), $star);
       $('#privateKeyHex').attr('placeholder', '예: test (Bearer token 방식)');
     }
   });
@@ -132,15 +134,35 @@ $(document).ready(function () {
   });
 
   // 사이드바 메뉴 클릭
+  // 좁은 화면(드로어)에서는 메뉴를 고르면 드로어를 닫는다 (P1-19)
+  function closeMobileSidebar() {
+    $('.sidebar').removeClass('open');
+    $('#sidebarBackdrop').removeClass('open');
+  }
+
   $('.sidebar-menu-item').on('click', function () {
     const sec = $(this).data('section');
     if (sec) showSection(sec);
+    closeMobileSidebar();
   });
 
   // 토큰 섹션 사이드바 버튼
   $('#sbTokenBtn').on('click', function () {
     showSection('tokenSection');
+    closeMobileSidebar();
   });
+
+  // 세션 만료 시 입력 보존 훅 (P1-21 — auth-status.js가 읽는다)
+  // 입력 중인 값이 있거나 엑셀 일괄 처리가 진행 중이면 true → 자동 새로고침 대신 배너로 안내된다
+  window.AUTH_STATUS_HAS_UNSAVED = function () {
+    if (typeof isBulkRunning === 'function' && isBulkRunning()) return true;
+    return $('.main-panel').find('input, textarea').toArray().some(function (el) {
+      if (el.readOnly || el.disabled) return false;
+      if (el.type === 'file') return !!(el.files && el.files.length);
+      if (el.type === 'checkbox' || el.type === 'radio' || el.type === 'hidden') return false;
+      return el.value.trim() !== '' && el.value !== el.defaultValue;
+    });
+  };
 
   // 초기 섹션
   showSection('memberAddSection');

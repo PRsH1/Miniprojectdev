@@ -3,7 +3,7 @@
 Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 
 **파일:**
-- `API(JS,HTML)/OpenAPITesterProd.html` — 공개 배포판 UI (멤버 API 비공개)
+- `API(JS,HTML)/OpenAPITesterProd.html` — 공개 배포판 UI (멤버·그룹 API 비공개 — Q5, 명세 데이터는 공개 번들에 남아 있음)
 - `private/OpenAPITesterFull.html` — 전체판 UI (`/app/OpenAPITesterFull`, manager 이상)
 - `assets/js/openapi/api-list.js` — API_LIST 데이터
 - `assets/js/openapi/api-specs.js` — API_SPECS 데이터
@@ -15,8 +15,8 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 > 전역 변수로 공유되므로 `<script>` 태그 순서를 변경하면 안 됨.
 
 > **Prod와 Full은 거의 동일한 복제본이다.** 두 HTML의 실질적 차이는 Prod에만 있는
-> 인라인 스크립트 한 블록(`api-list.js` 로드 직후, `API_LIST`에서 `group === '멤버'` 항목을
-> `splice`로 제거)뿐이다. **UI를 수정할 때는 반드시 두 파일 모두 고쳐야 한다** — 한쪽만
+> 인라인 스크립트 한 블록(`api-list.js` 로드 직후, `API_LIST`에서 `group === '멤버'`·`'그룹'` 항목을
+> `splice`로 제거)뿐이다. `diff private/OpenAPITesterFull.html "API(JS,HTML)/OpenAPITesterProd.html"`의 결과가 이 블록뿐이어야 한다. **UI를 수정할 때는 반드시 두 파일 모두 고쳐야 한다** — 한쪽만
 > 고치면 조용히 갈라진다. JS 모듈은 공유하므로 로직 수정은 한 번으로 충분하다.
 
 ### 파일 역할 및 편집 가이드
@@ -140,7 +140,9 @@ const API_SPECS = {
 | `initHistory()` | async | 로그인 시 DB fetch → `historyCache` 세팅. 비로그인 시 no-op |
 | `historyLoad()` | 동기 | 캐시 또는 localStorage에서 배열 반환 |
 | `historySave(entries)` | 동기 | localStorage에만 저장 (비로그인 전용) |
-| `historyCaptureAndSave(name)` | **async** | 현재 요청 캡처 후 로그인=DB POST+캐시 / 비로그인=localStorage |
+| `historyCaptureAndSave(name, { replaceId })` | **async** | 현재 요청 캡처(`captureRequestSnapshot()`) 후 로그인=DB POST+캐시 / 비로그인=localStorage. `replaceId`가 있으면 덮어쓰기(아래) |
+| `captureRequestSnapshot()` | 동기 | 화면의 `{ method, pathParams, queryParams, headers, body }` — draft·저장 공용 |
+| `rememberCurrentDraft()` / `persistDraftSession()` / `readDraftSession()` | 동기 | draft 캐시·sessionStorage 보관/읽기 |
 | `historyDelete(id)` | **async** | 로그인=DB DELETE+캐시 / 비로그인=localStorage |
 | `historyClear()` | **async** | 로그인=DB 전체삭제+캐시 초기화 / 비로그인=localStorage 제거 |
 | `historyByEndpoint(endpointId)` | 동기 | `historyLoad()` 결과에서 필터링 |
@@ -150,12 +152,34 @@ const API_SPECS = {
 | 함수 | 역할 |
 |---|---|
 | `openSaveModal()` / `closeSaveModal()` | Save 모달 열기/닫기 |
-| `confirmSave()` | **async** — 저장 실행 → 실패 시 모달 유지 → 해당 엔드포인트 자동 펼침 → `buildSidebar()` 재호출 |
+| `confirmSave(mode)` | **async** — 불러온 항목이 있으면 기본 버튼이 [덮어쓰기], `confirmSave('new')`는 [새로 저장]. 실패 시 모달 유지 → 해당 엔드포인트 자동 펼침 → `buildSidebar()` 재호출. 저장 후 `state.currentHistoryId`를 방금 저장한 항목으로 바꾼다 |
 | `buildHistoryPanel()` | 저장됨 탭 flat 목록 렌더링 |
-| `loadHistoryEntry(entry)` | 저장 항목 불러오기: `selectEndpoint()` → 50ms 후 파라미터/Body/Authorization 복원 |
+| `loadHistoryEntry(entry)` | 저장 항목 불러오기: 환경이 다르면 바꾸고 토스트(`환경 변경: A → B`) → `selectEndpoint(id, { skipDraft: true })` → `applyRequestSnapshot(entry)` (지연 없음) |
+| `applyRequestSnapshot(snap)` | path·query·헤더를 **key로** 맞춰 복원, 정의에 없는 query·헤더는 사용자 추가 행으로 복원. requiresAuth API의 Authorization과 값이 빈 인증 헤더는 현재 값 유지 |
+| `resetRequestToDefault()` | [기본값 복원] — 현재 API의 draft를 버리고 정의 기본값으로 |
 | `historyClearConfirm()` | **async** — 전체 삭제 확인 → `expandedSaveEndpoints.clear()` → 재빌드 |
 
-**`state.currentHistoryId`:** 현재 불러온 히스토리 항목 ID. `loadHistoryEntry()` 시 설정, `selectEndpoint()` 직접 클릭 시 `null` 초기화.
+**`state.currentHistoryId`:** 현재 불러온 히스토리 항목 ID. `loadHistoryEntry()`·저장 시 설정, `selectEndpoint()` 직접 클릭·해당 항목 삭제 시 `null` 초기화.
+
+**덮어쓰기 (P1-09):** 저장 항목을 불러온 상태(같은 엔드포인트)에서 Save → [덮어쓰기]/[새로 저장].
+- 비로그인: localStorage에서 같은 id 항목을 빼고 새 내용으로 맨 앞에 넣는다(id 유지, 개수 그대로).
+- 로그인: 서버에 PATCH가 없어 **새로 POST → 성공하면 이전 id DELETE** 순서로 한다(기획서의 DELETE→POST와 반대 — POST 실패 시 원본을 잃지 않기 위해).
+  DELETE가 실패하면 두 항목이 모두 남는다 — `historyCaptureAndSave()`는 `entry.replaceFailed = true`만 표시하고,
+  `confirmSave()`가 "덮어씀" 대신 "새 내용은 저장했지만 이전 항목을 지우지 못했습니다" 토스트(5초)를 띄운다(D-3 — 예전엔 경고 직후 "덮어씀"이 덮었다).
+  캐시는 POST 직후(서버가 100건으로 자르는 시점과 같게) 100건으로 자르고, 이전 항목이 그 정리로 이미 빠졌으면 DELETE하지 않는다
+  (D-9 — DELETE 뒤에 자르면 100건이 찬 상태에서 캐시가 서버보다 1건 많았다). 저장 id는 서버가 새로 만들므로 덮어쓰면 id가 바뀐다. PATCH 도입은 서버(`controllers/requestHistory.js`) 변경 사항.
+
+**편집 내용 보존 — draft (P1-09):**
+- `requestDraftCache`(state.js, `responseCache`와 같은 엔드포인트별 캐시): `selectEndpoint()`가 떠나는 API의 `captureRequestSnapshot()`을 저장하고,
+  들어오는 API는 기본값으로 만든 뒤(`renderEndpointDefaults()`) draft가 있으면 `applyRequestSnapshot()`으로 덮는다. 메서드 select 변경도 포함.
+- sessionStorage `openapi_tester_draft_v1` = `{ v:1, current, env, customDomain, drafts }`: 입력이 멈춘 뒤 0.4초(`scheduleDraftPersist`) 및 API 전환 시 기록.
+  **인증 헤더 값은 `maskSensitiveHeaders()`로 비워서 저장**한다(메모리 캐시는 값 보유 — OPA2_007의 직접 입력 Authorization은 같은 탭 안에서 API를 오가도 유지).
+  용량 초과면 현재 API draft만 저장. 새로고침하면 환경·직접 입력 URL을 먼저 복원하고, 사이드바를 만든 뒤 마지막으로 보던 API를 열어 draft를 복원한다(토스트 안내).
+  복원(`restoreDraftSession()`)이 끝나기 전에는 `draftSessionReady=false`라 `persistDraftSession()`이 기록하지 않는다
+  (D-10 — 환경 select 복원의 change 이벤트가 빈 draft를 먼저 써서, `/api/me`가 느릴 때 다시 새로고침하면 편집 내용이 사라졌다).
+  `refreshAuthUser()`/`initHistory()`가 실패해도 `.catch()` 뒤에 복원은 실행된다.
+  토큰·API Key·Member ID·비밀 키는 저장하지 않는다(P0-08). Body·파라미터 값(수신자 비밀번호 등 업무 데이터)은 마스킹하지 않고 draft·저장 항목에 그대로 남긴다 — 2026-11-03 사용자 허용.
+- 진행 중인 요청이 있는데 다른 API로 바꾸면 그 요청은 취소된다(응답이 다른 API 화면에 표시되는 것 방지). 같은 API 재클릭은 취소하지 않는다(D-11).
 
 **DB API 엔드포인트 (`/api/request-history`):**
 
@@ -217,6 +241,43 @@ const API_SPECS = {
 - 로드 순서: `api-error.js` → `token-issuer.js` → `token-badge.js` → `openapi/api-list.js` …(공유 모듈 → openapi 모듈). 두 HTML 모두 동일.
 
 ---
+
+### 토큰 혼선 방지 · 전송 전 검증 (P1-08)
+
+- **토큰 발급 설정 추적**: `getAccessToken()`은 발급 요청 시점의 `{ baseUrl(환경·직접 입력 도메인), apiKey, memberId }`를
+  `state.tokenContext`에 기억한다(`currentTokenContext()`). 환경 select·직접 입력 URL·API Key·Member ID 입력이 바뀔 때마다
+  `updateAuthUI()`가 비교해 하나라도 다르면 헤더 상태를 **"다른 설정으로 발급됨"**(주황)으로 바꾸고, 유효 시간 배지(`#tokenBadge`)
+  대신 `#tokenStaleNotice`(변경 항목 + [현재 설정으로 재발급] [토큰 비우기])를 보여 준다. 원래 값으로 되돌리면 정상 표시로 돌아온다.
+  크리덴셜 불러오기도 같은 규칙을 탄다(토큰을 자동으로 지우지 않음).
+- **Send 확인창**: `requiresAuth` API를 "다른 설정으로 발급됨" 상태에서 보내면 `#choiceModal`(`showChoiceModal()`)이 뜬다.
+  기본(포커스) 버튼은 **[토큰 비우고 재발급]** — 토큰을 비우고 인증 패널을 펼친 뒤 전송하지 않는다. [그대로 전송]은 기존 토큰으로 보낸다.
+- **토큰 비우기**: `clearAccessToken()`(초기화 버튼·확인창 공통)은 `state.tokenContext`도 지운다. Authorization 헤더 자동 채움/비움
+  (`syncAuthorizationHeader()`)은 `requiresAuth: true` API에서만 한다 — OPA2_007/048처럼 base64 회사 API Key를 직접 넣는 헤더는 건드리지 않는다.
+- **크리덴셜 적용 순서**: `applyCredentialTester()`는 직접 입력 URL을 먼저 넣고 그다음 환경 `change`를 발생시킨다
+  (반대 순서면 Base URL 배지·URL 미리보기가 옛 URL을 보여 줬다).
+- **전송 전 검증** `validateRequestBeforeSend()`: 아래 중 하나라도 걸리면 요청을 보내지 않고, 해당 입력에 빨간 테두리(`.kv-input.has-error`)와
+  `.param-error-msg`, URL 바 아래 `#requestValidationMsg`에 목록을 표시한 뒤 첫 오류의 탭으로 이동한다. 입력을 고치면 그 칸의 표시는 바로 사라진다.
+  - path 파라미터 빈 값(모든 path 파라미터는 필수 — 비우면 URL에 `{document_id}`가 남는다)
+  - `required: true` query 파라미터의 빈 값 또는 체크 해제 (query 행의 `data-required`)
+  - `requiresAuth` API인데 Authorization 헤더가 없음/비활성/빈 값/`Bearer`만 있음 → 인증 패널 자동 펼침
+  - 활성 헤더 값에 `{base64_encoded_api_key}` 같은 플레이스홀더가 남아 있음
+  - Body JSON 형식 오류
+- **인증 패널 기본 펼침**: 토큰이 없으면 펼친 상태로 시작한다(`setAuthPanelOpen()`, HTML도 `open` 클래스로 시작).
+
+### 요청 취소 · 단축키 · 코드 스니펫 (P1-10)
+
+- **취소·타임아웃**: `sendRequest()`는 `AbortController`를 `state.inFlight`에 두고 **60초**(`REQUEST_TIMEOUT_MS`) 타이머를 건다.
+  진행 중에는 Send 버튼이 회색 **[취소]**(`.btn-send.is-cancel`, `setSendButtonBusy()`)로 바뀌고 드롭다운 화살표는 비활성.
+  [취소] → "요청이 취소되었습니다", 타임아웃 → "응답이 60초 안에 오지 않아 요청을 취소했습니다"를 응답 영역에 표시한다(CORS 안내는 띄우지 않음).
+  진행 중에 다른 API를 고르면 `cancelInFlightRequest('switch')`로 취소하고 토스트만 띄운다. **보고 있는 API를 다시 클릭하면** 화면을 다시 그리지 않고
+  요청도 취소하지 않는다(`selectEndpoint()` 조기 반환 — 불러온 저장 항목 상태만 해제, D-11). 저장 항목 불러오기(`skipDraft`)는 같은 API여도 다시 그린다.
+- **단축키**(`init.js` keydown): **Ctrl/Cmd+Enter** = Send(모달이 열려 있거나 요청 진행 중이면 무시, Body 편집 중에도 줄바꿈 대신 전송),
+  **Esc** = 가장 위 모달 하나 닫기(`MODAL_CLOSERS` 순서: 확인창 → 로그인 필요 → 인증 저장 → 인증 불러오기 → 요청 저장 → Code → API 명세 → 가이드),
+  모달이 없으면 Send 드롭다운·모바일 사이드바를 닫는다. **Ctrl+Shift+F** = Body JSON 정렬(기존). 새 모달을 추가하면 `MODAL_CLOSERS`에도 넣는다.
+- **코드 스니펫 이스케이프**: cURL은 URL·헤더·Body를 `shellQuote()`(`'` → `'\''`)로 감싼다. Python은
+  `payload = json.loads(r'''…''')` + `requests.<m>(url, headers=headers, json=payload)`(Body에 `'''`가 있거나 `'`·`\`로 끝나면
+  한 줄 JSON 문자열 리터럴로 대체), `print(response.status_code)` / `print(response.text)`. fetch·jQuery는 Body를 템플릿 리터럴
+  (`jsTemplateEscape()` — `\` `` ` `` `${`)로, URL은 `JSON.stringify`로 넣는다. Java는 헤더·URL을 `javaQuote()`, Body 텍스트 블록은 `\`·`"""`만 이스케이프.
 
 ### 비(非)자명한 동작 — 수정 시 주의
 

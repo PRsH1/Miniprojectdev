@@ -15,6 +15,8 @@ let state = {
     authMethod: 'signature',   // 'signature' | 'bearer'
     currentEndpoint: null,
     currentHistoryId: null,
+    // 토큰을 발급할 때의 설정 { baseUrl, apiKey, memberId } — 바뀌면 "다른 설정으로 발급됨" (P1-08)
+    tokenContext: null,
 };
 
 // 엔드포인트별 응답 캐시 { [endpointId]: { statusText, statusClass, time, size, bodyHtml } }
@@ -45,6 +47,85 @@ function restoreResponseState(epId) {
     } else {
         clearResponse();
     }
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// REQUEST DRAFT (P1-09) — 엔드포인트별 편집 내용 보존
+// ──────────────────────────────────────────────────────────────────────────
+// { [endpointId]: { method, pathParams, queryParams, headers, body } }
+// 엔드포인트를 떠날 때 현재 편집 내용을 저장하고, 돌아오면 복원한다(selectEndpoint).
+// 메모리 캐시는 인증 헤더 값을 그대로 들고 있지만, Authorization(requiresAuth)은 복원할 때 현재 토큰으로 다시 채운다.
+const requestDraftCache = {};
+
+// 새로고침 대비 탭 단위 보관 (sessionStorage) — 인증 헤더 값은 저장하지 않는다
+const DRAFT_SESSION_KEY = 'openapi_tester_draft_v1';
+// 새로고침 직후 이전 draft를 복원(restoreDraftSession)하기 전에는 sessionStorage를 덮어쓰지 않는다 —
+// 환경 select 복원(change 이벤트) 등이 빈 draft를 먼저 기록해 이전 편집 내용을 지우던 문제 (D-10)
+let draftSessionReady = false;
+
+// 현재 화면의 요청 구성(파라미터·헤더·Body)을 읽는다 — draft·요청 저장 공용
+function captureRequestSnapshot() {
+    const pathParams = [];
+    $('#pathBody tr').each(function() {
+        pathParams.push({ key: $(this).find('.param-key').val(), value: $(this).find('.param-val').val() });
+    });
+
+    const queryParams = [];
+    $('#queryBody tr').each(function() {
+        queryParams.push({ enabled: $(this).find('.param-enabled').is(':checked'), key: $(this).find('.param-key').val(), value: $(this).find('.param-val').val() });
+    });
+
+    const headers = [];
+    $('#headersBody tr').each(function() {
+        headers.push({ enabled: $(this).find('.header-enabled').is(':checked'), key: $(this).find('.header-key').val(), value: $(this).find('.header-val').val() });
+    });
+
+    return {
+        method: $('#methodSelect').val(),
+        pathParams,
+        queryParams,
+        headers,
+        body: $('#bodyEditor').val(),
+    };
+}
+
+function maskSnapshot(snap) {
+    return Object.assign({}, snap, { headers: maskSensitiveHeaders(snap.headers) });
+}
+
+function persistDraftSession() {
+    if (!draftSessionReady) return;
+    const current = state.currentEndpoint ? state.currentEndpoint.id : null;
+    const base = {
+        v: 1,
+        current,
+        env: $('#envSelect').val(),
+        customDomain: $('#customDomainInput').val(),
+    };
+    const all = {};
+    Object.keys(requestDraftCache).forEach(id => { all[id] = maskSnapshot(requestDraftCache[id]); });
+    try {
+        sessionStorage.setItem(DRAFT_SESSION_KEY, JSON.stringify(Object.assign({}, base, { drafts: all })));
+    } catch (e) {
+        // 용량 초과 등 — 현재 엔드포인트 draft만이라도 남긴다
+        try {
+            const only = current && requestDraftCache[current] ? { [current]: maskSnapshot(requestDraftCache[current]) } : {};
+            sessionStorage.setItem(DRAFT_SESSION_KEY, JSON.stringify(Object.assign({}, base, { drafts: only })));
+        } catch (e2) { /* 저장 불가(사생활 보호 모드 등) — 메모리 캐시만 사용 */ }
+    }
+}
+
+function readDraftSession() {
+    try {
+        const data = JSON.parse(sessionStorage.getItem(DRAFT_SESSION_KEY) || 'null');
+        return data && data.v === 1 ? data : null;
+    } catch (e) { return null; }
+}
+
+// 현재 엔드포인트의 편집 내용을 캐시 + sessionStorage에 반영
+function rememberCurrentDraft() {
+    if (state.currentEndpoint) requestDraftCache[state.currentEndpoint.id] = captureRequestSnapshot();
+    persistDraftSession();
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -165,27 +246,20 @@ function historySave(entries) {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
 }
 
-async function historyCaptureAndSave(customName) {
+// 현재 요청을 저장한다. options.replaceId가 있으면 그 항목을 덮어쓴다(P1-09).
+//  - 비로그인: localStorage에서 같은 id 항목을 교체(맨 앞으로 이동)
+//  - 로그인: 서버에 PATCH가 없으므로 새로 POST → 성공하면 이전 항목 DELETE
+//    (DELETE 먼저 하면 POST 실패 시 저장 항목을 잃으므로 순서를 바꿨다)
+async function historyCaptureAndSave(customName, options = {}) {
     const ep = state.currentEndpoint;
-    if (!ep) return;
+    if (!ep) return null;
+    const replaceId = options.replaceId || null;
 
-    const pathParams = [];
-    $('#pathBody tr').each(function() {
-        pathParams.push({ key: $(this).find('.param-key').val(), value: $(this).find('.param-val').val() });
-    });
-
-    const queryParams = [];
-    $('#queryBody tr').each(function() {
-        queryParams.push({ enabled: $(this).find('.param-enabled').is(':checked'), key: $(this).find('.param-key').val(), value: $(this).find('.param-val').val() });
-    });
-
-    const headers = [];
-    $('#headersBody tr').each(function() {
-        const key = $(this).find('.header-key').val();
-        // 인증 헤더는 키만 저장 (값은 '')
-        const value = isSensitiveHeaderKey(key) ? '' : $(this).find('.header-val').val();
-        headers.push({ enabled: $(this).find('.header-enabled').is(':checked'), key, value });
-    });
+    const snap = captureRequestSnapshot();
+    const pathParams = snap.pathParams;
+    const queryParams = snap.queryParams;
+    // 인증 헤더는 키만 저장 (값은 '')
+    const headers = maskSensitiveHeaders(snap.headers);
 
     let response = null;
     if ($('#statusBadge').is(':visible')) {
@@ -202,13 +276,13 @@ async function historyCaptureAndSave(customName) {
         savedAt: Date.now(),
         name: customName || ep.name,
         endpointId: ep.id,
-        method: ep.method,
+        method: snap.method || ep.method,
         environment: $('#envSelect').val(),
         url: $('#urlInput').val(),
         pathParams,
         queryParams,
         headers,
-        body: $('#bodyEditor').val(),
+        body: snap.body,
         response
     };
 
@@ -233,15 +307,35 @@ async function historyCaptureAndSave(customName) {
             }
             entry.id = String(data.id);
             historyCache.unshift(entry);
+            // 서버는 POST 직후 최신 100건만 남긴다 — 같은 순서로 캐시도 자른다.
+            // (덮어쓰기 DELETE 뒤에 자르면 100건이 찬 상태에서 서버보다 1건 많아진다 — D-9)
             if (historyCache.length > HISTORY_MAX) historyCache.splice(HISTORY_MAX);
         } catch (e) {
             showToast('요청 저장 중 오류가 발생했습니다', 2000);
             return null;
         }
+        // 이전 항목이 위 100건 정리로 이미 빠졌다면(서버도 같은 기준으로 지웠다) DELETE할 필요가 없다
+        if (replaceId && replaceId !== entry.id && historyCache.some(e => e.id === replaceId)) {
+            // 새 항목 저장에 성공한 뒤 이전 항목을 지운다. 실패하면 두 항목이 모두 남는다(데이터 손실 없음)
+            let deleted = false;
+            try {
+                const delRes = await fetch(`/api/request-history/${encodeURIComponent(replaceId)}`, { method: 'DELETE' });
+                if (handleApiAuthExpired(delRes)) return entry;
+                deleted = delRes.ok;
+            } catch (e) { deleted = false; }
+            if (deleted) historyCache = historyCache.filter(e => e.id !== replaceId);
+            // 경고 토스트는 confirmSave()가 성공 토스트 대신 띄운다 — 여기서 띄우면 곧바로 "덮어씀"에 가려진다 (D-3)
+            else entry.replaceFailed = true;
+        }
         return entry;
     }
 
-    const list = historyLoad();
+    let list = historyLoad();
+    if (replaceId) {
+        // 비로그인 덮어쓰기: 같은 id를 유지하고 맨 앞으로 옮긴다
+        list = list.filter(e => e.id !== replaceId);
+        entry.id = replaceId;
+    }
     list.unshift(entry);
     if (list.length > HISTORY_MAX) list.splice(HISTORY_MAX);
     historySave(list);
@@ -262,11 +356,13 @@ async function historyDelete(id) {
             return false;
         }
         historyCache = historyCache.filter(e => e.id !== id);
+        if (state.currentHistoryId === id) state.currentHistoryId = null;
         return true;
     }
 
     const list = historyLoad().filter(e => e.id !== id);
     historySave(list);
+    if (state.currentHistoryId === id) state.currentHistoryId = null;
     return true;
 }
 
@@ -385,18 +481,18 @@ function escHtml(str) {
 
 async function applyCredentialTester(id) {
     try {
-        const res = await fetch(`/api/credentials/${id}`);
+        const res = await fetch(`/api/credentials/${encodeURIComponent(id)}`);
         if (handleApiAuthExpired(res)) return;
         if (!res.ok) return alert('불러오기 실패');
         const c = await res.json();
 
-        // 환경 선택
+        // 직접 입력 URL을 먼저 넣고 나서 환경 change를 발생시킨다 (P1-08)
+        // — 순서가 반대면 change 핸들러가 옛 URL로 Base URL 배지·URL 미리보기를 그린다
+        const $cu = document.getElementById('customDomainInput');
+        if ($cu && c.environment === 'custom') $cu.value = c.custom_url || '';
         const $env = document.getElementById('envSelect');
         if ($env) { $env.value = c.environment; $env.dispatchEvent(new Event('change')); }
-        if (c.environment === 'custom' && c.custom_url) {
-            const $cu = document.getElementById('customDomainInput');
-            if ($cu) $cu.value = c.custom_url;
-        }
+
         // 인증 필드
         const $apiKey = document.getElementById('apiKey');
         const $userId = document.getElementById('userId');
@@ -416,6 +512,8 @@ async function applyCredentialTester(id) {
             showToast(`"${c.name}" 불러오기 완료  비밀 키를 직접 입력해주세요.`);
         }
 
+        // 기존 토큰이 다른 계정·환경으로 발급된 것이면 "다른 설정으로 발급됨"으로 표시
+        if (typeof updateAuthUI === 'function') updateAuthUI();
         closeCredentialLoadModal();
     } catch (e) {
         alert('불러오기 중 오류가 발생했습니다.');
