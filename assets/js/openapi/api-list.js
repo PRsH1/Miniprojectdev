@@ -6283,7 +6283,7 @@ const API_LIST = [
         name: '템플릿 사용·수정 권한 변경',
         method: 'PATCH',
         path: '/v2.0/api/forms/{form_id}/permissions',
-        description: '템플릿의 사용(문서 작성) 권한과 수정 권한 대상 멤버·그룹을 추가·삭제합니다. use_all_members·use·modify 중 하나 이상이 필요하고, 각 대상에는 add 또는 delete가 있어야 합니다. 일부만 반영되면 응답에 error가 붙습니다. 대표 관리자·템플릿 소유자·수정 권한자만 가능합니다.',
+        description: '템플릿의 사용(문서 작성) 권한과 수정 권한 대상 멤버·그룹을 추가·삭제합니다. use_all_members·use·modify 중 하나 이상이 필요하고, 각 대상에는 add 또는 delete가 있어야 합니다. 일부만 반영되면 응답에 error가 붙습니다. 대표 관리자·템플릿 소유자·수정 권한자만 가능합니다. 주의: use를 보내면(기본 Body 포함) 사용 권한의 "전체 멤버 허용"이 꺼집니다 — 수정 권한만 바꾸려면 use 키를 지우세요. groups는 그룹 ID가 아니라 그룹 이름, managers는 역할 코드(TEMPLATE_MANAGER·DOCUMENT_MANAGER·COMPANY_MANAGER)를 넣습니다.',
         requiresAuth: true,
         pathParams: [
             { key: 'form_id', description: '템플릿 ID', required: true, default: '' }

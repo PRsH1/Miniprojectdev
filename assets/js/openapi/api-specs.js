@@ -2511,12 +2511,12 @@ const API_SPECS = {
         ],
         queryParams: [],
         requestBody: [
-            { key: 'use_all_members', type: 'boolean', required: false, description: 'true면 전체 멤버 사용 허용' },
-            { key: 'use.members.add / use.members.delete', type: 'array', required: false, description: '사용 권한을 추가·삭제할 멤버 ID' },
-            { key: 'use.groups.add / use.groups.delete', type: 'array', required: false, description: '사용 권한을 추가·삭제할 그룹 ID' },
-            { key: 'modify.members.add / modify.members.delete', type: 'array', required: false, description: '수정 권한 멤버 ID' },
-            { key: 'modify.groups.add / modify.groups.delete', type: 'array', required: false, description: '수정 권한 그룹 ID' },
-            { key: 'modify.managers.add / modify.managers.delete', type: 'array', required: false, description: '수정 권한 관리자 ID' },
+            { key: 'use_all_members', type: 'boolean', required: false, description: 'true면 전체 멤버 사용 허용', note: 'false·null은 아무것도 바꾸지 않음. 전체 허용을 끄는 것은 use를 보냈을 때' },
+            { key: 'use.members.add / use.members.delete', type: 'array', required: false, description: '사용 권한을 추가·삭제할 멤버 ID', note: 'use를 보내면 전체 멤버 허용이 꺼짐' },
+            { key: 'use.groups.add / use.groups.delete', type: 'array', required: false, description: '사용 권한을 추가·삭제할 그룹 이름', note: '그룹 ID가 아니라 이름으로 대조' },
+            { key: 'modify.members.add / modify.members.delete', type: 'array', required: false, description: '수정 권한 멤버 ID', note: '회사가 템플릿 생성 권한을 일부 멤버로 제한했으면 생성 권한자 중에서 로그인 계정 ID로 대조' },
+            { key: 'modify.groups.add / modify.groups.delete', type: 'array', required: false, description: '수정 권한 그룹 이름', note: '그룹 ID가 아니라 이름으로 대조' },
+            { key: 'modify.managers.add / modify.managers.delete', type: 'array', required: false, description: '수정 권한을 줄 관리자 역할 코드', note: 'TEMPLATE_MANAGER / DOCUMENT_MANAGER / COMPANY_MANAGER' },
         ],
         responseFields: [
             { key: 'template.id', type: 'string', description: '템플릿 ID' },
