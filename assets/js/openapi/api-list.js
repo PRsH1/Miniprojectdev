@@ -42,7 +42,7 @@ const API_LIST = [
             { key: 'Authorization', description: 'Bearer + Base64(API Key) — API Key 값을 Base64 인코딩하여 입력 (예: Bearer dGVzdA==)', value: '' },
             { key: 'eformsign_signature', description: '비밀 키(Secret Key)로 생성한 ECDSA 서명값', value: '' },
         ],
-        defaultBody: { execution_time: 0, member_id: '' },
+        defaultBody: { execution_time: null, member_id: '' },
         exampleResponse: {
             success: {
                 "api_key": {
@@ -95,7 +95,7 @@ const API_LIST = [
                     body: {"code":"4000002","ErrorMessage":"The validation time has expired.","execution_time":"number"}
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -196,7 +196,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -392,7 +392,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -519,7 +519,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -744,7 +744,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -847,7 +847,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -1222,7 +1222,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -1325,7 +1325,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -1501,7 +1501,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -1691,7 +1691,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -1869,7 +1869,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -2016,7 +2016,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -2113,7 +2113,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -2227,7 +2227,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -2333,7 +2333,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -2433,7 +2433,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -2530,7 +2530,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -2662,7 +2662,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -2954,7 +2954,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -3067,7 +3067,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -3146,7 +3146,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -3305,7 +3305,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -3361,7 +3361,7 @@ const API_LIST = [
                 contact: {
                     tel: '',
                     number: '',
-                    country_number: '+82'
+                    country_number: ''
                 },
                 department: '',
                 position: '',
@@ -3450,7 +3450,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -3502,7 +3502,7 @@ const API_LIST = [
             account: {
                 id: '',
                 name: '',
-                enabled: true,
+                enabled: null,
                 contact: { number: '', tel: '', email: '', country_number: '' },
                 department: '',
                 position: '',
@@ -3587,7 +3587,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -3692,7 +3692,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -3814,7 +3814,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -3970,7 +3970,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -4088,7 +4088,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -4212,7 +4212,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -4319,7 +4319,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -4461,7 +4461,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -4582,7 +4582,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -4719,7 +4719,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -4862,7 +4862,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -4967,7 +4967,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -5077,7 +5077,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -5218,7 +5218,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -5324,7 +5324,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -5438,7 +5438,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -5566,7 +5566,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
@@ -5817,7 +5817,7 @@ const API_LIST = [
                     body: {"code":"4010001","ErrorMessage":"The access_token claim is invalid."}, status: 401
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
+                    title: "유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)",
                     body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
