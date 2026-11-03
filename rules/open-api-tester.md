@@ -178,7 +178,7 @@ const API_SPECS = {
   복원(`restoreDraftSession()`)이 끝나기 전에는 `draftSessionReady=false`라 `persistDraftSession()`이 기록하지 않는다
   (D-10 — 환경 select 복원의 change 이벤트가 빈 draft를 먼저 써서, `/api/me`가 느릴 때 다시 새로고침하면 편집 내용이 사라졌다).
   `refreshAuthUser()`/`initHistory()`가 실패해도 `.catch()` 뒤에 복원은 실행된다.
-  토큰·API Key·Member ID·비밀 키는 저장하지 않는다(P0-08).
+  토큰·API Key·Member ID·비밀 키는 저장하지 않는다(P0-08). Body·파라미터 값(수신자 비밀번호 등 업무 데이터)은 마스킹하지 않고 draft·저장 항목에 그대로 남긴다 — 2026-11-03 사용자 허용.
 - 진행 중인 요청이 있는데 다른 API로 바꾸면 그 요청은 취소된다(응답이 다른 API 화면에 표시되는 것 방지). 같은 API 재클릭은 취소하지 않는다(D-11).
 
 **DB API 엔드포인트 (`/api/request-history`):**

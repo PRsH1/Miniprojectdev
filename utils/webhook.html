@@ -118,7 +118,7 @@
             <details class="setup-guide">
                 <summary>eformsign 설정 방법</summary>
                 <ol>
-                    <li><strong>웹훅 등록</strong> — eformsign에 관리자 계정으로 로그인한 뒤 웹훅(Webhook) 설정 메뉴에서 새 웹훅을 추가하고, 위 수신 URL을 그대로 붙여 넣습니다. 받을 이벤트(문서 이벤트, PDF 생성 완료 등)를 선택해 저장합니다.</li>
+                    <li><strong>웹훅 등록</strong> — eformsign에 <strong>대표 관리자 계정</strong>으로 로그인한 뒤 왼쪽 메뉴(LNB)의 <strong>커넥트</strong> → <strong>Webhook 관리</strong> 탭에서 새 웹훅을 추가하고, 위 수신 URL을 그대로 붙여 넣습니다. 받을 이벤트(문서 이벤트, PDF 생성 완료 등)를 선택해 저장합니다.</li>
                     <li><strong>company_id가 필요한 이유</strong> — 수신기는 받은 본문의 <code>company_id</code>로 실시간 채널(<code>company-&lt;company_id&gt;</code>)을 골라 전달합니다. 본문에 <code>company_id</code>가 없으면 이벤트는 무시되고, 이 화면에 표시되지 않습니다. 아래 입력란에 같은 Company ID를 넣고 [채널 연결]을 누르세요(토큰을 발급하면 자동으로 채워집니다).</li>
                     <li><strong>테스트 방법</strong> — eformsign에서 테스트 문서를 작성·처리하거나, 아래처럼 직접 보내 확인합니다.
                         <pre class="guide-code" id="curlExample"></pre>

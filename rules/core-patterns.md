@@ -45,7 +45,7 @@ API 도구의 결과 영역은 `<pre>`를 직접 만들지 말고 `window.Result
 - `CsvExport.download(prefix, headers, rows)` → `<prefix>_<YYYYMMDD_HHmmss>.csv`. **UTF-8 BOM**을 붙여 Excel에서 한글이 깨지지 않고, 줄 구분은 CRLF.
 - 모든 값을 큰따옴표로 감싸고(내부 `"`는 `""`), `=`·`+`·`-`·`@`·탭·CR로 시작하는 값 앞에 `'`를 붙여 **CSV 수식 주입**을 막는다(문서 제목·템플릿 이름은 외부 데이터). 단 빈 값 자리표시자 `-` 한 글자는 그대로 둔다(D-16).
 - `CsvExport.build(headers, rows)`(BOM 없는 문자열), `CsvExport.formatDate(epochMs)` → `YYYY-MM-DD HH:mm:ss`(로컬, 잘못된 값은 `''`).
-- 적용: `API(JS,HTML)/listdocuments.html`(현재 페이지 5열), `utils/DocumentDelete.html`·`utils/templateDeletetool.html`(대상 CSV·결과 CSV). 테스트: `test/csv-export.test.js`.
+- 적용: `API(JS,HTML)/listdocuments.html`(현재 페이지 5열 — 상태 라벨 `001` 임시 저장·`002` 문서 생성·`003` 완료, 모르는 코드는 코드 그대로. DocumentDelete 미리보기도 같은 라벨), `utils/DocumentDelete.html`·`utils/templateDeletetool.html`(대상 CSV·결과 CSV). 테스트: `test/csv-export.test.js`.
 
 ### 일괄 삭제 도구 안전장치 (`utils/DocumentDelete.html`, `utils/templateDeletetool.html`, P1-06)
 
@@ -333,7 +333,7 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
   마지막 Company ID는 `webhook-monitor-company-id`에 기억해 다음 방문 시 이력 복원 + 채널 재연결. 토큰 발급 성공 시 응답 `api_key.company.company_id`로 자동 채운다 —
   단 **아직 채널에 연결하지 않았을 때만** 채우고 연결한다. 이미 다른 회사 채널을 보고 있으면 바꾸지 않고 토스트로 차이만 알린다(D-15).
   모든 저장소 접근은 try/catch — 차단되면 화면에만 표시하고 안내 문구를 바꾸며, 용량 초과면 오래된 것부터 줄여 재시도한다. 서버 저장은 P2-05.
-- **모니터 기타**: 수신 URL [복사]·"eformsign 설정 방법" 안내, 새 이벤트가 와도 상태 필터 유지(숨겨지면 토스트), 제목 없는 PDF는 `<document_id>.pdf`로 다운로드.
+- **모니터 기타**: 수신 URL [복사]·"eformsign 설정 방법" 안내(경로: 대표 관리자 계정 → 왼쪽 메뉴(LNB) **커넥트** → **Webhook 관리** 탭 — 2026-11-03 사용자 확인), 새 이벤트가 와도 상태 필터 유지(숨겨지면 토스트), 제목 없는 PDF는 `<document_id>.pdf`로 다운로드.
   `/api/downloadDocument`의 `Content-Disposition: filename*="UTF-8''…"`(따옴표 포함)를 그대로 파싱한다.
 - 테스트: `test/webhook-receiver.test.js`
 

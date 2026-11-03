@@ -84,6 +84,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
     `cancelDocs`/`deleteDocs`=`createdIdList`, `deleteGroup`=`createdGroupId`, `deleteMember`=`memberCreated`,
     `cleanupBulk1/2`=`bulkMemberIds`, `deleteStamp`=`companyStampId`). 결과 행 이름에 "· 중지 후 정리"가 붙고,
     자원이 없으면 `SKIP("사용자 중지 (정리 대상 없음)")`. 정리 요청은 `state.cleanupPhase` 동안만 `request()`가 허용한다.
+  - 중지 시 이미 만든 자원을 정리 step으로 지우는 동작은 2026-11-03 사용자가 확정했다.
   - **선행 FAIL 시 정리 step도 SKIP하는 기존 동작은 바꾸지 않는다**(기획서 0절 — P0-13 제외). 중지 후 정리는 FAIL이 없던 OPA에만 해당한다.
   - `state.shared.memberCreated`(createMember가 PASS/CHECK)는 `freshShared()`에 추가된 공유 변수다.
   - 중지된 실행은 진행 문구가 "중지됨: …", 이력 항목에 "(중지됨)", 리포트 `meta.stopped = true`.

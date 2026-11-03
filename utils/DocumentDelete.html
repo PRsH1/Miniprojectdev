@@ -216,7 +216,7 @@
         let stopRequested = false;  // [중지] — 배치 사이에서 확인 (진행 중 배치는 완료를 기다림)
         let wakeLock = null;
         // 문서 상태(current_status.status_type) 한글 라벨 — 모르는 코드는 코드 그대로
-        const STATUS_LABELS = { '001': '임시 저장', '002': '진행 중', '003': '완료' };
+        const STATUS_LABELS = { '001': '임시 저장', '002': '문서 생성', '003': '완료' };
         const BATCH_SIZE = 100;
         const DELAY_MS = 3000;
         const DOMAIN_MAP = { op_saas: 'https://kr-api.eformsign.com', csap: 'https://www.gov-eformsign.com/Service' };
