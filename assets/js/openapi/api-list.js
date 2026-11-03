@@ -5554,8 +5554,12 @@ const API_LIST = [
                     body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403
                 },
                 {
-                    title: "존재하지 않는 멤버 (4000074)",
+                    title: "토큰의 멤버가 회사에 없음·비활성 (4000074)",
                     body: {"code":"4000074","ErrorMessage":"No such member exists."}, status: 400
+                },
+                {
+                    title: "manager_id·creator_id의 멤버를 찾을 수 없음 (4000074)",
+                    body: {"code":"4000074","ErrorMessage":"No such member exists."}, status: 500
                 },
                 {
                     title: "Access Token 클레임 오류 (4010001)",
