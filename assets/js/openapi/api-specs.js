@@ -1547,7 +1547,7 @@ const API_SPECS = {
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원', status: 403 },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가', status: 403 },
             { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
-            { code: '4030057', message: 'You do not have permission.', description: '체험(Trial) 회사 등 전송 권한 없음', status: 400 }
+            { code: '4030057', message: 'You do not have permission.', description: '한국·일본 외 체험(Trial) 회사는 전송 불가', status: 400 }
         ],
     },
     'OPA2_040': {

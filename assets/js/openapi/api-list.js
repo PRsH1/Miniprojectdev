@@ -2052,7 +2052,7 @@ const API_LIST = [
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
                 },
                 {
-                    title: "체험(Trial) 회사 등 전송 권한 없음 (4030057)",
+                    title: "한국·일본 외 체험(Trial) 회사는 전송 불가 (4030057)",
                     body: {"code":"4030057","ErrorMessage":"You do not have permission."}, status: 400
                 }
             ]
