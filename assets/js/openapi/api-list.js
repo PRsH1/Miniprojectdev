@@ -6425,8 +6425,9 @@ const API_LIST = [
             },
             errors: [
                 { title: 'templates 누락·빈 목록 (4000001)', body: {"code":"4000001","ErrorMessage":"Required input value not found."}, status: 400 },
-                { title: '템플릿 없음 (4000046)', body: {"code":"4000046","ErrorMessage":"There is no template."} },
-                { title: '서식 파일(OZR) 없음 (4000045)', body: {"code":"4000045","ErrorMessage":"The OZR file does not exist."} },
+                { title: '템플릿 없음 — 비동기 처리에서 감싸져 5000001로 응답 (5000001)', body: {"code":"5000001","ErrorMessage":"Internal server error."}, status: 500 },
+                { title: '서식 파일(OZR) 없음 (4000045)', body: {"code":"4000045","ErrorMessage":"The OZR file does not exist."}, status: 400 },
+                { title: '템플릿 서식 파일 정보 없음 (4000087)', body: {"code":"4000087","ErrorMessage":"No file exists."}, status: 400 },
                 { title: '유효하지 않은 API Key (4000003)', body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}, status: 400 },
                 { title: '비활성화된 API Key (4030001)', body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403 },
                 { title: 'Open API 사용 권한 없음 (4030034)', body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403 },
