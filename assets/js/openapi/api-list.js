@@ -3492,7 +3492,7 @@ const API_LIST = [
         name: '멤버 수정',
         method: 'PATCH',
         path: '/v2.0/api/members/{member_id}',
-        description: '멤버 정보를 수정합니다. PATCH지만 사실상 전체 교체입니다 — enabled를 빼면 비활성화, role을 빼면 회사·템플릿 관리자 권한 해제, department·position·contact.number·tel·email을 빼면 빈 값으로 지워집니다. 현재 값을 먼저 조회(OPA2_010)해 함께 보내세요. account.id는 경로의 멤버 ID와 같아야 합니다.',
+        description: '멤버 정보를 수정합니다. PATCH지만 사실상 전체 교체입니다 — enabled를 빼면 비활성화(초대 상태 멤버는 제외), role을 빼면 회사·템플릿 관리자 권한 해제(요청자가 회사 관리자이거나 대상이 대표 관리자인데 회사 관리자 권한이 바뀌게 되면 4000125), department·position·contact.number·tel·email을 빼면 빈 값으로 지워집니다. 현재 값을 먼저 조회(OPA2_010)해 함께 보내세요. account.id는 경로의 멤버 ID와 같아야 합니다.',
         requiresAuth: true,
         pathParams: [
             { key: 'member_id', description: '수정할 멤버 ID', required: true, default: '' }
