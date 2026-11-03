@@ -1166,8 +1166,12 @@ const API_LIST = [
                     body: {"code":"5000089","ErrorMessage":"Invalid document inbox type."}, status: 400
                 },
                 {
-                    title: "날짜·template_ids·creator_infos 형식 오류 (4000070)",
+                    title: "template_ids·creator_infos가 배열이 아님 (4000070)",
                     body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 500
+                },
+                {
+                    title: "limit·skip이 숫자가 아님 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 400
                 },
                 {
                     title: "type 04(문서 관리)를 관리자·문서 관리자가 아닌 멤버가 요청 (4030009)",
