@@ -2322,8 +2322,11 @@ const API_SPECS = {
             { key: 'result[].uploadDate', type: 'number', description: '업로드 시각 (ms)' },
         ],
         errorCodes: [
-            { code: '9000003', message: 'There should be at least one result.', description: 'DB 조회 결과 없음', status: 500 },
+            { code: '9000003', message: 'There should be at least one result.', description: '첨부 목록 조회 실패', status: 500 },
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+            { code: '4000076', message: 'The company has already been deleted.', description: '삭제된 회사', status: 403 },
+            { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사', status: 403 },
+            { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원', status: 403 },
         ],
     },
     // OPA2_058 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
@@ -2332,7 +2335,7 @@ const API_SPECS = {
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
         ],
         queryParams: [
-            { key: 'document_id', type: 'string', required: true, description: '문서 ID' },
+            { key: 'document_id', type: 'string', required: true, description: '문서 ID', note: '없으면 HTTP 400(code "400"). 값은 삭제 대상 판단에 쓰이지 않음' },
             { key: 'file_key', type: 'string', required: true, description: '첨부 파일 키' },
         ],
         requestBody: [],
@@ -2358,8 +2361,9 @@ const API_SPECS = {
             { key: '(본문)', type: 'binary', description: '파일 바이너리 — png/jpg/pdf/doc/txt/csv/zip/hwp는 해당 Content-Type, 그 외 application/octet-stream' },
         ],
         errorCodes: [
-            { code: '4000240', message: 'This file does not support.', description: '파일을 찾거나 읽을 수 없음', status: 500 },
+            { code: '4000240', message: 'This file does not support.', description: 'file_key에 해당하는 첨부 없음·조회 실패', status: 500 },
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+            { code: '4000087', message: 'No file exists.', description: '저장소에서 파일을 읽지 못함', status: 500 },
         ],
     },
     // OPA2_074 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키

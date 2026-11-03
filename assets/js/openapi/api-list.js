@@ -5911,7 +5911,7 @@ const API_LIST = [
         name: '완료 문서 첨부 파일 목록 조회',
         method: 'GET',
         path: '/v2.0/api/document_complete_attachment_list',
-        description: '완료 문서에 추가로 업로드한 첨부 파일(완료 문서 파일 첨부) 목록을 조회합니다. 응답 키가 camelCase입니다. 업로드 API는 multipart라 테스터에 없습니다.',
+        description: '완료 문서에 추가로 업로드한 첨부 파일(완료 문서 파일 첨부) 목록을 조회합니다. 응답 키가 camelCase입니다. 첨부는 multipart 업로드 API(소스 OPA2_056)로 먼저 올려야 하며, 그 API는 테스터에 없습니다.',
         requiresAuth: true,
         pathParams: [],
         queryParams: [
@@ -5934,8 +5934,11 @@ const API_LIST = [
                 ]
             },
             errors: [
-                { title: 'DB 조회 결과 없음 (9000003)', body: {"code":"9000003","ErrorMessage":"There should be at least one result."}, status: 500 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '첨부 목록 조회 실패 (9000003)', body: {"code":"9000003","ErrorMessage":"There should be at least one result."}, status: 500 },
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '삭제된 회사 (4000076)', body: { "code": "4000076", "ErrorMessage": "The company has already been deleted." }, status: 403 },
+                { title: '이용 정지된 회사 (4030052)', body: { "code": "4030052", "ErrorMessage": "The company has been suspended." }, status: 403 },
+                { title: '개인 플랜은 Open API 미지원 (4030025)', body: { "code": "4030025", "ErrorMessage": "It is not available in the personal plan." }, status: 403 }
             ]
         }
     },
@@ -5949,7 +5952,7 @@ const API_LIST = [
         name: '완료 문서 첨부 파일 삭제',
         method: 'DELETE',
         path: '/v2.0/api/document_complete_attachment_delete',
-        description: '완료 문서 첨부 파일을 삭제합니다. file_key는 목록 조회의 fileId입니다. 소스상 API Key·멤버 역할 검사가 없습니다(토큰·회사만 확인).',
+        description: '완료 문서 첨부 파일을 삭제합니다. file_key는 목록 조회의 fileId입니다. 소스상 토큰만 확인하고 회사 상태·API Key·멤버 역할은 검사하지 않습니다. document_id는 필수 파라미터지만 삭제 대상 판단에는 쓰이지 않습니다. 첨부는 multipart 업로드 API(소스 OPA2_056)로 먼저 올려야 합니다.',
         requiresAuth: true,
         pathParams: [],
         queryParams: [
@@ -5981,7 +5984,7 @@ const API_LIST = [
         name: '완료 문서 첨부 파일 다운로드',
         method: 'GET',
         path: '/v2.0/api/document_complete_attachment_download',
-        description: '완료 문서 첨부 파일 1개를 내려받습니다. 응답은 파일 바이너리(Content-Disposition 파일명)이므로 [Send and Download]로 보내세요.',
+        description: '완료 문서 첨부 파일 1개를 내려받습니다. 응답은 파일 바이너리(Content-Disposition 파일명)이므로 [Send and Download]로 보내세요. 소스상 토큰만 확인하고, 삭제 표시된 첨부도 내려받힙니다. 첨부는 multipart 업로드 API(소스 OPA2_056)로 먼저 올려야 합니다.',
         requiresAuth: true,
         pathParams: [],
         queryParams: [
@@ -5990,8 +5993,9 @@ const API_LIST = [
         defaultBody: null,
         exampleResponse: {
             errors: [
-                { title: '파일을 찾거나 읽을 수 없음 (4000240)', body: {"code":"4000240","ErrorMessage":"This file does not support."}, status: 500 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: 'file_key에 해당하는 첨부 없음·조회 실패 (4000240)', body: {"code":"4000240","ErrorMessage":"This file does not support."}, status: 500 },
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '저장소에서 파일을 읽지 못함 (4000087)', body: { "code": "4000087", "ErrorMessage": "No file exists." }, status: 500 }
             ]
         }
     },
