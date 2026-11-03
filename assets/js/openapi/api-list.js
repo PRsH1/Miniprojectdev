@@ -1531,6 +1531,10 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "이미 진행된 문서 (4000029)",
+                    body: {"code":"4000029","ErrorMessage":"This document has already proceeded."}, status: 400
                 }
             ]
         }
@@ -1717,6 +1721,18 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "구매한 문서 건수 소진 (4000201)",
+                    body: {"code":"4000201","ErrorMessage":"You have exhausted all purchased documents"}, status: 400
+                },
+                {
+                    title: "일괄 작성 문서 수 한도 초과 (4000276)",
+                    body: {"code":"4000276","ErrorMessage":"Document limit exceeded"}, status: 400
+                },
+                {
+                    title: "동적 필드가 있는 템플릿은 일괄 작성 불가 (4030051)",
+                    body: {"code":"4030051","ErrorMessage":"You cannot bulk send documents from templates containing dynamic fields."}, status: 400
                 }
             ]
         }
@@ -1751,6 +1767,7 @@ const API_LIST = [
                                 id: '',
                                 sms: { country_code: '', phone_number: '' }
                             },
+                            group: { id: '' },
                             auth: {
                                 password: '',
                                 password_hint: '',
@@ -1777,7 +1794,8 @@ const API_LIST = [
                 { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." } },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." } },
                 { title: '필수 입력값 누락 (4000001)', body: { "code": "4000001", "ErrorMessage": "Required input value not found." } },
-                { title: 'template_id 누락 (400)', body: { "code": "400", "ErrorMessage": "Required String parameter 'template_id' is not present" } }
+                { title: '템플릿 없음 (4000046)', body: { "code": "4000046", "ErrorMessage": "There is no template." } },
+                { title: '워크플로우 다음 단계 설정 불일치 (4000012)', body: { "code": "4000012", "ErrorMessage": "The next_steps set by the user is inconsistent with the template's workflow settings." } }
             ]
         }
     },
@@ -1900,7 +1918,7 @@ const API_LIST = [
         description: '완료된 문서의 PDF를 여러 수신자에게 일괄 전송합니다.',
         requiresAuth: true,
         pathParams: [
-            { key: 'company_id', description: '회사 ID', required: true, default: '' }
+            { key: 'company_id', description: '회사 ID (서버는 토큰의 회사를 사용)', required: true, default: '' }
         ],
         queryParams: [],
         defaultBody: {
@@ -1926,15 +1944,15 @@ const API_LIST = [
                             }
                         ]
                     }
-                ]
+                ],
+                comment: ''
             }
         },
         exampleResponse: {
             success: {
-                "result": {},
-                "code": "string",
-                "message": "string",
-                "status": "string"
+                "status": "200",
+                "code": "-1",
+                "message": "string"
             },
             errors: [
                 {
@@ -2028,6 +2046,10 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "체험(Trial) 회사 등 전송 권한 없음 (4030057)",
+                    body: {"code":"4030057","ErrorMessage":"You do not have permission."}, status: 400
                 }
             ]
         }
@@ -2121,6 +2143,10 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "input 래퍼 없음 또는 JSON 형식 오류 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 400
                 }
             ]
         }
@@ -2140,16 +2166,16 @@ const API_LIST = [
         ],
         queryParams: [],
         defaultBody: {
-            input: {
-                executor_id: '',
-                executor_name: '',
-                comment: ''
-            }
+            executor_id: '',
+            executor_name: '',
+            comment: ''
         },
         exampleResponse: {
             success: {
+                "document_id": "string",
                 "document_title": "string",
-                "document_id": "string"
+                "document_status": "string",
+                "code": "-1"
             },
             errors: [
                 {
@@ -2162,7 +2188,7 @@ const API_LIST = [
                 },
                 {
                     title: "문서 진행 정보 없음 (5000071)",
-                    body: {"code":"5000071","ErrorMessage":"Cannot get information about document progress."}
+                    body: {"code":"5000071","ErrorMessage":"Cannot get information about document progress."}, status: 400
                 },
                 {
                     title: "문서 이력 없음 (4000066)",
@@ -2174,7 +2200,7 @@ const API_LIST = [
                 },
                 {
                     title: "템플릿 단계 없음 (4000073)",
-                    body: {"code":"4000073","ErrorMessage":"No step settings information exists."}
+                    body: {"code":"4000073","ErrorMessage":"No step settings information exists."}, status: 500
                 },
                 {
                     title: "유효하지 않은 API Key (4000003)",
@@ -2260,8 +2286,10 @@ const API_LIST = [
         },
         exampleResponse: {
             success: {
+                "document_id": "string",
                 "document_title": "string",
-                "document_id": "string"
+                "document_status": "string",
+                "code": "-1"
             },
             errors: [
                 {
@@ -2274,7 +2302,7 @@ const API_LIST = [
                 },
                 {
                     title: "문서 진행 정보 없음 (5000071)",
-                    body: {"code":"5000071","ErrorMessage":"Cannot get information about document progress."}
+                    body: {"code":"5000071","ErrorMessage":"Cannot get information about document progress."}, status: 400
                 },
                 {
                     title: "문서 이력 없음 (4000066)",
@@ -2351,7 +2379,7 @@ const API_LIST = [
         name: '문서 파일 일괄 다운로드',
         method: 'POST',
         path: '/v2.0/api/documents/download_multi_files',
-        description: '여러 문서 파일을 한 번에 다운로드합니다.',
+        description: '여러 문서 파일을 한 번에 ZIP으로 다운로드합니다(최대 20개). 성공 응답은 ZIP 바이너리이고, 권한 없음·없는 문서·PDF 생성 중 같은 문서별 오류는 HTTP 200 JSON {"<document_id>": "<오류 메시지>"}로 돌아옵니다.',
         requiresAuth: true,
         pathParams: [],
         queryParams: [],
@@ -2365,12 +2393,12 @@ const API_LIST = [
         exampleResponse: {
             errors: [
                 {
-                    title: "잘못된 JSON 형식 (4000070)",
-                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                    title: "document_ids 또는 file_type 키 누락 (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 500
                 },
                 {
-                    title: "다운로드 횟수 초과 (4000222)",
-                    body: {"code":"4000222","ErrorMessage":"Document download limit exceeded."}
+                    title: "문서 20개 초과 (4000222)",
+                    body: {"code":"4000222","ErrorMessage":"Document download limit exceeded."}, status: 400
                 },
                 {
                     title: "문서 접근 권한 없음 (4030029)",
@@ -2536,6 +2564,10 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "요청 문서 접근 권한 없음 (4000034)",
+                    body: {"code":"4000034","ErrorMessage":"You have no access authority to the requested document."}, status: 400
                 }
             ]
         }
@@ -2575,7 +2607,7 @@ const API_LIST = [
                 },
                 {
                     title: "문서 진행 정보 없음 (5000071)",
-                    body: {"code":"5000071","ErrorMessage":"Cannot get information about document progress."}
+                    body: {"code":"5000071","ErrorMessage":"Cannot get information about document progress."}, status: 400
                 },
                 {
                     title: "요청 문서 접근 권한 없음 (4000034)",
@@ -2660,6 +2692,30 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "이미 삭제된 문서 (4000031)",
+                    body: {"code":"4000031","ErrorMessage":"This document has already been deleted."}, status: 400
+                },
+                {
+                    title: "삭제 요청된 문서 (4000030)",
+                    body: {"code":"4000030","ErrorMessage":"This document has already been requested to be deleted."}, status: 400
+                },
+                {
+                    title: "이미 무효화된 문서 (4000166)",
+                    body: {"code":"4000166","ErrorMessage":"This document has already been voided."}, status: 400
+                },
+                {
+                    title: "무효화 요청된 문서 (4000167)",
+                    body: {"code":"4000167","ErrorMessage":"This document has already been requested to be voided."}, status: 400
+                },
+                {
+                    title: "수정 중인 문서 (4000168)",
+                    body: {"code":"4000168","ErrorMessage":"This document is being corrected."}, status: 400
+                },
+                {
+                    title: "이미 완료된 문서 (4000035)",
+                    body: {"code":"4000035","ErrorMessage":"This document has already been completed."}, status: 400
                 }
             ]
         }
@@ -2703,15 +2759,15 @@ const API_LIST = [
                 },
                 {
                     title: "외부자 문서 요청 정보 없음 (5000076)",
-                    body: {"code":"5000076","ErrorMessage":"The non-member request info does not exist."}
+                    body: {"code":"5000076","ErrorMessage":"The non-member request info does not exist."}, status: 400
                 },
                 {
                     title: "이미 처리된 문서 (4000029)",
                     body: {"code":"4000029","ErrorMessage":"This document has already proceeded."}
                 },
                 {
-                    title: "유효하지 않거나 만료된 토큰 (4010001)",
-                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}
+                    title: "outside_token 불일치·만료 (4010001)",
+                    body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401
                 },
                 {
                     title: "유효하지 않은 API Key (4000003)",
@@ -2740,6 +2796,42 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}
+                },
+                {
+                    title: "비활성화된 API Key (4030001)",
+                    body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403
+                },
+                {
+                    title: "Open API 사용 권한 없음 (4030034)",
+                    body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403
+                },
+                {
+                    title: "이미 삭제된 문서 (4000031)",
+                    body: {"code":"4000031","ErrorMessage":"This document has already been deleted."}, status: 400
+                },
+                {
+                    title: "삭제 요청된 문서 (4000030)",
+                    body: {"code":"4000030","ErrorMessage":"This document has already been requested to be deleted."}, status: 400
+                },
+                {
+                    title: "이미 무효화된 문서 (4000166)",
+                    body: {"code":"4000166","ErrorMessage":"This document has already been voided."}, status: 400
+                },
+                {
+                    title: "무효화 요청된 문서 (4000167)",
+                    body: {"code":"4000167","ErrorMessage":"This document has already been requested to be voided."}, status: 400
+                },
+                {
+                    title: "수정 중인 문서 (4000168)",
+                    body: {"code":"4000168","ErrorMessage":"This document is being corrected."}, status: 400
+                },
+                {
+                    title: "이미 완료된 문서 (4000035)",
+                    body: {"code":"4000035","ErrorMessage":"This document has already been completed."}, status: 400
                 }
             ]
         }

@@ -719,9 +719,9 @@ const API_SPECS = {
         queryParams: [],
         requestBody: [
             { key: 'input', type: 'object', required: true, description: '재요청 정보' },
-            { key: 'input.next_steps', type: 'array', required: true, description: '다음 단계 정보 목록' },
+            { key: 'input.next_steps', type: 'array', required: false, description: '다음 단계 정보 목록', note: '생략하면 이전 수신자 정보로 재요청' },
             { key: 'input.next_steps[].step_type', type: 'string', required: true, description: '단계 종류 (05: 참여자, 06: 검토자, 07: 열람자)' },
-            { key: 'input.next_steps[].step_seq', type: 'number', required: false, description: '단계 순번' },
+            { key: 'input.next_steps[].step_seq', type: 'string', required: false, description: '단계 순번 (숫자 문자열, 별칭 seq)', note: 'recipients가 있으면 필수 — 비었거나 숫자가 아니면 4000001' },
             { key: 'input.next_steps[].comment', type: 'string', required: false, description: '재요청 메시지' },
             { key: 'input.next_steps[].recipients', type: 'array', required: false, description: '수신자 정보' },
             { key: 'input.next_steps[].recipients[].member', type: 'object', required: false, description: '수신자 멤버 정보' },
@@ -738,6 +738,9 @@ const API_SPECS = {
             { key: 'input.next_steps[].recipients[].auth.valid', type: 'object', required: false, description: '링크 유효기간' },
             { key: 'input.next_steps[].recipients[].auth.valid.day', type: 'number', required: false, description: '유효기간 (일)' },
             { key: 'input.next_steps[].recipients[].auth.valid.hour', type: 'number', required: false, description: '유효기간 (시간)' },
+            { key: 'input.next_steps[].recipients[].group.id', type: 'string', required: false, description: '수신 그룹 ID (member 대신)' },
+            { key: 'input.next_steps[].recipients[].hidden_sections', type: 'array', required: false, description: '숨길 섹션 이름 목록' },
+            { key: 'input.next_steps[].recipients[].business_num', type: 'string', required: false, description: '사업자 번호 (외부자 인증용)' },
         ],
         responseFields: [
             { key: 'status', type: 'string', description: 'HTTP 응답 코드' },
@@ -747,7 +750,9 @@ const API_SPECS = {
             { key: 'recipients[].name', type: 'string', description: '수신자 이름' },
             { key: 'recipients[].id', type: 'string', description: '수신자 이메일' },
             { key: 'recipients[].token_id', type: 'string', description: '수신자 토큰 ID' },
-            { key: 'recipients[].step_seq', type: 'number', description: '워크플로우 단계 순번' },
+            { key: 'recipients[].step_seq', type: 'string', description: '워크플로우 단계 순번' },
+            { key: 'recipients[].sms', type: 'object', description: '수신자 SMS {country_code, phone_number} (있을 때만)' },
+            { key: 'recipients[].sms_template_index', type: 'number', description: 'SMS 템플릿 인덱스' },
         ],
         errorCodes: [
             { code: '4000001', message: 'Invalid input JSON format.', description: '잘못된 JSON 형식' },
@@ -775,7 +780,8 @@ const API_SPECS = {
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사' },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원' },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가' },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4000029', message: 'This document has already proceeded.', description: '이미 진행된 문서', status: 400 }
         ],
     },
     'OPA2_015': {
@@ -845,7 +851,10 @@ const API_SPECS = {
             { key: 'documents[].parameters[].id', type: 'string', required: false, description: '파라미터 ID' },
             { key: 'documents[].parameters[].value', type: 'string', required: false, description: '파라미터 값' },
             { key: 'documents[].recipients', type: 'array', required: false, description: '다음 단계 수신자 리스트' },
-            { key: 'documents[].recipients[].step_type', type: 'string', required: false, description: '워크플로우 단계 타입 (05:참여자, 06:검토자, 07:열람자)' },
+            { key: 'documents[].recipients[].step_type', type: 'string', required: false, description: '워크플로우 단계 타입 (05:참여자, 06:검토자, 07:열람자)', note: 'recipients를 지정하면 필수 — 없으면 4000012' },
+            { key: 'documents[].record_key', type: 'string', required: false, description: '문서 식별용 레코드 키' },
+            { key: 'documents[].attachment_info[]', type: 'array', required: false, description: '첨부 정보 {name, filename}' },
+            { key: 'documents[].recipients[].hidden_sections', type: 'array', required: false, description: '숨길 섹션 이름 목록' },
             { key: 'documents[].recipients[].use_mail', type: 'boolean', required: false, description: '이메일 발송 여부' },
             { key: 'documents[].recipients[].use_sms', type: 'boolean', required: false, description: 'SMS 발송 여부' },
             { key: 'documents[].recipients[].member', type: 'object', required: false, description: '수신자 멤버 정보' },
@@ -901,7 +910,10 @@ const API_SPECS = {
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사' },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원' },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가' },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4000201', message: 'You have exhausted all purchased documents', description: '구매한 문서 건수 소진', status: 400 },
+            { code: '4000276', message: 'Document limit exceeded', description: '일괄 작성 문서 수 한도 초과', status: 400 },
+            { code: '4030051', message: 'You cannot bulk send documents from templates containing dynamic fields.', description: '동적 필드가 있는 템플릿은 일괄 작성 불가', status: 400 }
         ],
     },
     'OPA2_017': {
@@ -1118,6 +1130,7 @@ const API_SPECS = {
         errorCodes: [
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
             { code: '4010006', message: 'The refresh token has expired.', description: 'Refresh Token 만료' },
+            { code: '4000001', message: 'Required input value not found.', description: '필수 입력값 누락' },
             { code: '4000046', message: 'There is no template.', description: '템플릿이 존재하지 않음' },
             { code: '4000012', message: 'The next_steps set by the user is inconsistent with the template\'s workflow settings.', description: '워크플로우 설정 불일치' },
         ],
@@ -1483,10 +1496,10 @@ const API_SPECS = {
             { key: 'input.send_pdfs', type: 'array', required: true, description: '다중 pdf 전송 정보 목록. 문서 Object를 item으로 가진 Array' },
             { key: 'input.send_pdfs[].document_id', type: 'string', required: true, description: '문서 ID' },
             { key: 'input.send_pdfs[].pdf_send_infos[]', type: 'array', required: true, description: '해당 문서 ID의 pdf 전송 정보 목록' },
-            { key: 'input.send_pdfs[].pdf_send_infos[].name', type: 'string', required: false, description: '수신자 이름' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].name', type: 'string', required: true, description: '수신자 이름' },
             { key: 'input.send_pdfs[].pdf_send_infos[].method', type: 'string', required: true, description: '수신 방법', note: 'sms / email' },
             { key: 'input.send_pdfs[].pdf_send_infos[].method_info', type: 'string', required: true, description: '수신자 아이디 / 전화번호', note: 'method가 sms이면 전화번호, email이면 이메일 아이디' },
-            { key: 'input.send_pdfs[].pdf_send_infos[].code', type: 'string', required: false, description: '수신자 국제 번호', note: 'method가 sms일 경우 해당 (예: +82)' },
+            { key: 'input.send_pdfs[].pdf_send_infos[].code', type: 'string', required: false, description: '수신자 국제 번호', note: 'method가 sms이면 필수 (예: +82)' },
             { key: 'input.send_pdfs[].pdf_send_infos[].is_use_alim_talk', type: 'boolean', required: false, description: '알림톡 사용 여부', note: 'method가 sms이면서 true인 경우 카카오톡으로 전송' },
             { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option', type: 'object', required: false, description: 'PDF 전송 옵션' },
             { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.auth_pwd', type: 'string', required: false, description: '인증 비밀번호' },
@@ -1495,9 +1508,9 @@ const API_SPECS = {
             { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.use_email_sms_auth', type: 'boolean', required: false, description: '이메일, SMS 인증 사용 여부' },
             { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.attach_audit_pdf', type: 'boolean', required: false, description: '감사추적증명서 첨부 여부' },
             { key: 'input.send_pdfs[].pdf_send_infos[].send_pdf_option.use_attach_link', type: 'boolean', required: false, description: '첨부 타입 Link 사용 여부', note: 'false인 경우 메일에 파일 첨부 방식으로 전달' },
+            { key: 'input.comment', type: 'string', required: false, description: '전송 메시지' },
         ],
         responseFields: [
-            { key: 'result', type: 'object', description: '결과 (빈 객체)' },
             { key: 'code', type: 'string', description: '응답 코드 (-1: 성공)' },
             { key: 'message', type: 'string', description: '응답 메시지' },
             { key: 'status', type: 'string', description: 'HTTP 상태 코드' },
@@ -1525,7 +1538,8 @@ const API_SPECS = {
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사' },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원' },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가' },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4030057', message: 'You do not have permission.', description: '체험(Trial) 회사 등 전송 권한 없음', status: 400 }
         ],
     },
     'OPA2_040': {
@@ -1534,16 +1548,19 @@ const API_SPECS = {
         ],
         queryParams: [],
         requestBody: [
-            { key: 'document_ids', type: 'array', required: true, description: '다운로드 받을 문서 ID 목록' },
-            { key: 'file_type', type: 'array', required: true, description: '다운로드 받을 파일 타입', note: '"document": 문서 PDF / "audit_trail": 감사추적증명서 PDF' },
+            { key: 'document_ids', type: 'array', required: true, description: '다운로드 받을 문서 ID 목록', note: '중복 제거 후 20개 초과면 4000222. 키가 없으면 HTTP 500 + 4000070' },
+            { key: 'file_type', type: 'array', required: true, description: '다운로드 받을 파일 타입', note: '"document": 문서 PDF / "audit_trail": 감사추적증명서 PDF. 빈 배열이면 문서 PDF. 키가 없으면 HTTP 500 + 4000070' },
             { key: 'zip_password', type: 'string', required: false, description: 'ZIP 파일 압축 해제 비밀번호', note: '입력하지 않으면 압축 해제 시 비밀번호 없음' },
             { key: 'file_name', type: 'string', required: false, description: 'ZIP 파일 이름', note: '입력하지 않으면 기본 이름으로 다운로드' },
             { key: 'use_simple_file_name', type: 'boolean', required: false, description: '문서 이름으로 PDF 파일 이름 설정', note: '입력하지 않으면 기본 이름으로 PDF 다운로드' },
         ],
-        responseFields: [],
+        responseFields: [
+            { key: '(binary)', type: 'binary', description: '성공 시 ZIP 파일' },
+            { key: '<document_id>', type: 'string', description: '문서별 실패 시 HTTP 200 JSON — 키는 문서 ID, 값은 오류 메시지(권한 없음·없는 문서·삭제 문서·PDF 생성 중 등)' },
+        ],
         errorCodes: [
-            { code: '4000070', message: 'Invalid input JSON format.', description: '잘못된 JSON 형식' },
-            { code: '4000222', message: 'Document download limit exceeded.', description: '다운로드 횟수 초과' },
+            { code: '4000070', message: 'Invalid input JSON format.', description: 'document_ids 또는 file_type 키 누락', status: 500 },
+            { code: '4000222', message: 'Document download limit exceeded.', description: '문서 20개 초과', status: 400 },
             { code: '4030029', message: 'You do not have access to the document', description: '문서 접근 권한 없음' },
             { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
             { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key' },
@@ -1595,22 +1612,24 @@ const API_SPECS = {
         ],
         queryParams: [],
         requestBody: [
-            { key: 'input', type: 'object', required: false, description: '요청 데이터 래퍼' },
-            { key: 'input.executor_id', type: 'string', required: false, description: '통합결재 승인 계정 ID' },
-            { key: 'input.executor_name', type: 'string', required: false, description: '통합결재 승인 계정 이름' },
-            { key: 'input.comment', type: 'string', required: false, description: '통합결재 승인 코멘트' },
+            { key: 'executor_id', type: 'string', required: false, description: '통합결재 승인 계정 ID', note: 'input 래퍼 없이 최상위에 둔다' },
+            { key: 'executor_name', type: 'string', required: false, description: '통합결재 승인 계정 이름' },
+            { key: 'comment', type: 'string', required: false, description: '통합결재 승인 코멘트' },
+            { key: 'external_approvers[]', type: 'array', required: false, description: '통합결재 승인자 목록 {id, name}' },
         ],
         responseFields: [
             { key: 'document_title', type: 'string', description: '문서 제목' },
             { key: 'document_id', type: 'string', description: '문서 ID' },
+            { key: 'document_status', type: 'string', description: '처리 후 문서 상태' },
+            { key: 'code', type: 'string', description: '"-1"' },
         ],
         errorCodes: [
             { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서' },
             { code: '4000029', message: 'This document has already proceeded.', description: '이미 처리된 문서' },
-            { code: '5000071', message: 'Cannot get information about document progress.', description: '문서 진행 정보 없음' },
+            { code: '5000071', message: 'Cannot get information about document progress.', description: '문서 진행 정보 없음', status: 400 },
             { code: '4000066', message: 'No document history exists.', description: '문서 이력 없음' },
             { code: '4000046', message: 'There is no template.', description: '템플릿 없음' },
-            { code: '4000073', message: 'No step settings information exists.', description: '템플릿 단계 없음' },
+            { code: '4000073', message: 'No step settings information exists.', description: '템플릿 단계 없음', status: 500 },
             { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key' },
             { code: '4030005', message: 'This API is not supported.', description: '지원하지 않는 API Key 유형' },
             { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key' },
@@ -1662,7 +1681,8 @@ const API_SPECS = {
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사' },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원' },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가' },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4000034', message: 'You have no access authority to the requested document.', description: '요청 문서 접근 권한 없음', status: 400 }
         ],
     },
     'OPA2_044': {
@@ -1675,15 +1695,19 @@ const API_SPECS = {
             { key: 'executor_id', type: 'string', required: false, description: '통합결재 반려 계정 ID' },
             { key: 'executor_name', type: 'string', required: false, description: '통합결재 반려 계정 이름' },
             { key: 'comment', type: 'string', required: false, description: '통합결재 반려 코멘트' },
+            { key: 'external_approvers[]', type: 'array', required: false, description: '통합결재 반려자 목록 {id, name}' },
+            { key: 'is_recall_external_approval', type: 'boolean', required: false, description: '통합결재 회수 여부' },
         ],
         responseFields: [
             { key: 'document_title', type: 'string', description: '문서 제목' },
             { key: 'document_id', type: 'string', description: '문서 ID' },
+            { key: 'document_status', type: 'string', description: '처리 후 문서 상태' },
+            { key: 'code', type: 'string', description: '"-1"' },
         ],
         errorCodes: [
             { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서' },
             { code: '4000029', message: 'This document has already proceeded.', description: '이미 처리된 문서' },
-            { code: '5000071', message: 'Cannot get information about document progress.', description: '문서 진행 정보 없음' },
+            { code: '5000071', message: 'Cannot get information about document progress.', description: '문서 진행 정보 없음', status: 400 },
             { code: '4000066', message: 'No document history exists.', description: '문서 이력 없음' },
             { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key' },
             { code: '4030005', message: 'This API is not supported.', description: '지원하지 않는 API Key 유형' },
@@ -1737,7 +1761,8 @@ const API_SPECS = {
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사' },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원' },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가' },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4000070', message: 'Invalid input JSON format.', description: 'input 래퍼 없음 또는 JSON 형식 오류', status: 400 }
         ],
     },
 
@@ -1808,7 +1833,7 @@ const API_SPECS = {
 
     'OPA2_048': {
         requestHeaders: [
-            { key: 'Authorization', required: true, description: 'Company API Key를 Base64 인코딩하여 Bearer 토큰으로 사용', example: 'Bearer {base64_encoded_api_key}', note: 'Access Token이 아닌 회사 API Key 사용' },
+            { key: 'Authorization', required: true, description: 'Company API Key를 Base64 인코딩하여 Bearer 토큰으로 사용', example: 'Bearer {base64_encoded_api_key}', note: 'Access Token이 아닌 회사 API Key 사용. 서버는 URL-safe Base64로 디코딩하므로 +·/ 대신 -·_ 형식이 안전' },
         ],
         pathParams: [
             { key: 'document_id', type: 'string', required: true, description: '반려할 문서 ID' },
@@ -1830,16 +1855,25 @@ const API_SPECS = {
         ],
         errorCodes: [
             { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서' },
-            { code: '5000076', message: 'The non-member request info does not exist.', description: '외부자 문서 요청 정보 없음' },
+            { code: '5000076', message: 'The non-member request info does not exist.', description: '외부자 문서 요청 정보 없음', status: 400 },
             { code: '4000029', message: 'This document has already proceeded.', description: '이미 처리된 문서' },
-            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰' },
+            { code: '4010001', message: 'Invalid or expired token.', description: 'outside_token 불일치·만료', status: 401 },
             { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key' },
             { code: '4030039', message: 'The apiKey encoded has an error.', description: 'Base64 디코딩 실패 (API Key 오류)' },
             { code: '4000076', message: 'The company has already been deleted.', description: '삭제된 회사' },
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사' },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원' },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가' },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4030005', message: 'This API is not supported.', description: '지원하지 않는 API Key 유형' },
+            { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key', status: 403 },
+            { code: '4030034', message: "You don't have Open API permission.", description: 'Open API 사용 권한 없음', status: 403 },
+            { code: '4000031', message: 'This document has already been deleted.', description: '이미 삭제된 문서', status: 400 },
+            { code: '4000030', message: 'This document has already been requested to be deleted.', description: '삭제 요청된 문서', status: 400 },
+            { code: '4000166', message: 'This document has already been voided.', description: '이미 무효화된 문서', status: 400 },
+            { code: '4000167', message: 'This document has already been requested to be voided.', description: '무효화 요청된 문서', status: 400 },
+            { code: '4000168', message: 'This document is being corrected.', description: '수정 중인 문서', status: 400 },
+            { code: '4000035', message: 'This document has already been completed.', description: '이미 완료된 문서', status: 400 }
         ],
     },
 
@@ -1865,7 +1899,7 @@ const API_SPECS = {
         ],
         errorCodes: [
             { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서' },
-            { code: '5000071', message: 'Cannot get information about document progress.', description: '문서 진행 정보 없음' },
+            { code: '5000071', message: 'Cannot get information about document progress.', description: '문서 진행 정보 없음', status: 400 },
             { code: '4000034', message: 'You have no access authority to the requested document.', description: '요청 문서 접근 권한 없음' },
             { code: '4000012', message: 'The next_steps set by the user is inconsistent with the template\'s workflow settings.', description: '워크플로우 다음 단계 설정 불일치' },
             { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key' },
@@ -1886,7 +1920,13 @@ const API_SPECS = {
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사' },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원' },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가' },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4000031', message: 'This document has already been deleted.', description: '이미 삭제된 문서', status: 400 },
+            { code: '4000030', message: 'This document has already been requested to be deleted.', description: '삭제 요청된 문서', status: 400 },
+            { code: '4000166', message: 'This document has already been voided.', description: '이미 무효화된 문서', status: 400 },
+            { code: '4000167', message: 'This document has already been requested to be voided.', description: '무효화 요청된 문서', status: 400 },
+            { code: '4000168', message: 'This document is being corrected.', description: '수정 중인 문서', status: 400 },
+            { code: '4000035', message: 'This document has already been completed.', description: '이미 완료된 문서', status: 400 }
         ],
     },
 
