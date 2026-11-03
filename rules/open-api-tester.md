@@ -85,6 +85,29 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
    명세 키를 `opaCode`로 옮긴다.
 5. **한계**: Prod는 화면에서만 숨긴다 — `api-list.js`·`api-specs.js`가 공개 번들이라 데이터는 누구나 내려받을 수 있다(Q5와 같은 수준).
 
+### 소스에 있지만 넣지 않은 Open API (2026-11 대조, `OpenAPIV2Controller.java` 기준)
+
+다시 검토할 때 이 표부터 본다. 추가하려면 사유가 풀렸는지 소스로 확인하고 사용자 결정을 받는다.
+
+| 소스 번호 | 메서드·경로(/v2.0) | 제외 사유 |
+|---|---|---|
+| OPA2_030 | GET `/api/companies/{company_id}/customsso_members/{sso_id}` | SSO 구성원 조회 — 공개하면 안 되는 API(추가 금지) |
+| OPA2_008 | GET `/api/documents` | GET + 필수 Body — 브라우저 fetch로 보낼 수 없음(POST `/list_document`와 같은 로직) |
+| OPA2_075 | GET `/api/documents/info_list` | GET + 필수 Body |
+| OPA2_035 | GET `/api/templates/{template_id}/download_files` | 템플릿 원본 서식(OZR, gzip) 다운로드 — 뷰어 연동용 원본 파일이고, 받을 때 조건에 따라 서버의 OZR 생성일을 갱신하는 부수효과가 있다(`OpenAPIServiceImpl.java` alreadyDownload_form_file). 고객 안내 대상이 아니라고 보고 제외(일반 Bearer GET이라 기술적으로는 가능) |
+| OPA2_053 | POST `/api/documents/convert` | 내부 변환 서버 프록시(API Key·역할 검사 없음, multipart 중계) |
+| OPA2_054 | POST `/api/documents/{document_id}/retry_pdf_job` | 내부 운영용 — 완료 문서 PDF 데몬 작업 재실행(대표·문서 관리자). 장애 조치용이라 고객 테스트 도구에 두지 않음 |
+| OPA2_055, OPA2_056 | POST `/api/optimize`, `/api/document_complete_attachment_upload` | multipart(테스터는 JSON Body만 보냄) |
+| OPA2_063 ×3 | POST `…_with_ozd` 3종 | multipart, 다중 파일 뷰어 전용 |
+| OPA2_064 | POST `/api/internal_download_mass_multi_documents` | 뷰어 전용 `.ozz` 바이너리, 특정 고객 연동 |
+| OPA2_022 | POST `/api/push` | 내부 모바일 앱 푸시(FCM) |
+| OPA2_033·034·038 | POST `/api/companies`, DELETE `/api/companies/{company_id}`, POST `/api/companies/{company_id}/members` | 파트너·운영용(국가 키 인증) |
+| OPA2_071 (072) | POST `/api/companies/thirdparty_company` | 서드파티 IAM 관리 키 전용(072는 매핑 없음) |
+| OPA2_073 | POST `/api/companies/{company_id}/multi_template` | 운영용 일회성 옵션 활성화(되돌릴 수 없음) |
+| OPA2_065 | POST `/api/documents/{document_id}/company_tsa` | 특정 고객 전용 |
+| OPA2_067 | PATCH `/api/companies/{company_id}/members/{account_id}/reset_password` | 민감 — 역할 검사 없이 같은 회사 멤버의 비밀번호를 재설정한다(일반 멤버 토큰으로도 가능). 테스트 도구에서 실수로 운영 계정 비밀번호를 바꿀 위험이 커 제외 |
+| OPA2_076 ×2 | POST `/api/companies/{company_id}/external_download_mass_multi_documents`, `/api/companies/{company_id}/documents/send_notification` | 외부자 토큰·`.ozz` 바이너리 / 내부 알림 연동용(인증 사실상 없음) |
+
 ### HTTP 상태 (`status`)
 
 소스에서 HTTP 상태는 에러 코드가 아니라 **예외 클래스**가 정한다: `EformsignBadRequestException` 400, `EformsignTokenException` 401,
