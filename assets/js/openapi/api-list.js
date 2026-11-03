@@ -2851,7 +2851,9 @@ const API_LIST = [
         description: '작성 가능한 템플릿(양식) 목록을 조회합니다.',
         requiresAuth: true,
         pathParams: [],
-        queryParams: [],
+        queryParams: [
+            { key: 'category', description: '템플릿 카테고리로 필터 (비우면 전체)', required: false, default: '' },
+        ],
         defaultBody: null,
         exampleResponse: {
             success: {
@@ -3018,7 +3020,7 @@ const API_LIST = [
                 },
                 {
                     title: "유효하지 않은 템플릿 요청 상태 (4000264)",
-                    body: {"code":"4000264","ErrorMessage":"The form request state is not valid."}
+                    body: {"code":"4000264","ErrorMessage":"The form request state is not valid."}, status: 500
                 },
                 {
                     title: "유효하지 않은 API Key (4000003)",
@@ -3114,7 +3116,7 @@ const API_LIST = [
             { key: 'template_image_id', description: '템플릿 이미지 ID (템플릿 정보 조회의 form_image_id)', required: true, default: '' }
         ],
         queryParams: [
-            { key: 'output_type', description: '반환 타입. 1이면 PNG 파일, 미입력 또는 다른 값이면 base64로 반환', required: false, default: '' }
+            { key: 'output_type', description: '반환 타입. 1이면 저장된 원본 이미지 파일 그대로, 미입력·다른 값이면 data URI 문자열(data:image/<확장자>;base64,...)', required: false, default: '' }
         ],
         defaultBody: null,
         exampleResponse: {
@@ -3178,6 +3180,10 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "존재하지 않는 template_image_id (4000087)",
+                    body: {"code":"4000087","ErrorMessage":"No file exists."}, status: 400
                 }
             ]
         }
@@ -3198,7 +3204,7 @@ const API_LIST = [
         requiresAuth: true,
         pathParams: [],
         queryParams: [
-            { key: 'member_all', description: '전체 멤버 조회 여부 (default: false)', required: false, default: '' },
+            { key: 'member_all', description: 'true면 비활성 멤버까지 포함 (default: false — 활성·초대 멤버만)', required: false, default: '' },
             { key: 'include_field', description: '구성원 커스텀 필드 포맷 정보 포함 여부 (default: false)', required: false, default: '' },
             { key: 'include_delete', description: '탈퇴 멤버 조회 여부 (default: false)', required: false, default: '' },
             { key: 'eb_name_search', description: '이름 또는 계정 ID로 구성원 검색', required: false, default: '' },
@@ -3226,7 +3232,12 @@ const API_LIST = [
                             "country_id": "string"
                         },
                         "role": ["string"],
+                        "role_code": "number",
                         "group": ["string"],
+                        "group_list": [
+                            { "id": "string", "name": "string" }
+                        ],
+                        "ecr_uid": "string",
                         "fields": [],
                         "deleted": "boolean"
                     }
@@ -3340,7 +3351,7 @@ const API_LIST = [
         requiresAuth: true,
         pathParams: [],
         queryParams: [
-            { key: 'mailOption', description: '초대 메일 발송 여부 (true/false)', required: false, default: 'false' },
+            { key: 'mailOption', description: '초대 메일 발송 여부 (true/false — 파라미터를 빼면 서버 기본값 true)', required: false, default: 'false' },
         ],
         defaultBody: {
             account: {
@@ -3383,7 +3394,7 @@ const API_LIST = [
                     body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}
                 },
                 {
-                    title: "잘못된 JSON 형식 (4000070)",
+                    title: "account·account.id 누락(HTTP 500) / 이름 누락, 이메일이 아닌 ID에 contact 누락(HTTP 400) (4000070)",
                     body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
                 },
                 {
@@ -3481,7 +3492,7 @@ const API_LIST = [
         name: '멤버 수정',
         method: 'PATCH',
         path: '/v2.0/api/members/{member_id}',
-        description: '멤버 정보를 수정합니다.',
+        description: '멤버 정보를 수정합니다. PATCH지만 사실상 전체 교체입니다 — enabled를 빼면 비활성화, role을 빼면 회사·템플릿 관리자 권한 해제, department·position·contact.number·tel·email을 빼면 빈 값으로 지워집니다. 현재 값을 먼저 조회(OPA2_010)해 함께 보내세요. account.id는 경로의 멤버 ID와 같아야 합니다.',
         requiresAuth: true,
         pathParams: [
             { key: 'member_id', description: '수정할 멤버 ID', required: true, default: '' }
@@ -3492,7 +3503,7 @@ const API_LIST = [
                 id: '',
                 name: '',
                 enabled: true,
-                contact: { number: '', tel: '' },
+                contact: { number: '', tel: '', email: '', country_number: '' },
                 department: '',
                 position: '',
                 role: []
@@ -3508,19 +3519,19 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: "잘못된 JSON 형식 (4000001)",
-                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}
+                    title: "account 키 없음 (4000001)",
+                    body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}, status: 400
                 },
                 {
-                    title: "잘못된 JSON 형식 (4000070)",
-                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}
+                    title: "account.id·name·contact 누락 또는 account.id ≠ 경로 ID (4000070)",
+                    body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 400
                 },
                 {
                     title: "존재하지 않는 멤버 (4000074)",
                     body: {"code":"4000074","ErrorMessage":"No such member exists."}
                 },
                 {
-                    title: "관리자 권한으로 멤버 비활성화 불가 (4000125)",
+                    title: "대표 관리자 비활성화·관리자 권한 변경 불가 (4000125)",
                     body: {"code":"4000125","ErrorMessage":"Administrator accounts cannot be deactivated."}
                 },
                 {
@@ -3633,7 +3644,7 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: "삭제된 멤버 (4000149)",
+                    title: "존재하지 않거나 삭제된 멤버 (4000149)",
                     body: {"code":"4000149","ErrorMessage":"No such member exists."}
                 },
                 {
@@ -3751,10 +3762,6 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: "회사 ID와 토큰 불일치 (4030027)",
-                    body: {"code":"4030027","ErrorMessage":"The company does not have access."}
-                },
-                {
                     title: "존재하지 않는 멤버 (4000074)",
                     body: {"code":"4000074","ErrorMessage":"No such member exists."}
                 },
@@ -3837,6 +3844,10 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "요청 배열 1000건 초과 (4000118)",
+                    body: {"code":"4000118","ErrorMessage":"Cannot send the invitation as the maximum number of members has been reached."}, status: 400
                 }
             ]
         }
@@ -4021,7 +4032,7 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: "필수 입력값 누락 (4000001)",
+                    title: "group.name 또는 group.description 키 누락 (4000001)",
                     body: {"code":"4000001","ErrorMessage":"Required input value not found."}
                 },
                 {
@@ -4119,7 +4130,7 @@ const API_LIST = [
         name: '그룹 수정',
         method: 'PATCH',
         path: '/v2.0/api/groups/{group_id}',
-        description: '그룹 정보를 수정합니다.',
+        description: '그룹 정보를 수정합니다. 사실상 전체 교체입니다 — group.name·group.description 키는 필수(""면 설명이 지워짐)이고, members를 빼면 기존 멤버가 모두 제거됩니다.',
         requiresAuth: true,
         pathParams: [
             { key: 'group_id', description: '수정할 그룹 ID', required: true, default: '' }
@@ -4141,7 +4152,7 @@ const API_LIST = [
             },
             errors: [
                 {
-                    title: "필수 입력값 누락 (4000001)",
+                    title: "group.name 또는 group.description 키 누락 (4000001)",
                     body: {"code":"4000001","ErrorMessage":"Required input value not found."}
                 },
                 {

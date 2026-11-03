@@ -570,14 +570,15 @@ const API_SPECS = {
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
         ],
         queryParams: [
-            { key: 'mailOption', type: 'boolean', required: false, description: '초대 메일 발송 여부', note: 'default: false' },
+            { key: 'mailOption', type: 'boolean', required: false, description: '초대 메일 발송 여부', note: '서버 기본값 true (테스터 입력란 기본값은 false)' },
         ],
         requestBody: [
             { key: 'account', type: 'object', required: true, description: '추가할 멤버 계정 정보' },
-            { key: 'account.id', type: 'string', required: true, description: '멤버 로그인 ID (이메일)' },
-            { key: 'account.password', type: 'string', required: true, description: '멤버 비밀번호', note: '대문자+소문자+숫자+특수문자 포함 10자리 이상' },
-            { key: 'account.first_name', type: 'string', required: true, description: '멤버 이름' },
-            { key: 'account.contact', type: 'object', required: false, description: '연락처 정보' },
+            { key: 'account.id', type: 'string', required: true, description: '멤버 로그인 ID (이메일)', note: 'account·account.id 누락은 HTTP 500 + 4000070' },
+            { key: 'account.password', type: 'string', required: true, description: '멤버 비밀번호', note: '대문자+소문자+숫자+특수문자 포함 10자리 이상. external_sso_info가 있으면 생략 가능(서버가 임의 생성)' },
+            { key: 'account.first_name', type: 'string', required: true, description: '멤버 이름', note: 'first_name 대신 name도 허용' },
+            { key: 'account.contact', type: 'object', required: false, description: '연락처 정보', note: 'account.id가 이메일 형식이 아니면 필수(없으면 4000070)' },
+            { key: 'account.contact.email', type: 'string', required: false, description: '연락 이메일', note: '형식 오류 4000137' },
             { key: 'account.contact.tel', type: 'string', required: false, description: '유선 전화번호' },
             { key: 'account.contact.number', type: 'string', required: false, description: '휴대폰 번호' },
             { key: 'account.contact.country_number', type: 'string', required: false, description: '국가 번호', note: '예: +82' },
@@ -585,7 +586,7 @@ const API_SPECS = {
             { key: 'account.position', type: 'string', required: false, description: '직급' },
             { key: 'account.agreement', type: 'object', required: false, description: '동의 정보' },
             { key: 'account.agreement.marketing', type: 'boolean', required: false, description: '마케팅 수신 동의 여부' },
-            { key: 'account.role', type: 'array', required: false, description: '멤버 역할 목록' },
+            { key: 'account.role', type: 'array', required: false, description: '멤버 역할 목록', note: 'company_manager / template_manager / document_manager (member는 항상 부여)' },
             { key: 'account.external_sso_info', type: 'object', required: false, description: '외부 SSO 연동 정보' },
             { key: 'account.external_sso_info.uuid', type: 'string', required: false, description: 'SSO UUID' },
             { key: 'account.external_sso_info.idp_name', type: 'string', required: false, description: 'IdP 이름' },
@@ -600,7 +601,7 @@ const API_SPECS = {
         errorCodes: [
             { code: '4000005', message: 'Invalid company.', description: '존재하지 않는 회사' },
             { code: '4000076', message: 'The company has already been deleted.', description: '삭제된 회사' },
-            { code: '4000070', message: 'Invalid input JSON format.', description: '잘못된 JSON 형식' },
+            { code: '4000070', message: 'Invalid input JSON format.', description: 'account·account.id 누락(HTTP 500) / 이름 누락, 이메일이 아닌 ID에 contact 누락(HTTP 400)' },
             { code: '4000118', message: 'Cannot send the invitation as the maximum number of members has been reached.', description: '멤버 수 초과로 초대 실패' },
             { code: '4000137', message: 'This is an invalid email format.', description: '잘못된 이메일 형식' },
             { code: '4000139', message: 'Invalid id or password.', description: '아이디 또는 비밀번호 오류' },
@@ -632,27 +633,31 @@ const API_SPECS = {
         queryParams: [],
         requestBody: [
             { key: 'account', type: 'object', required: true, description: '수정할 멤버 계정 정보' },
-            { key: 'account.id', type: 'string', required: false, description: '멤버 로그인 ID' },
-            { key: 'account.name', type: 'string', required: false, description: '멤버 이름' },
-            { key: 'account.enabled', type: 'boolean', required: false, description: '멤버 활성화 여부' },
-            { key: 'account.contact', type: 'object', required: false, description: '연락처 정보' },
-            { key: 'account.contact.number', type: 'string', required: false, description: '휴대폰 번호' },
-            { key: 'account.contact.tel', type: 'string', required: false, description: '유선 전화번호' },
-            { key: 'account.department', type: 'string', required: false, description: '부서' },
-            { key: 'account.position', type: 'string', required: false, description: '직급' },
-            { key: 'account.role', type: 'array', required: false, description: '멤버 역할 목록' },
+            { key: 'account.id', type: 'string', required: true, description: '멤버 로그인 ID', note: '경로의 멤버 ID와 같아야 함 — 다르거나 없으면 4000070' },
+            { key: 'account.name', type: 'string', required: true, description: '멤버 이름', note: '없으면 4000070' },
+            { key: 'account.enabled', type: 'boolean', required: false, description: '멤버 활성화 여부', note: '생략하면 false로 처리되어 비활성화됨(대표 관리자는 4000125)' },
+            { key: 'account.contact', type: 'object', required: true, description: '연락처 정보', note: '없으면 4000070' },
+            { key: 'account.contact.number', type: 'string', required: false, description: '휴대폰 번호', note: '생략하면 빈 값으로 지워짐' },
+            { key: 'account.contact.tel', type: 'string', required: false, description: '유선 전화번호', note: '생략하면 빈 값으로 지워짐' },
+            { key: 'account.contact.email', type: 'string', required: false, description: '연락 이메일', note: '생략하면 빈 값으로 지워짐. 형식 오류 4000137, 중복 4030041' },
+            { key: 'account.contact.country_number', type: 'string', required: false, description: '국가 번호', note: '생략하면 기존 값 유지' },
+            { key: 'account.department', type: 'string', required: false, description: '부서', note: '생략하면 빈 값으로 지워짐' },
+            { key: 'account.position', type: 'string', required: false, description: '직급', note: '생략하면 빈 값으로 지워짐' },
+            { key: 'account.role', type: 'array', required: false, description: '멤버 역할 목록', note: 'company_manager·template_manager만 반영. 생략하면 두 권한 해제. 배열이 아니면 HTTP 500 + 4000070' },
+            { key: 'account.fields[]', type: 'array', required: false, description: '구성원 커스텀 필드 값' },
+            { key: 'account.group', type: 'object', required: false, description: '그룹 변경 {added:[], removed:[], expected:[]}' },
         ],
         responseFields: [
             { key: 'company_id', type: 'string', description: '회사 ID' },
             { key: 'member', type: 'object', description: '수정된 멤버 정보' },
-            { key: 'member.name', type: 'string', description: '멤버 이름' },
-            { key: 'member.id', type: 'string', description: '멤버 ID' },
+            { key: 'member.name', type: 'string', description: '멤버 이름 (요청 Body의 account.name을 그대로 반환)' },
+            { key: 'member.id', type: 'string', description: '멤버 ID (요청 Body의 account.id를 그대로 반환)' },
         ],
         errorCodes: [
-            { code: '4000001', message: 'Invalid input JSON format.', description: '잘못된 JSON 형식' },
-            { code: '4000070', message: 'Invalid input JSON format.', description: '잘못된 JSON 형식' },
+            { code: '4000001', message: 'Invalid input JSON format.', description: 'account 키 없음', status: 400 },
+            { code: '4000070', message: 'Invalid input JSON format.', description: 'account.id·name·contact 누락 또는 account.id ≠ 경로 ID', status: 400 },
             { code: '4000074', message: 'No such member exists.', description: '존재하지 않는 멤버' },
-            { code: '4000125', message: 'Administrator accounts cannot be deactivated.', description: '관리자 권한으로 멤버 비활성화 불가' },
+            { code: '4000125', message: 'Administrator accounts cannot be deactivated.', description: '대표 관리자 비활성화·관리자 권한 변경 불가' },
             { code: '4000126', message: 'Cannot activate the member as the maximum number of members allowed has been reached.', description: '플랜 제한으로 멤버 활성화 실패' },
             { code: '4000137', message: 'This is an invalid email format.', description: '잘못된 이메일 형식' },
             { code: '4030041', message: 'This email is already in use. Please enter another email.', description: '멤버 이메일 변경 실패' },
@@ -689,7 +694,7 @@ const API_SPECS = {
             { key: 'status', type: 'string', description: 'HTTP 응답 코드' },
         ],
         errorCodes: [
-            { code: '4000149', message: 'No such member exists.', description: '삭제된 멤버' },
+            { code: '4000149', message: 'No such member exists.', description: '존재하지 않거나 삭제된 멤버' },
             { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key' },
             { code: '4030005', message: 'This API is not supported.', description: '지원하지 않는 API Key 유형' },
             { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key' },
@@ -789,7 +794,9 @@ const API_SPECS = {
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
         ],
-        queryParams: [],
+        queryParams: [
+            { key: 'category', type: 'string', required: false, description: '템플릿 카테고리로 필터', note: '비우면 전체. 응답은 활성 템플릿만' },
+        ],
         requestBody: [],
         responseFields: [
             { key: 'total_rows', type: 'number', description: '전체 템플릿 수' },
@@ -972,8 +979,8 @@ const API_SPECS = {
         requestBody: [
             { key: 'group', type: 'object', required: true, description: '추가할 그룹 정보' },
             { key: 'group.name', type: 'string', required: true, description: '그룹 이름' },
-            { key: 'group.description', type: 'string', required: false, description: '그룹 설명' },
-            { key: 'group.members', type: 'array', required: false, description: '그룹에 추가할 멤버 ID 목록' },
+            { key: 'group.description', type: 'string', required: true, description: '그룹 설명', note: '키가 없으면 4000001 (값은 "" 가능)' },
+            { key: 'group.members', type: 'array', required: false, description: '그룹에 추가할 멤버 ID 목록', note: '활성·초대 멤버 ID만 가능(아니면 4000074)' },
         ],
         responseFields: [
             { key: 'group', type: 'object', description: '생성된 그룹 정보' },
@@ -981,7 +988,7 @@ const API_SPECS = {
             { key: 'group.name', type: 'string', description: '그룹 이름' },
         ],
         errorCodes: [
-            { code: '4000001', message: 'Required input value not found.', description: '필수 입력값 누락' },
+            { code: '4000001', message: 'Required input value not found.', description: 'group.name 또는 group.description 키 누락' },
             { code: '4000074', message: 'No such member exists.', description: '존재하지 않는 멤버' },
             { code: '4000122', message: 'The group name is already in use.', description: '이미 존재하는 그룹 이름' },
             { code: '4000249', message: 'The group name is cannot be empty', description: '그룹 이름 비워둘 수 없음' },
@@ -1013,9 +1020,10 @@ const API_SPECS = {
         queryParams: [],
         requestBody: [
             { key: 'group', type: 'object', required: true, description: '수정할 그룹 정보' },
-            { key: 'group.name', type: 'string', required: false, description: '그룹 이름' },
-            { key: 'group.description', type: 'string', required: false, description: '그룹 설명' },
-            { key: 'group.members', type: 'array', required: false, description: '그룹 멤버 ID 목록 (전체 대체)' },
+            { key: 'group.name', type: 'string', required: true, description: '그룹 이름', note: '키가 없으면 4000001, 빈 값이면 4000249' },
+            { key: 'group.description', type: 'string', required: true, description: '그룹 설명', note: '키가 없으면 4000001. ""면 설명이 지워짐' },
+            { key: 'group.members', type: 'array', required: false, description: '그룹 멤버 ID 목록 (전체 대체)', note: '생략하면 기존 멤버 전원 제거. 활성·초대 멤버 ID만 가능(아니면 4000074)' },
+            { key: 'group.fields[]', type: 'array', required: false, description: '그룹 커스텀 필드 {field_key, field_value}', note: '일치하는 field_key만 갱신, 생략하면 유지' },
         ],
         responseFields: [
             { key: 'group', type: 'object', description: '수정된 그룹 정보' },
@@ -1023,7 +1031,7 @@ const API_SPECS = {
             { key: 'group.name', type: 'string', description: '수정된 그룹 이름' },
         ],
         errorCodes: [
-            { code: '4000001', message: 'Required input value not found.', description: '필수 입력값 누락' },
+            { code: '4000001', message: 'Required input value not found.', description: 'group.name 또는 group.description 키 누락' },
             { code: '4000074', message: 'No such member exists.', description: '존재하지 않는 멤버' },
             { code: '4000123', message: 'The group does not exist.', description: '존재하지 않는 그룹' },
             { code: '4000122', message: 'The group name is already in use.', description: '이미 존재하는 그룹 이름' },
@@ -1150,7 +1158,7 @@ const API_SPECS = {
         errorCodes: [
             { code: '4000044', message: 'You have no permission to access the form.', description: '템플릿 접근 권한 없음' },
             { code: '4000046', message: 'There is no template.', description: '템플릿 없음' },
-            { code: '4000264', message: 'The form request state is not valid.', description: '유효하지 않은 템플릿 요청 상태' },
+            { code: '4000264', message: 'The form request state is not valid.', description: '유효하지 않은 템플릿 요청 상태', status: 500 },
             { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key' },
             { code: '4030005', message: 'This API is not supported.', description: '지원하지 않는 API Key 유형' },
             { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key' },
@@ -1398,7 +1406,7 @@ const API_SPECS = {
             { key: 'mailOption', type: 'boolean', required: false, description: '멤버 생성 시 이메일 알림 전송 여부', note: 'default: true' },
         ],
         requestBody: [
-            { key: '[].id', type: 'string', required: true, description: '멤버 로그인 ID (이메일)', note: '배열 형태로 직접 전송' },
+            { key: '[].id', type: 'string', required: true, description: '멤버 로그인 ID (이메일)', note: '배열 형태로 직접 전송. 최대 1000건(넘으면 4000118)' },
             { key: '[].password', type: 'string', required: true, description: '멤버 비밀번호', note: '대문자+소문자+숫자+특수문자 포함 10자리 이상' },
             { key: '[].name', type: 'string', required: true, description: '멤버 이름' },
             { key: '[].contact', type: 'object', required: false, description: '연락처 정보' },
@@ -1420,10 +1428,9 @@ const API_SPECS = {
             { key: 'members', type: 'array', description: '처리된 멤버 결과 목록' },
             { key: 'members[].name', type: 'string', description: '멤버 이름' },
             { key: 'members[].id', type: 'string', description: '멤버 ID' },
-            { key: 'members[].success', type: 'boolean', description: '추가 성공 여부', note: 'false인 경우 중복 ID 또는 비밀번호 규칙 미충족' },
+            { key: 'members[].success', type: 'boolean', description: '추가 성공 여부', note: '항목별 오류는 HTTP 오류 없이 false로만 표시 — 실패 조건은 멤버 추가(OPA2_011) 검증과 같음' },
         ],
         errorCodes: [
-            { code: '4030027', message: 'The company does not have access.', description: '회사 ID와 토큰 불일치' },
             { code: '4000074', message: 'No such member exists.', description: '존재하지 않는 멤버' },
             { code: '4000150', message: 'The account does not exist.', description: '존재하지 않는 계정' },
             { code: '5000002', message: 'Failed to connect to CouchDB.', description: 'DB 연결 실패' },
@@ -1444,7 +1451,8 @@ const API_SPECS = {
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사' },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원' },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가' },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4000118', message: 'Cannot send the invitation as the maximum number of members has been reached.', description: '요청 배열 1000건 초과', status: 400 }
         ],
     },
     'OPA2_031': {
@@ -1602,7 +1610,8 @@ const API_SPECS = {
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사' },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원' },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가' },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4000087', message: 'No file exists.', description: '존재하지 않는 template_image_id', status: 400 }
         ],
     },
     'OPA2_043': {
