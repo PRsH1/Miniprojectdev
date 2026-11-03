@@ -133,12 +133,17 @@ setResultBadge('addResultBadge', false);  // → "Error" (빨강)
 
 ### 의도치 않은 변경 방지 (P1-15)
 
-- **멤버 수정 `enabled`는 "변경 안 함"이 기본**: `#updateEnabled`의 첫 옵션은 빈 값(`변경 안 함`)이며,
-  사용자가 `true`/`false`를 고른 경우에만 `account.enabled`를 보낸다. 항상 보내면 비활성 멤버의 이름만 바꿔도
-  다시 활성화된다. 엑셀 일괄 수정도 `enabled` 셀에 값이 있을 때만(엑셀 `FALSE` 포함 — `hasValue()`로 판정) 보낸다.
-- **그룹 수정은 입력한 필드만 보낸다**: `buildGroupPatch()`가 빈 이름·설명·멤버를 본문에서 뺀다(수동·엑셀 공통).
-  멤버를 의도적으로 비우려면 `#updGroupClearMembers`("멤버 비우기")를 체크한다 → `members: []` + 확인창.
-  그룹 ID가 없거나 수정 항목이 하나도 없으면 요청하지 않는다.
+- **eformsign 멤버·그룹 수정 API는 전체 덮어쓰기다** (SaaS 소스 확인, 2026-11-03 — `docs/reference/eformsign-saas-source-survey.md` 3.6절 e).
+  PATCH지만 빠진 필드를 "유지"하지 않는다. P1-15에서 "빈 값은 보내지 않는다"로 바꿨다가 아래 동작 때문에 되돌렸다(핫픽스).
+  - 멤버 수정(OPA2_012): `account.name`·`account.contact` 필수(없으면 400). **`enabled`를 빼면 false → 멤버 비활성화**(대표 관리자는 400),
+    `role`을 빼면 회사·템플릿 관리자 권한 해제, `department`·`position`을 빼면 빈 값으로 저장.
+  - 그룹 수정(OPA2_019): `name`·`description` 키 필수(없으면 400). **`members`를 빼면 빈 배열 → 기존 멤버 전원 제거**.
+- **멤버 수정 `enabled`는 직접 선택 필수**: `#updateEnabled`의 첫 옵션은 `선택하세요 (필수)`(disabled)이고, true/false를 고르지 않으면 요청하지 않는다.
+  보내기 전에 비어 있는 부서·직책·권한을 나열해 "기존 값이 지워진다"는 확인을 받는다. 엑셀 일괄 수정도 `enabled` 칸이 빈 행은 오류 행으로 거른다
+  (`hasValue()` — 엑셀 `FALSE` 포함).
+- **그룹 수정은 이름·설명·멤버를 항상 보낸다**: `buildGroupPatch()`는 `{ group }` 또는 `{ error }`를 돌려준다. 이름·설명이 비면 오류,
+  멤버 칸이 비면 오류(목록에 없는 기존 멤버가 빠지므로 남길 멤버를 모두 입력). 멤버를 의도적으로 비우려면 `#updGroupClearMembers`("멤버 비우기") → `members: []` + 확인창.
+  엑셀 그룹 수정은 "멤버 비우기"가 없어 `name`·`description`·`members`가 모두 있어야 유효 행이다.
 - **엑셀 일괄 삭제는 확인을 받는다**: 멤버·그룹 엑셀 삭제 실행 시 "멤버 N명"/"그룹 N개(엑셀 M행)" 확인창. 취소하면 요청 0건.
 - **목록 조회는 상태 코드를 먼저 확인한다**: 멤버·그룹 목록이 4xx/5xx·네트워크 실패면 표를 비우고
   `#memberCountLabel`/`#groupCountLabel` 위에 api-error 요약(`HTTP 401 · …`)을 띄운다("검색 결과 없음"으로 보이지 않게).
