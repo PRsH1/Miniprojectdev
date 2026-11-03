@@ -2567,14 +2567,14 @@ const API_SPECS = {
         ],
         queryParams: [],
         requestBody: [
-            { key: 'account', type: 'object', required: true, description: '수정할 계정 정보', note: '없으면 4000001' },
+            { key: 'account', type: 'object', required: true, description: '수정할 계정 정보', note: '없으면 4000001. 보낸 키는 빈 값이어도 그대로 저장(기존 값 지워짐) — 바꿀 키만 보낼 것. 서버가 대상 계정의 회사 소속을 확인하지 않음(SaaS 측 결함) — 다른 회사 계정 수정 금지' },
             { key: 'account.name', type: 'string', required: false, description: '이름' },
             { key: 'account.email', type: 'string', required: false, description: '이메일' },
             { key: 'account.contact.country_number', type: 'string', required: false, description: '국가 번호' },
             { key: 'account.contact.number', type: 'string', required: false, description: '휴대폰 번호' },
             { key: 'account.password', type: 'string', required: false, description: '현재 비밀번호', note: 'new_password를 보낼 때 필수' },
             { key: 'account.new_password', type: 'string', required: false, description: '새 비밀번호' },
-            { key: 'account.marketing', type: 'boolean', required: false, description: '마케팅 수신 동의' },
+            { key: 'account.marketing', type: 'boolean', required: false, description: '마케팅 수신 동의', note: '키를 보내면 null도 false로 저장' },
             { key: 'account.image_file_id', type: 'string', required: false, description: '프로필 이미지 파일 ID' },
         ],
         responseFields: [
@@ -2591,6 +2591,9 @@ const API_SPECS = {
             { code: '4000223', message: 'The new password cannot be the same as the current password.', description: '현재·이전 비밀번호와 같음', status: 400 },
             { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음 (멤버 역할 부족)', status: 403 },
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+            { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key', status: 400 },
+            { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key', status: 403 },
+            { code: '4030034', message: "You don't have Open API permission.", description: 'Open API 사용 권한 없음', status: 403 },
         ],
     },
     // OPA2_079 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키

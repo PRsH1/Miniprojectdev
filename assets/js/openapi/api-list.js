@@ -6433,7 +6433,7 @@ const API_LIST = [
         name: '계정 정보 수정',
         method: 'PATCH',
         path: '/v2.0/api/accounts/{account_id}',
-        description: '계정(로그인 계정)의 이름·이메일·연락처·비밀번호 등을 수정합니다. 대표 관리자(ADMIN) 토큰만 호출할 수 있습니다. 비밀번호를 바꾸려면 new_password와 현재 비밀번호 password를 함께 보냅니다. 회사 멤버 정보 수정(OPA2_012)과 다른 API입니다.',
+        description: '[주의] 계정(로그인 계정)의 이름·이메일·연락처·비밀번호 등을 수정합니다. 대표 관리자(ADMIN) 토큰만 호출할 수 있습니다. 보낸 키는 빈 값이어도 그대로 저장되어 기존 값이 지워지므로 바꿀 키만 보내세요(marketing: null은 false로 저장). 서버가 대상 계정의 회사 소속을 확인하지 않습니다(SaaS 측 결함) — 다른 회사 계정이 바뀔 수 있으니 자기 회사의 테스트 계정에만 쓰세요. 비밀번호를 바꾸려면 new_password와 현재 비밀번호 password를 함께 보냅니다. 회사 멤버 정보 수정(OPA2_012)과 다른 API입니다.',
         requiresAuth: true,
         pathParams: [
             { key: 'account_id', description: '수정할 계정 ID', required: true, default: '' }
@@ -6441,16 +6441,7 @@ const API_LIST = [
         queryParams: [],
         defaultBody: {
             account: {
-                name: '',
-                email: '',
-                contact: {
-                    country_number: '',
-                    number: ''
-                },
-                password: '',
-                new_password: '',
-                marketing: null,
-                image_file_id: ''
+                name: ''
             }
         },
         exampleResponse: {
@@ -6469,7 +6460,10 @@ const API_LIST = [
                 { title: '비밀번호 형식 오류 (4000208)', body: {"code":"4000208","ErrorMessage":"The password format is invalid."}, status: 400 },
                 { title: '현재·이전 비밀번호와 같음 (4000223)', body: {"code":"4000223","ErrorMessage":"The new password cannot be the same as the current password."}, status: 400 },
                 { title: '접근 권한 없음 (멤버 역할 부족) (4030009)', body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '유효하지 않은 API Key (4000003)', body: { "code": "4000003", "ErrorMessage": "The apiKey does not exist." }, status: 400 },
+                { title: '비활성화된 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "The apiKey is not active." }, status: 403 },
+                { title: 'Open API 사용 권한 없음 (4030034)', body: { "code": "4030034", "ErrorMessage": "You don't have Open API permission." }, status: 403 }
             ]
         }
     },
