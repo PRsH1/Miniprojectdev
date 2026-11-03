@@ -6,6 +6,12 @@ const DOMAINS = {
     csap: 'https://www.gov-eformsign.com/Service'
 };
 
+// API 명세 조회 — 대고객 OPA 번호가 있으면 그 키, 없으면(Full 전용 신규 API) API id 키
+function getApiSpec(ep) {
+    if (!ep) return undefined;
+    return (ep.opaCode && API_SPECS[ep.opaCode]) || API_SPECS[ep.id];
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // STATE
 // ──────────────────────────────────────────────────────────────────────────

@@ -10,7 +10,7 @@ function buildSidebar(filter = '') {
     const $list = $('#sidebarList').empty();
     const q = filter.toLowerCase();
     const filtered = q
-        ? API_LIST.filter(ep => ep.name.toLowerCase().includes(q) || ep.path.toLowerCase().includes(q) || (ep.opaCode || '').toLowerCase().includes(q))
+        ? API_LIST.filter(ep => ep.name.toLowerCase().includes(q) || ep.path.toLowerCase().includes(q) || (ep.opaCode || '').toLowerCase().includes(q) || (ep.sourceApiId || '').toLowerCase().includes(q))
         : API_LIST;
 
     if (currentViewMode === 'group') {
@@ -81,6 +81,10 @@ function _appendGroup($list, groupName, icon, items) {
 
 function _makeEndpointWrap(ep) {
     const opaBadge = ep.opaCode ? `<span class="opa-code">${ep.opaCode}</span>` : '';
+    // Full 전용(대고객 공개 검토 전) 신규 API 표시 — 공개판(Prod)에서는 항목 자체가 제거된다
+    const fullOnlyBadge = ep.fullOnly
+        ? `<span class="ep-fullonly" title="Full 전용 · 공개 검토 전${ep.sourceApiId ? ' · 소스 내부 ' + ep.sourceApiId : ''}">검토</span>`
+        : '';
     const saves = historyByEndpoint(ep.id);
     const hasSaves = saves.length > 0;
     const isExpanded = expandedSaveEndpoints.has(ep.id);
@@ -100,6 +104,7 @@ function _makeEndpointWrap(ep) {
             ${methodBadge(ep.method)}
             ${opaBadge}
             <span class="ep-name">${ep.name}</span>
+            ${fullOnlyBadge}
             ${toggleHtml}
         </div>`);
     $item.on('click', () => selectEndpoint(ep.id));
@@ -1331,7 +1336,7 @@ function updateExampleResponseBtn(ep) {
             ex.errors.forEach(err => {
                 html += `
                     <div style="padding:6px 20px;background:#fef2f2;border-top:1px solid #fecaca;border-bottom:1px solid #fecaca;font-size:0.78rem;font-weight:700;color:#b91c1c;display:flex;align-items:center;gap:5px;">
-                        <i class="fa-solid fa-circle-xmark fa-xs"></i> 실패 응답 — ${err.title}
+                        <i class="fa-solid fa-circle-xmark fa-xs"></i> 실패 응답 — ${err.title}${err.status ? ` · HTTP ${err.status}` : ''}
                     </div>
                     <pre class="response-pre">${formatJsonSyntax(JSON.stringify(err.body, null, 2))}</pre>`;
             });

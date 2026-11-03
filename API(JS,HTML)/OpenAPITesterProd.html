@@ -542,6 +542,11 @@
             padding: 1px 5px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
         }
         .endpoint-item.active .opa-code { color: #fff; background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.25); }
+        /* Full 전용(공개 검토 전) 신규 API 라벨 */
+        .ep-fullonly {
+            font-size: 0.64rem; font-weight: 600; color: #94a3b8; border: 1px dashed rgba(148,163,184,0.5);
+            padding: 0 4px; border-radius: 3px; white-space: nowrap; flex-shrink: 0;
+        }
 
         /* ========== METHOD BADGE (inline) ========== */
         .m-badge {
@@ -721,6 +726,9 @@
             font-size: 0.72rem; font-weight: 700; font-family: 'SFMono-Regular', Consolas, monospace;
             color: #34d399; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);
             padding: 1px 6px; border-radius: 3px;
+        }
+        .spec-modal-header-text .spec-opa.spec-opa--internal {
+            color: #94a3b8; background: rgba(148,163,184,0.12); border-color: rgba(148,163,184,0.3);
         }
         .spec-close {
             margin-left: auto; width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
@@ -1825,10 +1833,11 @@
 <script src="/assets/js/token-badge.js"></script>
 <script src="/assets/js/openapi/api-list.js"></script>
 <script>
-// 공개판(Prod): 멤버·그룹 API는 화면에서 숨긴다 (Q5 — 명세 데이터 분리는 보류)
+// 공개판(Prod): 멤버·그룹 API와 Full 전용(fullOnly — 대고객 공개 검토 전) API는 화면에서 숨긴다
+// (Q5 — 명세 데이터 분리는 보류: 데이터는 공개 번들에 남는다)
 var _hiddenIndices = [];
 for (var _i = 0; _i < API_LIST.length; _i++) {
-  if (API_LIST[_i].group === '멤버' || API_LIST[_i].group === '그룹') _hiddenIndices.push(_i);
+  if (API_LIST[_i].group === '멤버' || API_LIST[_i].group === '그룹' || API_LIST[_i].fullOnly) _hiddenIndices.push(_i);
 }
 for (var _j = _hiddenIndices.length - 1; _j >= 0; _j--) {
   API_LIST.splice(_hiddenIndices[_j], 1);

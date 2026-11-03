@@ -302,12 +302,15 @@ let currentSpecTab = 'request';
 function showSpecModal() {
     const ep = state.currentEndpoint;
     if (!ep) return;
-    const spec = API_SPECS[ep.opaCode];
+    const spec = getApiSpec(ep);
 
     // 헤더 정보 채우기
     $('#specModalTitle').text(`${ep.name}`);
-    $('#specModalOpa').text(ep.opaCode || '');
-    $('#specModalOpa').toggle(!!ep.opaCode);
+    // 대고객 번호가 없는 Full 전용 API는 소스 내부 번호를 회색으로 표시 (참고용)
+    const opaLabel = ep.opaCode || (ep.sourceApiId ? `내부 ${ep.sourceApiId}` : '');
+    $('#specModalOpa').text(opaLabel)
+        .toggleClass('spec-opa--internal', !ep.opaCode && !!ep.sourceApiId)
+        .toggle(!!opaLabel);
 
     const methodColors = { GET: '#27ae60', POST: '#2980b9', PUT: '#e67e22', PATCH: '#8e44ad', DELETE: '#e74c3c' };
     const methodHtml = `<span style="font-family:monospace;font-weight:800;color:${methodColors[ep.method] || '#333'}">${ep.method}</span>`;
@@ -425,13 +428,17 @@ function renderSpecContent(ep, spec) {
         // ── Error Codes ──
         const errs = (spec && spec.errorCodes) || [];
         if (errs.length) {
+            // status(HTTP 상태)가 하나라도 있으면 HTTP 열 표시 — 소스 대조로 확인한 항목만 값이 있다
+            const errsHasStatus = errs.some(e => e.status);
             $body.append(makeSpecSection('fa-triangle-exclamation', '에러 코드', makeSpecTable(
-                ['코드', '메시지', '설명'],
-                errs.map(e => [
-                    `<span class="spec-error-code">${e.code}</span>`,
-                    `<span class="spec-error-msg">${e.message}</span>`,
-                    `<span class="spec-desc">${e.description || ''}</span>`,
-                ])
+                errsHasStatus ? ['코드', 'HTTP', '메시지', '설명'] : ['코드', '메시지', '설명'],
+                errs.map(e => {
+                    const cols = [`<span class="spec-error-code">${e.code}</span>`];
+                    if (errsHasStatus) cols.push(e.status ? `<span class="spec-desc">${e.status}</span>` : '');
+                    cols.push(`<span class="spec-error-msg">${e.message}</span>`,
+                        `<span class="spec-desc">${e.description || ''}</span>`);
+                    return cols;
+                })
             )));
         }
 
@@ -482,5 +489,5 @@ $(document).on('click', '.spec-tab-btn', function() {
     $('.spec-tab-btn').removeClass('active');
     $(this).addClass('active');
     const ep = state.currentEndpoint;
-    if (ep) renderSpecContent(ep, API_SPECS[ep.opaCode]);
+    if (ep) renderSpecContent(ep, getApiSpec(ep));
 });
