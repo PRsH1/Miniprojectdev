@@ -2489,7 +2489,7 @@ const API_SPECS = {
             { key: 'template_id', type: 'string', required: true, description: '템플릿 ID' },
         ],
         responseFields: [
-            { key: 'document', type: 'object', description: 'type=api — 문서 작성(OPA2_005) 요청 Body 견본 (document_name, select_group_name, fields[{id,value}], recipients[], comment, send_external_pdf, notification)' },
+            { key: 'document', type: 'object', description: 'type=api — 문서 작성(OPA2_005) 요청 Body 견본 (document_name, select_group_name, fields[{id,value}], recipients[], comment, send_external_pdf, notification)', note: 'recipients — 멀티(신형) 템플릿: {step_name, step_type, step_seq(number), step_group(number), use_mail, use_sms, member, auth} / 일반 템플릿: {step_type} + 결재 id 또는 외부자 name·email(·sms·auth)' },
             { key: 'company', type: 'object', description: 'type=embedded — {id, country_code, user_key}' },
             { key: 'mode', type: 'object', description: 'type=embedded — {type:"01", template_id, document_id}' },
             { key: 'user', type: 'object', description: 'type=embedded — {type:"01", id, access_token, refresh_token, external_token, redirect_url}' },

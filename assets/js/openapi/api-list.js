@@ -6225,7 +6225,7 @@ const API_LIST = [
         name: '문서 작성용 샘플 요청 정보 조회',
         method: 'POST',
         path: '/v2.0/api/forms/info',
-        description: '템플릿으로 문서를 만들 때 쓸 요청 Body 견본을 돌려줍니다. type이 "api"면 문서 작성(OPA2_005) Body 형태, "embedded"면 임베딩 초기화 옵션 형태입니다.',
+        description: '템플릿으로 문서를 만들 때 쓸 요청 Body 견본을 돌려줍니다. type이 "api"면 문서 작성(OPA2_005) Body 형태, "embedded"면 임베딩 초기화 옵션 형태입니다. 예시의 recipients는 멀티(신형) 템플릿 형태이고, 일반 템플릿은 step_type에 결재면 id, 외부자면 name·email(·sms·auth)만 있는 평평한 구조입니다.',
         requiresAuth: true,
         pathParams: [],
         queryParams: [],
@@ -6246,8 +6246,10 @@ const API_LIST = [
                     ],
                     "recipients": [
                         {
+                            "step_name": "string",
                             "step_type": "string",
-                            "step_seq": "string",
+                            "step_seq": "number",
+                            "step_group": "number",
                             "member": {
                                 "name": "string",
                                 "id": "string",
@@ -6257,7 +6259,12 @@ const API_LIST = [
                                 }
                             },
                             "use_mail": "boolean",
-                            "use_sms": "boolean"
+                            "use_sms": "boolean",
+                            "auth": {
+                                "password": "string",
+                                "password_hint": "string",
+                                "valid": { "day": "number", "hour": "number" }
+                            }
                         }
                     ],
                     "comment": "string",
