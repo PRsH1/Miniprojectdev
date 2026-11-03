@@ -727,7 +727,7 @@ const API_SPECS = {
             { key: 'input', type: 'object', required: true, description: '재요청 정보' },
             { key: 'input.next_steps', type: 'array', required: false, description: '다음 단계 정보 목록', note: '생략하면 이전 수신자 정보로 재요청' },
             { key: 'input.next_steps[].step_type', type: 'string', required: true, description: '단계 종류 (05: 참여자, 06: 검토자, 07: 열람자)' },
-            { key: 'input.next_steps[].step_seq', type: 'string', required: false, description: '단계 순번 (숫자 문자열, 별칭 seq)', note: 'recipients가 있으면 필수 — 비었거나 숫자가 아니면 4000001' },
+            { key: 'input.next_steps[].step_seq', type: 'string | number', required: false, description: '단계 순번 (숫자 또는 숫자 문자열, 별칭 seq)', note: 'recipients가 있으면 필수 — 비었거나 숫자가 아니면 4000001' },
             { key: 'input.next_steps[].comment', type: 'string', required: false, description: '재요청 메시지' },
             { key: 'input.next_steps[].recipients', type: 'array', required: false, description: '수신자 정보' },
             { key: 'input.next_steps[].recipients[].member', type: 'object', required: false, description: '수신자 멤버 정보' },
