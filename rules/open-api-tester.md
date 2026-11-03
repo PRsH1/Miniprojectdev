@@ -57,7 +57,7 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
             // title 형식: '유효하지 않은 서명 (4030004)' — 항상 한글로 작성
             // status(선택): HTTP 상태. 예시 패널 제목 끝에 "· HTTP 500"으로 표시된다 (아래 "HTTP 상태" 참고)
             // 소스 기준: SaaS 소스 EformsignExceptionType + 던지는 위치. utils/error-codes.html은 고객 공개 페이지라
-            //            소스와 다른 곳이 있다(OPA2_030=SSO 카드, OPA2_041 경로 form_image 등) — 그 페이지를 근거로 삼지 말 것
+            //            소스와 다른 곳이 있다(OPA2_041 경로 form_image 등. SSO 구성원 카드는 2026-11-04 제거) — 그 페이지를 근거로 삼지 말 것
         ]
     }
 }
