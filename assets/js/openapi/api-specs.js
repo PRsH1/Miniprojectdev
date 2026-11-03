@@ -2192,4 +2192,340 @@ const API_SPECS = {
             { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
         ],
     },
+    // ──────────────────────────────────────────────────────────────────────
+    // Full 전용 신규 API 명세 — opaCode가 없어 API_LIST의 id를 키로 쓴다 (getApiSpec 참고)
+    // ──────────────────────────────────────────────────────────────────────
+    // OPA2_060 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'doc_component_values': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'documentComponentBodyList', type: 'array', required: true, description: '조회할 컴포넌트 목록', note: '비어 있으면 4000001' },
+            { key: 'documentComponentBodyList[].name', type: 'string', required: true, description: '컴포넌트(필드) 이름' },
+        ],
+        responseFields: [
+            { key: 'status', type: 'string', description: '"200"' },
+            { key: 'code', type: 'string', description: '"-1"' },
+            { key: 'message', type: 'string', description: '처리 결과 메시지' },
+            { key: 'result.documentComponentList[].name', type: 'string', description: '컴포넌트 이름' },
+            { key: 'result.documentComponentList[].value', type: 'string', description: '컴포넌트 값' },
+        ],
+        errorCodes: [
+            { code: '4000001', message: 'Required input value not found.', description: 'documentComponentBodyList 누락·빈 목록', status: 400 },
+            { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서', status: 400 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+            { code: '4000076', message: 'The company has already been deleted.', description: '삭제된 회사', status: 403 },
+            { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사', status: 403 },
+        ],
+    },
+    // OPA2_057 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'doc_complete_attach_list': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'document_id', type: 'string', required: true, description: '문서 ID' },
+            { key: 'document_status', type: 'string', required: true, description: '문서 상태', note: '없으면 HTTP 400(code "400"). 값은 조회 조건에 쓰이지 않음' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: 'result[].fileId', type: 'string', description: '첨부 파일 키 (삭제·다운로드의 file_key)' },
+            { key: 'result[].fileName', type: 'string', description: '파일 이름' },
+            { key: 'result[].fileType', type: 'string', description: '파일 형식(확장자)' },
+            { key: 'result[].uploadDate', type: 'number', description: '업로드 시각 (ms)' },
+        ],
+        errorCodes: [
+            { code: '9000003', message: 'There should be at least one result.', description: 'DB 조회 결과 없음', status: 500 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_058 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'doc_complete_attach_delete': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'document_id', type: 'string', required: true, description: '문서 ID' },
+            { key: 'file_key', type: 'string', required: true, description: '첨부 파일 키' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: 'result', type: 'boolean', description: '삭제 성공 여부' },
+        ],
+        errorCodes: [
+            { code: '4030047', message: 'Document attachment has already been deleted.', description: '이미 삭제된 첨부 파일', status: 400 },
+            { code: '9000001', message: 'Did not update anything.', description: '삭제된 항목 없음', status: 500 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_059 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'doc_complete_attach_download': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'file_key', type: 'string', required: true, description: '첨부 파일 키' },
+        ],
+        requestBody: [],
+        responseFields: [
+            { key: '(본문)', type: 'binary', description: '파일 바이너리 — png/jpg/pdf/doc/txt/csv/zip/hwp는 해당 Content-Type, 그 외 application/octet-stream' },
+        ],
+        errorCodes: [
+            { code: '4000240', message: 'This file does not support.', description: '파일을 찾거나 읽을 수 없음', status: 500 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_074 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'doc_unlock': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'document_id', type: 'string', required: true, description: '잠금을 해제할 문서 ID' },
+        ],
+        responseFields: [
+            { key: 'status', type: 'string', description: '"200"' },
+            { key: 'code', type: 'string', description: '"-1"' },
+            { key: 'message', type: 'string', description: '처리 결과 메시지' },
+        ],
+        errorCodes: [
+            { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서', status: 500 },
+            { code: '4030057', message: 'You do not have permission.', description: '잠금 해제 권한 없음 (관리자·현재 단계 담당자 아님)', status: 500 },
+            { code: '4030056', message: 'This document is not multi user step.', description: '다중 사용자 단계 문서가 아님', status: 500 },
+            { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key', status: 400 },
+            { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key', status: 403 },
+            { code: '4030034', message: 'You don\'t have Open API permission.', description: 'Open API 사용 권한 없음', status: 403 },
+            { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음 (멤버 역할 부족)', status: 403 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_077 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'doc_multi_re_request': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'documents', type: 'array', required: true, description: '재요청할 문서 목록' },
+            { key: 'documents[].document_id', type: 'string', required: true, description: '문서 ID' },
+            { key: 'documents[].next_steps', type: 'array', required: false, description: '재요청 단계 정보 (OPA2_014의 input.next_steps와 같은 구조)', note: '생략하면 직전 수신자 정보 사용' },
+            { key: 'documents[].next_steps[].step_type', type: 'string', required: false, description: '단계 유형 코드' },
+            { key: 'documents[].next_steps[].step_seq', type: 'string', required: false, description: '단계 순서', note: 'recipients가 있으면 필수' },
+            { key: 'documents[].next_steps[].recipients[]', type: 'array', required: false, description: '수신자 (member 또는 group, use_mail, use_sms, auth)' },
+            { key: 'documents[].next_steps[].comment', type: 'string', required: false, description: '요청 메시지' },
+            { key: 'notification', type: 'array', required: false, description: '외부 알림 연동 정보 (type: REQUEST_ACCEPT | COMPLETE_DOCUMENT)', note: '소스상 문서 ID가 전달되지 않는 버그가 있음' },
+        ],
+        responseFields: [
+            { key: 'success_result[].document_id', type: 'string', description: '성공한 문서 ID' },
+            { key: 'success_result[].recipients[]', type: 'array', description: '재요청된 수신자 (OPA2_014 응답 recipients와 같음)' },
+            { key: 'fail_result[].document_id', type: 'string', description: '실패한 문서 ID' },
+            { key: 'fail_result[].code', type: 'string', description: '문서별 에러 코드 (예: 4000012, 4000001, 4000011)' },
+            { key: 'fail_result[].message', type: 'string', description: '문서별 에러 메시지' },
+        ],
+        errorCodes: [
+            { code: '4000001', message: 'Invalid input JSON format.', description: '요청 JSON 처리 실패', status: 400 },
+            { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key', status: 400 },
+            { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key', status: 403 },
+            { code: '4030034', message: 'You don\'t have Open API permission.', description: 'Open API 사용 권한 없음', status: 403 },
+            { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음 (멤버 역할 부족)', status: 403 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_078 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'doc_complete_pdf_check': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [],
+        responseFields: [
+            { key: 'result.pdf', type: 'boolean', description: '문서 PDF 생성 여부' },
+            { key: 'result.auditPdf', type: 'boolean', description: '감사추적 PDF 생성 여부' },
+        ],
+        errorCodes: [
+            { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서', status: 400 },
+            { code: '4000006', message: 'The document has been deleted.', description: '삭제된 문서', status: 400 },
+            { code: '4000243', message: 'This document is not completed.', description: '완료되지 않은 문서', status: 400 },
+            { code: '5000001', message: 'Internal server error.', description: '문서 파일 정보 없음', status: 400 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_081 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'doc_sign_images': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [
+            { key: 'type', type: 'string', required: false, description: 'png | svg', note: '비우면 서명 원본 데이터' },
+            { key: 'width', type: 'number', required: false, description: '가로 크기', note: '기본 100' },
+            { key: 'height', type: 'number', required: false, description: '세로 크기', note: '기본 100' },
+        ],
+        requestBody: [
+            { key: 'input', type: 'object', required: false, description: 'POST 전용 옵션 (쿼리보다 우선)' },
+            { key: 'input.component_ids', type: 'array', required: false, description: '반환할 서명 컴포넌트 이름 목록', note: '비우면 문서의 모든 서명 컴포넌트' },
+            { key: 'input.type', type: 'string', required: false, description: 'png | svg' },
+            { key: 'input.width', type: 'number', required: false, description: '가로 크기' },
+            { key: 'input.height', type: 'number', required: false, description: '세로 크기' },
+        ],
+        responseFields: [
+            { key: 'result[].id', type: 'string', description: '서명 컴포넌트 이름' },
+            { key: 'result[].imgData', type: 'string', description: '이미지 data URI 또는 서명 원본 데이터' },
+        ],
+        errorCodes: [
+            { code: '4000004', message: 'The document does not exist.', description: '존재하지 않는 문서', status: 400 },
+            { code: '4000003', message: 'The apiKey does not exist.', description: 'API Key 없음 또는 문서 파일 정보 없음 (같은 코드 사용)', status: 400 },
+            { code: '4000046', message: 'There is no template.', description: '템플릿 없음', status: 400 },
+            { code: '5000001', message: 'Internal server error.', description: 'SVG 변환 실패', status: 500 },
+            { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key', status: 403 },
+            { code: '4030034', message: 'You don\'t have Open API permission.', description: 'Open API 사용 권한 없음', status: 403 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_099 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'template_request_sample': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'type', type: 'string', required: true, description: 'api | embedded', note: '다른 값이면 5000211' },
+            { key: 'template_id', type: 'string', required: true, description: '템플릿 ID' },
+        ],
+        responseFields: [
+            { key: 'document', type: 'object', description: 'type=api — 문서 작성(OPA2_005) 요청 Body 견본 (document_name, select_group_name, fields[{id,value}], recipients[], comment, send_external_pdf, notification)' },
+            { key: 'company', type: 'object', description: 'type=embedded — {id, country_code, user_key}' },
+            { key: 'mode', type: 'object', description: 'type=embedded — {type:"01", template_id, document_id}' },
+            { key: 'user', type: 'object', description: 'type=embedded — {type:"01", id, access_token, refresh_token, external_token, redirect_url}' },
+            { key: 'prefill', type: 'object', description: 'type=embedded — {document_name, comment, send_completed_document_pdf, recipients[], fields[{id,value,enabled,required}], quick_processing, is_hidden_stamp, use_referrer}' },
+            { key: 'return_fields', type: 'array', description: 'type=embedded — 반환 필드 이름 목록' },
+        ],
+        errorCodes: [
+            { code: '4000070', message: 'Invalid input JSON format.', description: 'type 또는 template_id 키 누락', status: 500 },
+            { code: '4000046', message: 'There is no template.', description: '템플릿 없음', status: 400 },
+            { code: '5000211', message: 'Invalid type.', description: 'type이 api·embedded가 아님', status: 400 },
+            { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key', status: 400 },
+            { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key', status: 403 },
+            { code: '4030034', message: 'You don\'t have Open API permission.', description: 'Open API 사용 권한 없음', status: 403 },
+            { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음 (멤버 역할 부족)', status: 403 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_062 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'template_permissions_update': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'use_all_members', type: 'boolean', required: false, description: 'true면 전체 멤버 사용 허용' },
+            { key: 'use.members.add / use.members.delete', type: 'array', required: false, description: '사용 권한을 추가·삭제할 멤버 ID' },
+            { key: 'use.groups.add / use.groups.delete', type: 'array', required: false, description: '사용 권한을 추가·삭제할 그룹 ID' },
+            { key: 'modify.members.add / modify.members.delete', type: 'array', required: false, description: '수정 권한 멤버 ID' },
+            { key: 'modify.groups.add / modify.groups.delete', type: 'array', required: false, description: '수정 권한 그룹 ID' },
+            { key: 'modify.managers.add / modify.managers.delete', type: 'array', required: false, description: '수정 권한 관리자 ID' },
+        ],
+        responseFields: [
+            { key: 'template.id', type: 'string', description: '템플릿 ID' },
+            { key: 'template.name', type: 'string', description: '템플릿 이름' },
+            { key: 'error', type: 'object', description: '일부 대상이 반영되지 않았을 때만 — {message, details}' },
+        ],
+        errorCodes: [
+            { code: '4000046', message: 'There is no template.', description: '템플릿 없음', status: 400 },
+            { code: '4000001', message: 'Invalid input JSON format.', description: 'use_all_members·use·modify 모두 없음, 또는 add·delete 없음', status: 400 },
+            { code: '4000044', message: 'You have no permission to access the form.', description: '템플릿 권한 변경 권한 없음', status: 400 },
+            { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음 (멤버 역할 부족)', status: 403 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_080 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'template_ozr_parameter': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'templates', type: 'array', required: true, description: '조회할 템플릿 목록', note: '비어 있으면 4000001' },
+            { key: 'templates[].form_id', type: 'string', required: true, description: '템플릿 ID' },
+            { key: 'templates[].form_version', type: 'string', required: false, description: '템플릿 버전', note: '비우면 배포 버전' },
+        ],
+        responseFields: [
+            { key: 'result[].<form_id>[]', type: 'array', description: '템플릿별 입력 컴포넌트 목록' },
+            { key: '...name / input_type / data_type / section', type: 'string', description: '컴포넌트 이름·입력 형식·데이터 형식·섹션' },
+            { key: '...accessible / required', type: 'boolean', description: '입력 가능·필수 여부' },
+            { key: '...used, valueMeaningCode, label_tag, items[], multi_selectable, default_item', type: '-', description: '값이 있을 때만 포함' },
+        ],
+        errorCodes: [
+            { code: '4000001', message: 'Required input value not found.', description: 'templates 누락·빈 목록', status: 400 },
+            { code: '4000046', message: 'There is no template.', description: '템플릿 없음' },
+            { code: '4000045', message: 'The OZR file does not exist.', description: '서식 파일(OZR) 없음' },
+            { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key', status: 400 },
+            { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key', status: 403 },
+            { code: '4030034', message: 'You don\'t have Open API permission.', description: 'Open API 사용 권한 없음', status: 403 },
+            { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음 (멤버 역할 부족)', status: 403 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_032 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'account_update': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'account', type: 'object', required: true, description: '수정할 계정 정보', note: '없으면 4000001' },
+            { key: 'account.name', type: 'string', required: false, description: '이름' },
+            { key: 'account.email', type: 'string', required: false, description: '이메일' },
+            { key: 'account.contact.country_number', type: 'string', required: false, description: '국가 번호' },
+            { key: 'account.contact.number', type: 'string', required: false, description: '휴대폰 번호' },
+            { key: 'account.password', type: 'string', required: false, description: '현재 비밀번호', note: 'new_password를 보낼 때 필수' },
+            { key: 'account.new_password', type: 'string', required: false, description: '새 비밀번호' },
+            { key: 'account.marketing', type: 'boolean', required: false, description: '마케팅 수신 동의' },
+            { key: 'account.image_file_id', type: 'string', required: false, description: '프로필 이미지 파일 ID' },
+        ],
+        responseFields: [
+            { key: 'account.id', type: 'string', description: '요청 Body의 account.id (없으면 빈 문자열)' },
+            { key: 'account.name', type: 'string', description: '요청 Body의 account.name' },
+        ],
+        errorCodes: [
+            { code: '4000001', message: 'Invalid input JSON format.', description: 'account 누락', status: 400 },
+            { code: '4000150', message: 'The account does not exist.', description: '존재하지 않는 계정', status: 403 },
+            { code: '4000143', message: 'Invalid account.', description: '수정할 수 없는 계정 형식', status: 403 },
+            { code: '4000139', message: 'Invalid id or password.', description: '현재 비밀번호 누락·불일치', status: 400 },
+            { code: '4000256', message: 'Password identical to Email or ID is not permitted.', description: '비밀번호가 ID·이메일과 같음', status: 400 },
+            { code: '4000208', message: 'The password format is invalid.', description: '비밀번호 형식 오류', status: 400 },
+            { code: '4000223', message: 'The new password cannot be the same as the current password.', description: '현재·이전 비밀번호와 같음', status: 400 },
+            { code: '4030009', message: 'You do not have access.', description: '접근 권한 없음 (멤버 역할 부족)', status: 403 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
+    // OPA2_079 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'account_signature_status': {
+        requestHeaders: [
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [],
+        responseFields: [
+            { key: 'account_id', type: 'string', description: '계정 ID' },
+            { key: 'signature', type: 'boolean', description: '서명 등록 여부' },
+            { key: 'initial', type: 'boolean', description: '이니셜 등록 여부' },
+            { key: 'stamp', type: 'boolean', description: '도장 등록 여부' },
+        ],
+        errorCodes: [
+            { code: '4030008', message: 'Failed to authenticate the token.', description: 'account_id가 토큰의 member_id와 다름', status: 400 },
+            { code: '4000074', message: 'No such member exists.', description: '존재하지 않거나 비활성인 멤버', status: 400 },
+            { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰', status: 401 },
+        ],
+    },
 };
