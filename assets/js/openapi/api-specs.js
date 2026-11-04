@@ -2279,8 +2279,8 @@ const API_SPECS = {
     // ──────────────────────────────────────────────────────────────────────
     // Full 전용 신규 API 명세 — opaCode가 없어 API_LIST의 id를 키로 쓴다 (getApiSpec 참고)
     // ──────────────────────────────────────────────────────────────────────
-    // OPA2_060 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'doc_component_values': {
+    // OPA2_060 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_060': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
@@ -2305,8 +2305,8 @@ const API_SPECS = {
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사', status: 403 },
         ],
     },
-    // OPA2_057 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'doc_complete_attach_list': {
+    // OPA2_057 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_057': {
         requestHeaders: [
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
         ],
@@ -2329,8 +2329,8 @@ const API_SPECS = {
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원', status: 403 },
         ],
     },
-    // OPA2_058 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'doc_complete_attach_delete': {
+    // OPA2_058 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_058': {
         requestHeaders: [
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
         ],
@@ -2348,8 +2348,8 @@ const API_SPECS = {
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
         ],
     },
-    // OPA2_059 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'doc_complete_attach_download': {
+    // OPA2_059 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_059': {
         requestHeaders: [
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
         ],
@@ -2366,8 +2366,8 @@ const API_SPECS = {
             { code: '4000087', message: 'No file exists.', description: '저장소에서 파일을 읽지 못함', status: 500 },
         ],
     },
-    // OPA2_074 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'doc_unlock': {
+    // OPA2_074 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_074': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
@@ -2392,8 +2392,8 @@ const API_SPECS = {
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
         ],
     },
-    // OPA2_077 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'doc_multi_re_request': {
+    // OPA2_077 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_077': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
@@ -2426,8 +2426,8 @@ const API_SPECS = {
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가', status: 403 },
         ],
     },
-    // OPA2_078 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'doc_complete_pdf_check': {
+    // OPA2_078 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_078': {
         requestHeaders: [
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
         ],
@@ -2445,8 +2445,8 @@ const API_SPECS = {
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
         ],
     },
-    // OPA2_081 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'doc_sign_images': {
+    // OPA2_081 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_081': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
@@ -2477,8 +2477,8 @@ const API_SPECS = {
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
         ],
     },
-    // OPA2_099 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'template_request_sample': {
+    // OPA2_099 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_099': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
@@ -2507,8 +2507,8 @@ const API_SPECS = {
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
         ],
     },
-    // OPA2_062 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'template_permissions_update': {
+    // OPA2_062 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_062': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
@@ -2535,8 +2535,8 @@ const API_SPECS = {
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
         ],
     },
-    // OPA2_080 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'template_ozr_parameter': {
+    // OPA2_080 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_080': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
@@ -2566,8 +2566,8 @@ const API_SPECS = {
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
         ],
     },
-    // OPA2_032 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'account_update': {
+    // OPA2_032 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_032': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
@@ -2603,8 +2603,8 @@ const API_SPECS = {
             { code: '4030034', message: "You don't have Open API permission.", description: 'Open API 사용 권한 없음', status: 403 },
         ],
     },
-    // OPA2_079 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'account_signature_status': {
+    // OPA2_079 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_079': {
         requestHeaders: [
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
         ],
@@ -2622,8 +2622,8 @@ const API_SPECS = {
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
         ],
     },
-    // OPA2_067 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
-    'member_reset_password': {
+    // OPA2_067 (소스 내부 번호) — Full 전용, 소스 내부 번호를 opaCode로 사용
+    'OPA2_067': {
         requestHeaders: [
             { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
             { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
