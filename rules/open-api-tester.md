@@ -36,8 +36,8 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
     id: 'unique_id',
     group: '그룹명',
     groupIcon: 'fa-아이콘명',
-    opaCode: 'OPA2_XXX',        // 대고객 번호. null이면 배지 없음 (Full 전용 신규 API). 기존 값은 절대 바꾸지 않는다
-    sourceApiId: 'OPA2_0xx',    // 선택 — SaaS 소스 내부 번호(ApiIdConf, 참고용). opaCode가 없는 항목에만 쓴다
+    opaCode: 'OPA2_XXX',        // 대고객 번호. 기존 값은 절대 바꾸지 않는다. Full 전용 API는 소스 내부 번호(sourceApiId와 같은 값)를 쓴다(2026-11-04 사용자 요청)
+    sourceApiId: 'OPA2_0xx',    // 선택 — SaaS 소스 내부 번호(ApiIdConf, 참고용). Full 전용 항목에 둔다(opaCode가 없으면 명세 모달에 회색 '내부' 배지로 표시)
     fullOnly: true,             // 선택 — 대고객 공개 검토 전. Full에만 보이고 Prod는 화면에서 제거, 사이드바에 회색 "검토" 라벨
     name: 'API 이름',
     method: 'GET|POST|PUT|PATCH|DELETE',
@@ -79,15 +79,14 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 
 1. 소스(`OpenAPIV2Controller.java`)에서 메서드·경로·쿼리·Body 파싱·응답·던지는 예외를 확인한다. 특정 고객 전용·내부 운영용·파트너(국가 키·IAM 키) 전용·
    SSO 구성원·multipart·GET+Body 엔드포인트는 넣지 않는다.
-2. `api-list.js` "Full 전용" 구역에 `opaCode: null`, `sourceApiId`, `fullOnly: true`로 추가한다.
-3. 명세는 `API_SPECS[<API id>]` 키로 넣는다 — 조회는 `getApiSpec(ep)` = `API_SPECS[ep.opaCode] || API_SPECS[ep.id]`(`state.js`).
-4. Prod HTML은 고치지 않아도 된다(숨김 블록이 `fullOnly`를 제거). 공개하기로 하면 대고객 번호를 정해 `opaCode`를 넣고 `fullOnly`·`sourceApiId`를 지운 뒤,
-   명세 키를 `opaCode`로 옮긴다.
+2. `api-list.js` "Full 전용" 구역에 `opaCode: <소스 내부 번호>`, `sourceApiId`(같은 값), `fullOnly: true`로 추가한다. 내부 번호가 기존 대고객 `opaCode`와 겹치면 추가 전에 사용자에게 확인한다.
+3. 명세는 `API_SPECS[<opaCode>]` 키로 넣는다 — 조회는 `getApiSpec(ep)` = `API_SPECS[ep.opaCode] || API_SPECS[ep.id]`(`state.js`, opaCode가 없을 때만 id 키).
+4. Prod HTML은 고치지 않아도 된다(숨김 블록이 `fullOnly`를 제거). 공개하기로 하면 `fullOnly`를 지운다(대고객 번호를 따로 정하면 `opaCode`와 명세 키를 함께 바꾼다).
 5. **한계**: Prod는 화면에서만 숨긴다 — `api-list.js`·`api-specs.js`가 공개 번들이라 데이터는 누구나 내려받을 수 있다(Q5와 같은 수준).
 
 ### 소스에 있지만 넣지 않은 Open API (2026-11 대조, `OpenAPIV2Controller.java` 기준)
 
-다시 검토할 때 이 표부터 본다. 추가하려면 사유가 풀렸는지 소스로 확인하고 사용자 결정을 받는다.
+다시 검토할 때 이 표부터 본다. (OPA2_067 멤버 비밀번호 재설정은 2026-11-04 사용자 요청으로 경고를 붙여 Full 전용 `member_reset_password`로 추가했다 — 역할 검사가 없어 같은 회사 멤버 토큰이면 누구나 다른 멤버 비밀번호를 바꿀 수 있음.) 추가하려면 사유가 풀렸는지 소스로 확인하고 사용자 결정을 받는다.
 
 | 소스 번호 | 메서드·경로(/v2.0) | 제외 사유 |
 |---|---|---|
@@ -105,7 +104,6 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 | OPA2_071 (072) | POST `/api/companies/thirdparty_company` | 서드파티 IAM 관리 키 전용(072는 매핑 없음) |
 | OPA2_073 | POST `/api/companies/{company_id}/multi_template` | 운영용 일회성 옵션 활성화(되돌릴 수 없음) |
 | OPA2_065 | POST `/api/documents/{document_id}/company_tsa` | 특정 고객 전용 |
-| OPA2_067 | PATCH `/api/companies/{company_id}/members/{account_id}/reset_password` | 민감 — 역할 검사 없이 같은 회사 멤버의 비밀번호를 재설정한다(일반 멤버 토큰으로도 가능). 테스트 도구에서 실수로 운영 계정 비밀번호를 바꿀 위험이 커 제외 |
 | OPA2_076 ×2 | POST `/api/companies/{company_id}/external_download_mass_multi_documents`, `/api/companies/{company_id}/documents/send_notification` | 외부자 토큰·`.ozz` 바이너리 / 내부 알림 연동용(인증 사실상 없음) |
 
 ### HTTP 상태 (`status`)
@@ -118,7 +116,7 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 
 ### API 명세 데이터 구조 (`API_SPECS`)
 
-`assets/js/openapi/api-specs.js`에 위치. opaCode를 키로 하는 객체(opaCode가 없는 Full 전용 API는 API `id`를 키로 쓴다 — `getApiSpec(ep)`).
+`assets/js/openapi/api-specs.js`에 위치. opaCode를 키로 하는 객체(Full 전용 API도 소스 내부 번호 opaCode를 키로 쓴다. opaCode가 없는 항목만 API `id` 키 — `getApiSpec(ep)`).
 
 ```javascript
 const API_SPECS = {

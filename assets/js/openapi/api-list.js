@@ -1791,7 +1791,7 @@ const API_LIST = [
                 "status": "200"
             },
             errors: [
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }, status: 401 },
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: { "code": "4010001", "ErrorMessage": "Invalid or expired token." }, status: 401 },
                 { title: 'Refresh Token 만료 (4010006)', body: { "code": "4010006", "ErrorMessage": "The refresh token has expired." }, status: 401 },
                 { title: '필수 입력값 누락 (4000001)', body: { "code": "4000001", "ErrorMessage": "Required input value not found." } },
                 { title: '템플릿 없음 (4000046)', body: { "code": "4000046", "ErrorMessage": "There is no template." } },
@@ -5859,7 +5859,7 @@ const API_LIST = [
         id: 'doc_component_values',
         group: '문서',
         groupIcon: 'fa-file-lines',
-        opaCode: null,
+        opaCode: 'OPA2_060',
         sourceApiId: 'OPA2_060',
         fullOnly: true,
         name: '문서 컴포넌트 값 조회',
@@ -5895,7 +5895,7 @@ const API_LIST = [
             errors: [
                 { title: 'documentComponentBodyList 누락·빈 목록 (4000001)', body: {"code":"4000001","ErrorMessage":"Required input value not found."}, status: 400 },
                 { title: '존재하지 않는 문서 (4000004)', body: {"code":"4000004","ErrorMessage":"The document does not exist."}, status: 400 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
                 { title: '삭제된 회사 (4000076)', body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}, status: 403 },
                 { title: '이용 정지된 회사 (4030052)', body: {"code":"4030052","ErrorMessage":"The company has been suspended."}, status: 403 }
             ]
@@ -5905,7 +5905,7 @@ const API_LIST = [
         id: 'doc_complete_attach_list',
         group: '문서',
         groupIcon: 'fa-file-lines',
-        opaCode: null,
+        opaCode: 'OPA2_057',
         sourceApiId: 'OPA2_057',
         fullOnly: true,
         name: '완료 문서 첨부 파일 목록 조회',
@@ -5935,7 +5935,7 @@ const API_LIST = [
             },
             errors: [
                 { title: '첨부 목록 조회 실패 (9000003)', body: {"code":"9000003","ErrorMessage":"There should be at least one result."}, status: 500 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
                 { title: '삭제된 회사 (4000076)', body: { "code": "4000076", "ErrorMessage": "The company has already been deleted." }, status: 403 },
                 { title: '이용 정지된 회사 (4030052)', body: { "code": "4030052", "ErrorMessage": "The company has been suspended." }, status: 403 },
                 { title: '개인 플랜은 Open API 미지원 (4030025)', body: { "code": "4030025", "ErrorMessage": "It is not available in the personal plan." }, status: 403 }
@@ -5946,7 +5946,7 @@ const API_LIST = [
         id: 'doc_complete_attach_delete',
         group: '문서',
         groupIcon: 'fa-file-lines',
-        opaCode: null,
+        opaCode: 'OPA2_058',
         sourceApiId: 'OPA2_058',
         fullOnly: true,
         name: '완료 문서 첨부 파일 삭제',
@@ -5970,7 +5970,7 @@ const API_LIST = [
             errors: [
                 { title: '이미 삭제된 첨부 파일 (4030047)', body: {"code":"4030047","ErrorMessage":"Document attachment has already been deleted."}, status: 400 },
                 { title: '삭제된 항목 없음 (9000001)', body: {"code":"9000001","ErrorMessage":"Did not update anything."}, status: 500 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
             ]
         }
     },
@@ -5978,7 +5978,7 @@ const API_LIST = [
         id: 'doc_complete_attach_download',
         group: '문서',
         groupIcon: 'fa-file-lines',
-        opaCode: null,
+        opaCode: 'OPA2_059',
         sourceApiId: 'OPA2_059',
         fullOnly: true,
         name: '완료 문서 첨부 파일 다운로드',
@@ -5994,7 +5994,7 @@ const API_LIST = [
         exampleResponse: {
             errors: [
                 { title: 'file_key에 해당하는 첨부 없음·조회 실패 (4000240)', body: {"code":"4000240","ErrorMessage":"This file does not support."}, status: 500 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
                 { title: '저장소에서 파일을 읽지 못함 (4000087)', body: { "code": "4000087", "ErrorMessage": "No file exists." }, status: 500 }
             ]
         }
@@ -6003,7 +6003,7 @@ const API_LIST = [
         id: 'doc_unlock',
         group: '문서',
         groupIcon: 'fa-file-lines',
-        opaCode: null,
+        opaCode: 'OPA2_074',
         sourceApiId: 'OPA2_074',
         fullOnly: true,
         name: '문서 쓰기 잠금 해제 (다중 사용자 단계)',
@@ -6030,7 +6030,7 @@ const API_LIST = [
                 { title: '비활성화된 API Key (4030001)', body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403 },
                 { title: 'Open API 사용 권한 없음 (4030034)', body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403 },
                 { title: '접근 권한 없음 (멤버 역할 부족) (4030009)', body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
             ]
         }
     },
@@ -6038,7 +6038,7 @@ const API_LIST = [
         id: 'doc_multi_re_request',
         group: '문서',
         groupIcon: 'fa-file-lines',
-        opaCode: null,
+        opaCode: 'OPA2_077',
         sourceApiId: 'OPA2_077',
         fullOnly: true,
         name: '여러 문서 재요청',
@@ -6118,7 +6118,7 @@ const API_LIST = [
             errors: [
                 { title: '요청 JSON 처리 실패 (4000001)', body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}, status: 400 },
                 { title: '토큰에서 API Key 정보를 읽을 수 없음 (4000003)', body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}, status: 400 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
                 { title: '삭제된 회사 (4000076)', body: { "code": "4000076", "ErrorMessage": "The company has already been deleted." }, status: 403 },
                 { title: '이용 정지된 회사 (4030052)', body: { "code": "4030052", "ErrorMessage": "The company has been suspended." }, status: 403 },
                 { title: '개인 플랜은 Open API 미지원 (4030025)', body: { "code": "4030025", "ErrorMessage": "It is not available in the personal plan." }, status: 403 },
@@ -6130,7 +6130,7 @@ const API_LIST = [
         id: 'doc_complete_pdf_check',
         group: '문서',
         groupIcon: 'fa-file-lines',
-        opaCode: null,
+        opaCode: 'OPA2_078',
         sourceApiId: 'OPA2_078',
         fullOnly: true,
         name: '완료 문서 PDF 생성 여부 확인',
@@ -6158,7 +6158,7 @@ const API_LIST = [
                 { title: '삭제된 문서 (4000006)', body: {"code":"4000006","ErrorMessage":"The document has been deleted."}, status: 400 },
                 { title: '완료되지 않은 문서 (4000243)', body: {"code":"4000243","ErrorMessage":"This document is not completed."}, status: 400 },
                 { title: '문서 파일 정보 없음 (5000001)', body: {"code":"5000001","ErrorMessage":"Internal server error. (The file does not exist.)"}, status: 400 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
             ]
         }
     },
@@ -6166,7 +6166,7 @@ const API_LIST = [
         id: 'doc_sign_images',
         group: '문서',
         groupIcon: 'fa-file-lines',
-        opaCode: null,
+        opaCode: 'OPA2_081',
         sourceApiId: 'OPA2_081',
         fullOnly: true,
         name: '문서 서명 이미지 조회',
@@ -6211,7 +6211,7 @@ const API_LIST = [
                 { title: 'SVG 변환 실패 (5000001)', body: {"code":"5000001","ErrorMessage":"Internal server error."}, status: 500 },
                 { title: '비활성화된 API Key (4030001)', body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403 },
                 { title: 'Open API 사용 권한 없음 (4030034)', body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
             ]
         }
     },
@@ -6219,7 +6219,7 @@ const API_LIST = [
         id: 'template_request_sample',
         group: '템플릿',
         groupIcon: 'fa-file-invoice',
-        opaCode: null,
+        opaCode: 'OPA2_099',
         sourceApiId: 'OPA2_099',
         fullOnly: true,
         name: '문서 작성용 샘플 요청 정보 조회',
@@ -6280,7 +6280,7 @@ const API_LIST = [
                 { title: '비활성화된 API Key (4030001)', body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403 },
                 { title: 'Open API 사용 권한 없음 (4030034)', body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403 },
                 { title: '접근 권한 없음 (멤버 역할 부족) (4030009)', body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
             ]
         }
     },
@@ -6288,7 +6288,7 @@ const API_LIST = [
         id: 'template_permissions_update',
         group: '템플릿',
         groupIcon: 'fa-file-invoice',
-        opaCode: null,
+        opaCode: 'OPA2_062',
         sourceApiId: 'OPA2_062',
         fullOnly: true,
         name: '템플릿 사용·수정 권한 변경',
@@ -6370,7 +6370,7 @@ const API_LIST = [
                 { title: 'use_all_members·use·modify 모두 없음, 또는 add·delete 없음 (4000001)', body: {"code":"4000001","ErrorMessage":"Invalid input JSON format."}, status: 400 },
                 { title: '템플릿 권한 변경 권한 없음 (4000044)', body: {"code":"4000044","ErrorMessage":"You have no permission to access the form."}, status: 400 },
                 { title: '접근 권한 없음 (멤버 역할 부족) (4030009)', body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
             ]
         }
     },
@@ -6378,7 +6378,7 @@ const API_LIST = [
         id: 'template_ozr_parameter',
         group: '템플릿',
         groupIcon: 'fa-file-invoice',
-        opaCode: null,
+        opaCode: 'OPA2_080',
         sourceApiId: 'OPA2_080',
         fullOnly: true,
         name: '템플릿 입력 컴포넌트 정보 조회',
@@ -6432,7 +6432,7 @@ const API_LIST = [
                 { title: '비활성화된 API Key (4030001)', body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403 },
                 { title: 'Open API 사용 권한 없음 (4030034)', body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403 },
                 { title: '접근 권한 없음 (멤버 역할 부족) (4030009)', body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
             ]
         }
     },
@@ -6440,7 +6440,7 @@ const API_LIST = [
         id: 'account_update',
         group: '멤버',
         groupIcon: 'fa-users',
-        opaCode: null,
+        opaCode: 'OPA2_032',
         sourceApiId: 'OPA2_032',
         fullOnly: true,
         name: '계정 정보 수정',
@@ -6473,7 +6473,7 @@ const API_LIST = [
                 { title: '비밀번호 형식 오류 (4000208)', body: {"code":"4000208","ErrorMessage":"The password format is invalid."}, status: 400 },
                 { title: '현재·이전 비밀번호와 같음 (4000223)', body: {"code":"4000223","ErrorMessage":"The new password cannot be the same as the current password."}, status: 400 },
                 { title: '접근 권한 없음 (멤버 역할 부족) (4030009)', body: {"code":"4030009","ErrorMessage":"You do not have access."}, status: 403 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
                 { title: '유효하지 않은 API Key (4000003)', body: { "code": "4000003", "ErrorMessage": "The apiKey does not exist." }, status: 400 },
                 { title: '비활성화된 API Key (4030001)', body: { "code": "4030001", "ErrorMessage": "The apiKey is not active." }, status: 403 },
                 { title: 'Open API 사용 권한 없음 (4030034)', body: { "code": "4030034", "ErrorMessage": "You don't have Open API permission." }, status: 403 }
@@ -6484,7 +6484,7 @@ const API_LIST = [
         id: 'account_signature_status',
         group: '멤버',
         groupIcon: 'fa-users',
-        opaCode: null,
+        opaCode: 'OPA2_079',
         sourceApiId: 'OPA2_079',
         fullOnly: true,
         name: '서명 등록 상태 조회',
@@ -6507,7 +6507,50 @@ const API_LIST = [
             errors: [
                 { title: 'account_id가 토큰의 member_id와 다름 (4030008)', body: {"code":"4030008","ErrorMessage":"Failed to authenticate the token."}, status: 400 },
                 { title: '존재하지 않거나 비활성인 멤버 (4000074)', body: {"code":"4000074","ErrorMessage":"No such member exists."}, status: 400 },
-                { title: '유효하지 않거나 만료된 토큰 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 }
+            ]
+        }
+    },
+    {
+        id: 'member_reset_password',
+        group: '멤버',
+        groupIcon: 'fa-users',
+        opaCode: 'OPA2_067',
+        sourceApiId: 'OPA2_067',
+        fullOnly: true,
+        name: '멤버 비밀번호 재설정',
+        method: 'PATCH',
+        path: '/v2.0/api/companies/{company_id}/members/{account_id}/reset_password',
+        description: '[주의] 회사 멤버의 로그인 비밀번호를 새 값으로 바꿉니다. 현재 비밀번호 확인 없이 바뀌고, 서버가 호출자 역할을 확인하지 않아 같은 회사 멤버라면 누구의 토큰으로든 다른 멤버의 비밀번호를 바꿀 수 있습니다. 비밀번호 검사는 4자 이상뿐입니다. 성공하면 대상 계정의 토큰 정보가 초기화되고 비밀번호 변경 요구가 해제됩니다. 운영 계정에 쓰지 말고 테스트 회사의 테스트 멤버에만 쓰세요.',
+        requiresAuth: true,
+        pathParams: [
+            { key: 'company_id', description: '회사 ID (토큰의 회사와 같아야 함)', required: true, default: '' },
+            { key: 'account_id', description: '비밀번호를 바꿀 멤버의 계정 ID', required: true, default: '' }
+        ],
+        queryParams: [],
+        defaultBody: {
+            password: ''
+        },
+        exampleResponse: {
+            success: {
+                "company_id": "string",
+                "member": {
+                    "id": "string",
+                    "name": "string"
+                }
+            },
+            errors: [
+                { title: '비밀번호(password) 누락 (4000001)', body: {"code":"4000001","ErrorMessage":"The body data is invalid."}, status: 400 },
+                { title: 'Body가 JSON 형식이 아님 (4000070)', body: {"code":"4000070","ErrorMessage":"Invalid input JSON format."}, status: 400 },
+                { title: '비밀번호가 4자 미만 (4000255)', body: {"code":"4000255","ErrorMessage":"Password validation failed."}, status: 400 },
+                { title: '존재하지 않거나 삭제된 계정·멤버 (4000150)', body: {"code":"4000150","ErrorMessage":"The account does not exist."}, status: 400 },
+                { title: '경로의 company_id가 토큰의 회사와 다름 (4010009)', body: {"code":"4010009","ErrorMessage":"No permission to access the company."}, status: 400 },
+                { title: '유효하지 않거나 만료된 토큰 — 형식이 깨진 토큰은 HTTP 400 (4010001)', body: {"code":"4010001","ErrorMessage":"Invalid or expired token."}, status: 401 },
+                { title: '유효하지 않은 API Key (4000003)', body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}, status: 400 },
+                { title: '비활성화된 API Key (4030001)', body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403 },
+                { title: 'Open API 사용 권한 없음 (4030034)', body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403 },
+                { title: '삭제된 회사 (4000076)', body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}, status: 403 },
+                { title: '정지된 회사 (4030052)', body: {"code":"4030052","ErrorMessage":"The company has been suspended."}, status: 403 }
             ]
         }
     },
