@@ -2622,4 +2622,33 @@ const API_SPECS = {
             { code: '4010001', message: 'Invalid or expired token.', description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
         ],
     },
+    // OPA2_067 (소스 내부 번호) — Full 전용, 대고객 번호 없음 → API id 키
+    'member_reset_password': {
+        requestHeaders: [
+            { key: 'Content-Type', required: true, description: 'Content-Type', example: 'application/json' },
+            { key: 'Authorization', required: true, description: 'Access Token을 Bearer 토큰으로 사용', example: 'Bearer <access_token>' },
+        ],
+        queryParams: [],
+        requestBody: [
+            { key: 'password', type: 'string', required: true, description: '새 비밀번호', note: '4자 미만이면 4000255. 그 밖의 형식 검사는 없음. 현재 비밀번호 확인 없이 바로 바뀌고, 서버가 호출자 역할을 확인하지 않음(같은 회사 멤버 토큰이면 누구나 가능) — 테스트 멤버에만 사용' },
+        ],
+        responseFields: [
+            { key: 'company_id', type: 'string', description: '회사 ID' },
+            { key: 'member.id', type: 'string', description: '비밀번호를 바꾼 멤버의 계정 ID' },
+            { key: 'member.name', type: 'string', description: '멤버 이름' },
+        ],
+        errorCodes: [
+            { code: '4000001', message: "The body data is invalid.", description: '비밀번호(password) 누락', status: 400 },
+            { code: '4000070', message: "Invalid input JSON format.", description: 'Body가 JSON 형식이 아님', status: 400 },
+            { code: '4000255', message: "Password validation failed.", description: '비밀번호가 4자 미만', status: 400 },
+            { code: '4000150', message: "The account does not exist.", description: '존재하지 않거나 삭제된 계정·멤버', status: 400 },
+            { code: '4010009', message: "No permission to access the company.", description: '경로의 company_id가 토큰의 회사와 다름', status: 400 },
+            { code: '4010001', message: "Invalid or expired token.", description: '유효하지 않거나 만료된 토큰 (만료·서명 불일치는 HTTP 401, 형식이 깨진 토큰은 HTTP 400)', status: 401 },
+            { code: '4000003', message: "The apiKey does not exist.", description: '유효하지 않은 API Key', status: 400 },
+            { code: '4030001', message: "The apiKey is not active.", description: '비활성화된 API Key', status: 403 },
+            { code: '4030034', message: "You don't have Open API permission.", description: 'Open API 사용 권한 없음', status: 403 },
+            { code: '4000076', message: "The company has already been deleted.", description: '삭제된 회사', status: 403 },
+            { code: '4030052', message: "The company has been suspended.", description: '정지된 회사', status: 403 },
+        ],
+    },
 };
