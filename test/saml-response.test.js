@@ -75,6 +75,35 @@ test('createLoginResponse: 서명·Destination·속성(email/name)이 포함된 
   assert.match(xml, /InResponseTo="req_1"/);
 });
 
+// eformsign 회사 옵션 saml_signature_validation(java-saml isValid)은 AuthnStatement가 없으면 거부한다
+test('Assertion에 AuthnStatement가 Conditions 다음·AttributeStatement 앞에 들어간다', { skip }, async () => {
+  const user = { email: 'tester@example.test', name: '테스터', NameID: 'tester@example.test' };
+  const before = Date.now();
+  const { xml } = await buildResponse(user);
+
+  const m = xml.match(/<saml:AuthnStatement AuthnInstant="([^"]+)" SessionIndex="([^"]+)">(.*?)<\/saml:AuthnStatement>/);
+  assert.ok(m, 'AuthnStatement 요소가 있어야 함');
+  const instant = Date.parse(m[1]);
+  assert.ok(Number.isFinite(instant) && instant >= before - 1000 && instant <= Date.now() + 1000, 'AuthnInstant는 생성 시각(ISO)');
+  assert.match(m[2], /^_[0-9a-f-]{36}$/, 'SessionIndex는 _ + uuid');
+  assert.match(m[3], /<saml:AuthnContextClassRef>urn:oasis:names:tc:SAML:2\.0:ac:classes:unspecified<\/saml:AuthnContextClassRef>/);
+  assert.equal((xml.match(/<saml:AuthnStatement /g) || []).length, 1);
+
+  // saml-schema-assertion 순서: Subject → Conditions → AuthnStatement → AttributeStatement
+  const iConditions = xml.indexOf('</saml:Conditions>');
+  const iAuthn = xml.indexOf('<saml:AuthnStatement ');
+  const iAttr = xml.indexOf('<saml:AttributeStatement');
+  assert.ok(iConditions < iAuthn && iAuthn < iAttr, '요소 순서');
+  assert.equal(xml.includes('{AuthnInstant}') || xml.includes('{SessionIndex}'), false, '치환되지 않은 placeholder 없음');
+});
+
+test('응답마다 SessionIndex가 다르다', { skip }, async () => {
+  const user = { email: 'tester@example.test', name: '테스터' };
+  const a = (await buildResponse(user)).xml.match(/SessionIndex="([^"]+)"/)[1];
+  const b = (await buildResponse(user)).xml.match(/SessionIndex="([^"]+)"/)[1];
+  assert.notEqual(a, b);
+});
+
 test('속성 값의 XML 특수문자는 마크업으로 주입되지 않는다 (samlify >= 2.13 XML injection 수정)', { skip }, async () => {
   const evil = 'x</saml:AttributeValue><saml:AttributeValue>admin';
   const user = { email: 'tester@example.test', name: evil, NameID: 'tester@example.test' };

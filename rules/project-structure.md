@@ -91,7 +91,7 @@ ProjectImprove/
 │   ├── html-escape.js          # escapeHtml — 서버 HTML 조립 시 본문·따옴표 속성 이스케이프 (SAML 폼 반사형 XSS 방지)
 │   ├── safe-next.js            # safeNext — 로그인 후 이동 경로(next) open redirect 차단 (auth/login.html·change-password.html에 인라인 사본)
 │   ├── saml-input.js           # SAMLRequest(base64 문자셋)·RelayState(1024자 이하) 형식 검증
-│   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/testjp/dev/prod 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, parseAuthnRequest(Redirect·POST 바인딩 SAMLRequest → ACS URL·요청 ID), loginResponseTemplate.context + createTemplateCallback로 AttributeStatement 생성, debugDeliver 진단 헬퍼)
+│   └── saml.js                 # SAML IdP/SP 설정 (samlify, ACS_URLS test/test2/testjp/dev/prod 대상 서버별 SP를 ACS_URLS 기반 자동 생성 + resolveTarget, parseAuthnRequest(Redirect·POST 바인딩 SAMLRequest → ACS URL·요청 ID), loginResponseTemplate.context + createTemplateCallback로 AuthnStatement(AuthnInstant·SessionIndex — eformsign 서명 검증 옵션의 java-saml isValid 필수)·AttributeStatement 생성, debugDeliver 진단 헬퍼)
 │
 ├── auth/
 │   └── login.html              # 인증 보호 페이지용 로그인 UI (+ signup/signup-status/change-password/403,
