@@ -1748,6 +1748,8 @@ window.CREDENTIAL_CONFIG = {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
 
 <!-- 모듈: 로드 순서 중요 (공유 모듈 → member/api.js → ui.js → init.js → credential-panel.js) -->
+<!-- 에러 코드 링크는 내부용 페이지(멤버·그룹·Full 전용 포함, manager 이상) — api-error.js -->
+<script>window.API_ERROR_CODES_PAGE = '/app/error-codes-internal';</script>
 <script src="/assets/js/api-error.js"></script>
 <script src="/assets/js/token-issuer.js"></script>
 <script src="/assets/js/token-badge.js"></script>

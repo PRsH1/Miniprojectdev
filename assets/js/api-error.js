@@ -18,13 +18,18 @@
  *   - [원본 응답 보기] 토글 (JSON이면 pretty-print, 아니면 앞 300자만)
  *   - "Failed to fetch" 류: CORS·도메인 오타·네트워크 안내 + /utils/CorsTest.html 링크
  *
+ * 에러 코드 페이지 바꾸기:
+ *   window.API_ERROR_CODES_PAGE = '/app/error-codes-internal';  // 내부 도구(OpenAPITester Full·MemberV2·AutoTest)
+ *   - 링크를 만들 때마다 읽으므로 이 모듈보다 뒤에 설정해도 된다. 없거나 같은 출처 절대 경로('/'로 시작, '//' 아님)가
+ *     아니면 공개 페이지(/utils/error-codes.html)를 쓴다. ApiError.pageUrl()로 현재 값을 얻는다.
+ *
  * 규칙: 모든 외부 문자열은 textContent로만 넣는다(XSS 방지). jQuery 불필요.
  */
 (function (window, document) {
     'use strict';
 
     var STYLE_ID = '_aeStyles';
-    var ERROR_CODES_PAGE = '/utils/error-codes.html';
+    var DEFAULT_ERROR_CODES_PAGE = '/utils/error-codes.html';
     var CORS_TEST_PAGE = '/utils/CorsTest.html';
     var NON_JSON_PREVIEW = 300;
 
@@ -101,8 +106,15 @@
             /Failed to fetch|NetworkError|Load failed|ERR_NAME_NOT_RESOLVED|ERR_CONNECTION/i.test(msg);
     }
 
+    // 페이지가 window.API_ERROR_CODES_PAGE 로 덮어쓸 수 있다 (같은 출처 절대 경로만 — 외부 URL·스킴 거부)
+    function pageUrl() {
+        var p = window.API_ERROR_CODES_PAGE;
+        return (typeof p === 'string' && /^\/(?![\/\\])/.test(p)) ? p : DEFAULT_ERROR_CODES_PAGE;
+    }
+
     function lookupUrl(code, opts) {
-        var base = (opts && opts.absolute) ? (window.location.origin + ERROR_CODES_PAGE) : ERROR_CODES_PAGE;
+        var page = pageUrl();
+        var base = (opts && opts.absolute) ? (window.location.origin + page) : page;
         return base + '?q=' + encodeURIComponent(String(code || ''));
     }
 
@@ -257,6 +269,7 @@
         extract: extract,
         fromResponse: fromResponse,
         isNetworkError: isNetworkError,
-        lookupUrl: lookupUrl
+        lookupUrl: lookupUrl,
+        pageUrl: pageUrl
     };
 })(window, document);
