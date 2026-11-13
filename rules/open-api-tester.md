@@ -14,10 +14,14 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
 > **로드 순서**: `api-list.js` → `api-specs.js` → `state.js` → `ui.js` → `init.js`
 > 전역 변수로 공유되므로 `<script>` 태그 순서를 변경하면 안 됨.
 
-> **Prod와 Full은 거의 동일한 복제본이다.** 두 HTML의 실질적 차이는 Prod에만 있는
-> 인라인 스크립트 한 블록(`api-list.js` 로드 직후, `API_LIST`에서 `group === '멤버'`·`'그룹'` 항목과
-> `fullOnly: true` 항목을 `splice`로 제거)뿐이다. `diff private/OpenAPITesterFull.html "API(JS,HTML)/OpenAPITesterProd.html"`의 결과가 이 블록뿐이어야 한다. **UI를 수정할 때는 반드시 두 파일 모두 고쳐야 한다** — 한쪽만
-> 고치면 조용히 갈라진다. JS 모듈은 공유하므로 로직 수정은 한 번으로 충분하다.
+> **Prod와 Full은 거의 동일한 복제본이다.** 두 HTML의 실질적 차이는 `api-list.js` 로드 직후의 **페이지 전용 인라인 `<script>` 블록 하나**뿐이다.
+> - Prod: 숨김 블록 — `API_LIST`에서 `group === '멤버'`·`'그룹'` 항목과 `fullOnly: true` 항목을 `splice`로 제거
+> - Full: 같은 자리에 설정 블록 — `window.API_ERROR_CODES_PAGE = '/app/error-codes-internal'`(에러 코드 링크를 내부용 페이지로, `API_LIST`는 건드리지 않음)
+>
+> `diff private/OpenAPITesterFull.html "API(JS,HTML)/OpenAPITesterProd.html"`의 결과가 이 블록 한 쌍뿐이어야 한다(`npm run check:api` 검사 10이 두 블록을 뺀 나머지가 같은지 확인).
+> Full 설정을 별도 줄로 넣지 않고 같은 자리 블록으로 묶은 이유: 차이가 "한 자리의 블록 하나"로 유지돼 diff 규칙과 검사가 단순하다.
+> **UI를 수정할 때는 반드시 두 파일 모두 고쳐야 한다** — 한쪽만 고치면 조용히 갈라진다. JS 모듈은 공유하므로 로직 수정은 한 번으로 충분하다.
+> 헤더 [에러 코드] 버튼(`#errorCodesLink`)의 href는 두 HTML 모두 `/utils/error-codes.html`이고, `init.js`가 `ApiError.pageUrl()`로 바꾼다(Full은 내부용 페이지).
 
 ### 파일 역할 및 편집 가이드
 
@@ -56,8 +60,9 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
             { title: '한글 설명 (코드)', body: { code, ErrorMessage }, status: 400 }
             // title 형식: '유효하지 않은 서명 (4030004)' — 항상 한글로 작성
             // status(선택): HTTP 상태. 예시 패널 제목 끝에 "· HTTP 500"으로 표시된다 (아래 "HTTP 상태" 참고)
-            // 소스 기준: SaaS 소스 EformsignExceptionType + 던지는 위치. 고객 공개 페이지 utils/error-codes.html의 카드는
-            //            `npm run check:api`로 이 errors와 동기화된다(코드 집합·메시지·경로) — 카드를 고칠 때도 테스터와 함께 고친다
+            // 소스 기준: SaaS 소스 EformsignExceptionType + 던지는 위치. 에러 코드 페이지(공개 utils/error-codes.html ·
+            //            내부 private/error-codes-internal.html)의 카드는 `npm run check:api`로 이 errors와 동기화된다
+            //            (코드 집합·메시지·경로) — 카드를 고칠 때도 테스터와 함께 고친다
         ]
     }
 }
@@ -83,6 +88,7 @@ Full 전용은 파일 끝 "Full 전용" 구역에 두며 그룹 보기에서는 
 2. `api-list.js` "Full 전용" 구역에 `opaCode: <소스 내부 번호>`, `sourceApiId`(같은 값), `fullOnly: true`로 추가한다. 내부 번호가 기존 대고객 `opaCode`와 겹치면 추가 전에 사용자에게 확인한다.
 3. 명세는 `API_SPECS[<opaCode>]` 키로 넣는다 — 조회는 `getApiSpec(ep)` = `API_SPECS[ep.opaCode] || API_SPECS[ep.id]`(`state.js`, opaCode가 없을 때만 id 키).
 4. Prod HTML은 고치지 않아도 된다(숨김 블록이 `fullOnly`를 제거). 공개하기로 하면 `fullOnly`를 지운다(대고객 번호를 따로 정하면 `opaCode`와 명세 키를 함께 바꾼다).
+   에러 코드 카드는 내부 페이지 `private/error-codes-internal.html`에 `검토` 배지와 함께 넣고, 공개하면 배지를 빼고 같은 카드를 공개 페이지에도 넣는다(`npm run check:api`가 둘 다 요구한다).
 5. **한계**: Prod는 화면에서만 숨긴다 — `api-list.js`·`api-specs.js`가 공개 번들이라 데이터는 누구나 내려받을 수 있다(Q5와 같은 수준).
 
 ### 소스에 있지만 넣지 않은 Open API (2026-11 대조, `OpenAPIV2Controller.java` 기준)
@@ -145,13 +151,32 @@ const API_SPECS = {
 
 - **정합성 원칙**: `API_SPECS`의 queryParams/requestBody/responseFields는 `API_LIST`의 실제 데이터와 일치해야 함. 신규 명세 추가 시 반드시 `api-list.js` 실제 구조를 기준으로 작성
 - **errorCodes 정합성**: `API_SPECS`의 `errorCodes`는 `API_LIST`의 `exampleResponse.errors`와 동기화 상태여야 함(code·message·status). 에러 추가/수정 시 두 파일 모두 수정할 것 (소스 레퍼런스: SaaS 소스 `EformsignExceptionType.java`).
-  공개 에러 코드 페이지 `utils/error-codes.html`의 카드(코드 집합·메시지·메서드·경로·`.cnt`)도 같은 기준으로 함께 고친다.
-  **`npm run check:api`**(`scripts/check-api-data.js`, CI에서도 `npm test` 다음에 실행)로 확인한다 — 11개 검사:
-  명세 존재, errors↔errorCodes(code·message·status), queryParams 키, defaultBody 고정값, fullOnly 아닌 API마다 카드,
-  카드마다 API, 카드 메서드·경로, 카드 코드·메시지 = 테스터 errors, `.cnt` = 행 수, fullOnly 카드 금지, `customsso_members` 문자열 금지.
+  에러 코드 페이지 두 개의 카드(코드 집합·메시지·메서드·경로·`.cnt`)도 같은 기준으로 함께 고친다(아래 "에러 코드 페이지 2종").
+  **`npm run check:api`**(`scripts/check-api-data.js`, CI에서도 `npm test` 다음에 실행)로 확인한다 — 12개 검사:
+  1 명세 존재, 2 errors↔errorCodes(code·message·status), 3 queryParams 키, 4 defaultBody 고정값,
+  5~9는 두 페이지에 같은 함수로 적용(실패 키에 `[공개]`/`[내부]`): 5 대상 API마다 카드, 6 카드마다 대상 API(대상 밖 API의 카드 — 공개 페이지의 멤버·그룹·fullOnly — 도 실패),
+  7 카드 메서드·경로, 8 카드 코드·메시지 = 테스터 errors, 9 `.cnt` = 행 수,
+  10 공개 범위 = Prod 숨김 블록(블록을 실제로 실행해 남는 API = `isProdVisible` 집합, 조건 문자열 `group === '멤버'`·`'그룹'`·`.fullOnly` 확인,
+  Full 블록은 `API_LIST`를 바꾸지 않고 내부 페이지를 설정, 두 HTML은 블록 밖이 같음), 11 `customsso_members` 문자열 금지(`utils/`·`private/`·`assets/js/openapi/`·`API(JS,HTML)/`),
+  12 내부 페이지의 공통 카드(공개 페이지에도 있는 35장)는 제목·메서드·경로·행(순서 포함)이 공개 페이지와 같다.
+  공개 대상 판정은 `isProdVisible()` 한 함수이며 Prod 숨김 조건을 바꾸면 이 함수도 함께 바꾼다.
   카드는 class에 `card` 토큰이 있는 `<div>`로 나누고 `<h3>OPA2_` 제목 수와 다르면 실패한다. 카드 안 같은 행(코드·Enum·메시지) 중복은 금지이고,
   (코드, 메시지) 행 수는 테스터 errors의 같은 (코드, 메시지) 개수를 넘을 수 없다 — 테스터가 같은 코드·메시지를 HTTP 상태별로 두 번 둔 것(OPA2_008 4000070 등)은 카드에 한 번만 둔다.
-  의도된 예외는 스크립트 상단 `EXCEPTIONS`에 사유와 함께 둔다(현재 0건). 새 카드 행의 Enum 이름은 소스 `EformsignExceptionType`에서 code·message가 같은 것을 쓴다
+  의도된 예외는 스크립트 상단 `EXCEPTIONS`에 사유와 함께 둔다(현재 0건, key는 출력된 그대로 — 예: `[공개] OPA2_005`). 새 카드 행의 Enum 이름은 소스 `EformsignExceptionType`에서 code·message가 같은 것을 쓴다
+- **에러 코드 페이지 2종 (2026-11-14)**:
+
+  | 페이지 | 경로 | 대상 | 접근 |
+  |---|---|---|---|
+  | 공개 `utils/error-codes.html` | 직접 URL | OpenAPITester Prod에 보이는 API(35장) — 멤버·그룹·fullOnly 제외 | 누구나 |
+  | 내부 `private/error-codes-internal.html` | `/app/error-codes-internal` | `API_LIST` 전체(58장) = Full과 같음 | manager 이상(`protected_pages`) |
+
+  - 두 페이지는 같은 CSS·스크립트(검색 `?q=`·딥링크 `#code-<코드>`·[링크 복사]·접기)와 같은 카드 마크업을 쓴다. 내부 페이지는 상단 "내부용 — 외부 공유 금지" 배너,
+    Full 전용 카드 헤더에 회색 `<span class="rv">검토</span>` 배지, "검토 중(Full 전용)" 통계를 더한다. 공통 카드는 두 파일에 똑같이 고친다(검사 12).
+  - 카드 순서는 번호 오름차순. 새 API를 추가하면 내부 페이지에는 항상, 공개 페이지에는 Prod에 보일 때만 카드를 넣는다. API를 `fullOnly`에서 공개로 바꾸면 내부 카드의 `검토` 배지를 빼고 같은 카드를 공개 페이지에도 넣는다.
+  - SSO 구성원 조회(`customsso_members`)는 내부 페이지에도 넣지 않는다.
+  - 에러 링크: `assets/js/api-error.js`는 `window.API_ERROR_CODES_PAGE`(같은 출처 절대 경로만, 없으면 `/utils/error-codes.html`)를 링크를 만들 때마다 읽는다(`ApiError.lookupUrl`·`ApiError.pageUrl`).
+    내부 도구 `private/OpenAPITesterFull.html`(페이지 전용 블록)·`private/MemberV2.html`·`private/OpenAPIAutoTest.html`(api-error.js 앞 인라인)이 `/app/error-codes-internal`로 설정한다.
+    공개 도구는 설정하지 않는다. 내부 페이지를 다른 역할로 바꾸면 이 도구들의 역할과 맞는지 확인한다(링크를 눌렀을 때 403 방지).
 - **최상위 에러가 아닌 것**: 일괄 처리 API의 문서별 실패(OPA2_009 `fail_result`, OPA2_040 `{document_id: 메시지}`, OPA2_030 `success:false`)는 HTTP 200 본문으로 오므로 `errors` 예시에 넣지 않고 응답 필드 설명에 적는다
 - `note` 필드가 하나라도 있으면 해당 테이블에 비고 컬럼 자동 표시
 
@@ -297,7 +322,7 @@ const API_SPECS = {
 ### 응답 에러 표시 (`#responseNotice`)
 
 - 두 HTML 모두 응답 헤더와 `.response-body-wrap` 사이에 `#responseNotice`가 있다. `ui.js`의 `showResponseNotice(info)` / `hideResponseNotice()`가 관리한다.
-- 4xx/5xx 응답이면 `renderApiError`(`assets/js/api-error.js`)로 `HTTP 400 · [코드] 메시지` + 에러 코드 찾아보기 링크를 표시한다. 본문은 기존처럼 `#responseBody`에 pretty-print된다.
+- 4xx/5xx 응답이면 `renderApiError`(`assets/js/api-error.js`)로 `HTTP 400 · [코드] 메시지` + 에러 코드 찾아보기 링크를 표시한다(Prod = 공개 페이지, Full = 내부용 `/app/error-codes-internal` — 위 "에러 코드 페이지 2종"). 본문은 기존처럼 `#responseBody`에 pretty-print된다.
 - `fetch` 자체가 실패하면(`Failed to fetch`) CORS·도메인 오타·네트워크 안내와 CorsTest 링크를 표시한다.
 - `clearResponse()`와 `selectEndpoint()`(응답 캐시 복원 전)에서 숨긴다. 응답 캐시(`responseCache`)에는 저장하지 않는다.
 - 로드 순서: `api-error.js` → `token-issuer.js` → `token-badge.js` → `openapi/api-list.js` …(공유 모듈 → openapi 모듈). 두 HTML 모두 동일.

@@ -103,6 +103,8 @@ ProjectImprove/
 │   └── Admin.html / OpenAPIAutoTest.html / MemberV2.html
 │       / templatecopy.html / idp-test.html / OpenAPITesterFull.html
 │       / MassDocumentDowmload.html
+│       / error-codes-internal.html  # 에러 코드 모음 내부용(/app/error-codes-internal, manager) — API_LIST 전체 58장
+│                                    #   (멤버·그룹 + Full 전용 "검토" 14장). 외부 공유 금지
 │
 ├── community/                  # 커뮤니티 페이지 (utils/*.html 은 리디렉트 스텁)
 │   └── bug-report.html / developer-notes.html
@@ -114,8 +116,9 @@ ProjectImprove/
 ├── Embedding/                  # 문서/템플릿 임베딩 도구 — embedding_doc_Integration·embedding_template_intergration 2종
 │                               #   (레거시 문서 수정·템플릿 생성 임베딩 4종은 2026-11 삭제, P1-24)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
-│   └── error-codes.html        # OPA2 에러 코드 모음 — 카드 44장(fullOnly가 아닌 테스터 API와 1:1), 검색 + ?q= / #code-<코드> 딥링크.
-│                               #   테스터 데이터와의 정합성은 npm run check:api로 점검. SSO 구성원 조회(customsso_members)는 비공개 API라 넣지 않는다
+│   └── error-codes.html        # OPA2 에러 코드 모음 공개판 — 카드 35장(OpenAPITester Prod에 보이는 API와 1:1 — 멤버·그룹·fullOnly 제외),
+│                               #   검색 + ?q= / #code-<코드> 딥링크. 전체판은 private/error-codes-internal.html.
+│                               #   테스터 데이터와의 정합성은 npm run check:api로 점검. SSO 구성원 조회(customsso_members)는 두 페이지 모두 넣지 않는다
 │
 ├── design-preview-member.html  # MemberV2 디자인 시스템 확인용 (프로덕션 미사용)
 ├── img/                        # 정적 이미지 (sso_flow.png 등)
@@ -153,7 +156,7 @@ ProjectImprove/
 │   ├── seed-developer-notes.js          # 개발자 노트 시드 (노트가 이미 있으면 중단, --force로만 전체 삭제 후 재삽입)
 │   ├── create-admin.js                  # 최초 admin 계정 생성 / 기존 계정 복구(잠금 해제·refresh 토큰 폐기, --must-change)
 │   ├── check-protected-pages.js         # 보호 페이지 정합성 점검 (npm run check:pages)
-│   ├── check-api-data.js                # OpenAPITester 데이터 ↔ utils/error-codes.html 정합성 11개 검사 (npm run check:api, DB 불필요·CI 실행)
+│   ├── check-api-data.js                # OpenAPITester 데이터 ↔ 에러 코드 페이지 2종(공개 35장·내부 58장) 정합성 12개 검사 + Prod 숨김 블록 대조 (npm run check:api, DB 불필요·CI 실행)
 │   ├── check-secrets.js                 # 시크릿 누출 점검 (npm run security:secrets)
 │   ├── cleanup-request-history-secrets.js # api_request_history 구버전 인증 값 제거 (기본 dry-run, --apply로 적용)
 │   └── mcp/                             # MCP 서버 실행 스크립트 (brave-search.ps1, tavily.ps1)
