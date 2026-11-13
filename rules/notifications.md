@@ -33,7 +33,7 @@ admin에게 관리 이벤트를, 일반 사용자에게 본인 버그 리포트 
 ### 실시간 전달 — Pusher 연동
 
 알림 생성/읽음/삭제 시 Pusher private 채널로 이벤트를 발행하여 클라이언트 배지를 즉시 갱신한다.
-DB 폴링은 제거되었으며, Pusher 연결 실패 시에만 300초 fallback 폴링이 활성화된다.
+DB 폴링은 제거되었으며, Pusher 연결 실패 시에만 600초 fallback 폴링이 활성화된다(탭이 숨겨진 동안은 멈춤 — 아래 "Fallback 폴링").
 
 **Pusher 채널:**
 
@@ -123,7 +123,17 @@ if (wrap && window.NotifBell) window.NotifBell.init(wrap, meData);
 - **패널 위치**: `getBoundingClientRect()` 기반 동적 계산 → 스크롤 위치 무관하게 벨 바로 아래
 - **CSS 격리**: `._nb-` 접두어 (notification-bell.js) vs `asb-`·`anp-` (auth-status.js) — 충돌 없음
 - **실시간 갱신**: Pusher `new-notification` 이벤트 payload의 `unread_count`로 배지 즉시 갱신. `unread_count`가 없으면 fallback으로 `fetchUnreadCount()` 호출
-- **Fallback 폴링**: Pusher 연결 실패 시 300초(5분) interval로 자동 전환. 재연결 시 폴링 해제
+- **Fallback 폴링 (P1-24)**: Pusher를 쓸 수 없으면(CDN 없음·설정 없음·`unavailable`·`subscription_error`) 600초(10분) 간격
+  대체 조회로 전환하고(`NOTIF_FALLBACK_INTERVAL_MS` / `FALLBACK_INTERVAL_MS`), Pusher가 `connected`가 되면 해제한다.
+  Neon 기본 auto-suspend(5분)보다 길게 잡아 Pusher 장애 탭이 DB를 계속 깨우지 않게 한 값이다.
+  - **탭 숨김 정지**: `document.hidden`이 되면 타이머(`clearInterval`·`clearTimeout`)만 멈추고, 다시 보이면 재개한다.
+    재개 시 **마지막 `/api/notifications` 요청 후 600초가 지났을 때만 바로 1회 조회**하고, 아니면 남은 시간 뒤에 조회한다
+    (탭 전환마다 DB를 깨우지 않음). 패널 열기도 마지막 조회 시각에 포함된다.
+  - **`auth-status.js`**: 탭 복귀 시 기존 재인증 확인(`recheckAuthOnReturn` — 복귀 1회당 `/api/me` 1건)을 먼저 하고,
+    그 promise가 끝난 뒤 대체 조회를 재개한다(세션이 만료됐으면 재개하지 않음 — `/api/me`와 `/api/notifications`의 리프레시 갱신이 겹치지 않게).
+    401은 기존대로 `handleAuthExpired()`가 처리하며 대체 조회도 멈춘다.
+  - **`notification-bell.js`**: `/api/notifications`(배지 조회·패널 열기)가 401이면 대체 조회를 멈추고 이후 Pusher `unavailable`에도 다시 시작하지 않는다
+    (index.html은 auth-status.js를 쓰지 않아 만료 안내·새로고침은 없다 — 새로고침하면 비로그인 헤더로 바뀐다).
 - **Pusher CDN 필수**: `auth-status.js` / `notification-bell.js` 로드 전에 `pusher.min.js` CDN이 먼저 로드되어야 함. 없으면 fallback 폴링으로 동작
 - **X 버튼 삭제**: DOM 즉시 제거 + 미읽음 배지 카운트 즉시 감소. API 재호출 없음
 - **"전체 삭제" 버튼**: 알림이 하나라도 있을 때만 헤더에 노출 (`._nb-del-all` / `.anp-del-all`). 누르면 `confirm()` 확인 후 삭제(P1-18)
