@@ -131,7 +131,8 @@ if (wrap && window.NotifBell) window.NotifBell.init(wrap, meData);
     (탭 전환마다 DB를 깨우지 않음). 패널 열기도 마지막 조회 시각에 포함된다.
   - **`auth-status.js`**: 탭 복귀 시 기존 재인증 확인(`recheckAuthOnReturn` — 복귀 1회당 `/api/me` 1건)을 먼저 하고,
     그 promise가 끝난 뒤 대체 조회를 재개한다(세션이 만료됐으면 재개하지 않음 — `/api/me`와 `/api/notifications`의 리프레시 갱신이 겹치지 않게).
-    401은 기존대로 `handleAuthExpired()`가 처리하며 대체 조회도 멈춘다.
+    401은 기존대로 `handleAuthExpired()`가 처리하며 대체 조회도 멈춘다. 만료 처리 뒤(만료 배너 대기 중)에는 Pusher `subscription_error`·`unavailable`이
+    와도 다시 시작하지 않고(`startNotificationFallbackPolling`이 `authExpiredHandled`를 확인), 다른 탭 로그인으로 복구되면 `render` → `setupNotificationRealtime`에서 다시 판단한다.
   - **`notification-bell.js`**: `/api/notifications`(배지 조회·패널 열기)가 401이면 대체 조회를 멈추고 이후 Pusher `unavailable`에도 다시 시작하지 않는다
     (index.html은 auth-status.js를 쓰지 않아 만료 안내·새로고침은 없다 — 새로고침하면 비로그인 헤더로 바뀐다).
 - **Pusher CDN 필수**: `auth-status.js` / `notification-bell.js` 로드 전에 `pusher.min.js` CDN이 먼저 로드되어야 함. 없으면 fallback 폴링으로 동작

@@ -11,9 +11,11 @@
  *   3. queryParams 키 집합이 같다 (API_LIST ↔ API_SPECS)
  *   4. defaultBody 에 고정 예시값(비어 있지 않은 문자열·boolean·숫자)이 없다
  *   5. fullOnly 가 아닌 모든 API_LIST 항목에 에러 코드 카드가 있다
- *   6. 모든 카드에 대응하는 API_LIST 항목이 있다 (번호 기준)
+ *   6. 모든 카드에 대응하는 API_LIST 항목이 있다 (번호 기준). 카드는 class 에 'card' 토큰이 있는 <div> 로 나누고,
+ *      페이지의 <h3>OPA2_ 제목 수와 파싱한 카드 수가 다르면 실패 (마크업이 달라 빠진 카드 방지)
  *   7. 카드의 메서드·경로 = API_LIST 의 메서드·경로 ({param} 이름은 무시)
- *   8. 카드 코드 집합 = 테스터 errors 코드 집합, 공통 코드의 메시지 집합이 같다 (HTML 엔티티 디코딩 후)
+ *   8. 카드 코드 집합 = 테스터 errors 코드 집합, 공통 코드의 메시지 집합이 같다 (HTML 엔티티 디코딩 후).
+ *      카드 안 같은 행(코드·Enum·메시지) 중복 금지, (코드, 메시지) 행 수 ≤ 테스터 errors 의 같은 (코드, 메시지) 개수
  *   9. 카드 .cnt 숫자 = 실제 행 수
  *  10. 공개 에러 코드 페이지에 fullOnly 번호 카드가 없다
  *  11. utils/, assets/js/openapi/, API(JS,HTML)/ 에 'customsso_members' 문자열이 없다 (SSO 구성원 API 금지)
@@ -91,12 +93,18 @@ function label(ep) {
 }
 
 // ── 에러 코드 페이지 파싱 ─────────────────────────────────────────
+// 카드 시작 태그: class 목록에 'card' 토큰이 있는 <div> (예: class="card", class="card x", class='x card').
+// card-header·card-body는 토큰이 달라 걸리지 않는다. 예전에는 '<div class="card">' 정확 일치라 속성이 다른 카드가 검사를 피했다 (D-4)
+const CARD_OPEN_RE = /<div\b[^>]*\bclass\s*=\s*(["'])(?:(?!\1)[^>])*?(?<![\w-])card(?![\w-])(?:(?!\1)[^>])*\1[^>]*>/g;
+// 안전망: 페이지의 OPA2 카드 제목 수 (파싱한 카드 수와 같아야 한다)
+const CARD_TITLE_RE = /<h3\b[^>]*>\s*OPA2_/g;
+
 function parseCards(html) {
   const cards = [];
-  const chunks = html.split('<div class="card">').slice(1);
+  const chunks = html.split(CARD_OPEN_RE).slice(1).filter((_, i) => i % 2 === 1); // split 결과에 따옴표 캡처가 끼므로 본문만 남긴다
   for (const chunk of chunks) {
     const method = (chunk.match(/<span class="mb"[^>]*>([^<]*)<\/span>/) || [])[1];
-    const title = stripTags((chunk.match(/<h3>([\s\S]*?)<\/h3>/) || [])[1] || '');
+    const title = stripTags((chunk.match(/<h3\b[^>]*>([\s\S]*?)<\/h3>/) || [])[1] || '');
     const ep = stripTags((chunk.match(/<span class="ep">([\s\S]*?)<\/span>/) || [])[1] || '');
     const cntText = (chunk.match(/<span class="cnt">([^<]*)<\/span>/) || [])[1];
     const tbody = (chunk.match(/<tbody>([\s\S]*?)<\/tbody>/) || [])[1] || '';
@@ -251,9 +259,25 @@ function checkErrorCodePage(list, cards) {
     }
 
     // 8. 코드 집합 + 공통 코드 메시지
-    const cardMsgs = groupMessages(card.rows.map((r) => [r.code, r.message]));
-    const testerMsgs = groupMessages(((ep.exampleResponse && ep.exampleResponse.errors) || [])
-      .map((e) => [String(e.body && e.body.code), String(e.body && e.body.ErrorMessage)]));
+    const cardPairs = card.rows.map((r) => [r.code, r.message]);
+    const testerPairs = ((ep.exampleResponse && ep.exampleResponse.errors) || [])
+      .map((e) => [String(e.body && e.body.code), String(e.body && e.body.ErrorMessage)]);
+    const cardMsgs = groupMessages(cardPairs);
+    const testerMsgs = groupMessages(testerPairs);
+
+    // 8-1. 행 중복 (D-4) — 집합 비교만으로는 같은 행을 두 번 넣고 .cnt를 맞추면 통과했다.
+    //  - 코드·Enum·메시지가 모두 같은 행은 금지
+    //  - (코드, 메시지) 행 수는 테스터 errors 의 같은 (코드, 메시지) 개수를 넘을 수 없다.
+    //    테스터는 같은 코드·메시지를 HTTP 상태별로 두 번 둘 수 있고(OPA2_008 4000070 등) 카드는 상태 열이 없어 한 번만 둔다 → 적은 것은 허용.
+    //    같은 코드가 다른 메시지로 두 번 나오는 것(4010001 ×2 등)은 (코드, 메시지)가 달라 영향이 없다
+    const rowCounts = countBy(card.rows.map((r) => `${r.code} | ${r.enumName} | ${r.message}`));
+    for (const [k, n] of rowCounts) if (n > 1) fail(8, key, `같은 행이 ${n}번 있습니다: ${k}`);
+    const cardPairCounts = countBy(cardPairs.map(([c, m]) => `${c} | ${m}`));
+    const testerPairCounts = countBy(testerPairs.map(([c, m]) => `${c} | ${m}`));
+    for (const [k, n] of cardPairCounts) {
+      const t = testerPairCounts.get(k) || 0;
+      if (t > 0 && n > t) fail(8, key, `카드에 ${n}행, 테스터 errors 에 ${t}건: ${k}`);
+    }
     for (const code of cardMsgs.keys()) {
       if (!testerMsgs.has(code)) fail(8, key, `카드에만 있는 코드: ${code}`);
     }
@@ -267,6 +291,12 @@ function checkErrorCodePage(list, cards) {
       for (const msg of other) if (!msgs.has(msg)) fail(8, key, `${code} 테스터 메시지가 카드에 없음: "${msg}"`);
     }
   }
+}
+
+function countBy(keys) {
+  const map = new Map();
+  for (const k of keys) map.set(k, (map.get(k) || 0) + 1);
+  return map;
 }
 
 function groupMessages(pairs) {
@@ -309,14 +339,23 @@ function main() {
   let list;
   let specs;
   let cards;
+  let cardTitleCount;
   try {
     list = loadGlobal(API_LIST_PATH, 'API_LIST');
     specs = loadGlobal(API_SPECS_PATH, 'API_SPECS');
-    cards = parseCards(readText(ERROR_CODES_PATH));
+    const html = readText(ERROR_CODES_PATH);
+    cards = parseCards(html);
+    cardTitleCount = (html.match(CARD_TITLE_RE) || []).length;
   } catch (error) {
     console.error(`데이터를 읽을 수 없습니다: ${error.message}`);
     process.exitCode = 1;
     return;
+  }
+
+  // 6. 안전망 — 카드 마크업이 달라 파싱에서 빠진 카드가 없는지 (OPA2 제목 수 = 파싱한 카드 수)
+  if (cardTitleCount !== cards.length) {
+    fail(6, toProjectPath(ERROR_CODES_PATH),
+      `OPA2 카드 제목(<h3>OPA2_…) ${cardTitleCount}개 ≠ 파싱한 카드 ${cards.length}장 — 카드 마크업(<div class="card">…)을 확인하세요`);
   }
 
   checkTesterData(list, specs);

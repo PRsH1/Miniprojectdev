@@ -567,6 +567,9 @@
     }
 
     function startNotificationFallbackPolling() {
+        // 세션 만료 처리 뒤(만료 배너 대기 중)에는 Pusher 재인증 401·연결 실패가 와도 다시 켜지 않는다 (resume과 같은 기준).
+        // 다른 탭 로그인 후 복구되면 handleAuthRestored가 authExpiredHandled를 먼저 풀고 render → setupNotificationRealtime에서 다시 판단한다
+        if (authExpiredHandled) return;
         notifFallbackWanted = true;
         if (document.hidden || notifFallbackTimer || notifFallbackKickoff) return;
         armNotificationFallbackTimer();

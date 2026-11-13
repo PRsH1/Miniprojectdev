@@ -402,13 +402,16 @@ const API_SPECS = {
             { code: '4000201', message: 'You have exhausted all purchased documents', description: '선불 문서 소진', status: 400 },
             { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key (Authorization 형식 오류 포함)', status: 400 },
             { code: '4030039', message: 'The apiKey encoded has an error.', description: 'API Key Base64 디코딩 실패 (URL-safe Base64로 디코딩)', status: 400 },
+            { code: '4030005', message: 'This API is not supported.', description: '지원하지 않는 API Key 유형', status: 400 },
             { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key', status: 403 },
+            { code: '4000005', message: 'Invalid company.', description: '존재하지 않는 회사', status: 400 },
             { code: '4030034', message: "You don't have Open API permission.", description: 'Open API 사용 권한 없음', status: 403 },
             { code: '4000076', message: 'The company has already been deleted.', description: '삭제된 회사', status: 403 },
             { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사', status: 403 },
             { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원', status: 403 },
             { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가', status: 403 },
-            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' },
+            { code: '4000338', message: 'Invalid zip code format.', description: '우편번호 필드 형식 오류', status: 400 }
         ],
     },
     'OPA2_008': {
