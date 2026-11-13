@@ -22,7 +22,7 @@ fetch(`${domain}/v2.0/api_auth/access_token`, {
 
 > **브라우저 도구에서 토큰 발급 시**: 위 direct fetch를 그대로 복사하지 말고 공유 모듈 `assets/js/token-issuer.js`의 `window.issueAccessToken({ domain, apiKey, memberId, signature, execTime })`를 사용한다. CORS/네트워크 전송 실패 시에만 `/api/getToken` 서버 프록시로 자동 fallback하며(인증거부는 즉시 최종 실패), 반환값 `{ ok, token, data, message, via, status, issuedAt, expiresAt, expiresIn, expiresEstimated }`의 `data`로 `refresh_token`·`company_id` 등 원본 응답을 추출할 수 있다. `expiresAt`은 응답 `oauth_token.expires_in`(초)이 있으면 발급 시각 + expires_in, 없으면 + 3600초로 추정하고 `expiresEstimated: true`. 실패 시 `message`는 `[코드] 메시지` 형식. 서명 생성은 각 페이지가 담당하고 모듈에는 계산된 서명값만 전달한다(비밀키 브라우저 이탈 없음).
 >
-> **토큰 직접 호출 금지**: `api_auth/access_token`을 `fetch`/`axios`/`$.ajax`로 직접 부르지 않는다. 적용 페이지: DocumentInfo·DocumentDownload·listdocuments·DocumentSendImprove·KogasDocumentSend·임베딩 2종·DocumentDelete·templateDeletetool·webhook·MassDocumentDowmload·MemberV2(`member/api.js`)·OpenAPITester(`openapi/ui.js`)·AutoTest(`OpenAPIAutoTest.js`). 남은 직접 호출은 레거시 페이지(`Embedding/*_update*`, `template_create_update*`, `API(JS,HTML)/js/MemberMain.js`)뿐이다(P1-24 정리 대상).
+> **토큰 직접 호출 금지**: `api_auth/access_token`을 `fetch`/`axios`/`$.ajax`로 직접 부르지 않는다. 적용 페이지: DocumentInfo·DocumentDownload·listdocuments·DocumentSendImprove·임베딩 2종·DocumentDelete·templateDeletetool·webhook·MassDocumentDowmload·MemberV2(`member/api.js`)·OpenAPITester(`openapi/ui.js`)·AutoTest(`OpenAPIAutoTest.js`). 남은 직접 호출은 없다(레거시 페이지는 P1-24에서 삭제). 도구의 토큰 발급 요청은 공유 모듈 `token-issuer.js`와 그 fallback인 서버 프록시 `controllers/getToken.js`만 보낸다. 그 밖의 `api_auth/access_token` 문자열은 화면 표시용 URL·환경 설정값과 OpenAPITester의 OPA2_001 API 정의다.
 >
 > **토큰 상태 배지 `assets/js/token-badge.js`**: `TokenBadge.attach(el, result, { onReissue, onExpire })`로 "토큰 유효 · 47분 남음 · via proxy" / "곧 만료"(5분 이하) / "만료됨 · [토큰 재발급]"을 표시한다. 1분 간격 클라이언트 타이머(서버 호출 없음). API가 401을 주면 `TokenBadge.markExpired(el)`, 토큰 초기화 시 `TokenBadge.clear(el)`. 테스트용 `TokenBadge.setExpiresAt(el, ts)`. 로드 순서: `token-issuer.js` → `token-badge.js` → 페이지 스크립트(MemberV2는 `member/api.js`보다 앞, OpenAPITester는 `openapi/api-list.js`보다 앞, AutoTest는 `OpenAPIAutoTest.js`보다 앞).
 
@@ -114,6 +114,8 @@ const DOMAINS = {
   API 권한은 `requireRole`이 매 요청 DB로 판단하므로 즉시 반영되고, 액세스 토큰 만료 후에는 재로그인으로 JWT도 갱신된다.
   본인 강등·비활성화와 마지막 활성 admin 강등·비활성화는 400(DELETE와 동일 정책).
 - **클라이언트 single-flight**: `auth-status.js`/`credential-panel.js`/`openapi/state.js`가 `window.AUTH_STATUS_ME_PROMISE = window.AUTH_STATUS_ME_PROMISE || …` 멱등 가드로 `/api/me` 부트스트랩을 1회로 공유하고, `navigator.locks.request('eform-auth-bootstrap', …)`로 탭 간 직렬화한다(미지원 시 lock 없이 진행 — 서버 원자성이 정확성 보장).
+  - **예외 — `index.html`**: 허브는 `auth-status.js`를 로드하지 않고(자체 헤더 + `notification-bell.js`) 페이지 끝에서 `fetch('/api/me')`를 1회 직접 호출한다.
+    `AUTH_STATUS_ME_PROMISE`·`navigator.locks`를 쓰지 않고 탭 복귀 재확인(`visibilitychange`/`focus`)도 없다. 동시 갱신 경합은 서버의 원자적 claim·grace로 처리된다.
 - **로그아웃 graceful 처리**: 같은-오리진 `/api/*` 호출이 갱신 후에도 401이거나(=리프레시 만료) `visibilitychange`/`focus` 재확인에서 `authenticated:false`면 `window.handleAuthExpired()`(auth-status.js)가 1회 처리한다. (interval 폴링은 쓰지 않음 — Neon idle suspend 유지)
   - **입력 보존 (P1-21)**: 페이지가 `window.AUTH_STATUS_HAS_UNSAVED = function () { return 미저장 입력 있음; }`을 등록했고 `true`를 반환하면
     자동 새로고침하지 않고 상단 고정 배너 "세션이 만료되었습니다 … [새 탭에서 로그인] [새로고침]"(`#asbSessionExpiredBanner`)을 띄운다.
@@ -278,7 +280,7 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 ### 전 페이지 로그인 상태 바 패턴 (`assets/js/auth-status.js`)
 
 `auth-status.js`는 IIFE로 `/api/me`를 호출해 로그인 상태를 표시하는 공통 스크립트다.
-`</body>` 직전에 Pusher CDN + `auth-status.js` 순서로 로드한다. Pusher CDN이 없으면 알림 실시간 갱신이 fallback 폴링(300초)으로 동작한다.
+`</body>` 직전에 Pusher CDN + `auth-status.js` 순서로 로드한다. Pusher CDN이 없으면 알림 실시간 갱신이 fallback 폴링(600초, 탭이 숨겨진 동안 정지 — `rules/notifications.md`)으로 동작한다.
 
 ```html
 <script src="https://js.pusher.com/8.0.2/pusher.min.js" integrity="sha384-iWiFe+Ww57tz83ld78RvLxLwvRDO30Rf1uBXgU7sIso+FZR4fa/vWI8vmGrVYATL" crossorigin="anonymous"></script>
@@ -308,7 +310,7 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 
 - 비로그인 시 코너 모드는 로그인/회원가입 버튼 표시 (`?next=현재경로` 파라미터 포함), 상단 바 모드도 동일
 - admin 로그인 시 모든 모드에서 "관리자 콘솔" 버튼 자동 표시
-- **알림 벨**: 기본(상단 바) 모드 + 로그인 사용자에게 벨 버튼 + 미읽음 배지 표시. Pusher WebSocket으로 실시간 갱신 (Pusher 연결 실패 시 300초 fallback 폴링). 클릭 시 드롭다운 패널 → 알림 목록 + "모두 읽음" 처리. CORNER 모드에서는 미표시
+- **알림 벨**: 기본(상단 바) 모드 + 로그인 사용자에게 벨 버튼 + 미읽음 배지 표시. Pusher WebSocket으로 실시간 갱신 (Pusher 연결 실패 시 600초 fallback 폴링, 탭 숨김 중 정지). 클릭 시 드롭다운 패널 → 알림 목록 + "모두 읽음" 처리. CORNER 모드에서는 미표시
 - **모드별 적용 페이지**: 커뮤니티 두 페이지(`community/bug-report.html`·`developer-notes.html`)는 P1-18부터 **기본(상단 바)** 모드다
   (허브 링크·벨 필요). 코너 모드는 자체 헤더가 있는 OpenAPITester 등에만 쓴다
 - **[비밀번호 변경] 버튼**: 로그인 사용자에게 모든 모드에서 표시(코너 모드는 "비밀번호") → `/auth/change-password.html?next=<현재 경로>` (P1-13).

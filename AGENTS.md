@@ -45,7 +45,7 @@ Vercel 서버리스 환경에서 동작하며, 브라우저 기반 HTML 도구�
   저장·설정 변경은 운영 데이터 변경이다. 쓰기 스크립트는 dry-run을 먼저 보고, `--apply`·`--force`·마이그레이션은 사용자 승인 후 실행한다.
 - DB 저장 형식을 바꾸면 Preview 확인 ~ 머지 사이에는 현재 Production 코드가 새 형식을 읽지 못한다. 하위 호환 읽기를 넣는다.
 - `main` push는 Production 배포, 그 외 브랜치 push는 Preview 배포다. 둘 다 사용자 확인 후 진행하며 main은 `origin`·`dev`에 함께 push한다.
-- push 시 GitHub Actions CI가 `npm test` → `npm run security:secrets` → gitleaks 전체 히스토리를 실행한다. 테스트용 가짜 시크릿은 `DUMMY-` 접두어를 쓴다.
+- push 시 GitHub Actions CI가 `npm test` → `npm run check:api` → `npm run security:secrets` → gitleaks 전체 히스토리를 실행한다. 테스트용 가짜 시크릿은 `DUMMY-` 접두어를 쓴다.
 - Vercel 대시보드 작업(환경변수 삭제, WAF/Firewall 규칙)은 사용자가 하거나 명시적으로 승인한 경우에만 한다.
 
 ## Implementation Expectations
@@ -54,5 +54,6 @@ Vercel 서버리스 환경에서 동작하며, 브라우저 기반 HTML 도구�
 - Vercel 서버리스 제약과 브라우저 기반 HTML 도구의 실행 방식을 유지한다.
 - 환경변수, 토큰, 비밀번호, 개인 키 등 비밀값을 코드나 문서에 추가하지 않는다.
 - 변경 범위에 맞는 테스트를 실행한다. JavaScript 백엔드 변경의 기본 검증은 `npm test`다.
+  OpenAPITester 데이터(`assets/js/openapi/api-list.js`·`api-specs.js`)나 `utils/error-codes.html`을 바꾸면 `npm run check:api`도 실행한다.
 - 브라우저 동작을 변경한 경우 gstack으로 실제 사용자 흐름과 반응형 화면을 검증한다.
 - 사용자가 명시적으로 요청하지 않은 관련 없는 리팩터링이나 의존성 변경은 하지 않는다.
