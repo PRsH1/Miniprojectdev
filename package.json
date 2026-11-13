@@ -5,8 +5,12 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "check:pages": "node scripts/check-protected-pages.js",
+    "check:api": "node scripts/check-api-data.js",
     "security:secrets": "node scripts/check-secrets.js",
     "security:secrets:gitleaks": "gitleaks detect --source . --config .gitleaks.toml --redact --no-banner"
+  },
+  "engines": {
+    "node": "24.x"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",

@@ -56,15 +56,16 @@ Postman 스타일 eformsign Open API 테스터. **상태:** Beta
             { title: '한글 설명 (코드)', body: { code, ErrorMessage }, status: 400 }
             // title 형식: '유효하지 않은 서명 (4030004)' — 항상 한글로 작성
             // status(선택): HTTP 상태. 예시 패널 제목 끝에 "· HTTP 500"으로 표시된다 (아래 "HTTP 상태" 참고)
-            // 소스 기준: SaaS 소스 EformsignExceptionType + 던지는 위치. utils/error-codes.html은 고객 공개 페이지라
-            //            소스와 다른 곳이 있다(OPA2_041 경로 form_image 등. SSO 구성원 카드는 2026-11-04 제거) — 그 페이지를 근거로 삼지 말 것
+            // 소스 기준: SaaS 소스 EformsignExceptionType + 던지는 위치. 고객 공개 페이지 utils/error-codes.html의 카드는
+            //            `npm run check:api`로 이 errors와 동기화된다(코드 집합·메시지·경로) — 카드를 고칠 때도 테스터와 함께 고친다
         ]
     }
 }
 ```
 
-**API_LIST 배치 규칙**: 신규 API는 OPA2 번호 오름차순 위치에 삽입. 대고객 번호가 없는 Full 전용 API는
-파일 끝 "Full 전용" 구역에 두며, 그룹 보기에서는 각 그룹 끝에 붙는다. 편집 파일: `assets/js/openapi/api-list.js`
+**API_LIST 배치 규칙**: API_LIST는 그룹별로 모여 있고 기존 순서는 바꾸지 않는다(그룹 안에서도 040이 044 뒤,
+029가 025 앞에 있는 등 번호순이 아닌 곳이 있으나 의도적으로 유지). 새 대고객 API는 같은 그룹 안 번호 순 위치에,
+Full 전용은 파일 끝 "Full 전용" 구역에 두며 그룹 보기에서는 각 그룹 끝에 붙는다. 편집 파일: `assets/js/openapi/api-list.js`
 
 ### 대고객 OPA 번호 ≠ 소스 내부 번호 (2026-11 소스 대조)
 
@@ -143,7 +144,12 @@ const API_SPECS = {
 ```
 
 - **정합성 원칙**: `API_SPECS`의 queryParams/requestBody/responseFields는 `API_LIST`의 실제 데이터와 일치해야 함. 신규 명세 추가 시 반드시 `api-list.js` 실제 구조를 기준으로 작성
-- **errorCodes 정합성**: `API_SPECS`의 `errorCodes`는 `API_LIST`의 `exampleResponse.errors`와 동기화 상태여야 함(code·message·status). 에러 추가/수정 시 두 파일 모두 수정할 것 (소스 레퍼런스: SaaS 소스 `EformsignExceptionType.java`)
+- **errorCodes 정합성**: `API_SPECS`의 `errorCodes`는 `API_LIST`의 `exampleResponse.errors`와 동기화 상태여야 함(code·message·status). 에러 추가/수정 시 두 파일 모두 수정할 것 (소스 레퍼런스: SaaS 소스 `EformsignExceptionType.java`).
+  공개 에러 코드 페이지 `utils/error-codes.html`의 카드(코드 집합·메시지·메서드·경로·`.cnt`)도 같은 기준으로 함께 고친다.
+  **`npm run check:api`**(`scripts/check-api-data.js`, CI에서도 `npm test` 다음에 실행)로 확인한다 — 11개 검사:
+  명세 존재, errors↔errorCodes(code·message·status), queryParams 키, defaultBody 고정값, fullOnly 아닌 API마다 카드,
+  카드마다 API, 카드 메서드·경로, 카드 코드·메시지 = 테스터 errors, `.cnt` = 행 수, fullOnly 카드 금지, `customsso_members` 문자열 금지.
+  의도된 예외는 스크립트 상단 `EXCEPTIONS`에 사유와 함께 둔다(현재 0건). 새 카드 행의 Enum 이름은 소스 `EformsignExceptionType`에서 code·message가 같은 것을 쓴다
 - **최상위 에러가 아닌 것**: 일괄 처리 API의 문서별 실패(OPA2_009 `fail_result`, OPA2_040 `{document_id: 메시지}`, OPA2_030 `success:false`)는 HTTP 200 본문으로 오므로 `errors` 예시에 넣지 않고 응답 필드 설명에 적는다
 - `note` 필드가 하나라도 있으면 해당 테이블에 비고 컬럼 자동 표시
 
