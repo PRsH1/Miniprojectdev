@@ -149,6 +149,8 @@ const API_SPECS = {
   **`npm run check:api`**(`scripts/check-api-data.js`, CI에서도 `npm test` 다음에 실행)로 확인한다 — 11개 검사:
   명세 존재, errors↔errorCodes(code·message·status), queryParams 키, defaultBody 고정값, fullOnly 아닌 API마다 카드,
   카드마다 API, 카드 메서드·경로, 카드 코드·메시지 = 테스터 errors, `.cnt` = 행 수, fullOnly 카드 금지, `customsso_members` 문자열 금지.
+  카드는 class에 `card` 토큰이 있는 `<div>`로 나누고 `<h3>OPA2_` 제목 수와 다르면 실패한다. 카드 안 같은 행(코드·Enum·메시지) 중복은 금지이고,
+  (코드, 메시지) 행 수는 테스터 errors의 같은 (코드, 메시지) 개수를 넘을 수 없다 — 테스터가 같은 코드·메시지를 HTTP 상태별로 두 번 둔 것(OPA2_008 4000070 등)은 카드에 한 번만 둔다.
   의도된 예외는 스크립트 상단 `EXCEPTIONS`에 사유와 함께 둔다(현재 0건). 새 카드 행의 Enum 이름은 소스 `EformsignExceptionType`에서 code·message가 같은 것을 쓴다
 - **최상위 에러가 아닌 것**: 일괄 처리 API의 문서별 실패(OPA2_009 `fail_result`, OPA2_040 `{document_id: 메시지}`, OPA2_030 `success:false`)는 HTTP 200 본문으로 오므로 `errors` 예시에 넣지 않고 응답 필드 설명에 적는다
 - `note` 필드가 하나라도 있으면 해당 테이블에 비고 컬럼 자동 표시

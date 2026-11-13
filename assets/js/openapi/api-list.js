@@ -1033,8 +1033,16 @@ const API_LIST = [
                     body: {"code":"4030039","ErrorMessage":"The apiKey encoded has an error."}, status: 400
                 },
                 {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}, status: 400
+                },
+                {
                     title: "비활성화된 API Key (4030001)",
                     body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403
+                },
+                {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}, status: 400
                 },
                 {
                     title: "Open API 사용 권한 없음 (4030034)",
@@ -1059,6 +1067,10 @@ const API_LIST = [
                 {
                     title: "내부 서버 오류 (5000001)",
                     body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "우편번호 필드 형식 오류 (4000338)",
+                    body: {"code":"4000338","ErrorMessage":"Invalid zip code format."}, status: 400
                 }
             ]
         }

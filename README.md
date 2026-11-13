@@ -628,12 +628,12 @@ DB 마이그레이션 실행은 없다. 세부 규칙은 `rules/` 문서가 정�
 
 #### 에러 코드 페이지 정합성 (P1-23)
 - `utils/error-codes.html` 카드 44장: 문서 목록 조회는 POST `/list_document` 한 장(OPA2_008), OPA2_041 경로 `/template_image/{template_image_id}`, OPA2_021·030·061 카드 추가, 카드별 코드를 테스터 데이터에 맞춤
-- OPA2_007(외부자 문서 작성) 에러 코드를 SaaS 운영 소스로 다시 판정해 테스터 예시 에러를 27개로 맞춤
-- `npm run check:api`(`scripts/check-api-data.js`) 신설 — 테스터 `api-list.js`·`api-specs.js`와 에러 코드 페이지를 11개 항목으로 대조한다(DB 불필요). CI에서 `npm test` 다음에 실행
+- OPA2_007(외부자 문서 작성) 에러 코드를 SaaS 운영 소스로 다시 판정해 테스터 예시 에러·카드를 30개로 맞춤(존재하지 않는 회사 4000005, 지원하지 않는 API Key 유형 4030005, 우편번호 형식 오류 4000338 포함)
+- `npm run check:api`(`scripts/check-api-data.js`) 신설 — 테스터 `api-list.js`·`api-specs.js`와 에러 코드 페이지를 11개 항목으로 대조한다(DB 불필요). CI에서 `npm test` 다음에 실행. 카드 마크업이 달라 파싱에서 빠진 카드와 카드 안 중복 행도 실패로 잡는다
 - `package.json` `engines.node = "24.x"`
 
 #### 운영 위생 (P1-24)
-- 알림 대체 조회(Pusher 연결 실패 시) 300초 → 600초. 탭이 숨겨지면 멈추고, 다시 보일 때는 마지막 조회 후 600초가 지났을 때만 바로 조회한다. 허브 알림 벨은 `/api/notifications`가 401이면 대체 조회를 멈춘다
+- 알림 대체 조회(Pusher 연결 실패 시) 300초 → 600초. 탭이 숨겨지면 멈추고, 다시 보일 때는 마지막 조회 후 600초가 지났을 때만 바로 조회한다. 허브 알림 벨은 `/api/notifications`가 401이면 대체 조회를 멈추고, 상단 바(`auth-status.js`)는 세션 만료 처리 뒤 Pusher 연결 실패로도 대체 조회를 다시 켜지 않는다
 - `scripts/migrate-notifications.js`가 새 DB에서 `notifications.target_user_id`까지 만든다(기존 DB는 그대로 `migrate-bug-reports-v2.js`가 채움)
 - 레거시 페이지·파일 12개 삭제: Embedding 문서 수정·템플릿 생성 임베딩 4종(SaaS·CSAP), 구 멤버 관리 스크립트·스타일과 빈 `js/api/` 5개, 고정 도메인 문서 발송 페이지. 삭제한 URL은 404
 - 로컬 설정 파일 3개(`.claude/settings.local.json.bak`, `.vscode/settings.json` 2개) 추적 해제, `.gitignore`의 `docs/` 화이트리스트에 추적 중이던 문서 2개 추가
