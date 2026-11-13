@@ -395,10 +395,20 @@ const API_SPECS = {
             { code: '4000137', message: 'This is an invalid email format.', description: '잘못된 이메일 형식', status: 400 },
             { code: '4000044', message: 'You have no permission to access the form.', description: '외부자 작성이 허용되지 않은 템플릿', status: 400 },
             { code: '4000001', message: 'Either one of the Email or SMS options must be selected.', description: '외부 수신자의 use_mail·use_sms가 모두 false', status: 400 },
+            { code: '4000190', message: 'The input value for the CC is in an invalid JSON format.', description: '참조자(referers) 형식 오류 — groups·members가 배열이 아님 등', status: 400 },
+            { code: '4000010', message: 'This document\'s title cannot be changed.', description: '문서 제목 변경 불가 템플릿에 document_name을 보냄', status: 400 },
+            { code: '5000038', message: 'File IO error.', description: '파일 IO 오류', status: 500 },
+            { code: '5000004', message: 'Failed to create the document.', description: '문서 생성 실패 (템플릿의 중복 작성 방지에 걸리거나 알림 설정이 빠진 경우 HTTP 400, 문서 파일 생성 실패는 HTTP 500)' },
+            { code: '4000201', message: 'You have exhausted all purchased documents', description: '선불 문서 소진', status: 400 },
             { code: '4000003', message: 'The apiKey does not exist.', description: '유효하지 않은 API Key (Authorization 형식 오류 포함)', status: 400 },
             { code: '4030039', message: 'The apiKey encoded has an error.', description: 'API Key Base64 디코딩 실패 (URL-safe Base64로 디코딩)', status: 400 },
             { code: '4030001', message: 'The apiKey is not active.', description: '비활성화된 API Key', status: 403 },
-            { code: '4030034', message: "You don't have Open API permission.", description: 'Open API 사용 권한 없음', status: 403 }
+            { code: '4030034', message: "You don't have Open API permission.", description: 'Open API 사용 권한 없음', status: 403 },
+            { code: '4000076', message: 'The company has already been deleted.', description: '삭제된 회사', status: 403 },
+            { code: '4030052', message: 'The company has been suspended.', description: '이용 정지된 회사', status: 403 },
+            { code: '4030025', message: 'It is not available in the personal plan.', description: '개인 플랜은 Open API 미지원', status: 403 },
+            { code: '4030026', message: 'Cannot be used due to overdue charges.', description: '연체로 인해 Open API 사용 불가', status: 403 },
+            { code: '5000001', message: 'Internal server error.', description: '내부 서버 오류' }
         ],
     },
     'OPA2_008': {

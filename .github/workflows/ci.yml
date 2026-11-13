@@ -1,5 +1,6 @@
 # CI (P0b-10)
-# - test: npm ci → npm test(node:test) → npm run security:secrets(추적 파일 시크릿 점검)
+# - test: npm ci → npm test(node:test) → npm run check:api(테스터 데이터 ↔ 에러 코드 페이지 정합성, P1-23)
+#         → npm run security:secrets(추적 파일 시크릿 점검)
 # - gitleaks: 전체 git 히스토리 시크릿 스캔(.gitleaks.toml). 현재 트리만 보는 security:secrets가
 #   놓치는 과거 커밋 유출을 잡는다. 확인된 과거 항목은 .gitleaks.toml [allowlist]에 근거와 함께 둔다.
 # DB 접속·배포는 하지 않는다(테스트는 sql 목으로 DB 없이 실행).
@@ -34,6 +35,9 @@ jobs:
 
       - name: 단위 테스트 (node --test)
         run: npm test
+
+      - name: API 데이터 정합성 점검 (테스터 ↔ 에러 코드 페이지)
+        run: npm run check:api
 
       - name: 추적 파일 시크릿 점검
         run: npm run security:secrets
