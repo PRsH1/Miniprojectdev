@@ -65,10 +65,12 @@ eformsign API·허브 프록시의 에러 응답은 raw JSON 대신 `window.rend
 - 표시: 한 줄 요약 `HTTP 400 · [코드] 메시지` + [에러 코드 찾아보기 →](`/utils/error-codes.html?q=<코드>`) + [원본 응답 보기] 토글(JSON은 pretty-print, 아니면 앞 300자).
   401이면 토큰 재발급 안내, `Failed to fetch`류면 "CORS 차단, 도메인 오타, 네트워크 문제" 안내 + `/utils/CorsTest.html` 링크.
 - 코드·메시지 키 탐색 순서: `code`, `error_code`, `ErrorMessage`, `message`, `error.message` (허브 프록시의 `error.upstream`, `error.error`도 지원).
-- 부가 API: `ApiError.parse(info)`(렌더링 없이 요약), `ApiError.fromResponse(container, res, {url})`, `ApiError.isNetworkError(err)`, `ApiError.lookupUrl(code, {absolute})`.
+- 부가 API: `ApiError.parse(info)`(렌더링 없이 요약), `ApiError.fromResponse(container, res, {url})`, `ApiError.isNetworkError(err)`, `ApiError.lookupUrl(code, {absolute})`, `ApiError.pageUrl()`.
+- **에러 코드 페이지 선택**: 기본은 공개 `/utils/error-codes.html`. 페이지가 `window.API_ERROR_CODES_PAGE`(같은 출처 절대 경로 — `/`로 시작, `//` 아님)를 두면 그 페이지로 링크한다(링크를 만들 때마다 읽음).
+  내부 도구 OpenAPITesterFull·MemberV2·AutoTest는 `/app/error-codes-internal`(내부용, manager 이상 — 멤버·그룹·Full 전용 코드 포함)을 쓴다. 공개 도구는 설정하지 않는다(`rules/open-api-tester.md` "에러 코드 페이지 2종").
 - **상태 코드를 먼저 확인한 뒤 본문을 파싱**한다(`res.text()` → `!res.ok`면 renderApiError → 그다음 `JSON.parse`). HTML 502 게이트웨이 페이지에서 SyntaxError가 나지 않게 하기 위함.
 - 적용: DocumentInfo·DocumentSendImprove(전송·템플릿 조회)·listdocuments·DocumentDownload·webhook(문서 정보 조회)·OpenAPITester(`#responseNotice`)·MemberV2(결과 영역 위 `.member-api-error`, `showApiErrorSummary()`)·AutoTest(리포트 실패/CHECK 상세의 에러 코드 링크).
-- 에러 코드 딥링크: `utils/error-codes.html?q=<검색어>`(검색창 채움 + 필터, 0건 카드 숨김, 입력 시 `?q=` URL 동기화), `#code-<코드>`(해당 행으로 스크롤·하이라이트, 같은 코드의 두 번째 이후 행은 `code-<코드>-2`…). 각 행에 [링크 복사] 버튼. 엔드포인트·항목 수는 DOM에서 계산한다.
+- 에러 코드 딥링크(공개 `utils/error-codes.html`·내부 `/app/error-codes-internal` 공통): `?q=<검색어>`(검색창 채움 + 필터, 0건 카드 숨김, 입력 시 `?q=` URL 동기화), `#code-<코드>`(해당 행으로 스크롤·하이라이트, 같은 코드의 두 번째 이후 행은 `code-<코드>-2`…). 각 행에 [링크 복사] 버튼. 엔드포인트·항목 수는 DOM에서 계산한다.
 
 ### 환경 도메인
 

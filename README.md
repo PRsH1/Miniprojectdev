@@ -97,7 +97,7 @@ ProjectImprove/
 ├── middleware.js                 # Edge Middleware — /private/* 직접 접근 404 + IP 화이트리스트 global 스코프
 ├── test/                         # node:test 단위 테스트 (npm test)
 ├── scripts/                      # DB 마이그레이션(migrate-*.js)·관리(create-admin.js)·점검 스크립트
-│   ├── check-api-data.js         # OpenAPITester 데이터 ↔ 에러 코드 페이지 정합성 11개 검사 (npm run check:api)
+│   ├── check-api-data.js         # OpenAPITester 데이터 ↔ 에러 코드 페이지 2개(공개·내부) 정합성 12개 검사 (npm run check:api)
 │   ├── check-protected-pages.js  # 보호 페이지 정합성 점검 (npm run check:pages)
 │   └── check-secrets.js          # 추적 파일 시크릿 점검 (npm run security:secrets)
 ├── .github/workflows/ci.yml      # CI (테스트 + 시크릿 점검 + gitleaks)
@@ -125,6 +125,7 @@ ProjectImprove/
 │   ├── idp-test.html             # IdP 테스트 UI
 │   ├── templatecopy.html         # 템플릿 복제 UI
 │   ├── OpenAPITesterFull.html    # Open API 테스터 전체판 (멤버 API 포함)
+│   ├── error-codes-internal.html # 에러 코드 모음 내부용 (API_LIST 전체 58장 — 멤버·그룹·Full 전용 포함)
 │   └── MassDocumentDowmload.html # 문서 일괄 다운로드
 ├── assets/js/
 │   ├── auth-status.js            # ★ 전 페이지 공통 로그인 상태 상단 바 (IIFE, 알림 벨 내장 — Pusher 실시간 푸시)
@@ -237,6 +238,7 @@ ProjectImprove/
 | `GET /app/OpenAPIAutoTest` | manager | OPA 자동 테스트 |
 | `GET /app/OpenAPITesterFull` | manager | Open API Tester 전체판 (멤버 API 포함) |
 | `GET /app/MassDocumentDowmload` | manager | 문서 일괄 다운로드 |
+| `GET /app/error-codes-internal` | manager | 에러 코드 모음 내부용 (멤버·그룹·Full 전용 API 포함, 외부 공유 금지) |
 | `GET /app/idptestauth` | admin | IdP 테스트 |
 
 > 위 표는 `scripts/migrate.js` 시드 기준이다. 실제 역할은 DB(`protected_pages`)가 정본이며
@@ -551,7 +553,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | Send and Download | 응답을 파일로 강제 저장 (Content-Type 기반 확장자 자동 결정) |
 | Code Snippet | cURL / JS(fetch) / JS(jQuery) / Python / Java 코드 자동 생성 |
 | **API 명세** | 각 API의 Request/Response 필드 명세 조회 모달 — 헤더·Path/Query 파라미터·Body·응답 필드·에러 코드, **비고 컬럼** 지원 (`note` 필드가 있는 경우 자동 표시) |
-| **에러 코드 모음** | 헤더 버튼으로 `utils/error-codes.html` 연결 — OPA2 에러 코드 검색 가능 (Full 전용을 뺀 API 44개 카드, `npm run check:api`로 테스터 데이터와 동기화) |
+| **에러 코드 모음** | 헤더 버튼으로 에러 코드 페이지 연결 — Prod는 공개 `utils/error-codes.html`(Prod에 보이는 API 35장), Full은 내부용 `/app/error-codes-internal`(API_LIST 전체 58장). `npm run check:api`로 테스터 데이터와 동기화 |
 | 사용 가이드 | 7단계 스텝 카드 형식 사용법 안내 모달 |
 
 ### 등록된 API (OPA2_XXX) 및 예시 응답 현황
@@ -568,7 +570,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | 문서 관리자 | OPA2_050 추가, OPA2_051 삭제, OPA2_052 관리 문서 설정 | 성공+실패 완비 |
 
 > **에러 코드 완비**: `api-list.js` 43개 API의 `errors` 배열 전면 교체 (API당 15~35개, 한글 타이틀), `api-specs.js` `errorCodes`도 동기화 완료 (2026-04-03)
-> **에러 코드 페이지**: `utils/error-codes.html`은 테스터 `exampleResponse.errors`와 같은 코드·메시지를 보여 준다. 어긋나면 `npm run check:api`(CI 포함)가 실패한다
+> **에러 코드 페이지**: 공개 `utils/error-codes.html`(Prod 표시 API 35장 — 멤버·그룹·Full 전용 제외)과 내부용 `private/error-codes-internal.html`(`/app/error-codes-internal`, manager 이상, API_LIST 전체 58장)은 테스터 `exampleResponse.errors`와 같은 코드·메시지를 보여 준다. 어긋나면 `npm run check:api`(CI 포함)가 실패한다
 
 ---
 
@@ -613,7 +615,21 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `DocumentDelete.html` | 문서 일괄 삭제 |
 | `templateDeletetool.html` | 템플릿 일괄 삭제 |
 | `saml-guide.html` | SAML 연동 가이드 |
-| `error-codes.html` | OPA2 에러 코드 모음 (OPA2 엔드포인트별 에러 코드·Enum·메시지 검색, `?q=` 검색·`#code-<코드>` 딥링크) |
+| `error-codes.html` | OPA2 에러 코드 모음 공개판 — OpenAPITester Prod에 보이는 API 35장. 엔드포인트별 에러 코드·Enum·메시지 검색, `?q=` 검색·`#code-<코드>` 딥링크. 멤버·그룹·Full 전용 API는 내부용 `/app/error-codes-internal`에만 있다 |
+
+---
+
+## 2026-11-14 Update
+
+### 에러 코드 페이지 공개·내부 분리
+
+DB 마이그레이션 실행은 없다(보호 페이지 등록은 아래 "운영 반영"). 세부 규칙은 `rules/open-api-tester.md`가 정본이다.
+
+- **공개 페이지** `utils/error-codes.html`을 OpenAPITester Prod에 보이는 API와 같게 맞췄다 — 멤버·그룹 API 카드 9장(OPA2_010~013, 017~020, 030)을 삭제해 35장
+- **내부용 페이지** `private/error-codes-internal.html` 신설(`/app/error-codes-internal`, manager 이상) — OpenAPITester Full과 같은 API_LIST 전체 58장(멤버·그룹 + Full 전용 14장, Full 전용 카드에 회색 "검토" 배지). 검색·딥링크·링크 복사는 공개 페이지와 같다. 허브에 "에러 코드 모음 Full" 카드 추가
+- 에러 표시 모듈 `api-error.js`의 [에러 코드 찾아보기 →]가 `window.API_ERROR_CODES_PAGE`를 따른다. OpenAPITester Full·MemberV2·OpenAPI 자동 테스트는 내부용 페이지로 연결되고, 공개 도구는 그대로 공개 페이지
+- `npm run check:api` 12개 검사 — 공개 페이지는 Prod 표시 API, 내부 페이지는 전체 API와 1:1인지 같은 검사로 확인하고, Prod 숨김 블록을 실제로 실행해 공개 범위와 대조한다. 두 페이지에 공통인 카드는 행까지 같아야 한다
+- **운영 반영**: 내부용 페이지는 `protected_pages`에 등록돼야 열린다. 관리자 콘솔 → 보호 페이지 탭에서 path `/app/error-codes-internal`, file_path `private/error-codes-internal.html`, 역할 manager로 등록한다(또는 `node scripts/migrate.js` — 운영 DB에 쓰므로 승인 후). 등록 전에는 허브 카드가 admin에게만 보인다
 
 ---
 
