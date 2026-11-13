@@ -46,7 +46,7 @@ window.CREDENTIAL_CONFIG = {
     secretKeyId:      'privateKeyHex',
     envId:            'envSelection',     // null이면 envFixed 사용
     envFixed:         null,               // 'op_saas' | 'csap' | 'custom'
-    customUrlFixed:   null,               // envFixed:'custom'일 때 고정 URL (KogasDocumentSend)
+    customUrlFixed:   null,               // envFixed:'custom'일 때 고정 URL (예: 특정 고객 전용 도메인)
     envSaveMap:       null,               // 페이지값→DB값 맵 (예: { saas: 'op_saas' })
     envLoadMap:       null,               // DB값→페이지값 맵
     customUrlId:      'customDomainInput',// 페이지의 직접 입력 URL 입력란 id — 입력란이 있으면 필수
@@ -64,7 +64,9 @@ window.CREDENTIAL_CONFIG = {
 - **`customUrlId` 필수**: 환경 select에 `custom`(직접 입력) 옵션이 있으면 그 URL 입력란 id를 반드시 넣는다. `null`이면 저장 모달 URL 칸이 빈 채로 열리고, 불러오기 후 env만 custom이 되고 URL은 비어 있게 된다.
   현재 값: DocumentInfo·DocumentDownload·DocumentSendImprove·DocumentDelete·templateDeletetool·webhook·MassDocumentDowmload = `customDomainInput`, listdocuments = `customBaseUrl`, 임베딩 2종 = `customApiUrl`(API Base URL — 라이브러리 Domain/Lib URL은 저장되지 않으므로 직접 입력 후 [커스텀 스크립트 적용]), MemberV2 = `customEnvUrl`, AutoTest = `formCustomUrl`.
 - **env 맵**: 페이지 select 값이 DB 형식(`op_saas`/`csap`/`custom`)과 다르면 `envSaveMap`/`envLoadMap` 필수(임베딩 2종 `saas`↔`op_saas`, AutoTest 동일).
-- **고정 도메인 페이지**: KogasDocumentSend는 `envId:null, envFixed:'custom', customUrlFixed:'https://eform.kogas.or.kr/Service'`로 저장한다(과거 `op_saas`로 저장되어 다른 도구에서 SaaS로 불러와지던 문제). 저장 모달의 URL 칸은 읽기 전용. 다른 환경의 크리덴셜을 불러오면 토스트로 경고한다.
+- **고정 도메인 옵션 (`envFixed`·`customUrlFixed`)**: 환경 select가 없는 페이지용 범용 옵션이다. `envId:null, envFixed:'custom', customUrlFixed:'<고정 URL>'`이면
+  환경 `custom` + 그 URL로 저장하고(`envFixed`가 없으면 `op_saas`), 저장 모달의 환경 select는 비활성·URL 칸은 읽기 전용이다.
+  다른 환경의 크리덴셜을 불러오면 토스트로 경고한다. **현재 이 옵션을 쓰는 페이지는 없다**(쓰던 고정 도메인 발송 페이지는 P1-24에서 삭제, 기능 코드는 유지).
 - **Basic Auth 미지원 (Q13 기본안)**: `secret_method`는 DB CHECK 제약상 `signature`/`bearer`만 저장한다. 페이지에서 `basic`이 선택되어 있으면(DocumentDelete) 저장 모달에 안내를 띄우고 [저장] 버튼을 비활성화한다(`_cpConfirmSave`도 한 번 더 막음). 그 외 값은 `signature`로 저장.
 - 일괄 점검: CONFIG의 참조 id 존재, custom 옵션 ↔ `customUrlId`, env 맵 누락을 스크립트로 확인한다(검증 세션 보고 참고).
 

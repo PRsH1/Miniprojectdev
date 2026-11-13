@@ -16,7 +16,7 @@ Node.js 기반의 서버리스 애플리케이션으로 Vercel에 배포되어 �
 - **유틸리티 도구** — SMTP 테스트, CORS 테스트, Base64, JSON 포매터 등
 - **DB 기반 인증/권한 시스템** — JWT 세션 + Vercel Postgres, 역할별 접근 제어 (admin/manager/user)
 - **관리자 콘솔** — 사용자 관리, 보호 페이지 동적 설정, 회원가입 승인, 감사 로그, **IP 화이트리스트**, **알림 벨**, **버그 리포트 관리**
-- **알림 시스템** — 회원가입 요청·버그 리포트 등 주요 이벤트를 상단 바 벨 아이콘으로 실시간 알림. Pusher WebSocket 기반 실시간 푸시 (연결 실패 시 300초 fallback 폴링). admin은 관리 알림, 일반 사용자는 본인 버그 리포트 상태 변경·답변 등록 알림 수신. DB 기반 모듈형 구조로 신규 알림 타입 확장 용이
+- **알림 시스템** — 회원가입 요청·버그 리포트 등 주요 이벤트를 상단 바 벨 아이콘으로 실시간 알림. Pusher WebSocket 기반 실시간 푸시 (연결 실패 시 600초 fallback 폴링, 탭이 숨겨진 동안 정지). admin은 관리 알림, 일반 사용자는 본인 버그 리포트 상태 변경·답변 등록 알림 수신. DB 기반 모듈형 구조로 신규 알림 타입 확장 용이
 - **커뮤니티** — 개발자 노트(마크다운 지원, admin 전용 작성), 버그 리포트 게시판(제보·본인 목록·처리 현황 한 페이지 통합). 관리자는 버그 원인·조치 사항 기록, 상태 변경·답변 등록 시 제보자에게 알림 전송
 - **IP 화이트리스트** — DB 기반 IP 접근 제어. global(전체 페이지/API), path(경로 패턴), protected(보호 페이지) 3개 스코프 독립 운용. `IP_WHITELIST_ENABLED` 마스터 플래그로 전체 on/off (OFF 시 DB 미조회·즉시 허용)
 
@@ -32,8 +32,8 @@ Node.js 기반의 서버리스 애플리케이션으로 Vercel에 배포되어 �
 | 인증 | JWT 하이브리드 세션, SAML 2.0 (`samlify`), ECDSA (`jsrsasign`) |
 | 실시간 통신 | Pusher (웹훅 브로드캐스트 + 알림 실시간 푸시) |
 | 이메일 | Nodemailer |
-| 테스트 | `node --test` 단위 테스트 23개 파일 (`npm test`, DB 없이 목으로 실행) |
-| CI | GitHub Actions — push·PR마다 `npm test` → `npm run security:secrets` + gitleaks 전체 히스토리 스캔 |
+| 테스트 | `node --test` 단위 테스트 23개 파일 (`npm test`, DB 없이 목으로 실행) + `npm run check:api`(테스터 데이터 ↔ 에러 코드 페이지 정합성) · `npm run check:pages` · `npm run security:secrets` |
+| CI | GitHub Actions(Node 24.x — `package.json` `engines`와 같음) — push·PR마다 `npm test` → `npm run check:api` → `npm run security:secrets` + gitleaks 전체 히스토리 스캔 |
 | 보안 헤더 | `vercel.json`에서 전 경로 `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy` |
 
 ---
@@ -96,6 +96,10 @@ ProjectImprove/
 │   └── safe-next.js              # 로그인 후 이동 경로(next) open redirect 차단
 ├── middleware.js                 # Edge Middleware — /private/* 직접 접근 404 + IP 화이트리스트 global 스코프
 ├── test/                         # node:test 단위 테스트 (npm test)
+├── scripts/                      # DB 마이그레이션(migrate-*.js)·관리(create-admin.js)·점검 스크립트
+│   ├── check-api-data.js         # OpenAPITester 데이터 ↔ 에러 코드 페이지 정합성 11개 검사 (npm run check:api)
+│   ├── check-protected-pages.js  # 보호 페이지 정합성 점검 (npm run check:pages)
+│   └── check-secrets.js          # 추적 파일 시크릿 점검 (npm run security:secrets)
 ├── .github/workflows/ci.yml      # CI (테스트 + 시크릿 점검 + gitleaks)
 ├── auth/
 │   ├── login.html                # 로그인 UI (username + password)
@@ -103,8 +107,8 @@ ProjectImprove/
 │   ├── signup-status.html        # 회원가입 요청 상태 조회
 │   ├── change-password.html      # 비밀번호 변경 폼 (일반 변경 시 현재 비밀번호 입력란 표시)
 │   └── 403.html                  # 권한 없음 페이지
-├── API(JS,HTML)/                 # eformsign API 연동 프론트엔드 도구
-│   └── OpenAPITesterProd.html    # ★ Postman 스타일 Open API 테스터 (Beta, 공개판 — 멤버 API 제외)
+├── API(JS,HTML)/                 # eformsign API 연동 프론트엔드 도구 (문서 작성·정보 조회·목록·다운로드)
+│   └── OpenAPITesterProd.html    # ★ Postman 스타일 Open API 테스터 (Beta, 공개판 — 멤버·그룹 API 제외)
 ├── errors/                       # 공통 HTML 에러 페이지
 │   ├── 403.html
 │   ├── 404.html
@@ -112,8 +116,7 @@ ProjectImprove/
 │   └── 500.html
 ├── Embedding/                    # 문서/템플릿 임베딩 도구
 │   ├── embedding_doc_Integration.html       # 문서 임베딩 (환경 통합)
-│   ├── embedding_template_intergration.html # 템플릿 임베딩 (환경 통합)
-│   └── ...                                  # CSAP 버전, MultiFileViewer 등
+│   └── embedding_template_intergration.html # 템플릿 임베딩 (환경 통합)
 ├── utils/                        # 공개 유틸리티 도구
 ├── private/                      # 인증 보호 콘텐츠 (auth-middleware에서 서빙)
 │   ├── Admin.html                # ★ 관리자 콘솔 (사용자/보호페이지/감사로그/회원가입 탭)
@@ -548,7 +551,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | Send and Download | 응답을 파일로 강제 저장 (Content-Type 기반 확장자 자동 결정) |
 | Code Snippet | cURL / JS(fetch) / JS(jQuery) / Python / Java 코드 자동 생성 |
 | **API 명세** | 각 API의 Request/Response 필드 명세 조회 모달 — 헤더·Path/Query 파라미터·Body·응답 필드·에러 코드, **비고 컬럼** 지원 (`note` 필드가 있는 경우 자동 표시) |
-| **에러 코드 모음** | 헤더 버튼으로 `utils/error-codes.html` 연결 — OPA2 에러 코드 검색 가능 (OPA2_021·061 카드 없음) |
+| **에러 코드 모음** | 헤더 버튼으로 `utils/error-codes.html` 연결 — OPA2 에러 코드 검색 가능 (Full 전용을 뺀 API 44개 카드, `npm run check:api`로 테스터 데이터와 동기화) |
 | 사용 가이드 | 7단계 스텝 카드 형식 사용법 안내 모달 |
 
 ### 등록된 API (OPA2_XXX) 및 예시 응답 현황
@@ -565,7 +568,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | 문서 관리자 | OPA2_050 추가, OPA2_051 삭제, OPA2_052 관리 문서 설정 | 성공+실패 완비 |
 
 > **에러 코드 완비**: `api-list.js` 43개 API의 `errors` 배열 전면 교체 (API당 15~35개, 한글 타이틀), `api-specs.js` `errorCodes`도 동기화 완료 (2026-04-03)
-> **소스 레퍼런스**: `utils/error-codes.html` — 45+ 소스파일 3단계 추적 기반 에러 코드 모음
+> **에러 코드 페이지**: `utils/error-codes.html`은 테스터 `exampleResponse.errors`와 같은 코드·메시지를 보여 준다. 어긋나면 `npm run check:api`(CI 포함)가 실패한다
 
 ---
 
@@ -576,12 +579,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | 파일 | 설명 |
 |------|------|
 | `embedding_doc_Integration.html` | 문서 임베딩 (SaaS·CSAP 환경 통합) |
-| `embedding_doc_update.html` | 문서 수정 임베딩 |
-| `embedding_doc_update_CSAP.html` | 문서 수정 임베딩 (CSAP) |
 | `embedding_template_intergration.html` | 템플릿 임베딩 (SaaS·CSAP 환경 통합) |
-| `template_create_update.html` | 템플릿 생성/수정 임베딩 |
-| `template_create_update_CSAP.html` | 템플릿 생성/수정 임베딩 (CSAP) |
-| `MultiFileViewer.html` | 다중 파일 뷰어 |
 
 ---
 
@@ -591,8 +589,7 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 
 | 파일 | 설명 |
 |------|------|
-| `OpenAPITesterProd.html` | Postman 스타일 Open API 테스터 — 배포 버전 (멤버 API 비공개) |
-| `OpenAPITester.html` | Postman 스타일 Open API 테스터 — 전체 버전 (멤버 API 포함) |
+| `OpenAPITesterProd.html` | Postman 스타일 Open API 테스터 — 배포 버전 (멤버·그룹 API 비공개). 전체 버전은 `private/OpenAPITesterFull.html`(`/app/OpenAPITesterFull`) |
 | `DocumentSendImprove.html` | 새 문서 작성 API 테스트 |
 | `DocumentInfo.html` | 문서 정보 조회 API 테스트 |
 | `listdocuments.html` | 문서 목록 조회 API 테스트 |
@@ -617,6 +614,32 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 | `templateDeletetool.html` | 템플릿 일괄 삭제 |
 | `saml-guide.html` | SAML 연동 가이드 |
 | `error-codes.html` | OPA2 에러 코드 모음 (OPA2 엔드포인트별 에러 코드·Enum·메시지 검색, `?q=` 검색·`#code-<코드>` 딥링크) |
+
+---
+
+## 2026-11-13 Update
+
+### SAML AuthnStatement 추가 + Phase 1 마무리 (C8: P1-23·24·25)
+
+DB 마이그레이션 실행은 없다. 세부 규칙은 `rules/` 문서가 정본이다.
+
+#### SAML
+- SAML Assertion에 `AuthnStatement`(AuthnInstant = 생성 시각, SessionIndex = 응답마다 새 uuid)를 넣는다(`lib/saml.js`). eformsign 회사 옵션으로 서명 검증을 켜면 이 요소가 없는 응답을 거부하기 때문이다. 검증하지 않는 회사는 영향 없음. 회귀 테스트 `test/saml-response.test.js`
+
+#### 에러 코드 페이지 정합성 (P1-23)
+- `utils/error-codes.html` 카드 44장: 문서 목록 조회는 POST `/list_document` 한 장(OPA2_008), OPA2_041 경로 `/template_image/{template_image_id}`, OPA2_021·030·061 카드 추가, 카드별 코드를 테스터 데이터에 맞춤
+- OPA2_007(외부자 문서 작성) 에러 코드를 SaaS 운영 소스로 다시 판정해 테스터 예시 에러를 27개로 맞춤
+- `npm run check:api`(`scripts/check-api-data.js`) 신설 — 테스터 `api-list.js`·`api-specs.js`와 에러 코드 페이지를 11개 항목으로 대조한다(DB 불필요). CI에서 `npm test` 다음에 실행
+- `package.json` `engines.node = "24.x"`
+
+#### 운영 위생 (P1-24)
+- 알림 대체 조회(Pusher 연결 실패 시) 300초 → 600초. 탭이 숨겨지면 멈추고, 다시 보일 때는 마지막 조회 후 600초가 지났을 때만 바로 조회한다. 허브 알림 벨은 `/api/notifications`가 401이면 대체 조회를 멈춘다
+- `scripts/migrate-notifications.js`가 새 DB에서 `notifications.target_user_id`까지 만든다(기존 DB는 그대로 `migrate-bug-reports-v2.js`가 채움)
+- 레거시 페이지·파일 12개 삭제: Embedding 문서 수정·템플릿 생성 임베딩 4종(SaaS·CSAP), 구 멤버 관리 스크립트·스타일과 빈 `js/api/` 5개, 고정 도메인 문서 발송 페이지. 삭제한 URL은 404
+- 로컬 설정 파일 3개(`.claude/settings.local.json.bak`, `.vscode/settings.json` 2개) 추적 해제, `.gitignore`의 `docs/` 화이트리스트에 추적 중이던 문서 2개 추가
+
+#### 문서 정리 (P1-25)
+- README·`CLAUDE.md`·`AGENTS.md`·`rules/` 문서의 검증 명령(`check:api`), 삭제 파일 참조, 알림 대체 조회 주기, 허브(`index.html`)의 `/api/me` 직접 호출 예외 등을 코드에 맞춤
 
 ---
 
@@ -1142,7 +1165,7 @@ POSTGRES_URL="..." node scripts/migrate-community.js
 
 ### 관리자 알림(Notification Bell) 기능 추가
 
-> **Note**: 이 섹션의 60초 DB 폴링 방식은 2026-05-25 업데이트에서 Pusher WebSocket 실시간 푸시로 전환되었습니다. 현재는 Pusher 연결 실패 시에만 300초 fallback 폴링이 동작합니다. → [2026-05-25 Update](#2026-05-25-update) 참고
+> **Note**: 이 섹션의 60초 DB 폴링 방식은 2026-05-25 업데이트에서 Pusher WebSocket 실시간 푸시로 전환되었습니다. 현재는 Pusher 연결 실패 시에만 600초 fallback 폴링이 동작합니다(탭이 숨겨진 동안 정지 — [2026-11-13 Update](#2026-11-13-update)). → [2026-05-25 Update](#2026-05-25-update) 참고
 
 admin 계정에게 회원가입 요청 등 주요 이벤트를 실시간으로 알려주는 알림 시스템을 추가했습니다.
 
