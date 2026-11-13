@@ -22,7 +22,12 @@
 
     // 알림 상태
     var notifUnreadCount = 0;
-    var notifFallbackTimer = null;
+    // Pusher를 쓸 수 없을 때의 대체 조회 (P1-24) — 10분 간격, 탭이 숨겨진 동안은 멈춘다(Neon idle suspend 유지)
+    var NOTIF_FALLBACK_INTERVAL_MS = 600000;
+    var notifFallbackWanted = false;   // 대체 조회가 필요한 상태(Pusher 미사용·연결 실패)인지
+    var notifFallbackTimer = null;     // setInterval 핸들
+    var notifFallbackKickoff = null;   // 복귀 후 남은 시간을 기다리는 setTimeout 핸들
+    var notifLastFetchAt = 0;          // 마지막 /api/notifications 요청 시각
     var notifPusher = null;
     var authExpiredHandled = false;
     var authStatusCurrentUser = null;
@@ -527,20 +532,71 @@
         return false;
     }
 
+    function notificationFallbackTick() {
+        var panel = document.getElementById('asbNotifPanel');
+        if (!panel || panel.style.display === 'none') {
+            fetchUnreadCount();
+        }
+    }
+
+    function clearNotificationFallbackTimers() {
+        if (notifFallbackKickoff) {
+            clearTimeout(notifFallbackKickoff);
+            notifFallbackKickoff = null;
+        }
+        if (notifFallbackTimer) {
+            clearInterval(notifFallbackTimer);
+            notifFallbackTimer = null;
+        }
+    }
+
+    // 마지막 조회 시각 기준으로 다음 조회를 잡는다 — 600초가 이미 지났으면 바로 1회 조회
+    function armNotificationFallbackTimer() {
+        clearNotificationFallbackTimers();
+        var wait = NOTIF_FALLBACK_INTERVAL_MS - (Date.now() - notifLastFetchAt);
+        if (wait <= 0) {
+            notificationFallbackTick();
+            notifFallbackTimer = setInterval(notificationFallbackTick, NOTIF_FALLBACK_INTERVAL_MS);
+            return;
+        }
+        notifFallbackKickoff = setTimeout(function () {
+            notifFallbackKickoff = null;
+            notificationFallbackTick();
+            notifFallbackTimer = setInterval(notificationFallbackTick, NOTIF_FALLBACK_INTERVAL_MS);
+        }, wait);
+    }
+
     function startNotificationFallbackPolling() {
-        if (notifFallbackTimer) return;
-        notifFallbackTimer = setInterval(function () {
-            var panel = document.getElementById('asbNotifPanel');
-            if (!panel || panel.style.display === 'none') {
-                fetchUnreadCount();
-            }
-        }, 300000);
+        notifFallbackWanted = true;
+        if (document.hidden || notifFallbackTimer || notifFallbackKickoff) return;
+        armNotificationFallbackTimer();
     }
 
     function stopNotificationFallbackPolling() {
-        if (!notifFallbackTimer) return;
-        clearInterval(notifFallbackTimer);
-        notifFallbackTimer = null;
+        notifFallbackWanted = false;
+        clearNotificationFallbackTimers();
+    }
+
+    // 탭이 숨겨지면 타이머만 멈추고(대체 조회 필요 상태는 유지), 다시 보이면 재개한다.
+    // authCheck: 같은 복귀에서 시작한 /api/me 재확인 promise — 끝난 뒤에 재개해야
+    // 세션 만료 시 /api/notifications 401과 겹치지 않고, 리프레시 토큰 갱신 요청도 동시에 두 개가 나가지 않는다.
+    function pauseNotificationFallbackPolling() {
+        clearNotificationFallbackTimers();
+    }
+
+    function resumeNotificationFallbackPolling(authCheck) {
+        if (!notifFallbackWanted || notifFallbackTimer || notifFallbackKickoff) return;
+        var resume = function () {
+            // 그사이 세션 만료·Pusher 재연결(→ stop)이나 다시 숨김이 있었으면 재개하지 않는다
+            if (!notifFallbackWanted || authExpiredHandled || document.hidden) return;
+            if (notifFallbackTimer || notifFallbackKickoff) return;
+            armNotificationFallbackTimer();
+        };
+        if (authCheck && typeof authCheck.then === 'function') {
+            authCheck.then(resume, resume);
+        } else {
+            resume();
+        }
     }
 
     function setupNotificationRealtime(user) {
@@ -762,6 +818,7 @@
 
     // 미읽음 count만 갱신 (폴링용)
     function fetchUnreadCount() {
+        notifLastFetchAt = Date.now();
         fetch('/api/notifications')
             .then(function (r) {
                 if (handleApiAuthResponse(r)) return null;
@@ -776,6 +833,7 @@
 
     // 패널 열기
     function openNotifPanel() {
+        notifLastFetchAt = Date.now();
         fetch('/api/notifications')
             .then(function (r) {
                 if (handleApiAuthResponse(r)) return null;
@@ -856,7 +914,12 @@
     });
 
     document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') recheckAuthOnReturn();
+        if (document.visibilityState === 'visible') {
+            // 재인증 확인(/api/me 1건)을 먼저 하고, 알림 대체 조회는 그 결과를 본 뒤 재개한다
+            resumeNotificationFallbackPolling(recheckAuthOnReturn());
+        } else {
+            pauseNotificationFallbackPolling();
+        }
     });
     window.addEventListener('focus', recheckAuthOnReturn);
 

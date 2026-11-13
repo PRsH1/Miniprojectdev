@@ -10,7 +10,7 @@
  *       secretKeyId:      'privateKeyHex',
  *       envId:            'envSelection',   // null이면 envFixed 사용
  *       envFixed:         null,             // 'op_saas' | 'csap' | 'custom' (envId가 null일 때)
- *       customUrlFixed:   null,             // envFixed:'custom'일 때 고정 URL (예: Kogas 전용 도메인)
+ *       customUrlFixed:   null,             // envFixed:'custom'일 때 고정 URL (예: 특정 고객 전용 도메인)
  *       envSaveMap:       null,             // 페이지값→DB값 맵. null이면 1:1
  *       envLoadMap:       null,             // DB값→페이지값 맵. null이면 1:1
  *       customUrlId:      'customDomainInput', // custom 환경 URL 입력 필드 ID — 페이지에 입력란이 있으면 필수
@@ -286,7 +286,7 @@
             if (btn) btn.click();
         }
 
-        // 고정 환경 페이지(예: Kogas)에 다른 환경의 크리덴셜을 불러오면 알린다
+        // 고정 환경 페이지(envFixed 지정)에 다른 환경의 크리덴셜을 불러오면 알린다
         var envMismatch = !cfg.envId && cfg.envFixed && (
             c.environment !== cfg.envFixed ||
             (cfg.customUrlFixed && _normUrl(c.custom_url) !== _normUrl(cfg.customUrlFixed))
@@ -478,7 +478,7 @@
         }
         if (saveCustomUrl) {
             saveCustomUrl.value = cur.customUrl || '';
-            // 고정 URL 페이지(Kogas 등)는 URL을 바꿀 수 없다
+            // 고정 URL 페이지(customUrlFixed 지정)는 URL을 바꿀 수 없다
             saveCustomUrl.readOnly = !!(cfg.envFixed === 'custom' && cfg.customUrlFixed);
         }
         if (saveCustomUrlWrap) saveCustomUrlWrap.style.display = cur.env === 'custom' ? '' : 'none';
