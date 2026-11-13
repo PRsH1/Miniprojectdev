@@ -65,8 +65,11 @@ eformsign API·허브 프록시의 에러 응답은 raw JSON 대신 `window.rend
 - 표시: 한 줄 요약 `HTTP 400 · [코드] 메시지` + [에러 코드 찾아보기 →](`/utils/error-codes.html?q=<코드>`) + [원본 응답 보기] 토글(JSON은 pretty-print, 아니면 앞 300자).
   401이면 토큰 재발급 안내, `Failed to fetch`류면 "CORS 차단, 도메인 오타, 네트워크 문제" 안내 + `/utils/CorsTest.html` 링크.
 - 코드·메시지 키 탐색 순서: `code`, `error_code`, `ErrorMessage`, `message`, `error.message` (허브 프록시의 `error.upstream`, `error.error`도 지원).
-- 부가 API: `ApiError.parse(info)`(렌더링 없이 요약), `ApiError.fromResponse(container, res, {url})`, `ApiError.isNetworkError(err)`, `ApiError.lookupUrl(code, {absolute})`, `ApiError.pageUrl()`.
-- **에러 코드 페이지 선택**: 기본은 공개 `/utils/error-codes.html`. 페이지가 `window.API_ERROR_CODES_PAGE`(같은 출처 절대 경로 — `/`로 시작, `//` 아님)를 두면 그 페이지로 링크한다(링크를 만들 때마다 읽음).
+- 부가 API: `ApiError.parse(info)`(렌더링 없이 요약), `ApiError.fromResponse(container, res, {url})`, `ApiError.isNetworkError(err)`, `ApiError.lookupUrl(code, {absolute})`, `ApiError.pageUrl()`, `ApiError.isSafePagePath(p)`.
+- **에러 코드 페이지 선택**: 기본은 공개 `/utils/error-codes.html`. 페이지가 `window.API_ERROR_CODES_PAGE`를 두면 그 페이지로 링크한다(링크를 만들 때마다 읽음).
+  값 검증은 `ApiError.isSafePagePath(p)` 한 곳 — 원시 문자열 · `/`로 시작 · 두 번째 문자가 `/`가 아님 · 공백·제어문자(U+0000–U+001F, U+007F, 유니코드 공백)·역슬래시 없음 ·
+  `new URL(p, location.origin).origin === location.origin`. 통과하지 못하면 공개 페이지로 링크한다(URL 파서가 탭·개행을 지워 `//evil.com`이 되는 `/<탭>/evil.com` 같은 값 차단).
+  AutoTest(`OpenAPIAutoTest.js`)도 `ApiError.lookupUrl`로 같은 판정을 쓰고, api-error.js가 없을 때는 설정값을 쓰지 않고 공개 페이지로 링크한다.
   내부 도구 OpenAPITesterFull·MemberV2·AutoTest는 `/app/error-codes-internal`(내부용, manager 이상 — 멤버·그룹·Full 전용 코드 포함)을 쓴다. 공개 도구는 설정하지 않는다(`rules/open-api-tester.md` "에러 코드 페이지 2종").
 - **상태 코드를 먼저 확인한 뒤 본문을 파싱**한다(`res.text()` → `!res.ok`면 renderApiError → 그다음 `JSON.parse`). HTML 502 게이트웨이 페이지에서 SyntaxError가 나지 않게 하기 위함.
 - 적용: DocumentInfo·DocumentSendImprove(전송·템플릿 조회)·listdocuments·DocumentDownload·webhook(문서 정보 조회)·OpenAPITester(`#responseNotice`)·MemberV2(결과 영역 위 `.member-api-error`, `showApiErrorSummary()`)·AutoTest(리포트 실패/CHECK 상세의 에러 코드 링크).

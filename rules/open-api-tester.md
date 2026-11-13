@@ -152,13 +152,17 @@ const API_SPECS = {
 - **정합성 원칙**: `API_SPECS`의 queryParams/requestBody/responseFields는 `API_LIST`의 실제 데이터와 일치해야 함. 신규 명세 추가 시 반드시 `api-list.js` 실제 구조를 기준으로 작성
 - **errorCodes 정합성**: `API_SPECS`의 `errorCodes`는 `API_LIST`의 `exampleResponse.errors`와 동기화 상태여야 함(code·message·status). 에러 추가/수정 시 두 파일 모두 수정할 것 (소스 레퍼런스: SaaS 소스 `EformsignExceptionType.java`).
   에러 코드 페이지 두 개의 카드(코드 집합·메시지·메서드·경로·`.cnt`)도 같은 기준으로 함께 고친다(아래 "에러 코드 페이지 2종").
-  **`npm run check:api`**(`scripts/check-api-data.js`, CI에서도 `npm test` 다음에 실행)로 확인한다 — 12개 검사:
+  **`npm run check:api`**(`scripts/check-api-data.js`, CI에서도 `npm test` 다음에 실행)로 확인한다 — 13개 검사:
   1 명세 존재, 2 errors↔errorCodes(code·message·status), 3 queryParams 키, 4 defaultBody 고정값,
-  5~9는 두 페이지에 같은 함수로 적용(실패 키에 `[공개]`/`[내부]`): 5 대상 API마다 카드, 6 카드마다 대상 API(대상 밖 API의 카드 — 공개 페이지의 멤버·그룹·fullOnly — 도 실패),
+  5~9는 두 페이지에 같은 함수로 적용(실패 키에 `[공개]`/`[내부]`): 5 대상 API마다 카드, 6 카드마다 대상 API(대상 밖 API의 카드 — 공개 페이지의 멤버·그룹·fullOnly — 도 실패,
+  카드 헤더의 검토 배지 `class="rv"`는 내부 페이지의 fullOnly 카드에만 있고 공개 페이지에는 카드 밖까지 0개),
   7 카드 메서드·경로, 8 카드 코드·메시지 = 테스터 errors, 9 `.cnt` = 행 수,
-  10 공개 범위 = Prod 숨김 블록(블록을 실제로 실행해 남는 API = `isProdVisible` 집합, 조건 문자열 `group === '멤버'`·`'그룹'`·`.fullOnly` 확인,
-  Full 블록은 `API_LIST`를 바꾸지 않고 내부 페이지를 설정, 두 HTML은 블록 밖이 같음), 11 `customsso_members` 문자열 금지(`utils/`·`private/`·`assets/js/openapi/`·`API(JS,HTML)/`),
-  12 내부 페이지의 공통 카드(공개 페이지에도 있는 35장)는 제목·메서드·경로·행(순서 포함)이 공개 페이지와 같다.
+  10 공개 범위 = Prod 숨김 블록(블록을 브라우저처럼 `window` = 전역 객체로 실제 실행 — 남는 API = `isProdVisible` 집합, 조건 `group === '멤버'`·`'그룹'`·`.fullOnly`는 따옴표 종류와 무관하게 확인,
+  실행 뒤 `window.API_ERROR_CODES_PAGE`가 없어야 함 / Full 블록은 실행 뒤 `API_LIST`가 원본과 JSON 직렬화로 완전히 같고 `window.API_ERROR_CODES_PAGE`가 정확히 `/app/error-codes-internal`,
+  두 HTML은 블록 밖이 같음), 11 `customsso_members` 문자열 금지(`utils/`·`private/`·`assets/js/openapi/`·`API(JS,HTML)/`),
+  12 내부 페이지의 공통 카드(공개 페이지에도 있는 35장)는 제목·메서드·경로·행(순서 포함)이 공개 페이지와 같고, 두 페이지 전체(멤버·그룹·Full 전용 카드 포함)에서 같은 (코드, 메시지)의 Enum은 하나,
+  13 에러 코드 링크 설정 — `private/MemberV2.html`·`private/OpenAPIAutoTest.html`의 인라인 설정을 실행한 값이 `/app/error-codes-internal`이고,
+  공개 도구(`API(JS,HTML)/`·`utils/`·`Embedding/`·`community/`·`index.html`)에는 `API_ERROR_CODES_PAGE` 문자열이 없다.
   공개 대상 판정은 `isProdVisible()` 한 함수이며 Prod 숨김 조건을 바꾸면 이 함수도 함께 바꾼다.
   카드는 class에 `card` 토큰이 있는 `<div>`로 나누고 `<h3>OPA2_` 제목 수와 다르면 실패한다. 카드 안 같은 행(코드·Enum·메시지) 중복은 금지이고,
   (코드, 메시지) 행 수는 테스터 errors의 같은 (코드, 메시지) 개수를 넘을 수 없다 — 테스터가 같은 코드·메시지를 HTTP 상태별로 두 번 둔 것(OPA2_008 4000070 등)은 카드에 한 번만 둔다.
@@ -174,9 +178,9 @@ const API_SPECS = {
     Full 전용 카드 헤더에 회색 `<span class="rv">검토</span>` 배지, "검토 중(Full 전용)" 통계를 더한다. 공통 카드는 두 파일에 똑같이 고친다(검사 12).
   - 카드 순서는 번호 오름차순. 새 API를 추가하면 내부 페이지에는 항상, 공개 페이지에는 Prod에 보일 때만 카드를 넣는다. API를 `fullOnly`에서 공개로 바꾸면 내부 카드의 `검토` 배지를 빼고 같은 카드를 공개 페이지에도 넣는다.
   - SSO 구성원 조회(`customsso_members`)는 내부 페이지에도 넣지 않는다.
-  - 에러 링크: `assets/js/api-error.js`는 `window.API_ERROR_CODES_PAGE`(같은 출처 절대 경로만, 없으면 `/utils/error-codes.html`)를 링크를 만들 때마다 읽는다(`ApiError.lookupUrl`·`ApiError.pageUrl`).
+  - 에러 링크: `assets/js/api-error.js`는 `window.API_ERROR_CODES_PAGE`(같은 출처 절대 경로만 — `ApiError.isSafePagePath`, 아니면 `/utils/error-codes.html`)를 링크를 만들 때마다 읽는다(`ApiError.lookupUrl`·`ApiError.pageUrl`).
     내부 도구 `private/OpenAPITesterFull.html`(페이지 전용 블록)·`private/MemberV2.html`·`private/OpenAPIAutoTest.html`(api-error.js 앞 인라인)이 `/app/error-codes-internal`로 설정한다.
-    공개 도구는 설정하지 않는다. 내부 페이지를 다른 역할로 바꾸면 이 도구들의 역할과 맞는지 확인한다(링크를 눌렀을 때 403 방지).
+    공개 도구는 설정하지 않는다(`npm run check:api` 검사 10·13). 내부 페이지를 다른 역할로 바꾸면 이 도구들의 역할과 맞는지 확인한다(링크를 눌렀을 때 403 방지).
 - **최상위 에러가 아닌 것**: 일괄 처리 API의 문서별 실패(OPA2_009 `fail_result`, OPA2_040 `{document_id: 메시지}`, OPA2_030 `success:false`)는 HTTP 200 본문으로 오므로 `errors` 예시에 넣지 않고 응답 필드 설명에 적는다
 - `note` 필드가 하나라도 있으면 해당 테이블에 비고 컬럼 자동 표시
 

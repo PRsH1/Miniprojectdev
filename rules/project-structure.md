@@ -156,7 +156,7 @@ ProjectImprove/
 │   ├── seed-developer-notes.js          # 개발자 노트 시드 (노트가 이미 있으면 중단, --force로만 전체 삭제 후 재삽입)
 │   ├── create-admin.js                  # 최초 admin 계정 생성 / 기존 계정 복구(잠금 해제·refresh 토큰 폐기, --must-change)
 │   ├── check-protected-pages.js         # 보호 페이지 정합성 점검 (npm run check:pages)
-│   ├── check-api-data.js                # OpenAPITester 데이터 ↔ 에러 코드 페이지 2종(공개 35장·내부 58장) 정합성 12개 검사 + Prod 숨김 블록 대조 (npm run check:api, DB 불필요·CI 실행)
+│   ├── check-api-data.js                # OpenAPITester 데이터 ↔ 에러 코드 페이지 2종(공개 35장·내부 58장) 정합성 13개 검사 + Prod/Full 블록 실행 대조·에러 링크 설정 점검 (npm run check:api, DB 불필요·CI 실행)
 │   ├── check-secrets.js                 # 시크릿 누출 점검 (npm run security:secrets)
 │   ├── cleanup-request-history-secrets.js # api_request_history 구버전 인증 값 제거 (기본 dry-run, --apply로 적용)
 │   └── mcp/                             # MCP 서버 실행 스크립트 (brave-search.ps1, tavily.ps1)

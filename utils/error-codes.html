@@ -986,9 +986,6 @@ function initAnchors(){
 function updateStats(){
   document.getElementById('statEndpoints').textContent=document.querySelectorAll('.container .card').length;
   document.getElementById('statCodes').textContent=document.querySelectorAll('.card-body tbody tr:not(.http-group-row)').length;
-  // 내부용 페이지(private/error-codes-internal.html)만 있는 항목: Full 전용(검토) 카드 수
-  var rv=document.getElementById('statReview');
-  if(rv)rv.textContent=document.querySelectorAll('.container .card .rv').length;
 }
 
 // 검색어를 ?q= 로 URL에 반영 (공유 가능한 딥링크)

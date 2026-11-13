@@ -1773,15 +1773,16 @@
     }
 
     // 에러 코드 레퍼런스(?q=) 링크 — 리포트 파일을 따로 열어도 동작하도록 절대 URL 사용.
-    // 페이지는 private/OpenAPIAutoTest.html이 설정한 window.API_ERROR_CODES_PAGE(내부용 /app/error-codes-internal)를 따른다
+    // 페이지는 private/OpenAPIAutoTest.html이 설정한 window.API_ERROR_CODES_PAGE(내부용 /app/error-codes-internal)를 따른다.
+    // 설정값 검증(같은 출처 절대 경로)은 api-error.js의 ApiError.isSafePagePath 한 곳에서만 한다 — 여기서 규칙을 복제하지 않는다.
+    // api-error.js가 없을 때(로드 실패)는 설정값을 쓰지 않고 공개 페이지로 링크한다
     function errorCodeLookupUrl(code) {
         const clean = String(code || "").trim();
         if (!clean || clean === "-") return "";
         if (window.ApiError && typeof window.ApiError.lookupUrl === "function") {
             return window.ApiError.lookupUrl(clean, { absolute: true });
         }
-        const page = /^\/(?![\/\\])/.test(String(window.API_ERROR_CODES_PAGE || "")) ? window.API_ERROR_CODES_PAGE : "/utils/error-codes.html";
-        return `${window.location.origin}${page}?q=${encodeURIComponent(clean)}`;
+        return `${window.location.origin}/utils/error-codes.html?q=${encodeURIComponent(clean)}`;
     }
 
     function errorCodeLinkHtml(code) {
