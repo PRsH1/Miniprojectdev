@@ -97,7 +97,7 @@ ProjectImprove/
 ├── middleware.js                 # Edge Middleware — /private/* 직접 접근 404 + IP 화이트리스트 global 스코프
 ├── test/                         # node:test 단위 테스트 (npm test)
 ├── scripts/                      # DB 마이그레이션(migrate-*.js)·관리(create-admin.js)·점검 스크립트
-│   ├── check-api-data.js         # OpenAPITester 데이터 ↔ 에러 코드 페이지 2개(공개·내부) 정합성 12개 검사 (npm run check:api)
+│   ├── check-api-data.js         # OpenAPITester 데이터 ↔ 에러 코드 페이지 2개(공개·내부) 정합성 13개 검사 (npm run check:api)
 │   ├── check-protected-pages.js  # 보호 페이지 정합성 점검 (npm run check:pages)
 │   └── check-secrets.js          # 추적 파일 시크릿 점검 (npm run security:secrets)
 ├── .github/workflows/ci.yml      # CI (테스트 + 시크릿 점검 + gitleaks)
@@ -628,8 +628,10 @@ DB 마이그레이션 실행은 없다(보호 페이지 등록은 아래 "운영
 - **공개 페이지** `utils/error-codes.html`을 OpenAPITester Prod에 보이는 API와 같게 맞췄다 — 멤버·그룹 API 카드 9장(OPA2_010~013, 017~020, 030)을 삭제해 35장
 - **내부용 페이지** `private/error-codes-internal.html` 신설(`/app/error-codes-internal`, manager 이상) — OpenAPITester Full과 같은 API_LIST 전체 58장(멤버·그룹 + Full 전용 14장, Full 전용 카드에 회색 "검토" 배지). 검색·딥링크·링크 복사는 공개 페이지와 같다. 허브에 "에러 코드 모음 Full" 카드 추가
 - 에러 표시 모듈 `api-error.js`의 [에러 코드 찾아보기 →]가 `window.API_ERROR_CODES_PAGE`를 따른다. OpenAPITester Full·MemberV2·OpenAPI 자동 테스트는 내부용 페이지로 연결되고, 공개 도구는 그대로 공개 페이지
-- `npm run check:api` 12개 검사 — 공개 페이지는 Prod 표시 API, 내부 페이지는 전체 API와 1:1인지 같은 검사로 확인하고, Prod 숨김 블록을 실제로 실행해 공개 범위와 대조한다. 두 페이지에 공통인 카드는 행까지 같아야 한다
+- `npm run check:api` 13개 검사 — 공개 페이지는 Prod 표시 API, 내부 페이지는 전체 API와 1:1인지 같은 검사로 확인하고(검토 배지 `rv`는 내부 페이지의 Full 전용 카드에만), Prod 숨김 블록을 실제로 실행해 공개 범위와 대조한다(Prod 블록은 에러 링크 설정 금지, Full 블록은 `API_LIST`를 전혀 바꾸지 않고 내부 페이지 설정). 두 페이지에 공통인 카드는 행까지 같아야 하고, 같은 (코드, 메시지)의 Enum은 두 페이지 전체에서 하나다. MemberV2·AutoTest는 내부 페이지로 링크하고 공개 도구에는 링크 설정이 없어야 한다
+- `api-error.js`의 에러 코드 페이지 설정값 검증을 `ApiError.isSafePagePath`로 강화 — 공백·제어문자·역슬래시가 있거나 같은 출처가 아니면 공개 페이지로 링크한다(`/<탭>/evil.com` 차단). AutoTest도 같은 판정을 쓴다
 - **운영 반영**: 내부용 페이지는 `protected_pages`에 등록돼야 열린다. 관리자 콘솔 → 보호 페이지 탭에서 path `/app/error-codes-internal`, file_path `private/error-codes-internal.html`, 역할 manager로 등록한다(또는 `node scripts/migrate.js` — 운영 DB에 쓰므로 승인 후). 등록 전에는 허브 카드가 admin에게만 보인다
+  - **main 배포 전에 먼저 등록한다** — 등록하지 않고 배포하면 OpenAPITester Full·MemberV2·OpenAPI 자동 테스트의 [에러 코드 찾아보기 →]·[에러 코드] 링크가 404가 된다
 
 ---
 

@@ -20,8 +20,12 @@
  *
  * 에러 코드 페이지 바꾸기:
  *   window.API_ERROR_CODES_PAGE = '/app/error-codes-internal';  // 내부 도구(OpenAPITester Full·MemberV2·AutoTest)
- *   - 링크를 만들 때마다 읽으므로 이 모듈보다 뒤에 설정해도 된다. 없거나 같은 출처 절대 경로('/'로 시작, '//' 아님)가
- *     아니면 공개 페이지(/utils/error-codes.html)를 쓴다. ApiError.pageUrl()로 현재 값을 얻는다.
+ *   - 링크를 만들 때마다 읽으므로 이 모듈보다 뒤에 설정해도 된다. 없거나 같은 출처 절대 경로가 아니면
+ *     공개 페이지(/utils/error-codes.html)를 쓴다. ApiError.pageUrl()로 현재 값을 얻는다.
+ *   - 같은 출처 절대 경로 판정은 ApiError.isSafePagePath(p) 하나다(OpenAPIAutoTest.js도 이 함수를 쓴다):
+ *     원시 문자열 · '/'로 시작 · 두 번째 문자가 '/'가 아님 · 공백·제어문자(U+0000–U+001F, U+007F, 유니코드 공백)와
+ *     역슬래시 없음 · new URL(p, location.origin).origin === location.origin.
+ *     URL 파서가 탭·개행을 지워 '//evil.com'이 되는 '/<탭>/evil.com' 같은 값을 막는다.
  *
  * 규칙: 모든 외부 문자열은 textContent로만 넣는다(XSS 방지). jQuery 불필요.
  */
@@ -106,10 +110,26 @@
             /Failed to fetch|NetworkError|Load failed|ERR_NAME_NOT_RESOLVED|ERR_CONNECTION/i.test(msg);
     }
 
-    // 페이지가 window.API_ERROR_CODES_PAGE 로 덮어쓸 수 있다 (같은 출처 절대 경로만 — 외부 URL·스킴 거부)
+    // 같은 출처 절대 경로만 true (외부 URL·스킴·프로토콜 상대 '//'·역슬래시 거부).
+    // URL 파서는 탭·개행을 지우므로('/\t/evil.com' → '//evil.com') 공백·제어문자가 있으면 모양과 무관하게 거부한다.
+    // (\s 는 유니코드 공백 — U+00A0·U+2028·U+FEFF 등 — 까지 포함)
+    var UNSAFE_PATH_CHAR_RE = /[\u0000-\u001F\u007F\\\s]/;
+    function isSafePagePath(p) {
+        if (typeof p !== 'string') return false;
+        if (p.charAt(0) !== '/' || p.charAt(1) === '/') return false;
+        if (UNSAFE_PATH_CHAR_RE.test(p)) return false;
+        try {
+            var origin = window.location.origin;
+            return new URL(p, origin).origin === origin;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    // 페이지가 window.API_ERROR_CODES_PAGE 로 덮어쓸 수 있다 (isSafePagePath 를 통과한 같은 출처 절대 경로만)
     function pageUrl() {
         var p = window.API_ERROR_CODES_PAGE;
-        return (typeof p === 'string' && /^\/(?![\/\\])/.test(p)) ? p : DEFAULT_ERROR_CODES_PAGE;
+        return isSafePagePath(p) ? p : DEFAULT_ERROR_CODES_PAGE;
     }
 
     function lookupUrl(code, opts) {
@@ -270,6 +290,7 @@
         fromResponse: fromResponse,
         isNetworkError: isNetworkError,
         lookupUrl: lookupUrl,
-        pageUrl: pageUrl
+        pageUrl: pageUrl,
+        isSafePagePath: isSafePagePath
     };
 })(window, document);
