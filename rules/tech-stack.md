@@ -12,9 +12,10 @@
   `account-flow`, `password-reset-notify`, `bug-report-privacy`, `send-smtp`, `csv-export`, `idp-initiated-login`, `password-reset-timing`).
   컨트롤러 테스트는 `test/helpers/http-mocks.js`로 req/res와 `getDb()`를 목으로 바꿔 DB 없이 실행한다. 프론트엔드 테스트는 `csv-export`(순수 함수)뿐이고 화면 동작은 gstack 브라우저로 확인한다
 - **CI:** GitHub Actions `.github/workflows/ci.yml` (P0b-10) — push·PR마다 Node 24.x로 `npm ci` → `npm test` →
-  `npm run security:secrets`, 별도 job에서 gitleaks 8.21.2(릴리스 체크섬 검증)로 **전체 git 히스토리**를 `.gitleaks.toml` 기준 스캔.
+  `npm run check:api`(테스터 데이터 ↔ 에러 코드 페이지 공개 `utils/error-codes.html`·내부 `private/error-codes-internal.html` 정합성, P1-23) → `npm run security:secrets`, 별도 job에서 gitleaks 8.21.2(릴리스 체크섬 검증)로 **전체 git 히스토리**를 `.gitleaks.toml` 기준 스캔.
   과거에 확인·조치된 항목(교체된 SAML 키 커밋 등)과 `DUMMY-` 테스트 값은 `.gitleaks.toml` `[allowlist]`에 근거 주석과 함께 둔다.
   테스트용 가짜 시크릿은 항상 `DUMMY-` 접두어로 쓴다(두 스캐너 공통 예외)
+- **Node 버전:** `package.json` `engines.node = "24.x"`(P1-24). Vercel 함수 런타임이 이 값을 따르고, CI도 같은 24.x로 돈다
 - **프론트엔드:** 순수 HTML/CSS/JS + jQuery + jsrsasign
 - **DB:** Postgres (Neon) — `@neondatabase/serverless` ^0.10.4, `controllers/_shared/db.js`의 `sql` 태그 사용
 - **인증:** JWT (`jsonwebtoken` ^9.0.2) — 액세스/리프레시 토큰 + httpOnly 쿠키
@@ -52,9 +53,8 @@
 | 라이브러리 | 버전 | URL | 사용 페이지 |
 |---|---|---|---|
 | jQuery | 3.7.1 | `code.jquery.com/jquery-3.7.1.min.js` | DocumentDownload·DocumentInfo·listdocuments·OpenAPITester 2종·MemberV2·Admin·webhook |
-| jQuery (레거시) | 2.1.4 | `code.jquery.com/jquery-2.1.4.min.js` | `Embedding/*_update*` 4종(eformsign 임베딩 라이브러리 짝 — eformsign 호스팅본과 같은 파일. C8 정리 대상) |
 | jsrsasign | 10.5.25 | `cdnjs …/jsrsasign/10.5.25/jsrsasign-all-min.js` | 토큰 발급 도구 전부(Embedding 포함) |
-| Font Awesome | 6.5.1 | `cdnjs …/font-awesome/6.5.1/css/all.min.css` | index·Admin·MemberV2·OpenAPITester 2종·AutoTest·error-codes·saml-guide·일괄 다운로드·삭제 도구 2종 |
+| Font Awesome | 6.5.1 | `cdnjs …/font-awesome/6.5.1/css/all.min.css` | index·Admin·MemberV2·OpenAPITester 2종·AutoTest·error-codes 2종·saml-guide·일괄 다운로드·삭제 도구 2종 |
 | Pusher JS | 8.0.2 | `js.pusher.com/8.0.2/pusher.min.js` | `auth-status.js`·`notification-bell.js`를 쓰는 전 페이지 |
 | Pusher JS | 8.2.0 | `js.pusher.com/8.2.0/pusher.min.js` | `utils/webhook.html`(원래 8.2.0 — 동작 변경 없이 유지) |
 | axios | 1.21.0 | `cdn.jsdelivr.net/npm/axios@1.21.0/dist/axios.min.js` | 일괄 다운로드·DocumentDelete·templateDeletetool |

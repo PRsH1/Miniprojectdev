@@ -22,16 +22,18 @@ DB 기반 인증 시스템 사용을 위해 아래 변수가 Development 대상�
 node scripts/migrate.js                  # 스키마 + protected_pages seed
 node scripts/migrate-ip-whitelist.js     # ip_whitelist / ip_whitelist_scopes
 node scripts/migrate-community.js        # developer_notes / bug_reports
-node scripts/migrate-notifications.js    # notifications
-node scripts/migrate-bug-reports-v2.js   # bug_reports 확장 컬럼 + notifications.target_user_id
+node scripts/migrate-notifications.js    # notifications (target_user_id 포함)
+node scripts/migrate-bug-reports-v2.js   # bug_reports 확장 컬럼 + 사용자 알림 인덱스 (기존 DB는 target_user_id도 추가)
 node scripts/migrate-refresh-rotation.js # refresh_tokens.replaced_by
 node scripts/create-admin.js             # 최초 admin 계정
 ```
 
 - 모든 마이그레이션은 멱등이므로 재실행해도 안전하다.
-- `migrate-bug-reports-v2.js`는 `notifications` 테이블에 `target_user_id`를 추가하므로
-  반드시 `migrate-notifications.js` **다음에** 실행한다. 순서가 바뀌면 빈 DB에서 실패하고,
-  일반 사용자의 `GET /api/notifications`가 500을 반환한다.
+- `migrate-notifications.js`는 새 DB에서 `notifications`를 만들 때 `target_user_id UUID REFERENCES users(id)`까지 만든다(P1-24). `users`를 참조하므로 `migrate.js` 다음에 실행한다.
+- `migrate-bug-reports-v2.js`는 `bug_reports` 답변 컬럼(`cause`·`action_taken`)과 `idx_notifications_target_user_unread` 인덱스를 만들고,
+  `target_user_id`가 없던 기존 DB에는 `ADD COLUMN IF NOT EXISTS`로 그 컬럼을 채운다. `notifications` 테이블을 고치므로
+  반드시 `migrate-notifications.js` **다음에** 실행한다. 순서가 바뀌면 빈 DB에서 실패한다.
+  컬럼이 없는 상태(예전 DB에서 v2를 빠뜨린 경우)면 일반 사용자의 `GET /api/notifications`가 500을 반환한다.
 - `migrate-refresh-rotation.js`를 빠뜨리면 로그인은 되지만 액세스 토큰 만료(1h) 후
   세션 갱신이 전부 막힌다. **코드 배포 전에 실행할 것.**
 - `create-admin.js`는 같은 username이 이미 있으면 **계정 복구**로 동작한다 — 비밀번호 교체, role=admin·활성화,

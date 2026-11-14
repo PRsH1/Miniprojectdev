@@ -100,7 +100,14 @@
     var _isAdmin = false;
     var _bellEl = null;
     var _badgeEl = null;
-    var _fallbackTimer = null;
+    // Pusher를 쓸 수 없을 때의 대체 조회 (P1-24) — 10분 간격, 탭이 숨겨진 동안은 멈춘다(Neon idle suspend 유지)
+    var FALLBACK_INTERVAL_MS = 600000;
+    var _fallbackWanted = false;   // 대체 조회가 필요한 상태(Pusher 미사용·연결 실패)인지
+    var _fallbackTimer = null;     // setInterval 핸들
+    var _fallbackKickoff = null;   // 복귀 후 남은 시간을 기다리는 setTimeout 핸들
+    var _lastFetchAt = 0;          // 마지막 /api/notifications 요청 시각
+    var _authLost = false;         // /api/notifications가 401을 준 뒤에는 다시 조회하지 않는다
+    var _visibilityBound = false;
     var _pusherClient = null;
     var _unreadCount = 0;
 
@@ -161,9 +168,22 @@
 
     // ─── API 함수 ─────────────────────────────────────────────
 
+    // /api/notifications 401 — 로그아웃·세션 만료 상태에서 계속 두드리지 않도록 대체 조회를 멈춘다.
+    // (index.html은 auth-status.js를 쓰지 않으므로 새로고침 안내는 하지 않는다)
+    function _handleAuthLost(r) {
+        if (!r || r.status !== 401) return false;
+        _authLost = true;
+        _stopFallbackPolling();
+        return true;
+    }
+
     function _fetchCount() {
+        _lastFetchAt = Date.now();
         fetch('/api/notifications')
-            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (r) {
+                if (_handleAuthLost(r)) return null;
+                return r.ok ? r.json() : null;
+            })
             .then(function (data) {
                 if (!data) return;
                 _updateBadge(data.unread_count || 0);
@@ -271,8 +291,12 @@
     }
 
     function _openPanel() {
+        _lastFetchAt = Date.now();
         fetch('/api/notifications')
-            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (r) {
+                if (_handleAuthLost(r)) return null;
+                return r.ok ? r.json() : null;
+            })
             .then(function (data) {
                 if (!data) return;
                 _unreadCount = data.unread_count || 0;
@@ -327,18 +351,58 @@
             .catch(function () {});
     }
 
+    function _fallbackTick() {
+        var panel = document.getElementById('_nbPanel');
+        if (!panel || panel.style.display === 'none') _fetchCount();
+    }
+
+    function _clearFallbackTimers() {
+        if (_fallbackKickoff) {
+            clearTimeout(_fallbackKickoff);
+            _fallbackKickoff = null;
+        }
+        if (_fallbackTimer) {
+            clearInterval(_fallbackTimer);
+            _fallbackTimer = null;
+        }
+    }
+
+    // 마지막 조회 시각 기준으로 다음 조회를 잡는다 — 600초가 이미 지났으면 바로 1회 조회
+    function _armFallbackTimer() {
+        _clearFallbackTimers();
+        var wait = FALLBACK_INTERVAL_MS - (Date.now() - _lastFetchAt);
+        if (wait <= 0) {
+            _fallbackTick();
+            _fallbackTimer = setInterval(_fallbackTick, FALLBACK_INTERVAL_MS);
+            return;
+        }
+        _fallbackKickoff = setTimeout(function () {
+            _fallbackKickoff = null;
+            _fallbackTick();
+            _fallbackTimer = setInterval(_fallbackTick, FALLBACK_INTERVAL_MS);
+        }, wait);
+    }
+
     function _startFallbackPolling() {
-        if (_fallbackTimer) return;
-        _fallbackTimer = setInterval(function () {
-            var panel = document.getElementById('_nbPanel');
-            if (!panel || panel.style.display === 'none') _fetchCount();
-        }, 300000);
+        if (_authLost) return;
+        _fallbackWanted = true;
+        if (document.hidden || _fallbackTimer || _fallbackKickoff) return;
+        _armFallbackTimer();
     }
 
     function _stopFallbackPolling() {
-        if (!_fallbackTimer) return;
-        clearInterval(_fallbackTimer);
-        _fallbackTimer = null;
+        _fallbackWanted = false;
+        _clearFallbackTimers();
+    }
+
+    // 탭이 숨겨지면 타이머만 멈추고(대체 조회 필요 상태는 유지), 다시 보이면 재개한다
+    function _onVisibilityChange() {
+        if (document.hidden) {
+            _clearFallbackTimers();
+            return;
+        }
+        if (!_fallbackWanted || _authLost || _fallbackTimer || _fallbackKickoff) return;
+        _armFallbackTimer();
     }
 
     function _setupRealtime(meData) {
@@ -430,6 +494,11 @@
         _fetchCount();
 
         _setupRealtime(meData);
+
+        if (!_visibilityBound) {
+            _visibilityBound = true;
+            document.addEventListener('visibilitychange', _onVisibilityChange);
+        }
 
         // 바깥 클릭 시 패널 닫기
         document.addEventListener('click', function (e) {

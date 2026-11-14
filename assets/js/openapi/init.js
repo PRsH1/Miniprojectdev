@@ -15,6 +15,11 @@ $(document).on('click', '.tab-btn', function() {
 $(document).ready(function() {
     updateBaseUrlBadge();
 
+    // 헤더 [에러 코드] 버튼 — Full은 페이지 전용 블록의 window.API_ERROR_CODES_PAGE(내부용 페이지)를 따른다
+    if (window.ApiError && typeof window.ApiError.pageUrl === 'function') {
+        $('#errorCodesLink').attr('href', window.ApiError.pageUrl());
+    }
+
     // Auth panel toggle — 토큰이 없으면 처음부터 펼쳐 둔다 (P1-08)
     setAuthPanelOpen(!state.accessToken);
     $('#authPanelToggle').on('click', function() {

@@ -1005,6 +1005,26 @@ const API_LIST = [
                     body: {"code":"4000001","ErrorMessage":"Either one of the Email or SMS options must be selected."}, status: 400
                 },
                 {
+                    title: "참조자(referers) 형식 오류 (4000190)",
+                    body: {"code":"4000190","ErrorMessage":"The input value for the CC is in an invalid JSON format."}, status: 400
+                },
+                {
+                    title: "문서 제목 변경 불가 템플릿 (4000010)",
+                    body: {"code":"4000010","ErrorMessage":"This document's title cannot be changed."}, status: 400
+                },
+                {
+                    title: "파일 IO 오류 (5000038)",
+                    body: {"code":"5000038","ErrorMessage":"File IO error."}, status: 500
+                },
+                {
+                    title: "문서 생성 실패 (5000004)",
+                    body: {"code":"5000004","ErrorMessage":"Failed to create the document."}
+                },
+                {
+                    title: "선불 문서 소진 (4000201)",
+                    body: {"code":"4000201","ErrorMessage":"You have exhausted all purchased documents"}, status: 400
+                },
+                {
                     title: "유효하지 않은 API Key (Authorization 형식 오류 포함) (4000003)",
                     body: {"code":"4000003","ErrorMessage":"The apiKey does not exist."}, status: 400
                 },
@@ -1013,12 +1033,44 @@ const API_LIST = [
                     body: {"code":"4030039","ErrorMessage":"The apiKey encoded has an error."}, status: 400
                 },
                 {
+                    title: "지원하지 않는 API Key 유형 (4030005)",
+                    body: {"code":"4030005","ErrorMessage":"This API is not supported."}, status: 400
+                },
+                {
                     title: "비활성화된 API Key (4030001)",
                     body: {"code":"4030001","ErrorMessage":"The apiKey is not active."}, status: 403
                 },
                 {
+                    title: "존재하지 않는 회사 (4000005)",
+                    body: {"code":"4000005","ErrorMessage":"Invalid company."}, status: 400
+                },
+                {
                     title: "Open API 사용 권한 없음 (4030034)",
                     body: {"code":"4030034","ErrorMessage":"You don't have Open API permission."}, status: 403
+                },
+                {
+                    title: "삭제된 회사 (4000076)",
+                    body: {"code":"4000076","ErrorMessage":"The company has already been deleted."}, status: 403
+                },
+                {
+                    title: "이용 정지된 회사 (4030052)",
+                    body: {"code":"4030052","ErrorMessage":"The company has been suspended."}, status: 403
+                },
+                {
+                    title: "개인 플랜은 Open API 미지원 (4030025)",
+                    body: {"code":"4030025","ErrorMessage":"It is not available in the personal plan."}, status: 403
+                },
+                {
+                    title: "연체로 인해 Open API 사용 불가 (4030026)",
+                    body: {"code":"4030026","ErrorMessage":"Cannot be used due to overdue charges."}, status: 403
+                },
+                {
+                    title: "내부 서버 오류 (5000001)",
+                    body: {"code":"5000001","ErrorMessage":"Internal server error."}
+                },
+                {
+                    title: "우편번호 필드 형식 오류 (4000338)",
+                    body: {"code":"4000338","ErrorMessage":"Invalid zip code format."}, status: 400
                 }
             ]
         }

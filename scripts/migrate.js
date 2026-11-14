@@ -170,6 +170,7 @@ async function migrate() {
     { path: '/app/idptestauth',          name: 'IdP 테스트',            required_role: 'admin',   file_path: 'private/idp-test.html' },
     { path: '/app/admin',                name: '관리자',                 required_role: 'admin',   file_path: 'private/Admin.html' },
     { path: '/app/MassDocumentDowmload', name: '문서 일괄 다운로드',     required_role: 'manager', file_path: 'private/MassDocumentDowmload.html' },
+    { path: '/app/error-codes-internal', name: '에러 코드 모음 (내부용)', required_role: 'manager', file_path: 'private/error-codes-internal.html' },
   ];
 
   for (const p of pages) {

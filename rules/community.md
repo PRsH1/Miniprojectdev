@@ -15,7 +15,8 @@ bug_reports:     id, title, description, reporter_user_id(UUID FK→users), repo
 ```bash
 POSTGRES_URL="..." node scripts/migrate-community.js    # 최초 1회 (developer_notes, bug_reports)
 node scripts/migrate-bug-reports-v2.js                  # bug_reports.cause/action_taken + notifications.target_user_id 추가
-                                                        # (migrate-notifications.js 이후에 실행)
+                                                        # (target_user_id는 기존 DB용 — 새 DB는 migrate-notifications.js가 생성.
+                                                        #  migrate-notifications.js 이후에 실행)
 ```
 
 ---

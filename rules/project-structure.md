@@ -6,10 +6,10 @@ ProjectImprove/
 ├── favicon.svg                 # 공통 파비콘 (플러그 아이콘, #1a73e8)
 ├── middleware.js               # Vercel Edge Middleware — /private/* 직접 접근 404 차단 + IP 화이트리스트 global scope 체크
 ├── vercel.json                 # Vercel 배포 라우팅 설정
-├── package.json
+├── package.json                # scripts(test·check:pages·check:api·security:secrets) + engines node 24.x
 ├── README.md / AGENTS.md / TODOS.md   # 개요 · 에이전트 진입 지침 · 후속 작업 목록
 ├── .gitleaks.toml              # gitleaks 시크릿 스캔 규칙 (+ 확인된 과거 커밋·DUMMY 값 allowlist)
-├── .github/workflows/ci.yml    # CI: push·PR마다 npm ci → npm test → security:secrets + gitleaks 전체 히스토리
+├── .github/workflows/ci.yml    # CI: push·PR마다 npm ci → npm test → check:api → security:secrets + gitleaks 전체 히스토리
 ├── rules/                      # CLAUDE.md가 @참조하는 영역별 규칙 문서
 ├── test/                       # node:test 단위 테스트 23개 (ip-whitelist, refresh-rotation, router-errors,
 │                               #   require-role, page-file, saml-response, saml-xss, safe-next,
@@ -103,16 +103,22 @@ ProjectImprove/
 │   └── Admin.html / OpenAPIAutoTest.html / MemberV2.html
 │       / templatecopy.html / idp-test.html / OpenAPITesterFull.html
 │       / MassDocumentDowmload.html
+│       / error-codes-internal.html  # 에러 코드 모음 내부용(/app/error-codes-internal, manager) — API_LIST 전체 58장
+│                                    #   (멤버·그룹 + Full 전용 "검토" 14장). 외부 공유 금지
 │
 ├── community/                  # 커뮤니티 페이지 (utils/*.html 은 리디렉트 스텁)
 │   └── bug-report.html / developer-notes.html
 │
-├── API(JS,HTML)/               # 개별 도구 HTML (문서 발송/조회/다운로드 등) + js/ css/
+├── API(JS,HTML)/               # 개별 도구 HTML — DocumentSendImprove·DocumentInfo·listdocuments·DocumentDownload
+│   │                           #   (레거시 멤버 관리·고정 도메인 발송 페이지와 js/·css/ 폴더는 2026-11 삭제, P1-24)
 │   └── OpenAPITesterProd.html  # Postman 스타일 API 테스터 — 배포 버전 (멤버·그룹 API 비공개, public)
 │
-├── Embedding/                  # 문서/템플릿 임베딩 도구 (HTML)
+├── Embedding/                  # 문서/템플릿 임베딩 도구 — embedding_doc_Integration·embedding_template_intergration 2종
+│                               #   (레거시 문서 수정·템플릿 생성 임베딩 4종은 2026-11 삭제, P1-24)
 ├── utils/                      # 공개 유틸리티 도구 (webhook, smtp, CORS, base64 등)
-│   └── error-codes.html        # OPA2 에러 코드 모음 (검색 + ?q= / #code-<코드> 딥링크 — OPA2_021·OPA2_061 카드는 아직 없음, SSO 구성원 조회(customsso_members) 카드는 비공개 API라 2026-11-04 제거)
+│   └── error-codes.html        # OPA2 에러 코드 모음 공개판 — 카드 35장(OpenAPITester Prod에 보이는 API와 1:1 — 멤버·그룹·fullOnly 제외),
+│                               #   검색 + ?q= / #code-<코드> 딥링크. 전체판은 private/error-codes-internal.html.
+│                               #   테스터 데이터와의 정합성은 npm run check:api로 점검. SSO 구성원 조회(customsso_members)는 두 페이지 모두 넣지 않는다
 │
 ├── design-preview-member.html  # MemberV2 디자인 시스템 확인용 (프로덕션 미사용)
 ├── img/                        # 정적 이미지 (sso_flow.png 등)
@@ -143,20 +149,20 @@ ProjectImprove/
 │   ├── migrate.js                       # DB 스키마 초기화 + 시드 (최초 1회)
 │   ├── migrate-ip-whitelist.js          # IP 화이트리스트 테이블 마이그레이션 (최초 1회)
 │   ├── migrate-community.js             # developer_notes / bug_reports 테이블 (최초 1회)
-│   ├── migrate-bug-reports-v2.js        # bug_reports cause/action_taken + notifications.target_user_id 추가 (migrate-notifications 이후 실행)
+│   ├── migrate-bug-reports-v2.js        # bug_reports cause/action_taken + notifications.target_user_id 추가(기존 DB용, IF NOT EXISTS) (migrate-notifications 이후 실행)
 │   ├── migrate-refresh-rotation.js      # refresh_tokens.replaced_by 컬럼 추가 (로테이션 경합 처리, 코드 배포 전 실행)
 │   ├── migrate-credentials-encrypt.js   # 크리덴셜 secret_key 일괄 재암호화
-│   ├── migrate-notifications.js         # notifications 테이블 마이그레이션
+│   ├── migrate-notifications.js         # notifications 테이블 마이그레이션 (새 DB는 target_user_id까지 생성)
 │   ├── seed-developer-notes.js          # 개발자 노트 시드 (노트가 이미 있으면 중단, --force로만 전체 삭제 후 재삽입)
 │   ├── create-admin.js                  # 최초 admin 계정 생성 / 기존 계정 복구(잠금 해제·refresh 토큰 폐기, --must-change)
 │   ├── check-protected-pages.js         # 보호 페이지 정합성 점검 (npm run check:pages)
+│   ├── check-api-data.js                # OpenAPITester 데이터 ↔ 에러 코드 페이지 2종(공개 35장·내부 58장) 정합성 13개 검사 + Prod/Full 블록 실행 대조·에러 링크 설정 점검 (npm run check:api, DB 불필요·CI 실행)
 │   ├── check-secrets.js                 # 시크릿 누출 점검 (npm run security:secrets)
 │   ├── cleanup-request-history-secrets.js # api_request_history 구버전 인증 값 제거 (기본 dry-run, --apply로 적용)
 │   └── mcp/                             # MCP 서버 실행 스크립트 (brave-search.ps1, tavily.ps1)
 │
 └── docs/                       # .gitignore로 대부분 제외 — 아래 4개만 추적됨
-                                # (.gitignore 예외는 error-response-format·codex-mcp-migration 2개뿐,
-                                #  나머지 2개는 강제 추가로 추적 중. docs/plans/ 등 신규 파일은 커밋되지 않음)
+                                # (.gitignore 화이트리스트 `!/docs/<파일>` 4개. docs/plans/ 등 신규 파일은 커밋되지 않음)
     ├── openapi-response-status.md   # 예시 응답 현황
     ├── error-response-format.md     # 에러 응답 포맷 상세
     ├── codex-mcp-migration.md       # Codex MCP 마이그레이션 기록

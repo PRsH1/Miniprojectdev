@@ -40,8 +40,8 @@ Vercel 서버리스 환경에서 동작하며, 브라우저 기반 HTML 도구 +
     하위 호환 읽기를 넣고, 확인 기간에는 테스트 데이터만 쓰도록 안내한다(예: 크리덴셜 `v1:` 형식).
 - **push가 곧 배포다.** `main` push = Production 배포, 그 외 브랜치 push = Preview 배포. 둘 다 사용자 확인 후 진행한다.
   main은 `origin`과 `dev` 두 원격에 함께 push한다.
-- **검증 기본값**: `npm test`(DB 없이 목으로 실행). push하면 GitHub Actions CI가 `npm test` → `npm run security:secrets` →
-  gitleaks 전체 히스토리를 돈다. 테스트용 가짜 시크릿은 항상 `DUMMY-` 접두어를 쓴다.
+- **검증 기본값**: `npm test`(DB 없이 목으로 실행). OpenAPITester 데이터·Prod/Full HTML·에러 코드 페이지(`utils/error-codes.html`, `private/error-codes-internal.html`)를 고쳤으면 `npm run check:api`도 실행한다.
+  push하면 GitHub Actions CI가 `npm test` → `npm run check:api` → `npm run security:secrets` → gitleaks 전체 히스토리를 돈다. 테스트용 가짜 시크릿은 항상 `DUMMY-` 접두어를 쓴다.
 - **비밀값**: 환경변수·토큰·비밀번호·개인키 값은 출력하거나 커밋하지 않는다. 필요한 것은 길이·형식·존재 여부만 확인한다.
 - **대시보드 작업**(환경변수 삭제, WAF/Firewall 규칙)은 코드 배포와 별개이며 사용자가 하거나 명시적으로 승인한 경우에만 한다.
 
