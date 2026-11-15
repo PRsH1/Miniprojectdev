@@ -136,7 +136,7 @@
     // 404는 포함하지 않음 — 정리 step에서 404는 실제 오류이므로 FAIL로 떨어진다.
     const CHECK_STATUS_CODES = [400, 401, 402, 403];
 
-    // ── 테스트 멤버 비밀번호 (OPA 011 멤버 추가 · OPA 030 멤버 일괄 추가) ─────────────
+    // ── 테스트 멤버 비밀번호 (createMember — OPA 011~013·018~020, bulkCreateMembers — OPA 030) ─────────────
     // 고정 문자열 대신 요청마다 브라우저에서 crypto.getRandomValues로 만든다. 뒤 step에서 다시 쓰지 않으므로 보관하지 않는다.
     // eformsign 기본 정책(SaaS 소스 PasswordStrictValidator, 멤버 추가 시 isResetPasswordFormat): 10~128자, 공백 불가,
     // 영문·숫자·특수문자 중 2종 이상, 같은 문자 4번 연속 불가, 연속 숫자 4자리(0123…) 불가, 키보드 같은 줄 연속 4자(qwer·asdf 등) 불가.

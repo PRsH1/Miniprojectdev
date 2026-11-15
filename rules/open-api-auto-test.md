@@ -159,7 +159,7 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 - **OPA 006 첨부 다운로드**: 사용자가 완료 문서 ID를 직접 입력하지 않는다. `attachTemplateId`와 `attachFieldId`로 첨부 파일 포함 문서를 생성한 뒤 `downloadAttachAuto`가 생성 문서의 첨부 다운로드를 검증한다.
 - **OPA 016/021 정리 step 없음**: 일괄 작성 시나리오(`tryMassCreateAuto`, `tryMassCreateMultiAuto`)는 `cancelDocs`/`deleteDocs` 없이 작성 검증만 수행한다.
 - **OPA 026/028 도장 이미지 자동 생성**: `createStamp`는 사용자 입력 없이 `makeStampImage()`가 canvas로 즉석 생성한 PNG를 `company_stamp.stamp.path`로 전송한다. 도장 이름은 `OPA자동테스트_{Date.now()}`로 유니크하게 생성해 `4000174`(중복 이름)을 회피한다. 두 시나리오 모두 파이프라인은 `createStamp` → `deleteStamp` 동일이며 `keys`는 `["auth.mode"]`뿐(설정 모달 입력 불필요). 생성된 도장 ID는 `state.shared.companyStampId`에 저장되어 `deleteStamp`가 정리한다.
-- **테스트 멤버 비밀번호 (OPA 011 `createMember`·OPA 030 `bulkCreateMembers`)**: 고정 문자열을 쓰지 않는다. 요청마다 `generateMemberPassword()`가
+- **테스트 멤버 비밀번호 (`createMember` — OPA 011~013·018~020, `bulkCreateMembers` — OPA 030)**: 고정 문자열을 쓰지 않는다. 요청마다 `generateMemberPassword()`가
   `crypto.getRandomValues`로 16자(대문자·소문자·숫자·특수문자 각 1자 이상)를 만들고, eformsign 기본 정책(SaaS 소스 `PasswordStrictValidator` —
   10~128자, 영문·숫자·특수문자 중 2종 이상, 같은 문자 4연속·연속 숫자 4자리·키보드 같은 줄 4연속 금지)에 걸리면 다시 뽑는다.
   뒤 step에서 그 비밀번호로 로그인하지 않으므로 보관하지 않는다. `request({ body, displayBody })`의 `displayBody`에 `MEMBER_PASSWORD_MASK`로 가린 본문을 넘겨
