@@ -136,6 +136,50 @@
     // 404는 포함하지 않음 — 정리 step에서 404는 실제 오류이므로 FAIL로 떨어진다.
     const CHECK_STATUS_CODES = [400, 401, 402, 403];
 
+    // ── 테스트 멤버 비밀번호 (OPA 011 멤버 추가 · OPA 030 멤버 일괄 추가) ─────────────
+    // 고정 문자열 대신 요청마다 브라우저에서 crypto.getRandomValues로 만든다. 뒤 step에서 다시 쓰지 않으므로 보관하지 않는다.
+    // eformsign 기본 정책(SaaS 소스 PasswordStrictValidator, 멤버 추가 시 isResetPasswordFormat): 10~128자, 공백 불가,
+    // 영문·숫자·특수문자 중 2종 이상, 같은 문자 4번 연속 불가, 연속 숫자 4자리(0123…) 불가, 키보드 같은 줄 연속 4자(qwer·asdf 등) 불가.
+    // 서버 설정으로 형식이 더 엄격할 수 있어 대문자·소문자·숫자·특수문자를 모두 넣고 16자로 만든다.
+    // 결과 표·리포트·이력·cURL에는 실제 값 대신 MEMBER_PASSWORD_MASK를 기록한다(request의 displayBody).
+    const MEMBER_PASSWORD_LENGTH = 16;
+    const MEMBER_PASSWORD_SETS = ["ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnpqrstuvwxyz", "23456789", "!@#$%^*-_+="];
+    const MEMBER_PASSWORD_RUNS = ["0123456789", "qwertyuiop", "asdfghjkl", "zxcvbnm"];
+    const MEMBER_PASSWORD_MASK = "<자동 생성 비밀번호 — 표시하지 않음>";
+
+    function randomIndex(n) {
+        // 나머지 편향 없이 0..n-1 (범위 밖 값은 버리고 다시 뽑는다)
+        const limit = Math.floor(0x100000000 / n) * n;
+        const buf = new Uint32Array(1);
+        do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+        return buf[0] % n;
+    }
+
+    function memberPasswordAcceptable(pw) {
+        if (/(.)\1{3}/.test(pw)) return false;
+        const lower = pw.toLowerCase();
+        for (let i = 0; i + 4 <= lower.length; i++) {
+            const part = lower.slice(i, i + 4);
+            if (MEMBER_PASSWORD_RUNS.some((run) => run.includes(part))) return false;
+        }
+        return true;
+    }
+
+    function generateMemberPassword() {
+        const all = MEMBER_PASSWORD_SETS.join("");
+        for (let attempt = 0; attempt < 100; attempt++) {
+            const chars = MEMBER_PASSWORD_SETS.map((set) => set[randomIndex(set.length)]);
+            while (chars.length < MEMBER_PASSWORD_LENGTH) chars.push(all[randomIndex(all.length)]);
+            for (let i = chars.length - 1; i > 0; i--) {
+                const j = randomIndex(i + 1);
+                [chars[i], chars[j]] = [chars[j], chars[i]];
+            }
+            const pw = chars.join("");
+            if (memberPasswordAcceptable(pw)) return pw;
+        }
+        throw new Error("테스트 멤버 비밀번호를 만들지 못했습니다. 다시 실행해 주세요.");
+    }
+
     // 실행 확인 모달(P1-11)에 표시할 "계정에 변경을 남기는" step 분류.
     // 키에 없는 step은 조회 전용으로 본다.
     const WRITE_STEP_KINDS = {
@@ -483,7 +527,10 @@
         if (id === "listDocsBasic") return request({ id, method: "POST", path: "/v2.0/api/list_document", body: listBody(), ok: [200], after: (json) => { const docs = Array.isArray(json.documents) ? json.documents : []; state.shared.completedDocIds = docs.filter((doc) => doc.current_status && doc.current_status.status_type === "003").slice(0, 5).map((doc) => doc.id); } });
         if (id === "listDocsDetail") return request({ id, method: "POST", path: "/v2.0/api/list_document?include_fields=true&include_histories=true&include_previous_status=true&include_next_status=true&include_external_token=true&include_detail_template_info=true", body: listBody(), ok: [200] });
         if (id === "listMembers") return request({ id, method: "GET", path: "/v2.0/api/members", ok: [200] });
-        if (id === "createMember") return request({ id, method: "POST", path: "/v2.0/api/members?mailOption=false", body: { account: { id: must(d.memberId, "memberId가 비어 있습니다."), password: "forcs1700!@", first_name: "자동", last_name: "테스트", external_sso_info: { uuid: "123", account_id: "test" } } }, ok: [200], check: CHECK_STATUS_CODES });
+        if (id === "createMember") {
+            const account = { id: must(d.memberId, "memberId가 비어 있습니다."), password: generateMemberPassword(), first_name: "자동", last_name: "테스트", external_sso_info: { uuid: "123", account_id: "test" } };
+            return request({ id, method: "POST", path: "/v2.0/api/members?mailOption=false", body: { account }, displayBody: { account: { ...account, password: MEMBER_PASSWORD_MASK } }, ok: [200], check: CHECK_STATUS_CODES });
+        }
         if (id === "updateMember") return request({ id, method: "PATCH", path: `/v2.0/api/members/${encodeURIComponent(must(d.memberId, "memberId가 비어 있습니다."))}`, body: { account: { id: d.memberId, name: "자동수정 테스트", enabled: true, contact: { number: "010-1111-1111", tel: "02-1234-5678" }, department: "테스트팀", position: "자동화", role: ["template_manager"] } }, ok: [200] });
         if (id === "deleteMember") return request({ id, method: "DELETE", path: `/v2.0/api/members/${encodeURIComponent(must(d.memberId, "memberId가 비어 있습니다."))}`, ok: [200], check: CHECK_STATUS_CODES });
         if (id === "rerequestDoc") return request({ id, method: "POST", path: `/v2.0/api/documents/${must(state.shared.lastCreatedId, "재요청 대상 문서가 없습니다.")}/re_request_outsider`, body: rerequestBody(), ok: [200] });
@@ -549,7 +596,7 @@
         if (id === "stampDetail") return request({ id, method: "GET", path: `/v2.0/api/company_stamp/${must(state.shared.companyStampId, "조회할 회사 도장 ID가 없습니다.")}`, ok: [200] });
         if (id === "createStamp") return request({ id, method: "POST", path: "/v2.0/api/company_stamp", body: { company_stamp: { name: `OPA자동테스트_${Date.now()}`, description: "Open API 자동 테스트 도장", stamp: { path: makeStampImage() }, auth: { groups: [], members: [], allow_all_members: true } } }, ok: [200], after: (json) => { state.shared.companyStampId = (json && json.company_stamp && json.company_stamp.id) || null; } });
         if (id === "deleteStamp") return request({ id, method: "DELETE", path: `/v2.0/api/company_stamp/${encodeURIComponent(must(state.shared.companyStampId, "삭제할 회사 도장 ID가 없습니다."))}`, ok: [200] });
-        if (id === "bulkCreateMembers") return request({ id, method: "POST", path: "/v2.0/api/list_members", body: bulkBody(), ok: [200], validate: (json) => { const members = Array.isArray(json.members) ? json.members : []; const failed = members.filter((m) => m.success === false); return failed.length ? `${failed.length}/${members.length}개 멤버 추가 실패 (success:false): ${failed.map((m) => m.id || m.name || "(미상)").join(", ")}` : null; } });
+        if (id === "bulkCreateMembers") { const bulk = bulkBody(); return request({ id, method: "POST", path: "/v2.0/api/list_members", body: bulk, displayBody: bulk.map((m) => ({ ...m, password: MEMBER_PASSWORD_MASK })), ok: [200], validate: (json) => { const members = Array.isArray(json.members) ? json.members : []; const failed = members.filter((m) => m.success === false); return failed.length ? `${failed.length}/${members.length}개 멤버 추가 실패 (success:false): ${failed.map((m) => m.id || m.name || "(미상)").join(", ")}` : null; } }); }
         if (id === "tryRefreshCompleteTokenAuto") {
             const candidates = state.shared.completedDocIds || [];
             if (!candidates.length) throw new Error("시도할 완료 문서가 없습니다. listDocsBasic 단계가 먼저 실행되어야 합니다.");
@@ -689,7 +736,9 @@
         TOKEN_BADGE_IDS.forEach((sel) => window.TokenBadge.clear(sel));
     }
 
-    async function request({ id, method, path, body, ok, check, after, validate, headers, useToken = true }) {
+    async function request({ id, method, path, body, displayBody, ok, check, after, validate, headers, useToken = true }) {
+        // 결과·리포트·이력·cURL에 남길 본문 — 비밀번호 같은 값은 호출하는 쪽이 가린 displayBody를 넘긴다
+        const recordedBody = displayBody !== undefined ? displayBody : body;
         const requestHeaders = {
             "Content-Type": "application/json",
             ...(useToken ? { Authorization: `Bearer ${await token()}` } : {}),
@@ -730,7 +779,7 @@
             }
         } catch (error) {
             if (timedOut) {
-                return { statusType: "FAIL", responseStatus: "TIMEOUT", method, label: stepMeta(id).label, url, duration: `${Math.round(performance.now() - start)}ms`, requestBody: body, responseText: `요청이 ${REQUEST_TIMEOUT_MS / 1000}초 안에 끝나지 않아 취소했습니다. 네트워크 상태나 대상 서버를 확인해 주세요.` };
+                return { statusType: "FAIL", responseStatus: "TIMEOUT", method, label: stepMeta(id).label, url, duration: `${Math.round(performance.now() - start)}ms`, requestBody: recordedBody, responseText: `요청이 ${REQUEST_TIMEOUT_MS / 1000}초 안에 끝나지 않아 취소했습니다. 네트워크 상태나 대상 서버를 확인해 주세요.` };
             }
             if (controller.signal.aborted) throw stopError(true);
             throw error;
@@ -753,7 +802,7 @@
         }
         if (statusType === "PASS" && typeof after === "function") after(json || {});
         const responseText = validationNote ? `[검증 실패] ${validationNote}\n\n${text}` : text;
-        return { statusType, responseStatus: response.status, method, label: stepMeta(id).label, url, duration, requestBody: body, responseText };
+        return { statusType, responseStatus: response.status, method, label: stepMeta(id).label, url, duration, requestBody: recordedBody, responseText };
     }
 
     // ── 결과 표 (P1-12: 필터·모두 펼치기·요청/응답/cURL 복사) ─────────────────
@@ -1108,8 +1157,8 @@
         const id = must(data().memberId, "memberId가 비어 있습니다.");
         state.shared.bulkMemberIds = [`bulk1_${id}`, `bulk2_${id}`];
         return [
-            { id: state.shared.bulkMemberIds[0], password: "forcs1321!@", name: "Bulk One", contact: { tel: "0233334444", number: "01022223333", country_number: "+82" }, department: "QA", position: "Manager", role: ["template_manager"] },
-            { id: state.shared.bulkMemberIds[1], password: "forcs1321!@", name: "Bulk Two", contact: { tel: "0312223333", number: "01023456789", country_number: "+82" }, department: "QA", position: "Engineer", role: ["template_manager"] }
+            { id: state.shared.bulkMemberIds[0], password: generateMemberPassword(), name: "Bulk One", contact: { tel: "0233334444", number: "01022223333", country_number: "+82" }, department: "QA", position: "Manager", role: ["template_manager"] },
+            { id: state.shared.bulkMemberIds[1], password: generateMemberPassword(), name: "Bulk Two", contact: { tel: "0312223333", number: "01023456789", country_number: "+82" }, department: "QA", position: "Engineer", role: ["template_manager"] }
         ];
     }
 
