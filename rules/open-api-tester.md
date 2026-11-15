@@ -176,6 +176,8 @@ const API_SPECS = {
 
   - 두 페이지는 같은 CSS·스크립트(검색 `?q=`·딥링크 `#code-<코드>`·[링크 복사]·접기)와 같은 카드 마크업을 쓴다. 내부 페이지는 상단 "내부용 — 외부 공유 금지" 배너,
     Full 전용 카드 헤더에 회색 `<span class="rv">검토</span>` 배지, "검토 중(Full 전용)" 통계를 더한다. 공통 카드는 두 파일에 똑같이 고친다(검사 12).
+  - 좁은 화면(760px 이하, F-6): 카드 헤더가 줄바꿈된다 — 첫 줄 화살표·메서드·(검토)·제목(여러 줄)·건수, 둘째 줄 엔드포인트. 배지(`.arrow`·`.mb`·`.cnt`, 내부 `.rv`)는 `flex-shrink:0`.
+    CSS만 바꾸고 카드 마크업 순서는 그대로다(`npm run check:api`가 마크업을 파싱). 두 파일의 이 CSS 블록은 같게 유지하고, 공개 페이지에는 `.rv` 규칙을 넣지 않는다.
   - 카드 순서는 번호 오름차순. 새 API를 추가하면 내부 페이지에는 항상, 공개 페이지에는 Prod에 보일 때만 카드를 넣는다. API를 `fullOnly`에서 공개로 바꾸면 내부 카드의 `검토` 배지를 빼고 같은 카드를 공개 페이지에도 넣는다.
   - SSO 구성원 조회(`customsso_members`)는 내부 페이지에도 넣지 않는다.
   - 에러 링크: `assets/js/api-error.js`는 `window.API_ERROR_CODES_PAGE`(같은 출처 절대 경로만 — `ApiError.isSafePagePath`, 아니면 `/utils/error-codes.html`)를 링크를 만들 때마다 읽는다(`ApiError.lookupUrl`·`ApiError.pageUrl`).
