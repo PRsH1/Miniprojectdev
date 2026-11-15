@@ -1745,7 +1745,8 @@ window.CREDENTIAL_CONFIG = {
 <!-- CDN -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.25/jsrsasign-all-min.js" integrity="sha384-CYM1EjcB6PBH9xEVtC9Mbegj0ZIphHj14fUBspgRcPBqZeGsjqyu242Sh9P4BNPa" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw" crossorigin="anonymous"></script>
+<!-- SheetJS 0.20.3: CVE-2023-30533(0.19.3 수정)·CVE-2024-22363(0.20.2 수정) 대응. 수정 버전은 SheetJS CDN에만 있다(cdnjs는 0.18.5까지) -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
 
 <!-- 모듈: 로드 순서 중요 (공유 모듈 → member/api.js → ui.js → init.js → credential-panel.js) -->
 <!-- 에러 코드 링크는 내부용 페이지(멤버·그룹·Full 전용 포함, manager 이상) — api-error.js -->

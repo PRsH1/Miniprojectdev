@@ -619,6 +619,16 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 
 ---
 
+## 2026-11-15 Update
+
+### 후속 정리 (보안·화면·문서)
+
+DB 마이그레이션·운영 반영 작업은 없다.
+
+- **SheetJS 0.18.5 → 0.20.3** (MemberV2 엑셀 업로드·템플릿·결과 다운로드) — CVE-2023-30533(조작된 파일 읽기 시 프로토타입 오염, 0.19.3 수정)·CVE-2024-22363(ReDoS, 0.20.2 수정) 대응. 수정 버전은 cdnjs·npm에 없어 SheetJS 공식 CDN(`cdn.sheetjs.com`)에서 정확한 버전 + SRI로 불러온다. 쓰는 API(`read`·`write`·`utils.book_new`·`aoa_to_sheet`·`book_append_sheet`·`sheet_to_json`)는 두 버전에서 결과가 같았다(xlsx·xls 쓰기→읽기 왕복 비교)
+
+---
+
 ## 2026-11-14 Update
 
 ### 에러 코드 페이지 공개·내부 분리
@@ -720,7 +730,7 @@ DB 마이그레이션은 없다(새 알림 타입 `password_reset_request`만 �
 
 #### 운영 메모
 - IP 단위 rate limit(WAF)은 계속 보류 — 승인 대기 로그인 시도 제한도 WAF로 보완할 대상
-- 남은 375px 넘침(DocumentDownload·DocumentInfo·AutoTest 헤더·레거시 임베딩)과 SheetJS 0.18.5 CVE는 후속
+- 남은 375px 넘침(DocumentDownload·DocumentInfo·AutoTest 헤더·레거시 임베딩)과 SheetJS 0.18.5 CVE는 후속 (SheetJS는 2026-11-15에 0.20.3으로 올려 해결 — 위 "2026-11-15 Update")
 
 ---
 

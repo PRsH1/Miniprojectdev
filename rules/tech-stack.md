@@ -58,7 +58,7 @@
 | Pusher JS | 8.0.2 | `js.pusher.com/8.0.2/pusher.min.js` | `auth-status.js`·`notification-bell.js`를 쓰는 전 페이지 |
 | Pusher JS | 8.2.0 | `js.pusher.com/8.2.0/pusher.min.js` | `utils/webhook.html`(원래 8.2.0 — 동작 변경 없이 유지) |
 | axios | 1.21.0 | `cdn.jsdelivr.net/npm/axios@1.21.0/dist/axios.min.js` | 일괄 다운로드·DocumentDelete·templateDeletetool |
-| SheetJS xlsx | 0.18.5 | `cdnjs …/xlsx/0.18.5/xlsx.full.min.js` | MemberV2 |
+| SheetJS xlsx | 0.20.3 | `cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js` | MemberV2 — **cdnjs에는 취약한 0.18.5까지만 있어 SheetJS 공식 CDN을 쓴다**(CVE-2023-30533 프로토타입 오염 0.19.3 수정, CVE-2024-22363 ReDoS 0.20.2 수정. 응답에 `Access-Control-Allow-Origin: *`가 있어 SRI 동작). npm 레지스트리의 `xlsx`도 0.18.5에서 멈춰 있으므로 버전을 올릴 때는 `cdn.sheetjs.com`에서 받는다 |
 | JSZip / FileSaver | 3.10.1 / 2.0.5 | cdnjs | 일괄 다운로드 |
 | marked / DOMPurify | 15.0.12 / 3.2.6 | jsdelivr | community/developer-notes |
 | CodeMirror / Prism / jsonlint | 5.65.13 / 1.29.0 / 1.6.0 | cdnjs | utils/JsonToPretty |
