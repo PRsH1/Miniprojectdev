@@ -162,8 +162,10 @@ OPA 번호 기준으로 eformsign Open API를 자동 검증하는 테스트 러�
 - **테스트 멤버 비밀번호 (`createMember` — OPA 011~013·018~020, `bulkCreateMembers` — OPA 030)**: 고정 문자열을 쓰지 않는다. 요청마다 `generateMemberPassword()`가
   `crypto.getRandomValues`로 16자(대문자·소문자·숫자·특수문자 각 1자 이상)를 만들고, eformsign 기본 정책(SaaS 소스 `PasswordStrictValidator` —
   10~128자, 영문·숫자·특수문자 중 2종 이상, 같은 문자 4연속·연속 숫자 4자리·키보드 같은 줄 4연속 금지)에 걸리면 다시 뽑는다.
-  뒤 step에서 그 비밀번호로 로그인하지 않으므로 보관하지 않는다. `request({ body, displayBody })`의 `displayBody`에 `MEMBER_PASSWORD_MASK`로 가린 본문을 넘겨
+  뒤 step에서 그 비밀번호로 로그인하지 않으므로 보관하지 않는다. `request({ body, displayBody })`의 `displayBody`에 자리표시자 `MEMBER_PASSWORD_MASK`(`<PASSWORD 직접 입력>`)로 가린 본문을 넘겨
   결과 표·리포트(모달·MD·HTML)·실행 이력·[요청 복사]·[cURL로 복사]에는 실제 값이 남지 않는다. 비밀값을 보내는 새 step도 같은 방식으로 `displayBody`를 쓴다.
+  **재현하려면 password 값을 직접 넣을 것** — 복사한 요청·cURL을 그대로 보내면 자리표시자가 비밀번호로 전송돼 형식 오류(`4000255 Password validation failed.`)가 난다(cURL의 `<ACCESS_TOKEN>`도 직접 바꿔 넣는 것과 같다).
+  자리표시자에는 공백을 넣어 정책(공백 불가)에 반드시 걸리게 한다 — `<PASSWORD>`는 기본 정책(10자·영문+특수문자)을 통과해 그대로 재전송하면 알려진 비밀번호로 멤버가 만들어질 수 있어 쓰지 않는다.
 - **`stamp.path` 형식**: 기본은 data URI(`data:image/png;base64,...`) 전송. API가 순수 base64만 받는다면(`4000231 Invalid company stamp image data`) `OpenAPIAutoTest.js`의 `STAMP_USE_DATA_URI`를 `false`로 바꿔 접두어를 제거한다.
 
 ### 응답 판정 (PASS / CHECK / FAIL / SKIP)
