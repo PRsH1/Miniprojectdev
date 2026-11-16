@@ -767,7 +767,7 @@ const API_SPECS = {
             { key: 'status', type: 'string', description: 'HTTP 응답 코드' },
             { key: 'code', type: 'string', description: '응답 코드 (-1: 정상)' },
             { key: 'message', type: 'string', description: '응답 메시지' },
-            { key: 'recipients', type: 'array', description: '재요청한 단계의 외부 수신자 정보 목록', note: '보낸 수신자를 그대로 돌려주지 않는다. 처리 후 문서에 저장된 외부 수신자 중 단계 순번(step_seq)이 요청한 단계와 같은 항목만 골라 준다(단계 종류는 보지 않음). next_steps를 생략하면 이전 수신자 정보의 단계 전체' },
+            { key: 'recipients', type: 'array', description: '재요청한 단계의 외부 수신자 정보 목록', note: '보낸 수신자를 그대로 돌려주지 않는다. 처리 후 문서에 저장된 외부 수신자 중 단계 순번(step_seq)이 요청한 단계와 같은 항목만 골라 준다(단계 종류는 보지 않음). next_steps를 생략했거나 recipients·approvers가 모두 없는 항목이 하나라도 있으면 서버가 next_steps 전체를 이전 수신자 정보(재요청 가능한 단계 전체)로 바꾸므로(보낸 recipients·approvers·comment는 같은 순서의 단계에 덮어씀) 응답도 그 단계 전체' },
             { key: 'recipients[].name', type: 'string', description: '수신자 이름' },
             { key: 'recipients[].id', type: 'string', description: '수신자 이메일' },
             { key: 'recipients[].token_id', type: 'string', description: '수신자 토큰 ID' },
