@@ -28,7 +28,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .tag-internal{display:inline-block;margin-left:8px;padding:2px 9px;border-radius:5px;background:#f59e0b;color:#1f1300;font-size:.75rem;font-weight:700;vertical-align:middle}
 .internal-banner{max-width:1400px;margin:14px auto 0;padding:10px 14px;border:1px solid #fcd34d;border-left:4px solid #f59e0b;border-radius:8px;background:#fffbeb;color:#5c3d00;font-size:.84rem}
 .internal-banner a{color:#9a5b00}
-.rv{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.62rem;font-weight:700;color:#475569;background:#e2e8f0;border:1px solid #cbd5e1;white-space:nowrap;flex-shrink:0}
+.rv{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.62rem;font-weight:700;color:#475569;background:#e2e8f0;border:1px solid #cbd5e1;white-space:nowrap}
 
 /* 검색 */
 .search-wrap{max-width:1400px;margin:18px auto 0;padding:0 24px}
@@ -52,7 +52,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .cnt{background:#e2e8f0;padding:2px 7px;border-radius:10px;font-size:.7rem;color:#64748b;white-space:nowrap}
 /* 좁은 화면 (F-6): 엔드포인트(nowrap)와 배지에 밀려 제목(h3)이 0폭이 되고 메서드 배지가 잘리던 문제.
    배지는 줄어들지 않게 하고, 760px 이하에서는 제목을 여러 줄로, 엔드포인트를 다음 줄로 내린다 (데스크톱 배치는 그대로) */
-.card-header .arrow,.mb,.cnt{flex-shrink:0}
+.card-header .arrow,.card-header .mb,.card-header .cnt,.card-header .rv{flex-shrink:0}
 @media (max-width:760px){
   .card-header{flex-wrap:wrap;row-gap:4px}
   .card-header h3{flex:1 1 0;min-width:0;white-space:normal;word-break:keep-all;overflow-wrap:anywhere}
