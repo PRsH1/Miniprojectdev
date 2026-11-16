@@ -142,7 +142,9 @@
     // 영문·숫자·특수문자 중 2종 이상, 같은 문자 4번 연속 불가, 연속 숫자 4자리(0123…) 불가, 키보드 같은 줄 연속 4자(qwer·asdf 등) 불가.
     // 서버 설정으로 형식이 더 엄격할 수 있어 대문자·소문자·숫자·특수문자를 모두 넣고 16자로 만든다.
     // 결과 표·리포트·이력·cURL에는 실제 값 대신 자리표시자 MEMBER_PASSWORD_MASK를 기록한다(request의 displayBody).
-    // 그래서 [요청 복사]·[cURL로 복사]를 그대로 다시 보내면 비밀번호 형식 오류(4000255)가 난다 — 재현할 때는 password 값을 직접 넣는다.
+    // 그래서 [요청 복사]·[cURL로 복사]를 그대로 다시 보내면 거부된다 — 재현할 때는 password 값을 직접 넣는다.
+    //   - 단건 멤버 추가(createMember, POST /members): HTTP 400 4000255 Password validation failed.
+    //   - 일괄 추가(bulkCreateMembers, POST /list_members): 서버가 멤버별 예외를 삼켜 HTTP 200 + members[].success:false
     const MEMBER_PASSWORD_LENGTH = 16;
     const MEMBER_PASSWORD_SETS = ["ABCDEFGHJKLMNPQRSTUVWXYZ", "abcdefghijkmnpqrstuvwxyz", "23456789", "!@#$%^*-_+="];
     const MEMBER_PASSWORD_RUNS = ["0123456789", "qwertyuiop", "asdfghjkl", "zxcvbnm"];
