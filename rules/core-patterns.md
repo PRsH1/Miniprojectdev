@@ -265,7 +265,7 @@ Step 3. data-min-role 카드 처리 (data-protected-path 없는 카드만)
 |---|---|---|
 | `data-min-role` | 하드코딩 역할 제어 (정적) | `data-protected-path` 없는 카드에 필수 |
 | `data-protected-path` | DB 기반 역할 제어 (동적) | `/app/*` 경로 카드에 사용 |
-| `data-original-url` | 보호 해제 시 복원 경로 | 모든 카드에 설정 권장 |
+| `data-original-url` | 보호 해제 시 복원 경로 + `file_path` 자동 매칭 키. `index.html`은 `href`와 같은 앞 슬래시 형태(`/utils/x.html`)로 쓴다 — 앞 슬래시 유무는 `normalizeFilePath()`가 지워 맞추므로 어느 쪽이든 동작 | 모든 카드에 설정 권장 |
 | `data-keywords` | 검색 전용 키워드(공백 구분, 화면 비표시) — 예: AutoTest 카드 `"OPA 자동 회귀 테스트"` | 권장 (P1-19) |
 
 **카드 이동 (P1-19 — 모든 카드 같은 탭):** 보호 카드도 `href`에 실제 경로(`/app/...`)를 두고 인라인 `onclick`·`window.open`을 쓰지 않는다.
@@ -385,9 +385,11 @@ index.html(자체 헤더 + notification-bell.js 사용), utils/의 리디렉트 
 ```html
 <a href="/utils/pageName.html" class="card" data-card
    data-min-role="public"
-   data-original-url="utils/pageName.html"
+   data-original-url="/utils/pageName.html"
    data-keywords="검색에 걸릴 키워드">
 ```
 
-- `data-original-url`은 `href`의 앞 슬래시를 제거한 값 — Admin UI에서 `file_path`로 등록 시 자동 매칭에 사용됨
+- `data-original-url`은 `href`와 같은 값(앞 슬래시 포함)으로 쓴다 — 현재 `index.html` 카드는 모두 이 형태다. 앞 슬래시를 뺀 `utils/pageName.html`도 동작한다
+  (매칭 시 `index.html`의 `normalizeFilePath()`가 앞 슬래시 1개를 지우고, 저장되는 `file_path`도 `normalizePageFilePath()`가 앞 슬래시를 지운 `utils/pageName.html`이라 해시가 같다.
+  `npm run check:pages`도 앞 슬래시를 지운 경로로 파일 존재를 확인한다). Admin UI에서 `file_path`로 등록 시 자동 매칭에 사용됨
 - 나중에 보호 페이지로 전환하더라도 HTML 수정 없이 Admin UI 등록만으로 권한 제어 가능

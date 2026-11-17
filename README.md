@@ -619,6 +619,20 @@ Postman과 유사한 인터페이스로 eformsign Open API를 브라우저에서
 
 ---
 
+## 2026-11-15 Update
+
+### 후속 정리 (보안·화면·문서)
+
+DB 마이그레이션·운영 반영 작업은 없다.
+
+- **SheetJS 0.18.5 → 0.20.3** (MemberV2 엑셀 업로드·템플릿·결과 다운로드) — CVE-2023-30533(조작된 파일 읽기 시 프로토타입 오염, 0.19.3 수정)·CVE-2024-22363(ReDoS, 0.20.2 수정) 대응. 수정 버전은 cdnjs·npm에 없어 SheetJS 공식 CDN(`cdn.sheetjs.com`)에서 정확한 버전 + SRI로 불러온다. 쓰는 API(`read`·`write`·`utils.book_new`·`aoa_to_sheet`·`book_append_sheet`·`sheet_to_json`)는 두 버전에서 결과가 같았다(xlsx·xls 쓰기→읽기 왕복 비교)
+- **OpenAPI 자동 테스트 멤버 비밀번호** — 테스트 멤버를 만드는 step(OPA 011~013·018~020의 `createMember`, OPA 030 일괄 추가)이 고정 비밀번호를 보내던 것을 실행마다 브라우저 난수(`crypto.getRandomValues`, 16자·4종 문자, eformsign 비밀번호 정책 충족)로 바꿨다. 결과 표·리포트·실행 이력·요청/cURL 복사에는 가린 값만 남는다
+- **OPA2_014 수신자 문서 재요청** 명세 — 응답 `recipients`는 보낸 수신자가 아니라, 처리 후 문서에 저장된 외부 수신자 중 요청한 단계 순번과 같은 항목이라는 점을 적었다(SaaS 소스 확인)
+- **에러 코드 페이지 2종 좁은 화면** — 375px에서 카드 제목이 사라지고 DELETE 배지가 잘리던 문제(F-6). 760px 이하에서 제목은 여러 줄, 엔드포인트는 다음 줄로 내려간다. 데스크톱 배치는 그대로
+- `rules/core-patterns.md`의 `data-original-url` 설명을 실제 `index.html`(앞 슬래시 포함 `/utils/x.html`)에 맞췄다 — 두 형태 모두 매칭된다
+
+---
+
 ## 2026-11-14 Update
 
 ### 에러 코드 페이지 공개·내부 분리
@@ -720,7 +734,7 @@ DB 마이그레이션은 없다(새 알림 타입 `password_reset_request`만 �
 
 #### 운영 메모
 - IP 단위 rate limit(WAF)은 계속 보류 — 승인 대기 로그인 시도 제한도 WAF로 보완할 대상
-- 남은 375px 넘침(DocumentDownload·DocumentInfo·AutoTest 헤더·레거시 임베딩)과 SheetJS 0.18.5 CVE는 후속
+- 남은 375px 넘침(DocumentDownload·DocumentInfo·AutoTest 헤더·레거시 임베딩)과 SheetJS 0.18.5 CVE는 후속 (SheetJS는 2026-11-15에 0.20.3으로 올려 해결 — 위 "2026-11-15 Update")
 
 ---
 
